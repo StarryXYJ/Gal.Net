@@ -157,7 +157,7 @@ internal static class VisualPresetCompiler
         if (handles.Distinct(StringComparer.Ordinal).Count() != handles.Length) throw new InvalidDataException("Duplicate visual targets.");
         return handles;
     }
-    private static void AddShake(TimelineDefinition timeline, IEnumerable<string> handles, float amplitude, int cycles, float angle)
+    private static void AddShake(TimelineDefinition timeline, IEnumerable<string> handles, float amplitude, int cycles, float angle, bool sustained = false)
     {
         var samples = Math.Min(timeline.DurationFrames, cycles * 4);
         var radians = angle * MathF.PI / 180;
@@ -168,7 +168,7 @@ internal static class VisualPresetCompiler
                 for (var i = 0; i <= samples; i++)
                 {
                     var t = (float)i / samples;
-                    track.Keys.Add(new() { Frame = (int)MathF.Round(t * timeline.DurationFrames), Value = i == 0 || i == samples ? 0 : amplitude * axis * (1 - t) * MathF.Sin(i * MathF.PI * .5f) });
+                    track.Keys.Add(new() { Frame = (int)MathF.Round(t * timeline.DurationFrames), Value = i == 0 || i == samples ? 0 : amplitude * axis * (sustained ? 1 : 1 - t) * MathF.Sin(i * MathF.PI * .5f) });
                 }
                 timeline.Tracks.Add(track);
             }
@@ -176,8 +176,17 @@ internal static class VisualPresetCompiler
     public static IReadOnlyList<PrimitiveEntry> Shake(EntryCompileContext context, ShakePresetOptions options)
     {
         var timeline = Clip(options);
-        AddShake(timeline, Targets(options.Targets), options.Amplitude, options.Cycles, options.Angle);
+        Sustain(timeline, options.PlaybackMode);
+        AddShake(timeline, Targets(options.Targets), options.Amplitude, options.Cycles, options.Angle, options.PlaybackMode == VisualPlaybackMode.UntilStopped);
         return Finish(context, timeline, options.BatchId);
+    }
+    private static void Sustain(TimelineDefinition timeline, VisualPlaybackMode mode)
+    {
+        if (!Enum.IsDefined(mode)) throw new InvalidDataException("Unknown visual playback mode.");
+        if (mode != VisualPlaybackMode.UntilStopped) return;
+        timeline.LoopMode = AnimationLoopMode.Loop;
+        timeline.Blocking = false;
+        timeline.Skippable = false;
     }
     private static void AddLines(TimelineDefinition timeline, SpeedLinesPresetOptionsBase options)
     {
@@ -197,7 +206,15 @@ internal static class VisualPresetCompiler
     }
     public static IReadOnlyList<PrimitiveEntry> SpeedLines(EntryCompileContext context, SpeedLinesPresetOptions options)
     {
-        var timeline = Clip(options); AddLines(timeline, options);
+        var timeline = Clip(options);
+        Sustain(timeline, options.PlaybackMode);
+        AddLines(timeline, options);
+        if (options.PlaybackMode == VisualPlaybackMode.UntilStopped)
+        {
+            timeline.Tracks.RemoveAll(track => track.Property == "opacity");
+            foreach (var item in timeline.Events)
+                item.Execution = item.Frame == 0 ? TimelineEventExecution.Once : TimelineEventExecution.OnCompletion;
+        }
         return Finish(context, timeline, options.BatchId);
     }
     public static IReadOnlyList<PrimitiveEntry> Impact(EntryCompileContext context, ImpactPresetOptions options)

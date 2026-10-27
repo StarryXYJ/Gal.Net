@@ -52,6 +52,28 @@ public sealed class VisualPresetAuthoringTests
     }
 
     [Test]
+    public void Sustained_presets_are_selectable_by_their_authored_playback_slot()
+    {
+        var graph = new EditorGraphDocument { RootNodeId = "g", Nodes = [new() { Id = "g", Type = "Group" }] };
+        var layer = new EditorEntryData { StableId = "hero", Type = BuiltinEntryIds.ShowColorLayer, Parameters = Parameters(new { handleId = "hero", color = "#FFFFFF" }) };
+        var shake = new EditorEntryData
+        {
+            StableId = "shake",
+            Type = BuiltinEntryIds.ShakePreset,
+            Parameters = Parameters(new
+            { playbackHandleId = "quake", targets = new[] { new { handleId = "hero" } }, playbackMode = "UntilStopped" })
+        };
+        var stop = new EditorEntryData { StableId = "stop", Type = BuiltinEntryIds.StopAnimation, Parameters = Parameters(new { playbackHandleId = "quake", mode = "CompleteImmediately" }) };
+        var analysis = new SceneTargetAnalysis(graph, new Dictionary<string, List<EditorEntryData>> { ["g"] = [layer, shake, stop] });
+        var candidate = analysis.Before("g", "stop").Playbacks.Single();
+        Assert.That(candidate.Handle, Is.EqualTo("quake"));
+        Assert.That(candidate.Locator.Slot, Is.EqualTo("playbackHandleId"));
+        Assert.That(candidate.Locator.EntryId, Is.EqualTo("shake"));
+        Assert.That(candidate.Resource, Is.EqualTo(BuiltinEntryIds.ShakePreset));
+        Assert.That(analysis.Before("g", null).Playbacks, Is.Empty);
+    }
+
+    [Test]
     public void Project_validation_checks_shader_contract_and_missing_resource_without_hidden_fallback()
     {
         var root = Path.Combine(Path.GetTempPath(), "GalNet-preset-" + Guid.NewGuid());

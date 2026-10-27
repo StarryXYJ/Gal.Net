@@ -16,6 +16,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     private readonly AnimationRequest _request;
     private readonly CancellationToken _scopeCancellation;
     private bool _skippable;
+    private bool _skipRequested;
     private AnimationPlaybackInstance? _playback;
     private bool _catchUpDetached;
     private Task _presentationTask = Task.CompletedTask;
@@ -58,14 +59,18 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
         if (!_restoring) BuiltinRuntimeActions.ApplyAnimationStableState(_runtime, _request);
         else _runtime.Scene().GetOrAddTransient(_request.PlaybackHandleId,
             id => new AnimationPlaybackInstance { Id = id, LoopMode = _request.LoopMode });
-        _runtime.Scene().TryGet<AnimationPlaybackInstance>(_request.PlaybackHandleId, out _playback!);
+        _playback = _runtime.Scene().GetOrAddTransient(_request.PlaybackHandleId,
+            id => new AnimationPlaybackInstance { Id = id, LoopMode = _request.LoopMode });
         if (_presenter is null)
         {
+            if (_request.LoopMode == AnimationLoopMode.Once)
+                BuiltinRuntimeActions.StopAnimationState(_runtime, _request.PlaybackHandleId);
             TryComplete();
             return;
         }
 
         _presentationTask = ObservePresentationAsync();
+        _playback.PresentationCompletion = _presentationTask;
     }
 
     protected override void OnSkip()
@@ -75,6 +80,7 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
             if (!_skippable || IsCompleted)
                 return;
             _skippable = false;
+            _skipRequested = true;
         }
 
         _presenter?.CompleteAnimationImmediately(_request.PlaybackHandleId);
@@ -107,7 +113,10 @@ public sealed class AnimationPrimitiveInstance : PrimitiveInstance
     {
         try
         {
-            await _presenter!.AnimateAsync(_request, _scopeCancellation).ConfigureAwait(false);
+            var outcome = await _presenter!.AnimateAsync(_request, _scopeCancellation).ConfigureAwait(false);
+            if (outcome != AnimationOutcome.Replaced && !_skipRequested && !_catchUpDetached && !_scopeCancellation.IsCancellationRequested &&
+                _request.LoopMode != AnimationLoopMode.Once && (_playback?.RequestedStop is not null || outcome == AnimationOutcome.Skipped))
+                BuiltinRuntimeActions.ApplyAnimationTerminalValue(_runtime, _request);
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested)
         { }

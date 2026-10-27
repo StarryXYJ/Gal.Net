@@ -97,6 +97,33 @@ public sealed class AvaloniaPresenterTests
     }
 
     [Test]
+    public async Task Stopping_looping_shake_removes_only_its_offset_and_allows_reuse()
+    {
+        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        state.SetLayer("hero", new SceneLayerItem { HandleId = "hero", X = 37 });
+        using var presenter = new AvaloniaAnimationPresenter(state, new ImmediateDispatcher());
+        var timeline = new TimelineDefinition
+        {
+            PlaybackHandleId = "quake",
+            DurationFrames = 60,
+            FrameRate = 60,
+            LoopMode = AnimationLoopMode.Loop,
+            Tracks = [new() { HandleId = "hero", Property = "transform.x", BlendMode = AnimationBlendMode.Additive,
+                Keys = [new() { Frame = 0, Value = 0 }, new() { Frame = 30, Value = 16 }, new() { Frame = 60, Value = 0 }] }]
+        };
+        for (var round = 0; round < 2; round++)
+        {
+            var playback = presenter.PlayTimelineAsync(timeline, CancellationToken.None);
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+            while (state.Layers.Single().X < 37.1) await Task.Delay(8, timeout.Token);
+            Assert.That(presenter.CompleteAnimationImmediately("quake"), Is.True);
+            var result = await playback.WaitAsync(timeout.Token);
+            Assert.That(result.Outcome, Is.EqualTo(AnimationOutcome.Skipped));
+            Assert.That(state.Layers.Single().X, Is.EqualTo(37).Within(.001));
+        }
+    }
+
+    [Test]
     public async Task DrainedParticleRemovalIsPostedUntilAfterTheRenderPass()
     {
         var state = new GamePageViewModel(new NoOpGameNavigationService());

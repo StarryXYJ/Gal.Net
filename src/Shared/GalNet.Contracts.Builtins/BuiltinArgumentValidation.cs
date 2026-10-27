@@ -78,8 +78,12 @@ internal static class BuiltinArgumentValidation
         }
         foreach (var item in timeline.Events)
         {
-            if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames)
+            if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames || !Enum.IsDefined(item.Execution))
                 throw new InvalidDataException("Animation events must be inside the timeline duration.");
+            if (item.Execution == TimelineEventExecution.Once && item.Frame != 0 ||
+                item.Execution == TimelineEventExecution.OnCompletion && (item.Frame != timeline.DurationFrames ||
+                    item.Type is not (BuiltinEntryIds.HideLayer or BuiltinEntryIds.StopEffect or BuiltinEntryIds.StopParticleEmitter)))
+                throw new InvalidDataException("Playback setup must be at frame zero; completion events must be terminal cleanup operations.");
         }
     }
 }

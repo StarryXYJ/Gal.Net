@@ -213,6 +213,8 @@ Engine 不拥有 view。宿主先释放 Engine，再 `await view.DisposeAsync()`
 
 动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
 
+Timeline 的播放级 Once 初始化事件不随迭代重放，OnCompletion 清理仅在整段完成/跳过时通知。`animation.stop / CompleteImmediately` 等待对应播放实例的 PresentationCompletion；中立实例补发剩余非 burst 事件并提交循环终态后才移除播放身份，保证后续剧情可复用标识。Timeline 的 AfterIteration 请求由单调播放时钟在下一轮边界完成；无活动呈现的循环直接提交逻辑终态。CatchUp 分离、scope 取消和被替换不补发完成清理。事件生命周期为 Timeline 的可选字段，builtin.animations section 仍为 v2。
+
 音频后端请求按 voice 顺序提交，目标级 Configure/Mix/Effect/Reset 另有顺序屏障，Start 等待已提交的目标配置。Stop 即刻取消待加载 Start；异步销毁等待后台源和设备回调退出。Windows miniaudio 解码至每实例有界 PCM 缓冲；设备回调不执行文件 I/O、不取得 Runtime 锁或调用终态订阅。取消后的租约和原生解码器均释放，读档清空旧图，旧 scope Reset 与迟到终态不能影响新代。Headless 保留逻辑状态；无 host 时流程 ticket 完成。
 
 ## 已读进度提交边界

@@ -56,8 +56,8 @@ project visuals install <project>
 | transition.reveal | oldHandleId、newHandleId、assetId、program、mode；Mask 另需 maskAsset |
 | transition.blur | oldHandleId、newHandleId、assetId、blurProgram、radius；双层各两遍模糊 |
 | preset.motion | handleId、motion；FadeIn/FadeOut/SlideIn/SlideOut/PopIn/Jump/Nod/ShakeHead/Push |
-| preset.shake | targets 数组（每项含 handleId）、amplitude、cycles、angle；最多 32 个同步图层 |
-| preset.speedLines | program、parameters（shader 参数对象）、speed、flicker、z |
+| preset.shake | targets 数组（每项含 handleId）、amplitude、cycles、angle、playbackMode；最多 32 个同步图层 |
+| preset.speedLines | program、parameters（shader 参数对象）、speed、flicker、z、playbackMode |
 | preset.impact | 集中线参数加 targets、amplitude、cycles、angle、flashOpacity；组合震动、缩放脉冲、闪白和集中线 |
 
 ```json
@@ -83,7 +83,34 @@ Push 的 anchorX/anchorY 为相对画布中心的逻辑坐标。锚点缩放与 
 
 替换 shader 必须满足编排要求：layer stage，time/progress/radius 等参数的种类、可动画性和数值范围。项目验证、单组编译、build/export 拒绝缺失或不匹配的资源。Mask 模式需选择 maskReveal 对应程序；切换 mode 不自动覆盖作者已选的 program。
 
-正常完成和快进执行末帧清理。主动结束演出时使用 `animation.stop` 的 `CompleteImmediately` 模式执行完整收尾。取消/被替换沿用已有语义，不保证末帧事件执行；非阻塞预设应在切场前明确完成，不能并发复用同一 playbackHandleId。
+震屏和集中线的 `playbackMode` 默认为 `Timed`（指定时长），支持 `UntilStopped`（持续到停止）。定时模式的 `blocking` 决定剧情是否等待；持续模式固定为不阻塞且不可通过对白点击跳过，不受作者原来的 blocking/skippable 值影响。持续模式下 durationFrames/frameRate 是循环周期，震屏不逐轮衰减，集中线保持显示、不重复创建 Effect 或图层。人物动作、冲击和转场仍为单次播放。
+
+例如，先插入持续震屏，经过若干对白后用一个“停止动画”结束：
+
+```json
+{
+  "type": "preset.shake",
+  "parameters": {
+    "playbackHandleId": "earthquake",
+    "targets": [{ "handleId": "background" }, { "handleId": "hero" }],
+    "playbackMode": "UntilStopped",
+    "durationFrames": 60,
+    "cycles": 4,
+    "amplitude": 16
+  }
+}
+```
+
+```json
+{
+  "type": "animation.stop",
+  "parameters": { "playbackHandleId": "earthquake", "mode": "CompleteImmediately" }
+}
+```
+
+集中线使用相同的停止方式。立即完成会等待本次演出收尾后再推进剧情：震屏偏移归零；集中线停止并移除自己的 Effect 和临时图层；其他独立效果保留。不需要追加 effect.stop。Timeline 的 `AfterIteration` 模式请求当前轮播完后再收尾，该停止 Entry 不等待整轮。无活动呈现的 Headless/CatchUp 循环直接完成逻辑收尾。
+
+正常完成和快进也执行末帧清理。scope 取消/被替换不视为正常完成，不保证末帧事件执行；非阻塞预设应在切场前明确完成，不能并发复用同一 playbackHandleId。立即停止清理完成后允许复用该标识。
 
 当前导出打包全部项目资产，时间线使用的 shader 和遮罩图片均在资源包中。静态引用查询仍报告候选与不完整性，零匹配不是删除安全证明。
 

@@ -29,7 +29,7 @@ public sealed partial class SceneTargetAnalysis
             var ids = new HashSet<string>(StringComparer.Ordinal);
             foreach (var item in events.EnumerateArray())
             {
-                foreach (var name in new[] { "frame", "type", "parameters" }) _ = Member(item, name);
+                foreach (var name in new[] { "frame", "type", "parameters", "execution" }) _ = Member(item, name);
                 if (Member(item, "editorId") is { } identity && (identity.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(identity.GetString()) || !ids.Add(identity.GetString()!)))
                     throw new InvalidDataException("Ambiguous event identity.");
             }
@@ -56,10 +56,11 @@ public sealed partial class SceneTargetAnalysis
         catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { state.Uncertain(); }
         return Result(state);
     }
-    private void TransferTimeline(State state, string group, EditorEntryData entry)
+    private void TransferTimeline(State state, string group, EditorEntryData entry, bool requireValidExpansion = false)
     {
         var (timeline, raw) = ReadTimeline(entry); var before = state.Clone();
         EvaluateTimeline(state, group, entry, timeline, raw, new(timeline.DurationFrames), terminal: true);
+        if (requireValidExpansion && !state.Complete) throw new InvalidDataException("Incomplete transition expansion.");
         if (timeline.LoopMode == AnimationLoopMode.Once && (timeline.Blocking || timeline.DurationFrames == 0)) return;
         // Later story positions cannot assume concurrent or cyclic presentation has finished.
         var merged = Merge([before, state]);
@@ -75,6 +76,7 @@ public sealed partial class SceneTargetAnalysis
             }
             catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { merged.Complete = false; }
         }
+        if (requireValidExpansion && !merged.Complete) throw new InvalidDataException("Incomplete transition expansion.");
         state.Targets.Clear(); foreach (var pair in merged.Targets) state.Targets.Add(pair.Key, pair.Value);
         state.Playbacks.Clear(); foreach (var pair in merged.Playbacks) state.Playbacks.Add(pair.Key, pair.Value);
         state.Uncertain();
@@ -84,7 +86,8 @@ public sealed partial class SceneTargetAnalysis
     {
         var ordered = timeline.Events.Select((item, index) => (Item: item, Index: index)).OrderBy(pair => pair.Item.Frame).ThenBy(pair => pair.Index).ToArray();
         var touched = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var (item, index) in ordered.Where(pair => pair.Item.Frame < position.Frame || pair.Item.Frame == position.Frame && (position.BeforeEventIndex is null || pair.Index < position.BeforeEventIndex)))
+        foreach (var (item, index) in ordered.Where(pair => (terminal || pair.Item.Execution != TimelineEventExecution.OnCompletion) &&
+            (pair.Item.Frame < position.Frame || pair.Item.Frame == position.Frame && (position.BeforeEventIndex is null || pair.Index < position.BeforeEventIndex))))
         {
             try
             {

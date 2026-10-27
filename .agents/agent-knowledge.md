@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [Timeline 停止与事件收尾](lessons/L-20261027-03-timeline-stop-event-cleanup.md)：完成轨道不等于执行末帧事件；停止需等待完整收尾，循环初始化/迭代/结束清理分别处理，初始化期间的停止也必须生效。
+
 - 2026-10-27 音频 PCM：实例拥有 gain/淡入淡出/结束处理，Track 管理顺序/随机和循环队列，Bus 实际汇总后执行共享效果。Media.Audio 为跨平台混音/DSP，Media.Miniaudio 为 Windows x64 设备/解码；LibVLC 仅保留视频/Gallery。默认项目 section v2（audioBuses/busId），音频状态 tracks/seffects v2、channels v1；SEffect scope/targetId 与真实滤波/混响见 docs/manual/audio-mixing.md。实现和验收限制见 features/F-20261027-01-audio-mixer/summary.md。
 
 - [分数延迟环绕边界](lessons/L-20261027-02-fractional-audio-delay-wrap.md)：float 负分数位置加长度后可能舍入到长度本身；使用 double 并复核上边界，默认参数与非默认参数均验证。

@@ -35,7 +35,7 @@ internal static partial class BuiltinRuntimeActions
     {
         if (timeline.LoopMode != AnimationLoopMode.Once)
         {
-            foreach (var item in timeline.Events.Where(item => item.Frame <= 0).OrderBy(item => item.Frame))
+            foreach (var item in timeline.Events.Where(item => item.Frame <= 0 && item.Execution != TimelineEventExecution.OnCompletion).OrderBy(item => item.Frame))
                 ApplyTimelineEventToRuntime(runtime, item);
 
             foreach (var track in timeline.Tracks.Where(track => track.Keys.Count > 0 && track.BlendMode == AnimationBlendMode.Replace))

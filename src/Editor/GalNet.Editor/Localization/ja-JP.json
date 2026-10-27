@@ -1,4 +1,7 @@
 {
+  "Entry.Parameter.playbackMode": "再生方式",
+  "Entry.Option.Timed": "指定時間",
+  "Entry.Option.UntilStopped": "停止するまで継続",
   "Entry.Type.transition.reveal": "シェーダー切り替え",
   "Entry.Type.transition.blur": "ぼかしクロスフェード",
   "Entry.Type.preset.motion": "キャラクター動作",

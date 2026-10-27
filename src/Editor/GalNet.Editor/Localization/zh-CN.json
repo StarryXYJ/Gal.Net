@@ -1,4 +1,7 @@
 {
+  "Entry.Parameter.playbackMode": "播放方式",
+  "Entry.Option.Timed": "指定时长",
+  "Entry.Option.UntilStopped": "持续到停止",
   "Entry.Type.transition.reveal": "Shader 遮罩转场",
   "Entry.Type.transition.blur": "模糊交叉淡化",
   "Entry.Type.preset.motion": "人物动作",

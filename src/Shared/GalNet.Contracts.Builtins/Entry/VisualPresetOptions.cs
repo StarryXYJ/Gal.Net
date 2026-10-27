@@ -6,6 +6,7 @@ namespace GalNet.Contracts.Builtins;
 
 public enum RevealMode { Wipe, Radial, Noise, Blinds, Mask }
 public enum MotionPreset { FadeIn, FadeOut, SlideIn, SlideOut, PopIn, Jump, Nod, ShakeHead, Push }
+public enum VisualPlaybackMode { Timed, UntilStopped }
 
 [GenerateFieldSchema]
 public partial class RevealTransitionOptions : CrossFadeOptionsBase
@@ -31,7 +32,7 @@ public abstract class VisualClipOptions
     [Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string PlaybackHandleId { get; set; } = "";
     [Field(1, Minimum = 1, Maximum = 240)] public int FrameRate { get; set; } = 60;
     [Common, Field(2, Minimum = 2, Maximum = 36000)] public int DurationFrames { get; set; } = 36;
-    [Field(3)] public bool Blocking { get; set; } = true;
+    [Common, Field(3)] public bool Blocking { get; set; } = true;
     [Field(4)] public bool Skippable { get; set; } = true;
     [Field(5, AllowNull = true)] public string? BatchId { get; set; }
 }
@@ -53,6 +54,7 @@ public partial class MotionPresetOptions : VisualClipOptions
 [GenerateFieldSchema]
 public partial class ShakePresetOptions : VisualClipOptions
 {
+    [Common, Field(10, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; }
     [Common, Field(6, DefaultJson = "[]", EditorId = ValueEditorIds.Json)] public JsonElement Targets { get; set; }
     [Field(7, Minimum = 0, Maximum = 10000)] public float Amplitude { get; set; } = 16;
     [Field(8, Minimum = 1, Maximum = 30)] public int Cycles { get; set; } = 4;
@@ -69,7 +71,10 @@ public abstract class SpeedLinesPresetOptionsBase : VisualClipOptions
 }
 
 [GenerateFieldSchema]
-public partial class SpeedLinesPresetOptions : SpeedLinesPresetOptionsBase;
+public partial class SpeedLinesPresetOptions : SpeedLinesPresetOptionsBase
+{
+    [Common, Field(11, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; }
+}
 
 [GenerateFieldSchema]
 public partial class ImpactPresetOptions : SpeedLinesPresetOptionsBase

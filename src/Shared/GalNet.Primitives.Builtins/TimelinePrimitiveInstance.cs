@@ -28,10 +28,11 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
     private bool _skippable;
     private AnimationPlaybackInstance? _playback;
     private long _eventCycle;
+    private long? _stopAfterCycle;
     private bool _catchUpDetached;
+    private readonly TaskCompletionSource _completion = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Task _presentationTask = Task.CompletedTask;
-    private Task _skipTask = Task.CompletedTask;
-    public override Task PresentationCompletion => Task.WhenAll(_presentationTask, _skipTask);
+    public override Task PresentationCompletion => _completion.Task;
 
     public TimelinePrimitiveInstance(IAnimationPresenter? animationPresenter, ILayerPresenter? layerPresenter,
         IEffectPresenter? effectPresenter, IParticlePresenter? particlePresenter, PrimitiveCreateContext context, TimelineOptions options)
@@ -66,7 +67,7 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
             .ToArray();
         _notifiedEvents = new bool[_events.Length];
         if (restoring)
-            foreach (var item in _events.Where(item => item.Event.Frame <= 0)) _notifiedEvents[item.Index] = true;
+            foreach (var item in _events.Where(item => item.Event.Frame <= 0 && item.Event.Execution != TimelineEventExecution.OnCompletion)) _notifiedEvents[item.Index] = true;
     }
 
     public override bool IsBlocking => _timeline.Blocking;
@@ -82,17 +83,20 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
     protected override void OnDispatch()
     {
         if (!_restoring) BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
-        else _runtime.Scene().GetOrAddTransient(_timeline.PlaybackHandleId,
+        _playback = _runtime.Scene().GetOrAddTransient(_timeline.PlaybackHandleId,
             id => new AnimationPlaybackInstance { Id = id, LoopMode = _timeline.LoopMode });
-        _runtime.Scene().TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out _playback!);
         if (_animationPresenter is null)
         {
+            if (_timeline.LoopMode == AnimationLoopMode.Once)
+                BuiltinRuntimeActions.StopAnimationState(_runtime, _timeline.PlaybackHandleId);
             Dispose();
+            _completion.TrySetResult();
             TryComplete();
             return;
         }
 
         _presentationTask = ObservePresentationAsync();
+        _playback.PresentationCompletion = PresentationCompletion;
     }
 
     protected override void OnSkip()
@@ -109,7 +113,7 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
         _animationPresenter?.CompleteAnimationImmediately(_timeline.PlaybackHandleId);
         if (_timeline.LoopMode != AnimationLoopMode.Once)
             BuiltinRuntimeActions.ApplyTimelineTerminalState(_runtime, _timeline);
-        _skipTask = CompleteSkipAsync();
+        _ = CompleteSkipAsync();
     }
 
     protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
@@ -129,6 +133,7 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
         if (!_timeline.Skippable && _timeline.Blocking) { OnDispatch(); return; }
         BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
         Dispose();
+        _completion.TrySetResult();
         TryComplete();
     }
 
@@ -140,8 +145,17 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
                 _scopeCancellation,
                 _presentationCancellation.Token);
             await NotifyEventsThroughFrameAsync(0, linked.Token).ConfigureAwait(false);
-            await _animationPresenter!.PlayTimelineAsync(
-                _timeline, linked.Token, elapsedFrames => NotifyPlaybackEventsAsync(elapsedFrames, linked.Token)).ConfigureAwait(false);
+            var result = _playback?.RequestedStop == AnimationStopMode.CompleteImmediately
+                ? new TimelinePlayResult { Outcome = AnimationOutcome.Skipped }
+                : await _animationPresenter!.PlayTimelineAsync(
+                    _timeline, linked.Token, elapsedFrames => NotifyPlaybackEventsAsync(elapsedFrames, linked.Token)).ConfigureAwait(false);
+            if (result.Outcome != AnimationOutcome.Replaced && !_skipRequested && !_catchUpDetached && !_scopeCancellation.IsCancellationRequested &&
+                (_timeline.LoopMode == AnimationLoopMode.Once || _playback?.RequestedStop is not null || result.Outcome == AnimationOutcome.Skipped))
+            {
+                if (_timeline.LoopMode != AnimationLoopMode.Once)
+                    BuiltinRuntimeActions.ApplyTimelineTerminalState(_runtime, _timeline);
+                await NotifyRemainingEventsAsync(_scopeCancellation).ConfigureAwait(false);
+            }
         }
         catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested || _presentationCancellation.IsCancellationRequested)
         { }
@@ -149,40 +163,43 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
         { GameLog.Logger.Warning(error, "Animation timeline {PlaybackId} presentation failed", _timeline.PlaybackHandleId); }
         finally
         {
-            _runtime.State.Update(() =>
-            {
-                if (!_catchUpDetached && _playback is not null && _runtime.Scene().TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
-                    BuiltinRuntimeActions.StopAnimationState(_runtime, _timeline.PlaybackHandleId);
-            });
             bool skipRequested;
             lock (_gate)
             {
                 _skippable = false;
                 skipRequested = _skipRequested;
             }
-            if (!skipRequested)
-            {
-                Dispose();
-                TryComplete();
-            }
+            if (!skipRequested) FinishPlayback();
         }
     }
 
     private async Task NotifyEventsThroughFrameAsync(int frame, CancellationToken cancellationToken)
     {
-        foreach (var item in _events.Where(item => item.Event.Frame <= frame))
+        foreach (var item in _events.Where(item => item.Event.Frame <= frame && item.Event.Execution != TimelineEventExecution.OnCompletion))
             await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task CompleteSkipAsync()
     {
-        try { await NotifyRemainingEventsAsync(_scopeCancellation).ConfigureAwait(false); }
-        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
-        finally
+        try
         {
-            Dispose();
-            TryComplete();
+            await _presentationTask.ConfigureAwait(false);
+            await NotifyRemainingEventsAsync(_scopeCancellation).ConfigureAwait(false);
         }
+        catch (OperationCanceledException) when (_scopeCancellation.IsCancellationRequested) { }
+        finally { FinishPlayback(); }
+    }
+
+    private void FinishPlayback()
+    {
+        _runtime.State.Update(() =>
+        {
+            if (!_catchUpDetached && _playback is not null && _runtime.Scene().TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
+                BuiltinRuntimeActions.StopAnimationState(_runtime, _timeline.PlaybackHandleId);
+        });
+        Dispose();
+        _completion.TrySetResult();
+        TryComplete();
     }
 
     // The presenter supplies its own elapsed frame count before sampling tracks.
@@ -193,10 +210,21 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
             ? _timeline.DurationFrames * 2d : _timeline.DurationFrames;
         var cycle = _timeline.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
             ? 0 : (long)(elapsedFrames / cycleFrames);
+        if (_playback?.RequestedStop == AnimationStopMode.AfterIteration && _timeline.LoopMode != AnimationLoopMode.Once)
+        {
+            _stopAfterCycle ??= _eventCycle + 1;
+            if (cycle >= _stopAfterCycle || cycleFrames <= 0)
+            {
+                _animationPresenter?.CompleteAnimationImmediately(_timeline.PlaybackHandleId);
+                return;
+            }
+        }
         for (; _eventCycle < cycle; _eventCycle++)
         {
             await NotifyEventsThroughFrameAsync(_timeline.DurationFrames, cancellationToken).ConfigureAwait(false);
-            lock (_gate) Array.Clear(_notifiedEvents);
+            lock (_gate)
+                foreach (var item in _events.Where(item => item.Event.Execution == TimelineEventExecution.EachIteration))
+                    _notifiedEvents[item.Index] = false;
         }
         var frame = _timeline.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
             ? elapsedFrames : elapsedFrames % cycleFrames;

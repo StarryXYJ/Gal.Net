@@ -1,4 +1,7 @@
 {
+  "Entry.Parameter.playbackMode": "재생 방식",
+  "Entry.Option.Timed": "지정 시간",
+  "Entry.Option.UntilStopped": "중지할 때까지",
   "Entry.Type.transition.reveal": "셰이더 전환",
   "Entry.Type.transition.blur": "블러 크로스페이드",
   "Entry.Type.preset.motion": "캐릭터 동작",

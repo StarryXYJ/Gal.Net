@@ -60,10 +60,14 @@ public sealed class TimelineKeyframeDefinition
 public sealed class TimelineEventDefinition
 {
     public int Frame { get; set; }
+    /// <summary>Defaults to each iteration; setup and cleanup can instead belong to the whole playback.</summary>
+    public TimelineEventExecution Execution { get; set; }
     public string Type { get; set; } = "";
     /// <summary>Structured entry parameters preserved until the event is dispatched.</summary>
     public Dictionary<string, JsonElement> Parameters { get; set; } = new(StringComparer.Ordinal);
 }
+
+public enum TimelineEventExecution { EachIteration, Once, OnCompletion }
 
 /// <summary>Terminal timeline outcome plus the terminal outcome recorded for each track.</summary>
 public sealed class TimelinePlayResult

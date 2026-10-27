@@ -61,6 +61,8 @@ public sealed class AnimationPlaybackInstance : ISceneInstance
     /// <summary>Stable playback handle used by stop commands and to prevent duplicate active playbacks.</summary>
     public string Id { get; init; } = "";
     public AnimationLoopMode LoopMode { get; init; }
+    /// <summary>Includes presentation cleanup; stop commands await it before the handle can be reused.</summary>
+    public Task PresentationCompletion { get; set; } = Task.CompletedTask;
 
     /// <summary>Most recent requested stop mode, or <see langword="null"/> while playback may continue.</summary>
     public AnimationStopMode? RequestedStop

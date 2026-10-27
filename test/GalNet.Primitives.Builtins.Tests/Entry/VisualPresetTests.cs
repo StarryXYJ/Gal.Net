@@ -108,6 +108,47 @@ public sealed class VisualPresetTests
     }
 
     [Test]
+    public void Sustained_shake_keeps_amplitude_and_ignores_blocking_and_click_skip()
+    {
+        var timeline = Compile(BuiltinEntryIds.ShakePreset, new
+        {
+            playbackHandleId = "quake",
+            targets = new[] { new { handleId = "hero" } },
+            durationFrames = 60,
+            cycles = 4,
+            amplitude = 16,
+            playbackMode = "UntilStopped",
+            blocking = true,
+            skippable = true
+        });
+        Assert.Multiple(() =>
+        {
+            Assert.That(timeline.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
+            Assert.That(timeline.Blocking, Is.False);
+            Assert.That(timeline.Skippable, Is.False);
+            var x = timeline.Tracks.Single(track => track.Property == "transform.x");
+            Assert.That(x.Keys[1].Value, Is.EqualTo(x.Keys[5].Value).Within(.001));
+            Assert.That(x.Keys[^1].Value, Is.Zero);
+        });
+        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset,
+            new { playbackHandleId = "quake", targets = new[] { new { handleId = "hero" } }, playbackMode = "forever" }));
+    }
+
+    [Test]
+    public void Sustained_lines_keep_opacity_and_use_playback_setup_and_completion_events()
+    {
+        var timeline = Compile(BuiltinEntryIds.SpeedLinesPreset, new { playbackHandleId = "lines", program = "shader", playbackMode = "UntilStopped" });
+        Assert.That(timeline.Tracks.Any(track => track.Property == "opacity"), Is.False);
+        Assert.That(timeline.Events.Where(item => item.Frame == 0).All(item => item.Execution == TimelineEventExecution.Once), Is.True);
+        Assert.That(timeline.Events.Where(item => item.Frame > 0).All(item => item.Execution == TimelineEventExecution.OnCompletion), Is.True);
+        var invalid = timeline.Events.First();
+        invalid.Execution = (TimelineEventExecution)42;
+        Assert.Throws<InvalidDataException>(() => TimelineEventCapabilities.ValidateStructure(timeline));
+        invalid.Execution = TimelineEventExecution.OnCompletion;
+        Assert.Throws<InvalidDataException>(() => TimelineEventCapabilities.ValidateStructure(timeline));
+    }
+
+    [Test]
     public void Missing_shader_duplicate_targets_and_reserved_handle_collisions_are_rejected()
     {
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.SpeedLinesPreset, new { playbackHandleId = "p" }));

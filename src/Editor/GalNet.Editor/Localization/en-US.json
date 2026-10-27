@@ -1,4 +1,7 @@
 {
+  "Entry.Parameter.playbackMode": "Playback mode",
+  "Entry.Option.Timed": "Timed",
+  "Entry.Option.UntilStopped": "Until stopped",
   "Entry.Type.transition.reveal": "Shader reveal",
   "Entry.Type.transition.blur": "Blur crossfade",
   "Entry.Type.preset.motion": "Character motion",
