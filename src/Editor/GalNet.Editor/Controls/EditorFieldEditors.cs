@@ -17,7 +17,10 @@ public static class EditorFieldEditors
 {
     public static EditorRegistry CreateDefault(SceneTargetCatalog? scenes = null, Action<FieldEditorContext>? openTimeline = null, GalNet.Core.Assets.IAssetManager? assets = null, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, IProjectContentSession? content = null, ProjectSceneTargets? shaderPrograms = null)
     {
-        var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true, copyValue: texts is null ? null : texts.StageCopy);
+        var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true, copyValue: texts is null ? null : texts.StageCopy,
+            formatIssue: (field, issue) => EditorProblemText.Value(field, issue));
+        registry.Replace(ValueEditorIds.Numeric, NumericFieldEditors.CreateUpDown);
+        registry.Replace(ValueEditorIds.Slider, NumericFieldEditors.CreateSliderWithInput);
         if (characters is not null) registry.RegisterSemantic(FieldValueSemantic.CharacterReference, context => CharacterFieldEditor.Create(context, characters));
         if (texts is not null) registry.RegisterSemantic(FieldValueSemantic.LocalizedText, context => GameTextFieldEditor.Create(context, texts));
         registry.Register("entry.imageasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Image));

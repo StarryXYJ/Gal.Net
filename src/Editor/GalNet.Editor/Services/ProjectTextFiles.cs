@@ -14,6 +14,14 @@ namespace GalNet.Editor.Services;
 public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, IResourceTypeCatalog? resourceTypes = null) : IDisposable
 {
     private readonly Dictionary<string, ProjectTextBuffer> _buffers = [];
+    public bool CanOpen(string path)
+    {
+        if (projects.Current is null) return false;
+        var document = content.FileDocuments.Values.FirstOrDefault(file => ProjectFilePaths.Comparer.Equals(file.Path, path));
+        if (document is not null) return document.Exists;
+        try { return File.Exists(new ProjectRawReader(projects.Current.RootPath).Resolve(path)); }
+        catch (Exception error) when (error is IOException or ArgumentException or UnauthorizedAccessException) { return false; }
+    }
     public ProjectTextBuffer Get(string id) => _buffers[id];
     public ProjectTextBuffer Open(string path)
     {

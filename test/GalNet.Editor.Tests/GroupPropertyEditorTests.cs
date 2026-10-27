@@ -109,7 +109,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var window = new Window { Content = lease.Control, Width = 700, Height = 500 }; window.Show(); TimelinePump(window);
             try
             {
-                TextBox Input(string name) => lease.Control.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "Flipbook" + name);
+                TextBox Input(string name) => NumericControlTestSupport.NamedInputs(lease.Control, "Flipbook" + name).Single();
                 Assert.That(binding.Commits, Is.Zero);
                 Assert.That(Input("Columns").Text, Is.EqualTo("4"));
                 Input("Index").Text = "2.5"; PressGroupKey(Input("Index"), Key.Enter); TimelinePump(window);
@@ -207,8 +207,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
                 var transform = view.GetVisualDescendants().OfType<Grid>().Single(item => item.Name == "TransformEditor");
                 Assert.That(transform.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "RepairProperty").IsEffectivelyVisible, Is.False);
-                var x = transform.GetVisualDescendants().OfType<TextBox>().Single(item => item.Name == "TransformX");
-                var scale = transform.GetVisualDescendants().OfType<TextBox>().Single(item => item.Name == "TransformScaleX");
+                var x = NumericControlTestSupport.NamedInputs(transform, "TransformX").Single();
+                var scale = NumericControlTestSupport.NamedInputs(transform, "TransformScaleX").Single();
                 Assert.That(x.TranslatePoint(default, transform)!.Value.X, Is.EqualTo(scale.TranslatePoint(default, transform)!.Value.X));
                 Assert.That(scale.Text, Is.EqualTo("1")); Assert.That(history.CanUndo, Is.False);
                 scale.Text = "1.25";
@@ -382,7 +382,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 var list = (StructuredFieldEditor)form.Editors.Single().Control; list.IsExpanded = true; TimelinePump(window);
-                var inputs = list.GetVisualDescendants().OfType<TextBox>().Where(item => item.Name == "TransformX").ToArray();
+                var inputs = NumericControlTestSupport.NamedInputs(list, "TransformX").ToArray();
                 Assert.That(inputs, Has.Length.EqualTo(2));
                 inputs[0].Text = "3"; PressGroupKey(inputs[0], Key.Enter); TimelinePump(window);
                 Assert.That(binding.Value.Json!.Value[0].GetProperty("X").GetSingle(), Is.EqualTo(3));
@@ -393,7 +393,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(binding.Value.Json.Value[0].GetProperty("X").GetSingle(), Is.EqualTo(2));
                 Assert.That(binding.Commits, Is.EqualTo(2));
                 list.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "add").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); TimelinePump(window);
-                var added = list.GetVisualDescendants().OfType<TextBox>().Last(item => item.Name == "TransformX");
+                var added = NumericControlTestSupport.NamedInputs(list, "TransformX").Last();
                 Assert.That(added.Text, Is.EqualTo("0")); added.Text = "4"; PressGroupKey(added, Key.Enter);
                 Assert.That(binding.Value.Json.Value[2].GetProperty("X").GetSingle(), Is.EqualTo(4));
             }

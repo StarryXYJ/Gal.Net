@@ -37,3 +37,20 @@ public partial class MyOptions
 ```
 
 Common 只影响行内展示；AdvancedValue 仍在 Inspector 编辑。按现有项目契约流程重建 DLL，使 Editor 和游戏加载相同契约。手写 schema 可设置 `new EditorHints(IsCommon: true)`；自定义 DTO 编辑工厂读取 `DtoEditorContext.DisplayMode`，默认表单会自动筛选。嵌套对象继续使用自身编辑器，不自动铺开所有成员。完整契约见 [共享表单](../spec/control.md) 和 [Group 编辑](../spec/editor-groups.md)。
+
+## 选择数值编辑器
+
+Editor 的普通 `numeric` 字段默认显示上下调整框；需要明确指定时，可使用以下元数据：
+
+```csharp
+[Field(0, EditorId = ValueEditorIds.NumericUpDown, Step = .1)]
+public float Duration { get; set; }
+
+[Field(1, EditorId = ValueEditorIds.Slider, Minimum = 0, Maximum = 1, Step = .01)]
+public float Opacity { get; set; } = 1;
+
+[Field(2, EditorId = ValueEditorIds.NumericText)]
+public decimal ExactValue { get; set; }
+```
+
+Slider 在 Editor 中带精确输入框；步长只影响调整，输入 `.537` 仍可提交为 `0.537`，不会强制对齐到 `.01`。浮点输入支持 `.3` 和 `-.3`，Enter/失焦确认后规范显示。大整数和 decimal 始终保留无损文本路径；滑块需明确有限范围，不适用时回退并显示原因。宿主可通过 `registry.Replace(ValueEditorIds.Numeric, factory)` 或成员/类型注册覆盖选择，元数据不改变业务合法值。共享设置表单原有默认 numeric 文本路径保留。

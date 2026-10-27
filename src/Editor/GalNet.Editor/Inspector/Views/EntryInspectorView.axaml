@@ -10,7 +10,7 @@
    <SelectableTextBlock Text="{Binding TargetDescription}" TextWrapping="Wrap" FontWeight="SemiBold"/>
    <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasMultipleSelection}"><TextBlock Text="{loc:Localize Uiux.Entry.Selected}"/><TextBlock Text="{Binding SelectionCount}"/><TextBlock Text="{loc:Localize Uiux.Entry.ActiveOnly}"/></StackPanel>
    <TextBlock Text="{loc:Localize Uiux.Entry.Condition}"/>
-   <controls:ConditionEditorControl Text="{Binding Entry.Condition}" Suggestions="{Binding Page.ConditionSuggestions}" ValidationVariables="{Binding Page.ValidationVariables}"/>
+   <controls:ConditionEditorControl Name="EntryConditionInput" Text="{Binding Entry.Condition}" Suggestions="{Binding Page.ConditionSuggestions}" ValidationVariables="{Binding Page.ValidationVariables}"/>
    <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding Entry.IsUnknownType}" TextWrapping="Wrap"/>
    <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding Entry.HasUnknownParameters}" TextWrapping="Wrap"/>
    <forms:DtoEditorHost Name="EntryDetails" Item="{Binding Form.Item}" Registry="{Binding FieldEditors}"/>

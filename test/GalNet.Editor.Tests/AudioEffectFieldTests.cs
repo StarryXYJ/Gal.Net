@@ -51,25 +51,27 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 input.SelectedItem = reverb; TimelinePump(window);
                 Assert.That(entry.Source.Parameters["id"].GetString(), Is.EqualTo("seffect.reverb"));
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("mix").GetSingle(), Is.EqualTo(.25f));
-                Assert.That(inspector.GetVisualDescendants().OfType<TextBox>().Count(control => control.Name?.StartsWith("AudioParameter_") == true), Is.EqualTo(4));
+                Assert.That(inspector.GetVisualDescendants().OfType<NumericUpDown>().Count(control => control.Name?.StartsWith("AudioParameter_") == true), Is.EqualTo(4));
                 Assert.That(inspector.GetVisualDescendants().OfType<FieldEditorRow>().Where(row => row.Context?.Field.Id == "instanceId").All(row => !row.IsEffectivelyVisible), Is.True);
                 await history.UndoAsync(); TimelinePump(window);
                 Assert.That(entry.Source.Parameters.GetValueOrDefault("id").ValueKind is JsonValueKind.Undefined or JsonValueKind.Null, Is.True);
                 Assert.That(entry.Source.Parameters["instanceId"].GetString(), Is.EqualTo(identity));
                 Assert.That(history.CanUndo, Is.False);
                 await history.RedoAsync(); TimelinePump(window); history.Clear();
-                var mix = inspector.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "AudioParameter_mix");
+                var mix = NumericControlTestSupport.NamedInputs(inspector, "AudioParameter_mix").Single();
                 mix.Text = "0.4"; PressGroupKey(mix, Key.Enter); TimelinePump(window);
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("mix").GetSingle(), Is.EqualTo(.4f));
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("roomSize").GetSingle(), Is.EqualTo(.5f));
                 await history.UndoAsync(); TimelinePump(window);
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("mix").GetSingle(), Is.EqualTo(.25f));
-                mix = inspector.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "AudioParameter_mix");
+                mix = NumericControlTestSupport.NamedInputs(inspector, "AudioParameter_mix").Single();
                 mix.Text = "99"; PressGroupKey(mix, Key.Enter); TimelinePump(window);
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("mix").GetSingle(), Is.EqualTo(.25f));
                 var issue = ((FieldEditorContext)mix.DataContext!).Issue;
                 Assert.That(issue?.Code, Is.EqualTo("value.range"));
-                Assert.That(inspector.GetVisualDescendants().OfType<TextBlock>().Any(text => text.IsEffectivelyVisible && text.Text == issue!.Message), Is.True);
+                var explanation = ((FieldEditorContext)mix.DataContext!).IssueMessage;
+                Assert.That(explanation, Is.Not.EqualTo(issue!.Message));
+                Assert.That(inspector.GetVisualDescendants().OfType<TextBlock>().Any(text => text.IsEffectivelyVisible && text.Text == explanation), Is.True);
             }
             finally { window.Close(); await projects.CloseAsync(); }
             return true;
@@ -113,9 +115,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 inspector.Item = update.DetailForm!.Item; TimelinePump(window);
                 input = inspector.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "AudioEffectInstanceInput");
                 Assert.That(input.Items.Count, Is.EqualTo(2)); input.SelectedIndex = 0; TimelinePump(window);
-                Assert.That(inspector.GetVisualDescendants().OfType<TextBox>().Count(control => control.Name?.StartsWith("AudioParameter_") == true), Is.EqualTo(4));
+                Assert.That(inspector.GetVisualDescendants().OfType<NumericUpDown>().Count(control => control.Name?.StartsWith("AudioParameter_") == true), Is.EqualTo(4));
                 Assert.That(inspector.GetVisualDescendants().OfType<ComboBox>().Any(control => control.Name == "AudioEffectTypeInput"), Is.False);
-                var mix = inspector.GetVisualDescendants().OfType<TextBox>().Single(control => control.Name == "AudioParameter_mix");
+                var mix = NumericControlTestSupport.NamedInputs(inspector, "AudioParameter_mix").Single();
                 mix.Text = "0.6"; PressGroupKey(mix, Key.Enter); TimelinePump(window);
                 Assert.That(update.Source.Parameters["parameters"].EnumerateObject().Select(property => property.Name), Is.EqualTo(new[] { "mix" }));
                 var catalog = project.Services.GetRequiredService<SceneTargetCatalog>();

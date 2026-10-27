@@ -27,7 +27,7 @@ internal static class TransformFieldEditor
         for (var index = 0; index < specs.Length; index++)
         {
             var (name, fallback) = specs[index];
-            var field = new FieldDescriptor(name, new(typeof(float)), defaultValue: JsonSerializer.SerializeToElement(fallback));
+            var field = new FieldDescriptor(name, new(typeof(float)), defaultValue: JsonSerializer.SerializeToElement(fallback), labelKey: "Form.Transform." + name);
             var binding = new MemberBinding(context, name, () => disposed, async value =>
             {
                 submitting = true;
@@ -44,7 +44,7 @@ internal static class TransformFieldEditor
                 finally { submitting = false; }
             });
             var child = new FieldEditorContext(field, binding, context.Registry);
-            var lease = DefaultFieldEditors.CreateNumeric(child);
+            var lease = (context.Registry?.Resolve(field) ?? NumericFieldEditors.CreateUpDown)(child);
             lease.Control.Name = "Transform" + name;
             var label = new TextBlock { VerticalAlignment = VerticalAlignment.Center, Width = 72, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap };
             var cell = new Grid { ColumnDefinitions = new("Auto,*"), ColumnSpacing = 6 };
@@ -68,7 +68,7 @@ internal static class TransformFieldEditor
             catch (Exception error) when (error is JsonException or InvalidDataException or InvalidOperationException) { invalid = true; }
             repair.Button.IsVisible = invalid;
             panel.ColumnSpacing = invalid ? 6 : 0;
-            issueLabel.Text = children.Select(child => child.Context.Issue?.Message).FirstOrDefault(message => message is not null)
+            issueLabel.Text = children.Select(child => child.Context.IssueMessage).FirstOrDefault(message => message is not null)
                 ?? (invalid ? PropertyEditorSupport.Text("Form.TransformInvalid") : null);
             issueLabel.IsVisible = issueLabel.Text is not null;
         }

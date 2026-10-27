@@ -111,7 +111,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(host.Diagnostics, Is.Empty); Assert.That(session.EventEdit!.Field("handleId").IsVisible, Is.False);
                 Assert.That(host.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Diagnostics), Is.Empty);
                 Assert.That(host.GetVisualDescendants().OfType<AssetPicker>().Single().Filter, Is.EqualTo(GalNet.Editor.Models.AssetPickerFilter.Image));
-                var x = host.GetVisualDescendants().OfType<TextBox>().Single(item => item.Name == "TransformX"); x.Focus(); x.Text = "13"; PressGroupKey(x, Key.Enter); TimelinePump(window);
+                var x = NumericControlTestSupport.NamedInputs(host, "TransformX").Single(); x.Focus(); x.Text = "13"; PressGroupKey(x, Key.Enter); TimelinePump(window);
                 Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetProperty("Events")[1].GetProperty("Parameters").GetProperty("transform").GetProperty("x").GetSingle(), Is.EqualTo(7));
                 TimelineClick(window, body.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "ApplyTimelineEvent")); TimelinePump(window);
                 Assert.That(flyout.IsOpen, Is.False); var parameters = entry.Source.Parameters["timeline"].GetProperty("Events")[1].GetProperty("Parameters");

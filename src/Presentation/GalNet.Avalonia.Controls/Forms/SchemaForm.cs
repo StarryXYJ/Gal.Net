@@ -91,6 +91,7 @@ public sealed class SchemaForm : TemplatedControl
                         lease = DefaultFieldEditors.CreateJson(context);
                     }
                     _owned[^1] = (context, lease);
+                    if (lease.Diagnostic is { } diagnostic) errors.Add(diagnostic with { Path = field.Id, Message = Registry!.FormatIssue?.Invoke(field, diagnostic) ?? diagnostic.Message });
                     if (!controls.Add(lease.Control) || lease.Control.Parent is not null || lease.Control.GetVisualParent() is not null)
                         throw new InvalidOperationException("Editor factories must return fresh, unparented controls.");
                 }

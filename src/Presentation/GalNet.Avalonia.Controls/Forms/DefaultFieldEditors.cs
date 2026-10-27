@@ -95,7 +95,7 @@ public static class DefaultFieldEditors
         var maximum = max.GetDouble();
         var type = Nullable.GetUnderlyingType(value.ValueType) ?? value.ValueType;
         var integer = type != typeof(float) && type != typeof(double);
-        if (!double.IsFinite(minimum) || !double.IsFinite(maximum) ||
+        if (!double.IsFinite(minimum) || !double.IsFinite(maximum) || minimum > maximum ||
             integer && (minimum < -9007199254740991d || maximum > 9007199254740991d))
             throw new NotSupportedException("Slider bounds cannot be represented exactly; use the numeric text editor.");
         var step = context.Field.Editor?.Step ?? (integer ? 1 : .01);
@@ -127,7 +127,7 @@ public static class DefaultFieldEditors
         if (!types.Contains(type)) throw new NotSupportedException($"Editor does not support '{type.Name}'.");
     }
 
-    private static FieldEditorLease Bind(Control control, FieldEditorContext context, Action update,
+    internal static FieldEditorLease Bind(Control control, FieldEditorContext context, Action update,
         Action<AvaloniaPropertyChangedEventArgs> edit, bool commitText = false)
     {
         var syncing = false;

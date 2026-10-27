@@ -263,7 +263,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var form = view.GetVisualDescendants().OfType<DtoEditorHost>().Single(host => host.Name == "ShaderParameters");
                 var rows = form.GetVisualDescendants().OfType<FieldEditorRow>().ToDictionary(row => row.Context!.Field.Id);
                 Assert.That(rows.Keys, Is.EquivalentTo(new[] { "amount", "tint", "offset", "direction", "channels", "style", "mask" }));
-                Assert.That(rows["amount"].Editor, Is.TypeOf<TextBox>());
+                Assert.That(rows["amount"].Editor, Is.InstanceOf<NumericUpDown>());
                 foreach (var (name, count) in new[] { ("offset", 2), ("direction", 3), ("channels", 4) })
                 {
                     Assert.That(rows[name].Editor, Is.Not.Null);
@@ -277,7 +277,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var changed = entry.Source.Parameters["parameters"];
                 Assert.That(changed.GetProperty("amount").GetSingle(), Is.EqualTo(.8f));
                 Assert.That(changed.GetProperty("unknown")[0].GetInt64(), Is.EqualTo(9007199254740993L));
-                var vectorX = rows["direction"].Editor!.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "ShaderVectorX");
+                var vectorX = NumericControlTestSupport.NamedInputs(rows["direction"].Editor!, "ShaderVectorX").Single();
                 vectorX.Focus(); vectorX.Text = "2.5"; TimelinePump(window); PressGroupKey(vectorX, Key.Enter); TimelinePump(window);
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("direction").EnumerateArray().Select(value => value.GetSingle()), Is.EqualTo(new[] { 2.5f, 0f, 0f }));
                 Assert.That(entry.Source.Parameters["parameters"].GetProperty("unknown")[0].GetInt64(), Is.EqualTo(9007199254740993L));

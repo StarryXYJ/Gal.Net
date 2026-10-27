@@ -52,6 +52,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 var button = view.FindControl<Button>("AddTimelineObject")!; TimelineClick(window, button);
+                await PumpCharacterUi(() => FlyoutBase.GetAttachedFlyout(button) is Flyout { Content: SceneTargetPicker });
                 var flyout = (Flyout)FlyoutBase.GetAttachedFlyout(button)!; var picker = (SceneTargetPicker)flyout.Content!;
                 var draft = session.ObjectEdit!; var future = draft.Snapshot.Choices.Single(choice => choice.Target.IsFuture);
                 Assert.That(future.Item.Badge, Is.EqualTo(localization.Format("Scene.FutureAt", 15)));

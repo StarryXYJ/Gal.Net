@@ -59,7 +59,36 @@ public static class ValueCodec
 
     /// <summary>Parse a draft without enforcing constraints; validate before committing it.</summary>
     public static JsonElement ParseEditorText(ValueDescriptor descriptor, string text) =>
-        descriptor.IsStringEncoded ? JsonSerializer.SerializeToElement(text) : JsonDocumentValue(text);
+        descriptor.IsStringEncoded ? JsonSerializer.SerializeToElement(text) : JsonDocumentValue(NormalizeEditorNumber(descriptor, text));
+
+    private static bool IsFractional(ValueDescriptor descriptor) =>
+        (Nullable.GetUnderlyingType(descriptor.ValueType) ?? descriptor.ValueType) is var type &&
+        (type == typeof(float) || type == typeof(double) || type == typeof(decimal));
+
+    private static string NormalizeEditorNumber(ValueDescriptor descriptor, string text)
+    {
+        if (!IsFractional(descriptor)) return text;
+        var number = text.Trim();
+        if (number.StartsWith('.')) return "0" + number;
+        if (number.StartsWith("-.", StringComparison.Ordinal)) return "-0" + number[1..];
+        return text;
+    }
+
+    /// <summary>Transient numeric prefixes may remain neutral until the user confirms the input.</summary>
+    public static bool IsIncompleteEditorNumber(ValueDescriptor descriptor, string text)
+    {
+        if (descriptor.IsStringEncoded) return false;
+        var type = Nullable.GetUnderlyingType(descriptor.ValueType) ?? descriptor.ValueType;
+        if (!IsFractional(descriptor)) return type.IsPrimitive && type != typeof(bool) && type != typeof(char) && text.Trim() == "-";
+        var number = text.Trim();
+        if (number is "-" or "." or "-.") return true;
+        if (number.EndsWith('.') && double.TryParse(number[..^1], System.Globalization.NumberStyles.AllowLeadingSign,
+                System.Globalization.CultureInfo.InvariantCulture, out var integerPart) && double.IsFinite(integerPart)) return true;
+        var exponent = number.IndexOfAny(['e', 'E']);
+        return exponent > 0 && number[(exponent + 1)..] is "" or "-" or "+" &&
+            double.TryParse(NormalizeEditorNumber(descriptor, number[..exponent]), System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var mantissa) && double.IsFinite(mantissa);
+    }
 
     private static JsonElement JsonDocumentValue(string text)
     {

@@ -32,7 +32,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
-                var count = view.GetVisualDescendants().OfType<TextBox>().Single(input => input.DataContext is FieldEditorContext { Field.Id: "loopCount" });
+                var count = NumericControlTestSupport.FieldInput(view, "loopCount");
                 Assert.That(count.Text, Is.EqualTo("1"));
                 count.Text = "0"; PressGroupKey(count, Key.Enter); TimelinePump(window);
                 Assert.That(entry.Source.Parameters["loopCount"].GetInt32(), Is.Zero);

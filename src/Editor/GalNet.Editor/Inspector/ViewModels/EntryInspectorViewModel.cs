@@ -29,6 +29,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
     private string? _previewKey;
     private bool _disposed;
     public string? RequestedField { get; private set; }
+    public IReadOnlyList<string>? RequestedFieldPath { get; private set; }
     public EntryParameterFormBinding? Form { get; private set; }
     public ShaderParameterFormBinding? ShaderForm { get; private set; }
     public bool IsShaderMode { get; private set; }
@@ -74,7 +75,7 @@ public sealed class EntryInspectorViewModel : ObservableObject, IInspectorContro
     private void Navigate(AuthorNavigationTarget target)
     {
         if (target.NodeId != Page.GroupId || target.EntryId != _entryId) return;
-        RequestedField = target.FieldId; OnPropertyChanged(nameof(RequestedField));
+        RequestedFieldPath = target.FieldPath; RequestedField = target.FieldId; OnPropertyChanged(nameof(RequestedField));
     }
     private void Refresh()
     {

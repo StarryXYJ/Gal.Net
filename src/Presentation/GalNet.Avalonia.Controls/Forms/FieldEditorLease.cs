@@ -7,5 +7,6 @@ public sealed class FieldEditorLease(Control control, Action? release = null) : 
 {
     private Action? _release = release;
     public Control Control { get; } = control ?? throw new ArgumentNullException(nameof(control));
+    public GalNet.Core.Parameters.ValueIssue? Diagnostic { get; init; }
     public void Dispose() => Interlocked.Exchange(ref _release, null)?.Invoke();
 }

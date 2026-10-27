@@ -151,7 +151,7 @@ public sealed class EntrySchemaFormTests
             try
             {
                 Assert.That(form.Contexts[0].Value.IsProvided, Is.False);
-                Assert.That(((TextBox)form.Editors[0].Control).Text, Is.EqualTo("5"));
+                Assert.That(NumericControlTestSupport.Input(form.Editors[0].Control).Text, Is.EqualTo("5"));
                 Assert.That(form.Contexts[1].Value.Json!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
                 Assert.That(entry.Parameters.ContainsKey("count"), Is.False);
                 form.Contexts[0].Text = "7";

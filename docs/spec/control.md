@@ -110,6 +110,8 @@ EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/Regi
 
 默认 Text/Numeric 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；JSON 使用带标识的多行 TextBox，Ctrl+Enter/失焦提交，按原始 JSON 表达字符串引号，Escape 恢复未提交草稿；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
 
+另有显式 `numericupdown` 与 `numerictext` 工厂；前者复用 NumericUpDown 主题的输入/上下按钮，保留原始文字并由 FieldEditorContext 提交，不以控件 Value 回写，避免模板初始化、舍入或钳制制造草稿。long/ulong/decimal 使用无损文本，超出可调整范围或非法步长可回退文本并返回工厂 Diagnostic。Editor 将默认 `numeric` 替换为此路径，并将 `slider` 替换为滑块加精确输入，其他宿主的默认 numeric/slider 行为保留。Registry.FormatIssue 允许宿主提供字段诊断文字；原始 ValueIssue 的代码与消息仍保留。浮点编辑文本的 `.3`/`-.3` 由 ValueCodec 规范化，JSON 源码不放宽；未完成数值前缀在输入时可中性展示，提交仍拒绝。
+
 宿主可通过 `EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true)` 选择非字符串空文本恢复缺省的策略；必填无默认值仍拒绝，JSON 源码不套用此策略。FieldEditorContext.Registry 是借用的只读引用，自定义组合编辑器创建子 Context 时可以传递同一 registry，使输入策略和工厂组合一致。FieldEditorRow 提供可响应宽度的标签、编辑区、诊断和单重置布局；FieldEditorActions.Simplified 选择单重置行为，默认共享表单和 Sample 仍保留原动作集。
 
 FieldValue 以未提供的 Json 和显式 JSON null 区分省略/null。Context 保留草稿和诊断；默认值只用于未提供状态的展示，未编辑的默认/null/空状态失焦不会写回。宿主可通过 CommitAsync 显式提交省略或 null；共享默认结构通过 FieldEditorActions 提供相应按钮，宿主自定义模板可自行组合。支持范围内对象/数组使用懒创建表单，其他类型明确使用 JSON；普通 CLR DtoBinding 没有 presence 时仍拒绝省略，不能静默写成 null。

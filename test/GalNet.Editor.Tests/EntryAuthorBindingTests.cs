@@ -49,7 +49,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(text.Source.Condition, Is.EqualTo("true"));
                 var form = view2.GetVisualDescendants().OfType<SchemaForm>().Single(item => item.Schema?.Any(field => field.Id == "duration") == true);
                 var field = form.Contexts.Single(context => context.Field.Id == "duration");
-                ((TextBox)form.Editors.Single(editor => editor.Context == field).Control).Text = "4.25"; Dispatcher.UIThread.RunJobs();
+                NumericControlTestSupport.Input(form.Editors.Single(editor => editor.Context == field).Control).Text = "4.25"; Dispatcher.UIThread.RunJobs();
                 Assert.That(await field.CommitTextAsync(), Is.True); Assert.That(wait.Source.Parameters["duration"].GetSingle(), Is.EqualTo(4.25f));
                 var content = view1.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "GameTextInput");
                 content.Text = "Written through the author intent"; Dispatcher.UIThread.RunJobs();

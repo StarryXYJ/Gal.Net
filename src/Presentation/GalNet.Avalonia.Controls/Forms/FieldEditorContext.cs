@@ -54,6 +54,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     public object Label => _binding.Label ?? Field.LabelKey ?? Field.Id;
     public IReadOnlyList<FieldEditorOption> Options { get; private set; } = [];
     public ValueIssue? Issue { get; private set; }
+    public string? IssueMessage => Issue is { } issue ? Registry?.FormatIssue?.Invoke(Field, issue) ?? issue.Message : null;
     public bool IsSubmitting => _submitting;
     public bool HasDraft => _dirty;
     public bool IsEnabled => !_disposed && !_submitting && _binding.IsEnabled;
@@ -68,7 +69,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
             _dirty = true;
             _draftVersion++;
             _ = ParseText(out var issue);
-            Issue = issue;
+            Issue = !_jsonText && ValueCodec.IsIncompleteEditorNumber(Field.Value, value) ? null : issue;
             Notify();
         }
     }

@@ -25,7 +25,7 @@ internal static class AudioEffectParametersFieldEditor
         string? baseNotice = null;
         void Issues(object? sender, PropertyChangedEventArgs args)
         {
-            notice.Text = children.Select(child => child.Context.Issue?.Message).FirstOrDefault(message => message is not null) ?? baseNotice;
+            notice.Text = children.Select(child => child.Context.IssueMessage).FirstOrDefault(message => message is not null) ?? baseNotice;
             notice.IsVisible = notice.Text is not null;
         }
         void Clear() { foreach (var child in children) { child.Context.PropertyChanged -= Issues; child.Lease.Dispose(); child.Context.Dispose(); } children.Clear(); rows.Children.Clear(); }
@@ -56,7 +56,9 @@ internal static class AudioEffectParametersFieldEditor
                     if (type is not null && effects.TryGet(type, out var definition))
                         foreach (var parameter in definition.Parameters)
                         {
-                            var field = update ? new FieldDescriptor(parameter.Name, parameter.Field.Value) : parameter.Field;
+                            var sourceField = parameter.Field;
+                            var field = new FieldDescriptor(parameter.Name, sourceField.Value, !update && sourceField.IsRequired,
+                                update ? null : sourceField.DefaultValue, sourceField.Editor, "Audio.Parameter." + parameter.Name, sourceField.DescriptionKey);
                             var binding = new MemberBinding(context, field, () => disposed || !context.IsEnabled, async value =>
                             {
                                 submitting = true;
@@ -69,7 +71,7 @@ internal static class AudioEffectParametersFieldEditor
                                 finally { submitting = false; }
                             });
                             var child = new FieldEditorContext(field, binding, context.Registry);
-                            var lease = DefaultFieldEditors.CreateNumeric(child); lease.Control.Name = "AudioParameter_" + field.Id;
+                            var lease = (context.Registry?.Resolve(field) ?? NumericFieldEditors.CreateUpDown)(child); lease.Control.Name = "AudioParameter_" + field.Id;
                             var label = new TextBlock { Width = 105, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
                             var row = new Grid { ColumnDefinitions = new("Auto,*"), ColumnSpacing = 8 };
                             row.Children.Add(label); Grid.SetColumn(lease.Control, 1); row.Children.Add(lease.Control); rows.Children.Add(row);

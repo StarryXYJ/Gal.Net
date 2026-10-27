@@ -8,6 +8,8 @@ public sealed record EditorHints(string? EditorId = null, double? Step = null,
 public static class ValueEditorIds
 {
     public const string Numeric = "numeric";
+    public const string NumericUpDown = "numericupdown";
+    public const string NumericText = "numerictext";
     public const string Slider = "slider";
     public const string Toggle = "toggle";
     public const string Choice = "choice";

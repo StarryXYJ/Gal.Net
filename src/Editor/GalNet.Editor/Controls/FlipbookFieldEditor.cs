@@ -21,7 +21,7 @@ internal static class FlipbookFieldEditor
         foreach (var spec in Specs)
         {
             var field = new FieldDescriptor(spec.Name, new(spec.Type, constraints: JsonSerializer.SerializeToElement(new { minimum = spec.Default == 0 ? 0 : 1 })),
-                defaultValue: JsonSerializer.SerializeToElement(spec.Default));
+                defaultValue: JsonSerializer.SerializeToElement(spec.Default), labelKey: "Form.Flipbook." + spec.Name);
             var binding = new MemberBinding(context, field, () => disposed, async value =>
             {
                 submitting = true;
@@ -40,7 +40,7 @@ internal static class FlipbookFieldEditor
                 finally { submitting = false; }
             });
             var child = new FieldEditorContext(field, binding, context.Registry);
-            var lease = DefaultFieldEditors.CreateNumeric(child); lease.Control.Name = "Flipbook" + spec.Name;
+            var lease = (context.Registry?.Resolve(field) ?? NumericFieldEditors.CreateUpDown)(child); lease.Control.Name = "Flipbook" + spec.Name;
             var label = new TextBlock { Width = 90, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
             var row = new Grid { ColumnDefinitions = new("Auto,*"), ColumnSpacing = 8 };
             row.Children.Add(label); Grid.SetColumn(lease.Control, 1); row.Children.Add(lease.Control); panel.Children.Add(row);
@@ -54,7 +54,7 @@ internal static class FlipbookFieldEditor
             try { invalid = !Valid(Read(context)); }
             catch (Exception error) when (error is JsonException or InvalidDataException or InvalidOperationException) { invalid = true; }
             repair.Button.IsVisible = invalid;
-            issue.Text = children.Select(child => child.Context.Issue?.Message).FirstOrDefault(message => message is not null)
+            issue.Text = children.Select(child => child.Context.IssueMessage).FirstOrDefault(message => message is not null)
                 ?? (invalid ? PropertyEditorSupport.Text("Form.FlipbookInvalid") : null);
             issue.IsVisible = issue.Text is not null;
         }

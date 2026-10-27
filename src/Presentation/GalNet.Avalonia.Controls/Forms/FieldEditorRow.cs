@@ -62,7 +62,7 @@ public sealed class FieldEditorRow : Grid
     private void Changed(object? sender, PropertyChangedEventArgs args) => Refresh();
     private void Refresh()
     {
-        _issue.Text = _active?.Issue?.Message; _issue.IsVisible = !string.IsNullOrEmpty(_issue.Text);
+        _issue.Text = _active?.IssueMessage; _issue.IsVisible = !string.IsNullOrEmpty(_issue.Text);
         IsVisible = _active?.IsVisible ?? true;
         _editor.IsEnabled = _active?.IsEnabled ?? true;
     }

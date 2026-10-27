@@ -15,9 +15,14 @@
    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AuthorProblem">
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
      <TextBlock Text="{loc:Localize SeverityKey}" Classes="severity" Classes.error="{Binding IsError}" Classes.warning="{Binding IsWarning}"/>
-     <Button Grid.Column="1" Command="{Binding #Root.DataContext.NavigateCommand}" CommandParameter="{Binding}" HorizontalContentAlignment="Left" Background="Transparent">
-      <StackPanel><TextBlock Text="{Binding Message}" TextWrapping="Wrap"/><TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}"/></StackPanel>
-     </Button>
+     <StackPanel Grid.Column="1" Spacing="4">
+      <Button Command="{Binding #Root.DataContext.NavigateCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanNavigate}" ToolTip.Tip="{Binding NavigationHint}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="Transparent">
+       <StackPanel Spacing="4" HorizontalAlignment="Stretch"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" TextAlignment="Left"/><TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" TextAlignment="Left"/></StackPanel>
+      </Button>
+      <TextBlock Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding !CanNavigate}" ToolTip.Tip="{Binding NavigationHint}"/>
+      <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" IsVisible="{Binding !CanNavigate}"/>
+      <Expander Header="{loc:Localize Problem.Details}" IsVisible="{Binding HasDetails}"><SelectableTextBlock Text="{Binding Details}" TextWrapping="Wrap"/></Expander>
+     </StackPanel>
      <StackPanel Grid.Column="2" Spacing="4">
       <Button Content="{loc:Localize Uiux.Draft.Restore}" Command="{Binding #Root.DataContext.RestoreCommand}" CommandParameter="{Binding}" IsVisible="{Binding HasRestore}"/>
       <Button Content="{loc:Localize Files.CancelDraft}" Command="{Binding #Root.DataContext.DiscardCommand}" CommandParameter="{Binding}" IsVisible="{Binding HasDiscard}"/>

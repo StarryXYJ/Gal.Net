@@ -16,6 +16,8 @@
         <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
         <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
         <Style Selector="Border.pendingMove"><Setter Property="Opacity" Value="0.65"/></Style>
+        <Style Selector="Button.entryProblems"><Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}"/></Style>
+        <Style Selector="Button.entryProblems.error"><Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}"/></Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
@@ -77,7 +79,7 @@
                                 <TextBlock Text="{Binding Summary}" Margin="0,0,32,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}" />
                                 <TextBlock Text="{Binding Condition}" IsVisible="{Binding HasCondition}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Foreground="{DynamicResource SemiColorDanger}"
+                            <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Classes="entryProblems" Classes.error="{Binding HasProblemErrors}"
                                     ToolTip.Tip="{loc:Localize Uiux.Problems}" Command="{Binding #Root.DataContext.ShowEntryProblemsCommand}" CommandParameter="{Binding}"/>
                             <ToggleButton Name="ParametersToggle" Grid.Column="4"
                                           Theme="{DynamicResource EditorIconToggleButton}"

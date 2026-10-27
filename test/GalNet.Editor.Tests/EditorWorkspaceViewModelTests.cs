@@ -78,12 +78,12 @@ public sealed class EditorWorkspaceViewModelTests
                 var changes = 0;
                 field.Changed += (_, _) => changes++;
                 await fixture.Content.SaveAsync();
-                ((TextBox)form.Editors[0].Control).Text = "1.5";
+                NumericControlTestSupport.Input(form.Editors[0].Control).Text = "1.5";
                 Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.True);
                 workspace.UndoRedoHistory.Undo();
                 Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1));
-                Assert.That(((TextBox)form.Editors[0].Control).Text, Is.EqualTo("1"));
+                Assert.That(NumericControlTestSupport.Input(form.Editors[0].Control).Text, Is.EqualTo("1"));
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
                 workspace.UndoRedoHistory.Redo();
                 Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1.5));

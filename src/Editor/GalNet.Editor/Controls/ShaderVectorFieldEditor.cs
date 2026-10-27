@@ -47,7 +47,7 @@ internal static class ShaderVectorFieldEditor
                 finally { submitting = false; }
             });
             var child = new FieldEditorContext(field, binding, context.Registry);
-            var lease = DefaultFieldEditors.CreateNumeric(child);
+            var lease = (context.Registry?.Resolve(field) ?? NumericFieldEditors.CreateUpDown)(child);
             lease.Control.Name = "ShaderVector" + name;
             var cell = new Grid { ColumnDefinitions = new("Auto,*"), ColumnSpacing = 4 };
             cell.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
@@ -62,7 +62,7 @@ internal static class ShaderVectorFieldEditor
         {
             var valid = TryRead(context, dimension, out _);
             repair.Button.IsVisible = !valid;
-            issue.Text = children.Select(child => child.Context.Issue?.Message).FirstOrDefault(message => message is not null)
+            issue.Text = children.Select(child => child.Context.IssueMessage).FirstOrDefault(message => message is not null)
                 ?? (!valid ? "Repair the vector JSON value before editing its components." : context.Issue?.Message);
             issue.IsVisible = issue.Text is not null;
         }

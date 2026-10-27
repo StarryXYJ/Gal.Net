@@ -452,6 +452,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     internal string FormatSummary(Func<string, string?>? text = null) => EntrySummaryFormatter.Build(Source, text, _scenes, _groupId);
     public bool HasCondition => !string.IsNullOrWhiteSpace(Condition);
     [ObservableProperty] private int _problemCount;
+    [ObservableProperty] private bool _hasProblemErrors;
     [ObservableProperty] private bool _isPendingMove;
     public bool HasProblems => ProblemCount > 0;
     partial void OnProblemCountChanged(int value) => OnPropertyChanged(nameof(HasProblems));

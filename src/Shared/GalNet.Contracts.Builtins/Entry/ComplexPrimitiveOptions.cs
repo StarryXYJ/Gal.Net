@@ -120,7 +120,7 @@ public partial class AudioLevelOptions
     public AudioLevelOptions() => TargetId = "";
     [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
     [Field(1, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
-    [Field(2, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
+    [Field(2, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Slider, Step = .01)] public float Gain { get; set; } = 1;
     [Field(3, EditorId = ValueEditorIds.Choice)] public bool Muted { get; set; }
 }
 

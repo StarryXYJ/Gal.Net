@@ -1,5 +1,9 @@
 # GalNet Agent Knowledge
 
+- [数值模板与作者草稿](lessons/L-20261027-05-numeric-template-drafts.md)：NumericUpDown 的模板/Value 初始化不能成为作者输入；借用主题时由字段上下文拥有原始文字与提交，TextBox.PropertyChanged 同步捕获，验证挂载无草稿及输入后立即 Enter。
+
+- 2026-10-27 Group Problems 按作者历史/相关依赖自动检查内存工作版，代次阻止旧结果发布，合法待提交不计条目错误。Editor numeric 默认保留文字的上下框，显式 numericupdown/numerictext 与 slider+精确输入；long/ulong/decimal 保留文本。前导小数点仅在类型化数字编辑入口规范化，JSON 源码仍严格。规范见 docs/spec/editor-groups.md、control.md；证据见 features/F-20261023-01-editor-uiux/follow-up-group-diagnostics-numeric-20261027.md。
+
 - 2026-10-27 音频创作：类型 ComboBox/目录参数表单，apply 隐藏自动身份，stop/update 选择剧情位置之前的直接挂载实例；显式 all 与参数 patch 更新已实现。复用 Scene 作者语义、Graph/前缀分析和项目查询，AudioEffect 域按 scope/target/instance 限定，AudioEffects/AudioComplete/AudioRevision 独立于视觉候选。见 docs/spec/editor-scene-targets.md、docs/manual/audio-mixing.md、features/F-20261027-01-audio-mixer/authoring-summary.md；既有 Timeline Flyout 测试保留。
 
 - [构建完成后再启动 no-build 测试](lessons/L-20261027-04-build-before-no-build-tests.md)：session_id 表示仍在运行；同一输出根的构建/测试重叠会锁定 DLL 并可能验证旧产物，必须确认 build exit_code=0 后再启动测试。
