@@ -96,6 +96,14 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
             code.Append("var v").Append(i).Append(" = new global::GalNet.Core.Parameters.ValueDescriptor(typeof(").Append(valueType)
                 .Append("), allowNull: ").Append(Named(field.Attribute, "AllowNull", "null")).Append(", constraints: global::System.Text.Json.JsonSerializer.SerializeToElement(new global::System.Collections.Generic.Dictionary<string, object?> { ")
                 .Append(string.Join(", ", constraints)).Append(" }), jsonOptions: ").Append(options).Append(", choices: ").Append(choices).AppendLine(");");
+            var structure = field.Attribute.NamedArguments.FirstOrDefault(argument => argument.Key == "StructureType");
+            if (structure.Value.Value is ITypeSymbol structureType)
+                code.Append("v").Append(i).Append(" = v").Append(i)
+                    .Append(".WithStructure(global::GalNet.Core.Parameters.ValueStructure.ForType(typeof(")
+                    .Append(structureType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat)).Append("), allowsJsonString: ")
+                    .Append(Named(field.Attribute, "StructureAllowsJsonString", "false")).Append(", ignoresCase: ")
+                    .Append(Named(field.Attribute, "StructureIgnoresCase", "false")).Append(", usesFieldIds: ")
+                    .Append(Named(field.Attribute, "StructureUsesFieldIds", "false")).AppendLine("));");
         }
         code.AppendLine("return global::System.Array.AsReadOnly(new global::GalNet.Core.Parameters.FieldDescriptor[] {");
         for (var i = 0; i < fields.Count; i++)

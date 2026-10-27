@@ -11,7 +11,7 @@ public abstract class CrossFadeOptionsBase
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? NewHandleId { get; set; }
     [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? DisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -33,7 +33,7 @@ public partial class SlideOptions
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
     [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
     [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement ToTransform { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement ToTransform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float ToZ { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? ToDisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -53,7 +53,7 @@ public partial class BlindsOptions
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? NewHandleId { get; set; }
     [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
     [Common, Field(4, AllowNull = true, EditorId = "entry.effectprogramasset")] public string? MaskProgram { get; set; }
-    [Field(5, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(5, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(6, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(7, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? DisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -71,7 +71,7 @@ public abstract class ColorFieldOptionsBase
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
     [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
     [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement ToTransform { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement ToTransform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float ToZ { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? ToDisplayMode { get; set; } = LayerDisplayMode.Fill;

@@ -1152,5 +1152,7 @@
   "Problem.CheckFailed": "検証が完了しませんでした。技術情報を確認し、再実行してください。",
   "Problem.NumericFallback": "この型や範囲は安全にスライダー・刻み調整できないため、直接入力を使用します。",
   "Problem.Value.Minimum": "「{0}」は {2} 以上にしてください。",
-  "Problem.Value.Maximum": "「{0}」は {3} 以下にしてください。"
+  "Problem.Value.Maximum": "「{0}」は {3} 以下にしてください。",
+  "Form.MapKey": "キー",
+  "Form.MapKeyDuplicate": "同じ名前のキーが既にあります。別の名前を入力してください。"
 }

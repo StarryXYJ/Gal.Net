@@ -54,3 +54,38 @@ public decimal ExactValue { get; set; }
 ```
 
 Slider 在 Editor 中带精确输入框；步长只影响调整，输入 `.537` 仍可提交为 `0.537`，不会强制对齐到 `.01`。浮点输入支持 `.3` 和 `-.3`，Enter/失焦确认后规范显示。大整数和 decimal 始终保留无损文本路径；滑块需明确有限范围，不适用时回退并显示原因。宿主可通过 `registry.Replace(ValueEditorIds.Numeric, factory)` 或成员/类型注册覆盖选择，元数据不改变业务合法值。共享设置表单原有默认 numeric 文本路径保留。
+
+## 声明嵌套结构
+
+普通生成 DTO、数组/List 和字符串键字典会使用公共属性遍历与通用表单。需要保留 JsonElement wire 类型的固定对象，可以显式关联结构类型：
+
+```csharp
+[GenerateFieldSchema]
+public partial class PositionData
+{
+    [Field(0)] public float X { get; set; } = 0f;
+    [Field(1)] public float Y { get; set; } = 0f;
+}
+
+[GenerateFieldSchema]
+public partial class CustomOptions
+{
+    [Field(0, StructureType = typeof(PositionData))]
+    public JsonElement Position { get; set; }
+}
+```
+
+元数据关联不改写项目 JSON，也不将普通字符串当 JSON 解析。只有原契约确实支持历史编码时才声明 StructureAllowsJsonString；StructureIgnoresCase 和 StructureUsesFieldIds 同样属于显式兼容规则。专用 EditorId/成员/类型工厂仍可负责布局，复用公共字段描述与属性访问。
+
+手写 schema 可组合 ValueStructure。例如逐个 Map 值声明文本引用，而不是把整个字典标成字符串字段：
+
+```csharp
+var textValue = new FieldDescriptor("value", new(typeof(string)),
+    semantic: FieldValueSemantic.LocalizedText);
+var values = new ValueDescriptor(typeof(JsonElement))
+    .WithStructure(ValueStructure.Map(textValue));
+```
+
+读取/检查可使用 `using var document = new ValueDocument(field, json);`，然后调用 GetIterator、FindProperty 或 Validate。Patch 只返回候选值和诊断，宿主仍须通过原作者意图提交，复核来源并记录历史。共享 PropertyFieldBinding 为专用控件提供子字段访问；通过相同父 Context 和 registry 继承草稿、宿主能力和数字编辑路径。
+
+通用表单按 Header 分组并缩进，字典支持键/值操作，重复键拒绝提交。字段值草稿由项目会话保留；新增/改键等结构操作的未成功键名仅留在当前控件。八层/200 元素的 UI 回退与引用分析预算分别生效；动态音效参数与 Timeline 的结构描述暂未全量接入，遇到未覆盖提示需按实际契约补充结构，不能靠改 UI 工厂来宣布引用检查完整。

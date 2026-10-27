@@ -1,6 +1,5 @@
 using GalNet.Contracts.Builtins;
 using System.Globalization;
-using System.Reflection;
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
@@ -9,11 +8,31 @@ using GalNet.Editor.Abstraction.Documents;
 namespace GalNet.Editor.Shared.Services;
 
 public sealed record LocalizationSource(string Path, string Json);
-public sealed record LocalizationReference(string Owner, string? EntryId, string JsonPointer, string Key, FieldValueSemantic Semantic);
+public sealed record LocalizationReference(string Owner, string? EntryId, string JsonPointer, string Key, FieldValueSemantic Semantic)
+{
+    public PropertyPath? Path { get; init; }
+    public string LocationKey => Path?.ToLogicalPointer() ?? JsonPointer;
+    public JsonElement Rewrite(JsonElement parameters, string key)
+    {
+        var path = Path;
+        if (path is null)
+        {
+            path = PropertyPath.Empty; var current = parameters;
+            foreach (var segment in JsonPointer.Split('/').Skip(1).Select(PropertyPath.Unescape))
+            {
+                if (current.ValueKind == JsonValueKind.Array)
+                { var index = int.Parse(segment, CultureInfo.InvariantCulture); path = path.Index(index); current = current[index]; }
+                else { path = path.Member(segment); current = current.GetProperty(segment); }
+            }
+        }
+        return path.Replace(parameters, JsonSerializer.SerializeToElement(key));
+    }
+}
 public sealed record LocalizationText(string Culture, string Key, string Text, string File, string JsonPointer);
 public sealed record LocalizationIssue(string Code, string File, string JsonPointer, string Message)
 {
     public string? EntryId { get; init; }
+    public PropertyPath? Path { get; init; }
 }
 public sealed record LocalizationCharacter(string Id, string DisplayNameKey);
 
@@ -33,6 +52,7 @@ public sealed class LocalizationReferenceIndex
     public LocalizationReferenceIndex(EditorProjectDocument document, IEntryCatalog catalog, IEnumerable<LocalizationSource> sources,
         IEnumerable<LocalizationIssue>? sourceIssues = null)
     {
+        using var structures = new ValueStructureResolver();
         foreach (var issue in sourceIssues ?? []) Issue(issue.Code, issue.File, issue.JsonPointer, issue.Message);
         foreach (var source in sources.OrderBy(source => source.Path, StringComparer.Ordinal)) ReadSource(source);
         foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Group"))
@@ -55,7 +75,7 @@ public sealed class LocalizationReferenceIndex
                     Issue("field.unknown", groupId, "/" + Escape(name), "Unknown author field cannot be analyzed.", entryId: entry.StableId);
                 foreach (var field in definition.DynamicParameters.Fields)
                     if (entry.Parameters.TryGetValue(field.Id, out var value))
-                        Walk(field, value, groupId, entry.StableId, "/" + Escape(field.Id), 0);
+                        Walk(field, value, groupId, entry.StableId, "/" + Escape(field.Id), structures);
             }
         }
         foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Branch" && node.BranchType == "Choice"))
@@ -71,7 +91,7 @@ public sealed class LocalizationReferenceIndex
         foreach (var reference in _references)
             if (reference.Semantic == FieldValueSemantic.CharacterReference ? !ids.Contains(reference.Key) : !defaultKeys.Contains(reference.Key))
                 Issue(reference.Semantic == FieldValueSemantic.CharacterReference ? "character.unknown" : "text.defaultMissing",
-                    reference.Owner, reference.JsonPointer, $"Unresolved reference '{reference.Key}'.", incomplete: false, entryId: reference.EntryId);
+                    reference.Owner, reference.JsonPointer, $"Unresolved reference '{reference.Key}'.", incomplete: false, entryId: reference.EntryId, path: reference.Path);
         References = _references.AsReadOnly(); Texts = _texts.AsReadOnly(); Issues = _issues.AsReadOnly();
         IncompleteIssues = _incompleteIssues.AsReadOnly(); Characters = _characters.AsReadOnly();
     }
@@ -87,68 +107,34 @@ public sealed class LocalizationReferenceIndex
     public bool Complete { get; private set; } = true;
     public LocalizationText? FindDirect(string culture, string key) => _effective.GetValueOrDefault(culture)?.GetValueOrDefault(key);
 
-    private void Walk(FieldDescriptor field, JsonElement value, string owner, string entryId, string pointer, int depth, JsonSerializerOptions? wireOptions = null)
-    {
-        if (IsEmpty(value) || !Spend(owner, pointer, depth, entryId)) return;
-        if (field.Semantic != FieldValueSemantic.None)
-        {
-            if (value.ValueKind != JsonValueKind.String) Issue("field.stringRequired", owner, pointer, "Localized fields must contain string keys.", entryId: entryId);
-            else Reference(owner, entryId, pointer, value.GetString()!, field.Semantic);
-            return;
-        }
-        WalkValue(field.Value.ValueType, value, owner, entryId, pointer, depth, wireOptions ?? field.Value.JsonOptions);
-    }
-
-    private void WalkValue(Type type, JsonElement value, string owner, string entryId, string pointer, int depth, JsonSerializerOptions options)
+    private void Walk(FieldDescriptor field, JsonElement value, string owner, string entryId, string pointer, ValueStructureResolver structures)
     {
         if (IsEmpty(value)) return;
-        var elementType = type.IsArray && type.GetArrayRank() == 1 ? type.GetElementType()
-            : type.IsGenericType && type.GetGenericTypeDefinition() is var generic &&
-              (generic == typeof(List<>) || generic == typeof(IList<>) || generic == typeof(IReadOnlyList<>) || generic == typeof(IEnumerable<>))
-                ? type.GetGenericArguments()[0] : null;
-        if (elementType is not null)
+        using var document = new ValueDocument(field, value, structures);
+        foreach (var property in document.GetIterator(new(MaximumDepth, Math.Max(1, _remaining))))
         {
-            if (value.ValueKind != JsonValueKind.Array) { Issue("field.arrayRequired", owner, pointer, "Expected a list.", entryId: entryId); return; }
-            var index = 0;
-            foreach (var item in value.EnumerateArray())
+            var logical = PropertyPath.Empty.Member(field.Id);
+            foreach (var segment in property.Path) logical = logical.Append(segment);
+            var location = pointer + property.Path.ToJsonPointer();
+            if (!Spend(owner, location, property.Path.Count, entryId)) break;
+            if (property.Value is not { } provided || IsEmpty(provided)) continue;
+            // Root scalar validation is already owned by the field contract; this index adds nested coverage.
+            if (property.Path.Count == 0 && property.Issue?.Code.StartsWith("value.", StringComparison.Ordinal) == true) continue;
+            if (property.Issue is { } issue)
+                Issue(issue.Code, owner, location, issue.Message, entryId: entryId, path: logical);
+            else if (property.Field.Semantic != FieldValueSemantic.None)
             {
-                var child = pointer + "/" + index++;
-                if (!Spend(owner, child, depth + 1, entryId)) break;
-                WalkValue(elementType, item, owner, entryId, child, depth + 1, options);
+                if (provided.ValueKind != JsonValueKind.String)
+                    Issue("field.stringRequired", owner, location, "Localized fields must contain string keys.", entryId: entryId, path: logical);
+                else Reference(owner, entryId, location, provided.GetString()!, property.Field.Semantic, logical);
             }
         }
-        else if (typeof(IFieldDto).IsAssignableFrom(type))
-        {
-            if (value.ValueKind != JsonValueKind.Object) { Issue("field.objectRequired", owner, pointer, "Expected an object.", entryId: entryId); return; }
-            IReadOnlyList<FieldDescriptor>? fields;
-            try { fields = type.GetProperty("Schema", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)?.GetValue(null) as IReadOnlyList<FieldDescriptor>; }
-            catch (Exception error) when (error is TargetInvocationException or TypeInitializationException)
-            { Issue("schema.invalid", owner, pointer, error.Message, entryId: entryId); return; }
-            if (fields is null) { Issue("schema.unavailable", owner, pointer, "Nested DTO has no readable schema.", entryId: entryId); return; }
-            var names = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var property in value.EnumerateObject())
-                if (!names.Add(property.Name)) Issue("field.duplicate", owner, pointer, "Duplicate author property.", entryId: entryId);
-            var properties = options.GetTypeInfo(type).Properties;
-            var mapped = fields.Select(field =>
-            {
-                var member = type.GetMembers(BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(property => property is PropertyInfo or FieldInfo && property.GetCustomAttribute<FieldAttribute>() is not null &&
-                    (property.GetCustomAttribute<System.Text.Json.Serialization.JsonPropertyNameAttribute>()?.Name ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name)) == field.Id);
-                var wire = properties.FirstOrDefault(property => property.AttributeProvider is MemberInfo info && info.Name == member?.Name)?.Name ?? field.Id;
-                return (Field: field, Wire: wire);
-            }).ToArray();
-            foreach (var member in mapped)
-                if (value.TryGetProperty(member.Wire, out var child)) Walk(member.Field, child, owner, entryId, pointer + "/" + Escape(member.Wire), depth + 1, options);
-            foreach (var name in names.Where(name => !mapped.Any(member => member.Wire == name) && !IsEmpty(value.GetProperty(name))))
-                Issue("field.unknown", owner, pointer + "/" + Escape(name), "Unknown nested author field cannot be analyzed.", entryId: entryId);
-        }
-        else if (value.ValueKind is JsonValueKind.Object or JsonValueKind.Array)
-            Issue("field.opaque", owner, pointer, "Structured value has no traversable field schema.", entryId: entryId);
     }
 
-    private void Reference(string owner, string? entryId, string pointer, string key, FieldValueSemantic semantic)
+    private void Reference(string owner, string? entryId, string pointer, string key, FieldValueSemantic semantic, PropertyPath? path = null)
     {
         if (string.IsNullOrWhiteSpace(key)) return;
-        _references.Add(new(owner, entryId, pointer, key, semantic));
+        _references.Add(new(owner, entryId, pointer, key, semantic) { Path = path });
     }
 
     private void ReadSource(LocalizationSource source)
@@ -219,13 +205,13 @@ public sealed class LocalizationReferenceIndex
     private bool Spend(string file, string pointer, int depth, string? entryId = null)
     {
         if (_remaining <= 0) return false;
-        if (--_remaining == 0 || depth > MaximumDepth)
+        if (--_remaining <= 0 || depth > MaximumDepth)
         { Issue("analysis.limit", file, pointer, "Localization analysis exceeded its value/depth budget.", entryId: entryId); return false; }
         return true;
     }
-    private void Issue(string code, string file, string pointer, string message, bool incomplete = true, string? entryId = null)
+    private void Issue(string code, string file, string pointer, string message, bool incomplete = true, string? entryId = null, PropertyPath? path = null)
     {
-        var issue = new LocalizationIssue(code, file, pointer, message) { EntryId = entryId };
+        var issue = new LocalizationIssue(code, file, pointer, message) { EntryId = entryId, Path = path };
         _issues.Add(issue);
         if (!incomplete) return;
         Complete = false;

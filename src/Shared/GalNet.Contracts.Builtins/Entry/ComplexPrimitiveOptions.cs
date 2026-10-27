@@ -11,8 +11,8 @@ public partial class LayerShowOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
-    [Field(2, EditorId = ValueEditorIds.Json)] public JsonElement Flipbook { get; set; }
-    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(2, EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.FlipbookDefinition), StructureIgnoresCase = true, StructureUsesFieldIds = true)] public JsonElement Flipbook { get; set; }
+    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
@@ -24,7 +24,7 @@ public partial class LayerColorOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Color { get; set; }
-    [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(3, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 1000;
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
 }
@@ -33,7 +33,7 @@ public partial class LayerColorOptions
 public partial class LayerMoveOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
-    [Field(1, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(1, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Common, Field(3, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public float Duration { get; set; } = 0.5f;
 }
@@ -132,7 +132,7 @@ public partial class VideoPlayOptions
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? Blocking { get; set; } = true;
     [Field(3, DefaultJson = "[]", EditorId = ValueEditorIds.Json)] public JsonElement SkipPoints { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(6, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
     [Field(7, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]

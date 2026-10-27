@@ -17,6 +17,43 @@ namespace GeneralTest.Editor;
 
 public sealed class LocalizationReferenceIndexTests
 {
+    [Test]
+    public void MultipleReferencesInsideAnEncodedArrayHaveDistinctLocationsAndRewriteTheirOwnLeaves()
+    {
+        var descriptor = new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.ForType(typeof(List<NestedRole>), allowsJsonString: true));
+        var fields = new DynamicParameterTable([new(new FieldDescriptor("items", descriptor))]);
+        var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("custom", [new DefaultPrimitiveEntryBase("custom.roles", fields)])]);
+        var entry = Entry("id", "custom.roles", new { items = """[{"Speaker":"one","extra":9007199254740993},{"Speaker":"two"}]""" });
+        var index = new LocalizationReferenceIndex(new() { GroupEntries = new() { ["g"] = [entry] } }, catalog, []);
+        Assert.That(index.References, Has.Count.EqualTo(2));
+        Assert.That(index.References.Select(reference => reference.JsonPointer).Distinct(), Is.EqualTo(new[] { "/items" }));
+        Assert.That(index.References.Select(reference => reference.LocationKey).Distinct().Count(), Is.EqualTo(2));
+        var result = JsonSerializer.SerializeToElement(entry.Parameters);
+        foreach (var reference in index.References) result = reference.Rewrite(result, "new-" + reference.Key);
+        using var array = JsonDocument.Parse(result.GetProperty("items").GetString()!);
+        Assert.That(array.RootElement[0].GetProperty("Speaker").GetString(), Is.EqualTo("new-one"));
+        Assert.That(array.RootElement[1].GetProperty("Speaker").GetString(), Is.EqualTo("new-two"));
+        Assert.That(array.RootElement[0].GetProperty("extra").GetInt64(), Is.EqualTo(9007199254740993));
+    }
+
+    [Test]
+    public void KnownTransformAndFlipbookSchemasCoverAuthoredValuesAndRetainUnknownExtensions()
+    {
+        var entry = Entry("layer", "layer.show", new { transform = new { X = 12f, ScaleY = 1.2f }, flipbook = new { columns = 2, rows = 2, frameCount = 4 } });
+        var document = new EditorProjectDocument { GroupEntries = new() { ["g"] = [entry] } };
+        var original = JsonSerializer.Serialize(document);
+        var index = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.That(index.Complete, Is.True); Assert.That(index.Issues, Is.Empty);
+        Assert.That(JsonSerializer.Serialize(document), Is.EqualTo(original));
+        entry.Parameters["transform"] = JsonSerializer.SerializeToElement("""{"X":2,"extension":{"caption":"unknown"}}""");
+        var unknown = new LocalizationReferenceIndex(document, Builtins(), []).Issues.Single();
+        Assert.That(unknown.Code, Is.EqualTo("field.unknown")); Assert.That(unknown.EntryId, Is.EqualTo("layer"));
+        Assert.That(unknown.JsonPointer, Is.EqualTo("/transform"), "An outer JSON Pointer cannot address inside a string.");
+        Assert.That(unknown.Path!.ToLogicalPointer(), Is.EqualTo("/transform/extension"));
+        entry.Parameters["transform"] = JsonSerializer.SerializeToElement(new { X = "bad" });
+        Assert.That(new LocalizationReferenceIndex(document, Builtins(), []).Issues.Single().Code, Is.EqualTo("value.type"));
+    }
+
     private static TargetProfileEntryCatalog Builtins() => new(BuiltinSchemas.CreateAllModules());
     private static EditorEntryData Entry(string id, string type, object parameters) => new()
     { StableId = id, Type = type, Parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(JsonSerializer.Serialize(parameters))! };
@@ -184,7 +221,10 @@ public sealed class LocalizationReferenceIndexTests
 
         layer.Parameters["transform"] = JsonSerializer.SerializeToElement(new { x = 1 });
         var nonempty = new LocalizationReferenceIndex(document, Builtins(), []);
-        Assert.That(nonempty.IncompleteIssues.Single().Code, Is.EqualTo("field.opaque"));
+        Assert.That(nonempty.Complete, Is.True, "A known nonempty Transform is traversable.");
+        layer.Parameters["transform"] = JsonSerializer.SerializeToElement(new { extension = new { hidden = "key" } });
+        var extension = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.That(extension.IncompleteIssues.Single().Code, Is.EqualTo("field.unknown"));
     }
 
     [Test]

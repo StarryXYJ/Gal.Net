@@ -36,6 +36,10 @@ public sealed class FieldAttribute(int order) : Attribute
     public string? ValueFormat { get; set; }
     public string? DefaultJson { get; set; }
     public string[]? Choices { get; set; }
+    public Type? StructureType { get; set; }
+    public bool StructureAllowsJsonString { get; set; }
+    public bool StructureIgnoresCase { get; set; }
+    public bool StructureUsesFieldIds { get; set; }
 }
 
 /// <summary>Generated member access is platform independent. Notification and submission remain host concerns.</summary>

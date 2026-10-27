@@ -155,6 +155,8 @@ Group 页面上的删除按钮、Delete 键、右键删除、移动粘贴以及�
 
 本地化分析不完整的诊断同样使用诊断自身携带的 Entry 稳定身份导航，不依赖是否成功识别引用；JSON Pointer 解码为根字段及嵌套路径。`field.opaque` 表示缺少可遍历的结构定义，显示为引用检查未覆盖的警告，不将其描述为字段值无效；原始消息保留在技术详情。
 
+已知固定结构通过公共属性树检查，正常 Transform/Flipbook 不再产生 opaque；未知扩展及尚未接入的动态结构继续报告未覆盖。类型化 Path 可表达字符串编码对象的内部位置，Inspector 优先按完整 PropertySegments 匹配，随后仅对没有路径信息的旧控件使用唯一字段名回退。专用 Transform/Flipbook 控件保留现有排版并共享子字段元数据、约束及局部修改；通用结构采用单一可折叠 Header、缩进和主题间距，字典使用键/值行与显式结构操作。
+
 普通数字在 Editor 使用保留文字草稿的 NumericUpDown，Enter/失焦提交，Escape 恢复输入，上下按钮/方向键按步长确认修改。`numericupdown`、`numerictext` 和 `slider` 可由字段元数据指定，宿主工厂仍可覆盖；`slider` 在 Editor 配对精确输入框，手输值不按滑块步长量化。已有 0–1 范围的 Variants 透明度和音频增益声明 slider。long/ulong/decimal 保留无损文字路径；滑块范围/类型或步长不适用时回退并提示。浮点文字支持 `.3`、`.22`、`-.3`，成功提交后显示合法 JSON 数字；Transform、向量、音效参数及 Save All 草稿提交共用解析规则，原始 JSON 输入继续严格。
 
 换类型通过统一语义目录按逻辑输出角色、身份域和目标种类迁移相容身份；字段名不同也可相容，例如普通层 handleId 与转场 newHandleId/toLayerHandleId，普通动画 playbackHandleId 与 Timeline 根播放身份。新增或不相容角色分配新身份，不自动改绑旧消费者。旧参数仍由类型变更历史保留以支持 Undo；旧表单失去提交权。引用规则见 [场景目标查询](editor-scene-targets.md#作者关系与引用诊断)。

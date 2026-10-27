@@ -36,6 +36,9 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
 
     public FieldDescriptor Field { get; }
     public object? HostContext => _binding.HostContext;
+    internal bool AllowsChildReset => _binding.CanReset;
+    internal object? LabelOverride => _binding.IsLabelLiteral ? _binding.Label : null;
+    public IReadOnlyList<string>? PropertySegments => _binding.PropertySegments;
     public EditorRegistry? Registry { get; }
     internal int Depth { get; }
     public bool CanOmit => !Field.IsRequired || Field.DefaultValue is not null;

@@ -42,7 +42,7 @@ public partial class MotionPresetOptions : VisualClipOptions
 {
     [Common, Field(6, Required = true, AllowNull = false)] public string HandleId { get; set; } = "";
     [Common, Field(7, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<MotionPreset>))] public MotionPreset Motion { get; set; }
-    [Field(8, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(8, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(9, Minimum = 0, Maximum = 100000)] public float Distance { get; set; } = 120;
     [Field(10)] public float Angle { get; set; }
     [Field(11, Minimum = 0.01, Maximum = 100)] public float Scale { get; set; } = 1.15f;

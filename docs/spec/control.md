@@ -140,9 +140,13 @@ Context 的生命周期包装取消旧提交、保留动态选项和 IFieldPrevi
 
 内置设置主题的普通设置改用 SettingItem.EditorItem/DtoEditorHost，继续提供原单字段 SchemaForm 的皮肤与设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 组合结束后冻结 registry。Editor 的 Dock 创建 Group 面板时传入项目 registry；目前依赖旧资源/表达式等专属字段的 Entry 继续走原路径。P6b 补充普通嵌套结构表单；所有专属字段迁移、手势合并协议、状态查询与 timeline/曲线仍未包含。
 
-StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。支持有生成静态 Schema 的 DTO，以及一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交合并当前 JSON，仅替换编辑成员，保留未知成员。自定义 converter、无 schema 的对象、字典、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
+StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。通过 Core 的 ValueDocument / ValueStructureResolver 统一读取 DTO、显式描述的 JSON 对象、一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T> 以及 Dictionary/IDictionary/IReadOnlyDictionary<string,T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；公共结构解析器根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交使用公共属性 patch，仅替换编辑成员，保留未知成员。没有结构适配的对象级 converter、未知对象、不支持的键类型、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
+
+通用对象使用单一可折叠 Header，字段行不重复显示相同标签；集合 Header 带数量，简单元素不额外显示 element 标签。字典为键/值行，键支持空串、数字及转义字符；新增、删除与改键是明确的结构操作，重复改键拒绝且保留当前输入。无效键名候选保留于当前控件，不作为跨视图的值草稿归档。ChildIndent、ItemSpacing 由宿主样式设置，统一缩进和组间距，不逐层插空白行。Transform/Flipbook 保留专用布局，子字段定义、读写和校验复用公共属性层；其他专用工厂覆盖顺序不变。
 
 列表结构变化取消当前版本令牌，旧索引绑定和延迟提交失效；普通元素值编辑保留其余行控件。共享控件不实现保存或撤销，依旧提交一个根字段 JSON 值，由宿主负责原子修改及历史。FieldEditorActions 提供显式默认值、缺省、null 和草稿恢复，CanOmit/CanSetNull/HasDefault 决定入口，宿主用 StyledProperty 翻译提示；仅打开表单不写默认值。
+
+PropertyFieldBinding 和通用结构子绑定转发 HostContext、可见性、宿主 Reset 策略及相对根字段的 PropertySegments；DTO scope 同样转发路径。列表序号和字典键通过 IsLabelLiteral 标记为字面标签，避免被当作本地化 key，同时普通字段 Header 保持本地化与字段名回退。导航优先匹配完整路径，避免同名深层字段误选。元数据解析器由控件/分析调用方持有和释放，不以全局静态缓存保留项目契约类型。
 
 ## 宿主接入约束
 

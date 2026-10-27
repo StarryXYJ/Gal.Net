@@ -40,7 +40,7 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
         {
             var source = index.FindDirect(sourceLocale, group.Key)?.Text;
             return new LocalizationExchangeRow(group.Key, source, source is null ? null : LocalizationTextState.Fingerprint(source),
-                group.Select(reference => $"{reference.Owner}/{reference.EntryId}{reference.JsonPointer}").ToArray(), index.FindDirect(culture, group.Key)?.Text);
+                group.Select(reference => $"{reference.Owner}/{reference.EntryId}{reference.LocationKey}").ToArray(), index.FindDirect(culture, group.Key)?.Text);
         }).ToArray();
         return runtime ? JsonSerializer.Serialize(rows.Where(row => row.Translation is not null).ToDictionary(row => row.Key, row => row.Translation), new JsonSerializerOptions { WriteIndented = true })
             : LocalizationExchange.Write(new(1, identity, sourceLocale, culture, rows, index.Complete));

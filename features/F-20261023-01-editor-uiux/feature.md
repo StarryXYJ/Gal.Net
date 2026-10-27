@@ -21,3 +21,5 @@
 本地化实测反馈：隐藏列后表头错位、正文输入需左上对齐、逐字更新卡顿。用户要求改为失焦提交，当前修正见 [本地化交互修正](follow-up-localization-20261025.md)。
 
 2026-10-27 Group 后续：待提交分级、自动检查、人性化提示与稳定定位，以及 NumericUpDown/Slider/精确文本可选路径和浮点简写已实现验证，见 [实现及验证记录](follow-up-group-diagnostics-numeric-20261027.md)。
+
+2026-10-27 嵌套结构后续：用户要求借鉴 Unity 的属性迭代，统一结构描述、编辑、校验和引用分析，替代对已知 JSON 对象的分析盲区；[前期设计讨论](design-recursive-properties-20261027.md) 保留于此，后续已按用户选择归入独立 [F-20261027-03-recursive-properties](../F-20261027-03-recursive-properties/feature.md)，已进入实现和验证，实际范围与遗留见该 feature 总结。

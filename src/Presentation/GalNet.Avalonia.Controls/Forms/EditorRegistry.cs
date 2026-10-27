@@ -104,10 +104,11 @@ public sealed class EditorRegistry
         var type = Nullable.GetUnderlyingType(field.Value.ValueType) ?? field.Value.ValueType;
         if (_typeFactories.TryGetValue(type, out var custom)) return custom;
         var id = field.Editor?.EditorId;
+        if (id is null && field.Value.Structure is not null && StructuredFieldEditor.Supports(field.Value)) id = "structure";
         if (id is null)
             id = field.Value.TryGetConstraint("enum", out _)
                 ? ValueEditorIds.Choice : _defaults.TryGetValue(type, out var mapped) ? mapped
-                    : type.IsEnum ? ValueEditorIds.Choice : StructuredFieldEditor.Supports(type) ? "structure" : ValueEditorIds.Json;
+                    : type.IsEnum ? ValueEditorIds.Choice : StructuredFieldEditor.Supports(field.Value) ? "structure" : ValueEditorIds.Json;
         return _factories.TryGetValue(id, out var factory) ? factory
             : throw new NotSupportedException($"Editor '{id}' for field '{field.Id}' is not registered.");
     }

@@ -46,10 +46,14 @@ public partial class EntryInspectorView : UserControl
             var editor = row.Editor;
             if (editor is not null && path is { Count: > 0 })
             {
-                var matches = editor.GetVisualDescendants().OfType<Control>()
-                    .Where(control => control is NumericUpDown or TextBox or ComboBox or CheckBox && control.DataContext is FieldEditorContext context &&
-                        string.Equals(context.Field.Id, path[^1], StringComparison.OrdinalIgnoreCase))
+                var candidates = editor.GetVisualDescendants().OfType<Control>()
+                    .Where(control => control is NumericUpDown or TextBox or ComboBox or CheckBox && control.DataContext is FieldEditorContext).ToArray();
+                var matches = candidates.Where(control => ((FieldEditorContext)control.DataContext!).PropertySegments is { } segments && segments.SequenceEqual(path, StringComparer.Ordinal))
                     .GroupBy(control => control.DataContext).ToArray();
+                if (matches.Length == 0)
+                    matches = candidates.Where(control => ((FieldEditorContext)control.DataContext!).PropertySegments is null &&
+                        string.Equals(((FieldEditorContext)control.DataContext!).Field.Id, path[^1], StringComparison.OrdinalIgnoreCase))
+                        .GroupBy(control => control.DataContext).ToArray();
                 if (matches.Length == 1) { editor = matches[0].First(); editor.BringIntoView(); }
             }
             var input = editor as Avalonia.Input.InputElement;

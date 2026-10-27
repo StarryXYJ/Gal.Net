@@ -19,6 +19,7 @@ public sealed record AuthorProblem(string Severity, string Message, string Sourc
     public string? Code { get; init; }
     public FieldDescriptor? Field { get; init; }
     public IReadOnlyList<string>? FieldPath { get; init; }
+    public PropertyPath? ValuePath { get; init; }
     public string? Details { get; init; }
     public bool HasDetails => !string.IsNullOrEmpty(Details);
     public bool CanNavigate { get; init; }
@@ -159,6 +160,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
                 FieldPath = draft.Path,
                 Code = draft.State.IsConflicted ? "field.conflict" : draft.State.Issue?.Code,
                 Details = draft.State.Issue?.Message,
+                ValuePath = DraftValuePath(draft),
             }));
         foreach (var archive in _edits.Archives)
         {
@@ -248,13 +250,27 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         foreach (var issue in localization?.Issues ?? [])
         {
             var node = snapshot.Graph.Nodes.FirstOrDefault(item => item.Id == issue.File);
-            var segments = issue.JsonPointer.Split('/').Skip(1)
-                .Select(segment => segment.Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal)).ToArray();
+            var segments = issue.Path is { } propertyPath
+                ? propertyPath.Where(segment => segment.Kind != PropertySegmentKind.JsonString).Select(segment => segment.Value).ToArray()
+                : issue.JsonPointer.Split('/').Skip(1).Select(PropertyPath.Unescape).ToArray();
             var field = segments.FirstOrDefault();
             var fieldPath = segments.Skip(1).ToArray();
+            FieldDescriptor? leaf = null;
+            var code = "localization." + issue.Code;
+            if (issue.Code.StartsWith("value.", StringComparison.Ordinal) || issue.Code == "field.stringRequired")
+            {
+                var entry = node is not null && snapshot.GroupEntries.TryGetValue(node.Id, out var entries)
+                    ? entries.FirstOrDefault(entry => entry.StableId == issue.EntryId) : null;
+                if (entry is not null && _catalog.TryGet(entry.Type, out var schema) && schema.DynamicParameters.Fields.FirstOrDefault(member => member.Id == field) is { } root)
+                {
+                    using var document = new ValueDocument(root, entry.Parameters.GetValueOrDefault(root.Id));
+                    leaf = document.FindProperty(fieldPath)?.Field;
+                    code = issue.Code;
+                }
+            }
             results.Add(new(issue.Code is "schema.unavailable" or "field.unknown" or "field.opaque" or "analysis.limit" ? "warning" : "error", issue.Message, issue.File,
                 node is not null ? new(node.Id, issue.EntryId, field, Revision: revision, FieldPath: fieldPath) : new(File: issue.File, Revision: revision))
-            { Details = issue.Message, Code = "localization." + issue.Code, FieldPath = node is not null ? fieldPath : null });
+            { Details = issue.Message, Code = code, Field = leaf, FieldPath = node is not null ? fieldPath : null, ValuePath = issue.Path });
         }
         _validation = results; _validatedRevision = revision; _checking = false; Refresh();
     }
@@ -294,9 +310,14 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
             };
         var source = Source(problem.Target);
         if (problem.FieldPath is { Count: > 0 } path)
-            source += " / " + string.Join(" / ", path.Select((segment, depth) => int.TryParse(segment, out var index) ? "#" + (index + 1)
+        {
+            var typed = problem.ValuePath?.Where(segment => segment.Kind != PropertySegmentKind.JsonString).Skip(1).ToArray();
+            source += " / " + string.Join(" / ", path.Select((segment, depth) =>
+                typed is not null && depth < typed.Length && typed[depth].Kind == PropertySegmentKind.MapKey ? "[" + JsonSerializer.Serialize(segment) + "]"
+                : (typed is null || depth < typed.Length && typed[depth].Kind == PropertySegmentKind.Index) && int.TryParse(segment, out var index) ? "#" + (index + 1)
                 : depth == path.Count - 1 && problem.Field is { } nestedField ? EditorProblemText.Label(nestedField, _text)
                 : EditorProblemText.Lookup("Entry.Parameter." + segment, segment, _text)));
+        }
         var canNavigate = problem.Target is { } target && _navigation.CanNavigate(target);
         return problem with
         {
@@ -311,6 +332,15 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     {
         if (problem?.Target is not { } target) return;
         if (!_navigation.Navigate(target)) { Refresh(); Report("info", _text["Problem.Unavailable"], problem.Source); }
+    }
+    private static PropertyPath? DraftValuePath(EntryEditSession.Draft draft)
+    {
+        if (draft.Path.Length == 0 || !draft.Owner.IsCurrent) return null;
+        using var document = new ValueDocument(draft.Root, draft.Owner.Source.Parameters.GetValueOrDefault(draft.Root.Id));
+        if (document.FindProperty(draft.Path)?.Path is not { } relative) return null;
+        var path = PropertyPath.Empty.Member(draft.Root.Id);
+        foreach (var segment in relative) path = path.Append(segment);
+        return path;
     }
     [RelayCommand] private void Discard(AuthorProblem? problem) => ChangeArchive(problem?.Discard);
     [RelayCommand] private void Restore(AuthorProblem? problem) => ChangeArchive(problem?.Restore);

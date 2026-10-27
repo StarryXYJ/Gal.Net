@@ -34,9 +34,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var select = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.SelectVariants).Single();
         var gate = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously); assets.File.Gate = gate;
         var catalog = scope.GetRequiredService<SceneTargetCatalog>(); using var selection = new SceneTargetSelection(catalog, catalog.Query(group.Id, select.StableId));
-        selection.Select(selection.Items.Single().Id); var preparing = selection.PrepareAsync();
+        Assert.That(selection.Select(selection.Items.Single().Id), Is.True, "The initial cold snapshot must be selectable before preparation.");
+        var preparing = selection.PrepareAsync();
         await assets.File.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10)); gate.SetResult(AtlasBytes()); await preparing;
-        Assert.That(selection.TryResolve(out var handle), Is.True); Assert.That(handle, Is.EqualTo(show.Source.Parameters["handleId"].GetString()));
+        var resolved = selection.TryResolve(out var handle);
+        if (!resolved)
+        {
+            var current = catalog.Query(group.Id, select.StableId);
+            Assert.Fail($"Cold selection became stale: selected={selection.SelectedId}; current={selection.IsCurrent}; revision={selection.Snapshot.Revision}/{current.Revision}; context={selection.Snapshot.ContextRevision}/{current.ContextRevision}; choices={selection.Snapshot.Choices.Count}/{current.Choices.Count}.");
+        }
+        Assert.That(handle, Is.EqualTo(show.Source.Parameters["handleId"].GetString()));
         scope.GetRequiredService<EntryFieldAuthoringService>().SetCondition(group.Id, show.Source, "false"); Assert.That(selection.TryResolve(out _), Is.False);
         await projects.CloseAsync();
     }

@@ -10,6 +10,7 @@ namespace GalNet.Game.Controls.Forms;
 public sealed record FieldEditorItem(FieldEditorContext Context, Control Control)
 {
     public bool IsJsonFallback => Equals(Control.Tag, "schema.json");
+    public bool ShowSeparateLabel { get; init; } = true;
 }
 
 /// <summary>Owns editors while mounted. Schema, registry, binding and visual theme are supplied by the host.</summary>
@@ -95,7 +96,8 @@ public sealed class SchemaForm : TemplatedControl
                     if (!controls.Add(lease.Control) || lease.Control.Parent is not null || lease.Control.GetVisualParent() is not null)
                         throw new InvalidOperationException("Editor factories must return fresh, unparented controls.");
                 }
-                SetAndRaise(EditorsProperty, ref _editors, Array.AsReadOnly(_owned.Select(editor => new FieldEditorItem(editor.Context, editor.Lease!.Control)).ToArray()));
+                SetAndRaise(EditorsProperty, ref _editors, Array.AsReadOnly(_owned.Select(editor => new FieldEditorItem(editor.Context, editor.Lease!.Control)
+                { ShowSeparateLabel = ShowLabels && editor.Lease!.Control is not StructuredFieldEditor }).ToArray()));
             }
         }
         catch (Exception exception)

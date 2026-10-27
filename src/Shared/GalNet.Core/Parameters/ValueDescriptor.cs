@@ -49,8 +49,22 @@ public sealed class ValueDescriptor
     public Type ValueType { get; }
     public bool AllowNull { get; }
     public JsonElement? Constraints { get; }
-    public JsonSerializerOptions JsonOptions { get; }
+    public JsonSerializerOptions JsonOptions { get; private init; }
     public bool IsStringEncoded { get; }
+    public ValueStructure? Structure { get; private init; }
+
+    /// <summary>Describe structured wire data without changing its codec or the existing constructor ABI.</summary>
+    public ValueDescriptor WithStructure(ValueStructure structure)
+    {
+        ArgumentNullException.ThrowIfNull(structure);
+        return new(ValueType, AllowNull, Constraints, JsonOptions) { Structure = structure, JsonOptions = JsonOptions };
+    }
+
+    public ValueDescriptor WithJsonOptions(JsonSerializerOptions options) =>
+        new(ValueType, AllowNull, Constraints, options) { Structure = Structure, JsonOptions = options.IsReadOnly ? options : Freeze(options) };
+
+    private static JsonSerializerOptions Freeze(JsonSerializerOptions options)
+    { var copy = new JsonSerializerOptions(options); copy.MakeReadOnly(populateMissingResolver: true); return copy; }
     public bool TryGetConstraint(string name, out JsonElement value)
     {
         if (Constraints is { } constraints && constraints.TryGetProperty(name, out value)) return true;

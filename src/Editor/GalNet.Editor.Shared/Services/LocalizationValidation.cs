@@ -26,15 +26,17 @@ public static class LocalizationValidation
             {
                 var file = issue.File; var pointer = issue.JsonPointer;
                 var reference = index.References.FirstOrDefault(reference => reference.Owner == file && reference.JsonPointer == pointer && issue.Message.Contains("'" + reference.Key + "'", StringComparison.Ordinal));
+                var entryId = issue.EntryId ?? reference?.EntryId;
                 if (loaded.Document.Nodes.FirstOrDefault(node => node.Id == file) is { } owner)
                 {
                     file = owner.Type == "Group" ? "Graph/" + owner.File : "Graph/graph.json";
-                    if (reference is not null && owner.Type == "Group") pointer = "/entries/" + loaded.GroupEntries[owner.Id].FindIndex(entry => entry.StableId == reference.EntryId) + "/parameters" + pointer;
-                    else if (reference is not null && owner.Options is not null) pointer = "/nodes/" + loaded.Document.Nodes.IndexOf(owner) + "/options/" + owner.Options.FindIndex(option => option.Id == reference.EntryId) + pointer;
+                    if (entryId is not null && owner.Type == "Group" && loaded.GroupEntries[owner.Id].FindIndex(entry => entry.StableId == entryId) is var entryIndex && entryIndex >= 0)
+                        pointer = "/entries/" + entryIndex + "/parameters" + pointer;
+                    else if (entryId is not null && owner.Options is not null) pointer = "/nodes/" + loaded.Document.Nodes.IndexOf(owner) + "/options/" + owner.Options.FindIndex(option => option.Id == entryId) + pointer;
                 }
                 else if (file == "characters") file = LocalizationJson.CatalogPath;
                 var incomplete = issue.Code is "schema.unavailable" or "field.unknown" or "field.opaque" or "analysis.limit";
-                diagnostics.Add(new("localization." + issue.Code, incomplete ? "warning" : "error", issue.Message, file, reference?.EntryId, pointer));
+                diagnostics.Add(new("localization." + issue.Code, incomplete ? "warning" : "error", issue.Message, file, entryId, pointer));
             }
             if (!index.Complete) diagnostics.Add(new("localization.incomplete", "warning", "Localization analysis is incomplete; provide all custom field schemas."));
             var options = settings.ReadDefaultOptions();

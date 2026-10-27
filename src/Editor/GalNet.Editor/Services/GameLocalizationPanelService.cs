@@ -72,8 +72,8 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
         {
             var id = reference.EntryId ?? reference.Owner;
             var title = id.Length > 12 ? id[..8] + "…" + id[^4..] : id;
-            var slot = reference.JsonPointer.TrimStart('/');
-            var details = reference.Owner + "/" + id + reference.JsonPointer;
+            var slot = reference.LocationKey.TrimStart('/');
+            var details = reference.Owner + "/" + id + reference.LocationKey;
             var displayDetails = details;
             if (category == "characters")
             {
@@ -95,7 +95,7 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
                 if (entry is not null)
                 {
                     title = $"Entry{entry.Id}";
-                    displayDetails = $"Entry{entry.Id}{reference.JsonPointer}";
+                    displayDetails = $"Entry{entry.Id}{reference.LocationKey}";
                 }
             }
             return new(title, slot, details, reference) { DisplayDetails = displayDetails };

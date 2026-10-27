@@ -1152,5 +1152,7 @@
   "Problem.CheckFailed": "检查未能完成，请重新检查；详细原因见技术详情。",
   "Problem.NumericFallback": "此字段使用精确文字输入；当前类型或范围不适合滑块/步长调整。",
   "Problem.Value.Minimum": "“{0}”不能小于 {2}，请调整数值。",
-  "Problem.Value.Maximum": "“{0}”不能大于 {3}，请调整数值。"
+  "Problem.Value.Maximum": "“{0}”不能大于 {3}，请调整数值。",
+  "Form.MapKey": "键",
+  "Form.MapKeyDuplicate": "已存在相同名称的键，请换一个名称。"
 }

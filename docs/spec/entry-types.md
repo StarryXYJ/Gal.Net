@@ -20,6 +20,14 @@ Core Entry 的参数权威是 `Arguments` JSON，不再保留字符串 Values。
 
 项目集合来自独立契约程序集的 `GalNet.Project.Contracts.ProjectSchemas.Modules`；CLI 每次调用加载，Editor 在打开项目时加载并由项目 scope 持有，关闭/切换释放。相同名称 DLL 可声明不同集合，模块名可重复但完整 typeId 排他。工具加载共享 Core/内置契约类型身份，拒绝缺失依赖和不兼容版本；不存在默认内置 fallback。命令见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
+### 嵌套属性访问
+
+`ValueDescriptor.WithStructure` 为值关联不可变 ValueStructure，旧构造函数签名保留。原生 IFieldDto 使用其静态 Schema；固定 JsonElement 字段可用 Field.StructureType 关联结构类型，生成器输出延迟类型引用，不在初始化时递归展开 schema。StructureAllowsJsonString、StructureIgnoresCase、StructureUsesFieldIds 仅为显式兼容表示提供规则，不改变通用 JSON 的默认命名或运行 codec；内置 Transform 保留原成员拼写与字符串表示，Flipbook 新成员沿用字段 ID。
+
+ValueStructure 提供 ForType、Object、Sequence、Map 和 Dynamic 声明，集合元素/Map 值可拥有独立字段约束与文本/角色语义。ValueStructureResolver 使用实际 JSON options 解析 wire 成员，缓存属于调用方作用域；无法解释的 converter/结构返回可定位诊断。IValueStructureProvider 只消费调用方提供的冻结上下文；动态领域查询及依赖有效性仍由调用方负责，接口本身不执行项目 I/O。
+
+ValueDocument 持有不可变 JSON 快照，提供 Root、FindProperty、GetIterator、Validate 和纯 Patch。PropertyPath 区分 Member、Index、MapKey、JsonString；对外实际 JSON Pointer 与逻辑内部路径分别编码。迭代由显式栈、节点/深度预算和取消控制；Validate 的 Partial 默认不要求缺失兄弟字段，完整模式显式检查已出现对象中的必填字段。展开、扫描和查找不写入默认值。Patch 仅产生候选值，不替代作者身份检查、事务或领域校验；它保留扩展与兄弟值，拒绝歧义和不存在的索引，显式 null 容器需要先被替换。旧索引句柄是否因重排失效由宿主结构代次核对，纯快照操作不会猜测元素身份。
+
 单平台执行可在外层模块直接借用具体页面；Sample 的 `sample.screenshot(fileName?)` 契约无 Avalonia 依赖，Avalonia 模块直接捕获 GamePage 场景，自动写入宿主 Pictures 目录。它不属于全内置模块，Headless 只可编译，缺执行实现时拒绝运行。Normal/Quick 生成 PNG，CatchUp 不写文件；参数、生命周期与示例见 [Sample.Contracts](../../src/Samples/GalNet.Sample.Contracts/README.md)。
 
 同步执行可用 PrimitiveRegistry.Immediate / Immediate<T>，自动传递批次并同步完成；实例非阻塞且不可跳过。Normal/Quick 执行 dispatch，CatchUp 默认重复 dispatch，可显式覆盖。异常按原 PrimitiveInstance 协议传播，不推断取消、平台 dispatch 或异步生命周期。带参数入口沿用 Register<T> 的独立 DTO 和契约身份检查。内置 audio.pause/resume/next/clear 共用 AudioTrackOptions，flow.wait 使用 WaitOptions；旧手写参数表已删除。音频及语音复合指令的 trackId 为无默认值、不可为 null 的必填字符串，不再隐含选择 bgm/vocal；其他字段沿用其各自 schema。Contracts.Builtins 通过构建期 Analyzer 引用 SchemaGenerator，运行时仍只依赖 Core 和框架程序集。

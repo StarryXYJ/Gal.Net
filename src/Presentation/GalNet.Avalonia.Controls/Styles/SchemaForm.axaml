@@ -9,7 +9,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
                   <StackPanel IsVisible="{Binding Context.IsVisible}">
-                    <ContentControl Content="{Binding Context.Label}" />
+                    <ContentControl Content="{Binding Context.Label}" IsVisible="{Binding ShowSeparateLabel}" />
                     <ContentControl Content="{Binding Control}" />
                     <TextBlock Text="JSON" IsVisible="{Binding IsJsonFallback}" Opacity="0.65" />
                     <forms:FieldEditorActions Context="{Binding Context}" />

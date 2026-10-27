@@ -1152,5 +1152,7 @@
   "Problem.CheckFailed": "The check could not finish. Try again; technical details are available.",
   "Problem.NumericFallback": "Exact text input is used because this type or range cannot safely use a slider or step control.",
   "Problem.Value.Minimum": "“{0}” must be at least {2}. Adjust the value.",
-  "Problem.Value.Maximum": "“{0}” must be at most {3}. Adjust the value."
+  "Problem.Value.Maximum": "“{0}” must be at most {3}. Adjust the value.",
+  "Form.MapKey": "Key",
+  "Form.MapKeyDuplicate": "A key with this name already exists. Choose a different name."
 }

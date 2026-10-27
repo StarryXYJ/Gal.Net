@@ -1152,5 +1152,7 @@
   "Problem.CheckFailed": "검사를 완료하지 못했습니다. 기술 세부 정보를 확인한 뒤 다시 시도하세요.",
   "Problem.NumericFallback": "이 형식이나 범위는 슬라이더 또는 간격 조절에 적합하지 않아 정확한 텍스트 입력을 사용합니다.",
   "Problem.Value.Minimum": "“{0}”은 {2} 이상이어야 합니다. 값을 조정하세요.",
-  "Problem.Value.Maximum": "“{0}”은 {3} 이하여야 합니다. 값을 조정하세요."
+  "Problem.Value.Maximum": "“{0}”은 {3} 이하여야 합니다. 값을 조정하세요.",
+  "Form.MapKey": "키",
+  "Form.MapKeyDuplicate": "같은 이름의 키가 이미 있습니다. 다른 이름을 입력하세요."
 }

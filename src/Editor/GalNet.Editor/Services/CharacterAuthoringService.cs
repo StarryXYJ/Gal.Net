@@ -163,8 +163,8 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     {
         var before = expected.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
         var candidate = new EditorEntryData { StableId = expected.StableId, Type = type, Parameters = updated };
-        var oldRefs = References(groupId, expected).ToDictionary(reference => reference.JsonPointer, reference => reference.Key, StringComparer.Ordinal);
-        var changed = References(groupId, candidate).Where(reference => oldRefs.GetValueOrDefault(reference.JsonPointer) != reference.Key).ToArray();
+        var oldRefs = References(groupId, expected).ToDictionary(reference => reference.LocationKey, reference => reference.Key, StringComparer.Ordinal);
+        var changed = References(groupId, candidate).Where(reference => oldRefs.GetValueOrDefault(reference.LocationKey) != reference.Key).ToArray();
         if (changed.Length == 0) return false;
         await _gate.WaitAsync(cancellationToken);
         try
@@ -183,7 +183,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
                 var exact = rows.SingleOrDefault(row => row.Id == reference.Key);
                 var names = rows.Where(row => row.Name == reference.Key).ToArray();
                 if (exact is null && names.Length > 1) throw Error("character.ambiguous");
-                if (exact is not null || names.Length == 1) Set(root, reference.JsonPointer, (exact ?? names[0]).Id);
+                if (exact is not null || names.Length == 1) Set(root, reference, (exact ?? names[0]).Id);
                 else needed.TryAdd(reference.Key, "");
             }
             var filePatches = new List<LocalizationFilePatch>();
@@ -202,7 +202,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
                     namesBytes = LocalizationJson.SetText(namesBytes, nameKey, name);
                 }
                 filePatches.Add(new(file, LocalizationJson.WriteLike(file.Data, array))); filePatches.Add(new(nameFile, namesBytes));
-                foreach (var reference in changed.Where(reference => needed.ContainsKey(reference.Key))) Set(root, reference.JsonPointer, needed[reference.Key]);
+                foreach (var reference in changed.Where(reference => needed.ContainsKey(reference.Key))) Set(root, reference, needed[reference.Key]);
             }
             Current();
             var after = root.Deserialize<Dictionary<string, JsonElement>>()!;
@@ -226,7 +226,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         {
             var entry = documents.Groups[group.Key.Owner].Entries.Single(entry => entry.StableId == group.Key.EntryId);
             var node = JsonSerializer.SerializeToNode(entry.Parameters)!.AsObject();
-            foreach (var reference in group) Set(node, reference.JsonPointer, to);
+            foreach (var reference in group) Set(node, reference, to);
             var after = node.Deserialize<Dictionary<string, JsonElement>>()!;
             ValidateParameters(entry.Type, after, entry.Parameters);
             patches.Add(new(group.Key.Owner, entry.StableId, entry.Type, entry.Parameters, after));
@@ -239,12 +239,10 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         schema?.ValidatePartialArguments(JsonSerializer.SerializeToElement(values.Where(pair => schema.ContainsKey(pair.Key) &&
             (!before.TryGetValue(pair.Key, out var previous) || !JsonElement.DeepEquals(previous, pair.Value))).ToDictionary(pair => pair.Key, pair => pair.Value)));
     }
-    private static void Set(JsonNode root, string pointer, string value)
+    private static void Set(JsonNode root, LocalizationReference reference, string value)
     {
-        var parts = pointer.Split('/').Skip(1).Select(part => part.Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal)).ToArray();
-        var parent = root;
-        foreach (var part in parts.SkipLast(1)) parent = parent is JsonArray array ? array[int.Parse(part, System.Globalization.CultureInfo.InvariantCulture)]! : parent[part]!;
-        if (parent is JsonArray list) list[int.Parse(parts[^1], System.Globalization.CultureInfo.InvariantCulture)] = value;
-        else parent[parts[^1]] = value;
+        var updated = reference.Rewrite(JsonSerializer.SerializeToElement(root), value);
+        var target = root.AsObject(); target.Clear();
+        foreach (var member in updated.EnumerateObject()) target.Add(member.Name, JsonNode.Parse(member.Value.GetRawText()));
     }
 }

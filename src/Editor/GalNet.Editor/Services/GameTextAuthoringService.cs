@@ -59,7 +59,7 @@ public sealed class GameTextAuthoringService(LocalizationDocumentStore store, Pr
         var drafts = references.Select(reference => _drafts[reference.Key]).DistinctBy(draft => draft.Token).ToArray();
         var files = await PrepareFilesAsync(drafts, existing, current);
         var root = JsonSerializer.SerializeToNode(parameters)!;
-        foreach (var reference in references) Set(root, reference.JsonPointer, _drafts[reference.Key].Key);
+        foreach (var reference in references) Set(root, reference, _drafts[reference.Key].Key);
         return new(root.Deserialize<Dictionary<string, JsonElement>>()!, files);
     }
     public async Task<bool> CommitEntryAsync(string group, EditorEntryData entry, string type, Dictionary<string, JsonElement> parameters, Func<bool> isCurrent, CancellationToken token)
@@ -202,7 +202,7 @@ public sealed class GameTextAuthoringService(LocalizationDocumentStore store, Pr
         foreach (var entry in entries)
         {
             var root = JsonSerializer.SerializeToNode(entry.Parameters)!;
-            foreach (var reference in References("clipboard", entry)) Set(root, reference.JsonPointer, map[reference.Key]);
+            foreach (var reference in References("clipboard", entry)) Set(root, reference, map[reference.Key]);
             entry.Parameters = root.Deserialize<Dictionary<string, JsonElement>>()!;
         }
         foreach (var option in options.SelectMany(node => node.Options ?? [])) if (map.TryGetValue(option.Text, out var key)) option.Text = key;
@@ -226,7 +226,7 @@ public sealed class GameTextAuthoringService(LocalizationDocumentStore store, Pr
             JsonElement? state = metadata.RootElement.TryGetProperty("textStates", out var states) && states.TryGetProperty(group.Key, out var existing) ? existing.Clone() : null;
             var target = store.CaptureText(key); var draft = Register(target, translations.GetValueOrDefault(Culture) ?? "") with { Translations = translations, State = state, WriteSource = translations.ContainsKey(Culture) };
             _drafts[draft.Token] = draft; drafts.Add(draft);
-            foreach (var reference in group) Set(root, reference.JsonPointer, draft.Token);
+            foreach (var reference in group) Set(root, reference, draft.Token);
         }
         return new(root["value"]!.Deserialize<JsonElement>(), () => { foreach (var draft in drafts) Release(draft); });
     }
@@ -254,6 +254,12 @@ public sealed class GameTextAuthoringService(LocalizationDocumentStore store, Pr
         private EventHandler? _changed; private bool _subscribed;
         private void Refresh() => _changed?.Invoke(this, EventArgs.Empty);
         public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken cancellationToken) => owner.CommitOptionAsync(node, option, value, cancellationToken);
+    }
+    public static void Set(JsonNode root, LocalizationReference reference, string value)
+    {
+        var updated = reference.Rewrite(JsonSerializer.SerializeToElement(root), value);
+        var target = root.AsObject(); target.Clear();
+        foreach (var member in updated.EnumerateObject()) target.Add(member.Name, JsonNode.Parse(member.Value.GetRawText()));
     }
     public static void Set(JsonNode root, string pointer, string value)
     {

@@ -11,7 +11,7 @@ public partial class VariantsShowOptions
     [Common, Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
     [Common, Field(1, Required = true, EditorId = "entry.variantsasset")] public string AssetId { get; set; } = "";
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Selection { get; set; }
-    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(5, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Slider, Step = .01)] public float Opacity { get; set; } = 1;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]

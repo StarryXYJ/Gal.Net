@@ -93,19 +93,19 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var project = await projects.CreateAsync(Path.Combine(_root, "LocalizationProblemNavigation"), "Localization", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
             var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
-            var entries = workspace.InsertEntriesInto(group, 0, 2, BuiltinEntryIds.MoveLayer).ToArray();
+            var entries = workspace.InsertEntriesInto(group, 0, 2, BuiltinEntryIds.PlayTimeline).ToArray();
             var authoring = scope.GetRequiredService<EntryFieldAuthoringService>();
             foreach (var entry in entries)
             {
                 var parameters = new Dictionary<string, JsonElement>(entry.Source.Parameters)
                 {
-                    ["transform"] = JsonSerializer.SerializeToElement(new { X = 1f, Y = 2f, ScaleX = 1f, ScaleY = 1f, RotationDegrees = 0f })
+                    ["timeline"] = JsonSerializer.SerializeToElement(new { frameRate = 60, durationFrames = 30, tracks = Array.Empty<object>(), events = Array.Empty<object>() })
                 };
                 authoring.SetParameters(group.Id, entry.Source, entry.Type, parameters);
             }
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id);
             var problems = scope.GetRequiredService<ProblemsPanelViewModel>(); await AwaitAutomaticProblems(problems);
-            var warnings = problems.Problems.Where(problem => problem.Code == "localization.field.opaque" && problem.Target?.FieldId == "transform").ToArray();
+            var warnings = problems.Problems.Where(problem => problem.Code == "localization.field.opaque" && problem.Target?.FieldId == "timeline").ToArray();
             Assert.That(warnings.Select(problem => problem.Target!.EntryId), Is.EquivalentTo(entries.Select(entry => entry.StableId)),
                 "Incomplete analysis still has an exact diagnostic owner; identical field paths in different entries must not merge.");
             var factory = scope.GetRequiredService<EditorDockFactory>(); var layout = factory.CreateLayout(); factory.InitLayout(layout);
@@ -126,7 +126,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var inspector = TimelineDockables(layout).Select(item => item.Context).OfType<InspectorHostViewModel>()
                     .Select(item => item.CurrentInspectorViewModel).OfType<EntryInspectorViewModel>().Single();
                 Assert.That(inspector.Entry?.StableId, Is.EqualTo(warning.Target.EntryId));
-                Assert.That(inspector.RequestedField, Is.EqualTo("transform"));
+                Assert.That(inspector.RequestedField, Is.EqualTo("timeline"));
             }
             var owner = entries[1];
             var unknown = new Dictionary<string, JsonElement>(owner.Source.Parameters) { ["custom/field~name"] = JsonSerializer.SerializeToElement(1) };

@@ -1,5 +1,4 @@
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models.Graph;
@@ -101,6 +100,11 @@ public sealed partial class EntryEditSession : IDisposable
                 if (draft.Field.Semantic == FieldValueSemantic.LocalizedText)
                 {
                     var key = draft.Owner.Source.Parameters.GetValueOrDefault(draft.Root.Id);
+                    if (draft.Path.Length > 0)
+                    {
+                        using var snapshot = new ValueDocument(draft.Root, key);
+                        key = snapshot.FindProperty(draft.Path)?.Value ?? default;
+                    }
                     textDraft = _texts.Register(_texts.Capture(key.ValueKind == JsonValueKind.String ? key.GetString()! : "", draft.Owner.StableId), state.Text);
                     candidate = new(JsonSerializer.SerializeToElement(textDraft.Token));
                 }
@@ -112,22 +116,10 @@ public sealed partial class EntryEditSession : IDisposable
                 if (draft.Path.Length > 0)
                 {
                     var source = draft.Owner.Source.Parameters.GetValueOrDefault(draft.Root.Id);
-                    var encoded = source.ValueKind == JsonValueKind.String;
-                    var root = source.ValueKind is JsonValueKind.Undefined or JsonValueKind.Null ? new JsonObject()
-                        : JsonNode.Parse(encoded ? source.GetString()! : source.GetRawText())!;
-                    JsonNode node = root;
-                    foreach (var segment in draft.Path[..^1])
-                    {
-                        var child = Child(node, segment);
-                        if (child is null && node is JsonObject obj) { child = new JsonObject(); obj[Wire(obj, segment)] = child; }
-                        node = child ?? throw new InvalidDataException("The draft's object or list target is no longer available.");
-                    }
-                    var last = draft.Path[^1];
-                    var replacement = candidate.Json is { } json ? JsonNode.Parse(json.GetRawText()) : null;
-                    if (node is JsonArray array) array[int.Parse(last, System.Globalization.CultureInfo.InvariantCulture)] = replacement;
-                    else if (candidate.IsProvided) node[Wire(node, last)] = replacement;
-                    else ((JsonObject)node).Remove(Wire(node, last));
-                    candidate = new(encoded ? JsonSerializer.SerializeToElement(root.ToJsonString()) : JsonSerializer.SerializeToElement(root));
+                    using var document = new ValueDocument(draft.Root, source);
+                    var patch = document.Patch(draft.Path, candidate.Json);
+                    if (patch.Issue is not null) return patch.Issue;
+                    candidate = new(patch.Value);
                 }
                 var result = await draft.Owner.CommitParameterAsync(draft.Root, candidate, CancellationToken.None);
                 if (result is null) state.Clear();
@@ -138,13 +130,6 @@ public sealed partial class EntryEditSession : IDisposable
         catch (Exception exception) when (exception is JsonException or ArgumentException or InvalidOperationException or InvalidDataException)
         { return new("field.draft", exception.Message); }
     }
-    private static string Wire(JsonNode node, string name)
-    {
-        if (node is not JsonObject obj) return name;
-        var matches = obj.Select(pair => pair.Key).Where(key => key.Equals(name, StringComparison.OrdinalIgnoreCase)).ToArray();
-        return matches.Length > 1 ? throw new InvalidDataException("The draft's property name is ambiguous.") : matches.SingleOrDefault() ?? name;
-    }
-    private static JsonNode? Child(JsonNode node, string name) => node is JsonArray array ? array[int.Parse(name, System.Globalization.CultureInfo.InvariantCulture)] : node[Wire(node, name)];
     public Task CommitAsync() => CommitAsync(default(ProjectDraftCommitContext));
     private async Task CommitAsync(ProjectDraftCommitContext context)
     {

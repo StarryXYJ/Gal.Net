@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [属性逻辑路径与 wire 边界](lessons/L-20261027-06-property-wire-boundaries.md)：JSON Pointer 不能穿过 JSON 字符串；引用识别、比较、复制与回写须同时迁移类型化路径。JsonArray 递归修改返回原节点时不能再次挂载该实例。
+
 - [数值模板与作者草稿](lessons/L-20261027-05-numeric-template-drafts.md)：NumericUpDown 的模板/Value 初始化不能成为作者输入；借用主题时由字段上下文拥有原始文字与提交，TextBox.PropertyChanged 同步捕获，验证挂载无草稿及输入后立即 Enter。
 
 - 2026-10-27 Group Problems 按作者历史/相关依赖自动检查内存工作版，代次阻止旧结果发布，合法待提交不计条目错误。Editor numeric 默认保留文字的上下框，显式 numericupdown/numerictext 与 slider+精确输入；long/ulong/decimal 保留文本。前导小数点仅在类型化数字编辑入口规范化，JSON 源码仍严格。规范见 docs/spec/editor-groups.md、control.md；证据见 features/F-20261023-01-editor-uiux/follow-up-group-diagnostics-numeric-20261027.md。

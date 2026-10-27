@@ -22,9 +22,13 @@ Editor.Shared 的 LocalizationReferenceIndex 分析一个 EditorProjectDocument 
 
 - 遍历全部 GroupEntries，不依赖页面是否打开；定位包含 Group ID、Entry StableId 和 JSON Pointer。
 - 对 Choice 分支使用稳定 option ID，显式索引 Text；角色 catalog 的 DisplayNameKey 也进入文本引用。
-- 递归分析带静态 Schema 的 IFieldDto 和数组/List/IList/IReadOnlyList/IEnumerable；列表下标只是导航位置，索引不生成或重算文本身份。
+- 通过 Core.ValueDocument 的有界迭代分析带静态 Schema 的 IFieldDto、数组/List/IList/IReadOnlyList/IEnumerable、字符串键字典和显式关联 ValueStructure 的 JSON 字段；列表下标只是导航位置，索引不生成或重算文本身份。
 - 缺省、null、空字符串和纯空白字符串不生成引用，不补默认值；空 LocalizedText key 表示有意的空文本，启动时不要求对应译文，运行时解析为空字符串。空对象和空数组也不包含引用，不因缺少 schema 或未知字段而阻止分析；非空的未知字段/类型、不可遍历结构与错误 shape 仍报告分析不完整。
 - 深度上限 16，整个分析的值预算 100,000。超限产生 analysis.limit，不能以未找到引用认定角色未使用。
+
+内置 Transform、ToTransform 与 Flipbook 字段关联其可编辑子字段的共享 schema，正常非空值不再因为 JsonElement 外层类型而产生 field.opaque；未知非空扩展仍报告未覆盖。Transform 的历史字符串编码由显式结构适配解释。LocalizationReference / LocalizationIssue 的 Path 保留带编码边界的类型化逻辑路径；JsonPointer 指向实际外层 wire 位置，不伪造穿过 JSON 字符串的 Pointer。Problems 使用逻辑路径定位内部字段。动态效果参数、Timeline 及其他未关联结构的 JSON 字段仍按原覆盖规则报告，未声称全量迁移。
+
+引用的 LocationKey 使用逻辑位置区分同一外层字符串中的多个叶值，Rewrite 使用类型化路径产生新参数快照并保留编码。角色引用比较/替换、文本草稿/复制写入以及本地化来源显示已接入该位置；旧公开 Pointer Set 入口保留，新的引用回写不再以外层 Pointer 猜测内部地址。
 
 I18n/catalog/characters.json 的角色按 Ordinal ID 检查；允许姓名译文相同。I18n/<culture>/**/*.json 支持平铺与嵌套字符串叶值，按文件路径 Ordinal 排序并保留每个来源及属性位置。FindDirect 返回同语言最后生效的定义；缺少直接翻译返回 null，不做运行时回退。显式空串与缺失独立。External 不进入作者索引。
 
