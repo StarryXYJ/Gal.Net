@@ -95,7 +95,11 @@ folder 相对描述文件，允许 `.` 和不越过 Assets 的 `..`，兼容两�
 
 ## 后端媒体文件租约
 
+`PakStreamProvider` 使用宿主显式提供的归档名 → 新流工厂清单打开 PAK，适用于应用包、嵌入资源等没有普通文件路径的来源。`Exists` 仅查询清单；每次打开独立拥有并释放流，读取不要求 Length/Position/Seek。同步与异步入口均在返回前读完 PAK，保持当前 Archive 的内存加载语义；异步复制支持取消。工厂应返回位于 PAK 起始位置的新可读流，不得共享已借用流。归档名忽略大小写并接受 `.pak` 后缀别名，重复归一化名称会拒绝。此适配不接管 Graph/settings/I18n 的安装内容加载。
+
 `IAssetFileMaterializer` / `AssetFileLease` 位于 Core.Assets；Assets 的 `AssetFileMaterializer` 通过 AssetManager acquire 的字节实体化媒体。同一会话内资源 ID（忽略大小写）共享文件，最后一个租约释放才删除。关闭 materializer 取消待加载请求并拒绝新请求，已借用文件仍有效直到释放。Sample 将同一实例传给剧情音频、视频与 Gallery；视频先释放原生播放器再释放文件租约。Gallery 缩略图抽取和临时缓存由独立服务拥有。
+
+`AssetFileMaterializer(assets, cacheDirectory)` 允许宿主传入应用可写缓存根；缺省使用 .NET 临时目录。每个实例只创建并清理该根下 `GalNet/Media/<唯一目录>`，不会删除宿主提供的根或其他缓存。实体化结果是后端可打开的普通文件路径；包内 URI 不直接交给文件型媒体解码器。
 
 LibVLC 音频后端同样为每个 voice 持有独立文件租约，先销毁播放器再释放租约；自然结束、立即停止、淡出完成、创建失败与取消加载均归还租约。后端不再将播放过的文件保留到整个会话结束，也不另建音频引用计数或闲置缓存层。多个声音及视频/Gallery 仍通过同一个 materializer 共享文件，音频停止不会删除其他消费者仍在使用的文件。
 

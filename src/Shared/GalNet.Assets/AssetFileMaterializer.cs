@@ -3,13 +3,14 @@ using GalNet.Core.Assets;
 namespace GalNet.Assets;
 
 /// <summary>Materializes acquired bytes once while any consumer retains a file lease.</summary>
-public sealed class AssetFileMaterializer(IAssetManager assets) : IAssetFileMaterializer
+public sealed class AssetFileMaterializer(IAssetManager assets, string? cacheDirectory = null) : IAssetFileMaterializer
 {
     private readonly object _gate = new();
     private readonly SemaphoreSlim _loadGate = new(1, 1);
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Dictionary<string, Entry> _entries = new(StringComparer.OrdinalIgnoreCase);
-    private readonly string _directory = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "GalNet", "Media", Guid.NewGuid().ToString("N"));
+    private readonly string _directory = System.IO.Path.Combine(
+        System.IO.Path.GetFullPath(cacheDirectory ?? System.IO.Path.GetTempPath()), "GalNet", "Media", Guid.NewGuid().ToString("N"));
     private bool _disposed;
     private bool _drained;
     private Task? _disposeTask;
