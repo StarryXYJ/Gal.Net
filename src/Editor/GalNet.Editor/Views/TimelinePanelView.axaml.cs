@@ -18,11 +18,6 @@ public partial class TimelinePanelView : UserControl
         vm.Session.Canvas.PixelsPerFrame = Math.Max(1, TimelineKeys.Bounds.Width - 20) / Math.Max(1, vm.Session.Duration);
         vm.Session.Canvas.StartFrame = 0;
     }
-    private void OnLocatePlayhead(object? sender, RoutedEventArgs args)
-    {
-        if (DataContext is ViewModels.TimelinePanelViewModel vm)
-            vm.Session.Canvas.StartFrame = Math.Max(0, vm.Session.Frame - TimelineKeys.Bounds.Width / vm.Session.Canvas.PixelsPerFrame / 2);
-    }
     private Flyout? _objectFlyout;
     private Flyout? _keyFlyout;
     public TimelinePanelView() { InitializeComponent(); AddHandler(KeyDownEvent, OnValueKeyDown, RoutingStrategies.Tunnel); }

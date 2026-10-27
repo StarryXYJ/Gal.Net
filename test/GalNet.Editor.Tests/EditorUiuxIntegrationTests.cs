@@ -205,7 +205,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var timelineEntry = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.PlayTimeline).Single();
                 timelineEntry.Source.Parameters["timeline"] = TimelineFixture(); page.SelectedEntry = timelineEntry;
                 var timelineView = new TimelinePanelView { DataContext = timeline }; window.Content = timelineView; TimelinePump(window);
-                Assert.That(timelineView.GetVisualDescendants().OfType<GridSplitter>().Count(), Is.EqualTo(2));
+                Assert.That(timelineView.GetVisualDescendants().OfType<GridSplitter>().Count(), Is.EqualTo(3));
                 Assert.That(timelineView.TreeColumnWidth.Value, Is.EqualTo(320)); timelineView.TreeColumnWidth = new GridLength(260); TimelinePump(window);
                 Assert.That(timelineView.FindControl<GalNet.Game.Controls.Timeline.TimelineCanvas>("TimelineKeys")!.Bounds.Width, Is.GreaterThan(300));
                 Capture("uiux-timeline-960.png");

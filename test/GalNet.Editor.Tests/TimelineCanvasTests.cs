@@ -141,7 +141,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(session.Canvas.HasPendingMove, Is.True); Assert.That(session.Canvas.IsMoveValid, Is.False); Assert.That(history.CanUndo, Is.False);
                 PressGroupKey(canvas, Key.Escape); Assert.That(session.Canvas.HasPendingMove, Is.False); Assert.That(history.CanUndo, Is.False);
                 window.MouseDown(first, MouseButton.Left); window.MouseMove(first + new Vector(64, 0)); window.MouseUp(first + new Vector(64, 0), MouseButton.Left); TimelinePump(window);
-                vm.ReplaceCollisionsCommand.Execute(null); TimelinePump(window);
+                session.ReplaceKeyCollisions(); TimelinePump(window);
                 var keys = entry.Source.Parameters["timeline"].GetProperty("Tracks")[0].GetProperty("Keys"); Assert.That(keys.GetArrayLength(), Is.EqualTo(2)); Assert.That(keys[1].GetProperty("Frame").GetInt32(), Is.EqualTo(20)); Assert.That(keys[1].GetProperty("futureKey")[1].ValueKind, Is.EqualTo(JsonValueKind.Null));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); TimelinePump(window);
                 var zero = CanvasPoint(window, canvas, xRow, 0) + new Vector(1, 0); window.MouseDown(zero, MouseButton.Left); window.MouseUp(zero, MouseButton.Left); PressGroupKey(canvas, Key.Delete);
@@ -157,7 +157,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var localization = scope.GetRequiredService<IEditorLocalizationService>();
                 foreach (var locale in new[] { "en-US", "ja-JP", "ko-KR", "zh-CN" })
                 {
-                    localization.ApplyLocale(locale); TimelinePump(window); Assert.That(view.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, vm.AddKeyCommand)).Content, Is.EqualTo(localization["Timeline.AddKey"]));
+                    localization.ApplyLocale(locale); TimelinePump(window);
+                    var addKey = view.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, vm.AddKeyCommand));
+                    Assert.That(addKey.Content, Is.TypeOf<PathIcon>());
+                    Assert.That(ToolTip.GetTip(addKey), Is.EqualTo(localization["Timeline.AddKey"]));
+                    Assert.That(Avalonia.Automation.AutomationProperties.GetName(addKey), Is.EqualTo(localization["Timeline.AddKey"]));
                     mode = view.GetVisualDescendants().OfType<ComboBox>().First(control => control.Name == "TimelineBlendMode");
                     Assert.That(mode.Items.OfType<ComboBoxItem>().Select(item => item.Content), Is.EqualTo(new[] { localization["Timeline.Absolute"], localization["Timeline.Offset"] }));
                 }

@@ -47,13 +47,14 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     [ObservableProperty] private int _frameRate = 60;
     public bool HasNoRows => CanEdit && VisibleNodes.Count == 0;
     public bool AnalysisIncomplete => CanEdit && !_scene.Complete;
+    public string CurrentFrameText => _localization.Format("Timeline.CurrentFrame", Frame);
     public int Frame
     {
         get => _frame;
         set
         {
             var next = Math.Clamp(value, 0, Duration);
-            if (SetProperty(ref _frame, next)) { Canvas.Cancel(); BuildRows(); }
+            if (SetProperty(ref _frame, next)) { OnPropertyChanged(nameof(CurrentFrameText)); Canvas.Cancel(); BuildRows(); }
         }
     }
     public TimelineEditSession(EntrySelectionContext selection, IEditorDocumentService documents, EntryFieldAuthoringService authoring,
@@ -73,10 +74,11 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
     {
         if (change.UnknownScope || _selection.Current is { } target && change.Groups.Any(group => group.GroupId == target.GroupId)) Refresh();
     }
-    private void OnSelection() { ClearObjectDrafts(); _frame = 0; OnPropertyChanged(nameof(Frame)); Refresh(); }
+    private void OnSelection() { ClearObjectDrafts(); _frame = 0; OnPropertyChanged(nameof(Frame)); OnPropertyChanged(nameof(CurrentFrameText)); Refresh(); }
     private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {
         if (args.PropertyName != "Item[]") return;
+        OnPropertyChanged(nameof(CurrentFrameText));
         foreach (var row in Rows) row.RefreshLabel();
         foreach (var node in Tree.SelectMany(node => node.Descendants())) node.RefreshLabel();
         foreach (var row in Events) row.RefreshLabel();
@@ -112,7 +114,7 @@ public sealed partial class TimelineEditSession : ObservableObject, IDisposable
         try
         {
             _document = new(json); Duration = _document.Duration; FrameRate = _document.FrameRate; CanEdit = true; StatusKey = "Timeline.Editing";
-            _frame = Math.Clamp(_frame, 0, Duration); OnPropertyChanged(nameof(Frame)); BuildRows();
+            _frame = Math.Clamp(_frame, 0, Duration); OnPropertyChanged(nameof(Frame)); OnPropertyChanged(nameof(CurrentFrameText)); BuildRows();
         }
         catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException)
         { CanEdit = false; _document = null; Rows.Clear(); Tree.Clear(); StatusKey = "Timeline.Invalid"; NotifyState(); }
