@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- 本地 CI 入口为 `scripts/ci/Invoke-CI.ps1`（默认 All，可 Coverage），Actions 调用同一脚本；SDK 精确固定为 global.json 版本。`scripts/release/Release.ps1` 生成并验收 5 个聚合 NuGet 与 Windows x64 R2R 的 Editor、纯/整合 Sample、Contracts 四 ZIP；包归属见 packaging/packages.json，操作见 docs/manual/release-packaging.md。桌面 Sample AOT 尚未通过严格链接，不能从 Headless 自检推导支持；F-20261027-04 的 summary 保留未完成项。
+
 - [Solution fixture 配置](lessons/L-20261027-11-solution-fixture-configuration.md)：solution 外引用工程可能回到 Debug，测试却读取 Release；契约 fixture 已加入 GalNet.slnx，验证构建日志和实际输出配置。
 - [源生成 init 默认值](lessons/L-20261027-12-generated-init-defaults.md)：音轨/Bus 精简 JSON 会丢失 init 属性初始化值；显式 JsonConstructor 可选参数保留容量/增益默认值，不放宽校验或改成可变 DTO。
 

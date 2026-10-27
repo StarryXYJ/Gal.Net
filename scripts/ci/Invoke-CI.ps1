@@ -38,6 +38,12 @@ try {
     $expected = (Get-Content global.json -Raw | ConvertFrom-Json).sdk.version
     $actual = (& dotnet --version).Trim()
     if ($LASTEXITCODE -ne 0 -or $actual -ne $expected) { throw "Expected .NET SDK $expected; selected $actual." }
+    $guardRoot = Join-Path $OutputRoot "guards-$([guid]::NewGuid().ToString('N').Substring(0, 8))"
+    $guardLog = Join-Path $OutputRoot 'release-guards.log'
+    & pwsh -NoProfile -File (Join-Path $PSScriptRoot 'Test-ReleaseGuards.ps1') -OutputRoot $guardRoot *> $guardLog
+    $guardCode = $LASTEXITCODE
+    $results.Add([ordered]@{ name = 'release-guards'; exitCode = $guardCode; log = $guardLog })
+    if ($guardCode -ne 0) { throw "Release guard checks failed. Log: $guardLog" }
     # Configuration affects the Sample and integration restore graphs. Use it in every phase.
     Invoke-Check 'restore' @('restore', 'GalNet.slnx', '--locked-mode', "-p:Configuration=$Configuration", '-m:1', '-nr:false')
     if ($Stage -in @('All', 'Format')) {

@@ -62,6 +62,7 @@
         "resolved": "4.2.0",
         "contentHash": "gmoWVOvKgbME8TYR+gwMf7osROiWAURterc6Rt2dQyX7wtjZYpqFiA/pY6ztjGQKKV62GGCyOcmtP1UKMHgSmA=="
       }
-    }
+    },
+    "net10.0/win-x64": {}
   }
 }

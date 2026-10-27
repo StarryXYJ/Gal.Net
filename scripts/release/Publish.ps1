@@ -5,16 +5,17 @@ param(
     [string]$Version,
     [string]$OutputRoot,
     [string]$ProjectDirectory,
-    [string]$Galpak
+    [string]$Galpak,
+    [string]$ContractOutputDirectory,
+    [switch]$IncludeModeInName
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $headlessProject = Join-Path $repoRoot 'src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj'
-$exportContractsScript = Join-Path $repoRoot 'scripts/contracts/export-sample-contracts.ps1'
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $tag = (& git -C $repoRoot describe --tags --abbrev=0 --match 'v[0-9]*' 2>$null)
+    $tag = (& git -C $repoRoot describe --tags --exact-match --match 'v[0-9]*' 2>$null)
     if ($LASTEXITCODE -eq 0 -and $tag -match '^v(.+)$') { $Version = $Matches[1] }
     else { $Version = '0.1.0-dev' }
 }
@@ -47,14 +48,22 @@ if (![string]::IsNullOrWhiteSpace($ProjectDirectory)) {
 }
 
 function Invoke-DotNet([string[]]$Arguments) {
+    # Runtime CLI arguments must not receive MSBuild properties.
+    $properties = @("-p:Version=$Version", '-p:ContinuousIntegrationBuild=true')
+    $separator = [Array]::IndexOf($Arguments, '--')
+    if ($separator -ge 0) {
+        $Arguments = @($Arguments[0..($separator - 1)]) + $properties + @($Arguments[$separator..($Arguments.Length - 1)])
+    }
+    else { $Arguments += $properties }
     $logPath = Join-Path $dotnetLogsRoot "dotnet-$([guid]::NewGuid().ToString('N')).log"
+    Write-Host "[apps] dotnet $($Arguments[0]) $($Arguments[1])"
     & dotnet @Arguments *> $logPath
     $exitCode = $LASTEXITCODE
     if ($exitCode -ne 0) {
         $details = Get-Content -LiteralPath $logPath -Tail 80 | Out-String
         throw "dotnet $($Arguments -join ' ') failed with exit code $exitCode. Log: $logPath`n$details"
     }
-    Remove-Item -LiteralPath $logPath -Force
+    Write-Host "[apps] completed; log: $logPath"
 }
 
 function Get-RelativePath([string]$BasePath, [string]$Path) {
@@ -137,8 +146,10 @@ function Add-PackageManifest([string]$PackageRoot, [string]$Kind) {
 }
 
 function Complete-Package([string]$Kind, [string]$PackageRoot) {
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $PackageRoot 'LICENSE') -Force
     Add-PackageManifest $PackageRoot $Kind
-    $zipName = "GalNet-$Kind-$Version-win-x64.zip"
+    $modeSuffix = if ($IncludeModeInName) { '-r2r' } else { '' }
+    $zipName = "GalNet-$Kind-$Version-win-x64$modeSuffix.zip"
     $zipPath = Join-Path $versionRoot $zipName
     if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
     if (Test-Path -LiteralPath "$zipPath.sha256") { Remove-Item -LiteralPath "$zipPath.sha256" -Force }
@@ -156,6 +167,8 @@ function Publish-Editor {
         $project = Join-Path $repoRoot 'src/Editor/GalNet.Editor/GalNet.Editor.csproj'
         Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
         Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $hostRoot)
+        Invoke-DotNet @('restore', $headlessProject, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
+        Invoke-DotNet @('publish', $headlessProject, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', (Join-Path $hostRoot 'CLI'))
         @'
 GalNet Editor
 
@@ -166,7 +179,7 @@ Run GalNet.Editor.exe to start the editor.
     finally { Remove-Stage $stage }
 }
 
-function Add-GameContent([string]$Stage, [string]$PackageRoot) {
+function Add-GameContent([string]$Stage, [string]$PackageRoot, [string]$ContractsRoot) {
     $contentBuildRoot = Join-Path $Stage 'GameTestCase'
     $contentRoot = Join-Path $PackageRoot 'GameTestCase'
     if (![string]::IsNullOrWhiteSpace($Galpak)) {
@@ -181,9 +194,11 @@ function Add-GameContent([string]$Stage, [string]$PackageRoot) {
         Copy-ContentTree $ProjectDirectory $contentBuildRoot @('Contracts')
     }
     else {
-        & $exportContractsScript -Configuration Release
-        if ($LASTEXITCODE -ne 0) { throw 'Building sample project contracts failed.' }
-        Copy-ContentTree (Join-Path $repoRoot 'out') $contentBuildRoot @('Contracts')
+        $targetContracts = Join-Path $contentBuildRoot 'Contracts'
+        New-Item -ItemType Directory -Force -Path $targetContracts | Out-Null
+        foreach ($name in @('GalNet.Core.dll', 'GalNet.Contracts.Builtins.dll', 'GalNet.Project.Contracts.dll')) {
+            Copy-Item -LiteralPath (Join-Path $ContractsRoot $name) -Destination $targetContracts
+        }
     }
     Invoke-DotNet @('run', '--project', $headlessProject, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore', '--', 'project', 'export-directory', $contentBuildRoot, '--output', $contentRoot)
 }
@@ -196,6 +211,13 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
         $project = Join-Path $repoRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
         Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:EnableGameDebugging=false', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
         Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:EnableGameDebugging=false', '-p:CopyOutputSymbolsToPublishDirectory=false', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
+
+        if ($ContractOutputDirectory) {
+            New-Item -ItemType Directory -Force -Path $ContractOutputDirectory | Out-Null
+            foreach ($name in @('GalNet.Core.dll', 'GalNet.Contracts.Builtins.dll', 'GalNet.Project.Contracts.dll')) {
+                Copy-Item -LiteralPath (Join-Path $runtimeRoot $name) -Destination $ContractOutputDirectory -Force
+            }
+        }
 
         if ($IncludePure) {
             @'
@@ -224,7 +246,7 @@ Headless CLI `galpak install` command.
             New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
             $excluded = if ($IncludePure) { @('README.txt', 'Run-Sample.cmd', 'release-manifest.json') } else { @() }
             Copy-PublishedFiles $runtimeRoot $packageRoot $excluded
-            Add-GameContent $stage $packageRoot
+            Add-GameContent $stage $packageRoot $runtimeRoot
             @'
 @echo off
 setlocal

@@ -1,0 +1,27 @@
+{
+  "GalNet.Contracts": {
+    "projects": ["Shared/GalNet.Core", "Shared/GalNet.Contracts.Builtins"],
+    "dependencies": [],
+    "description": "GalNet extension contracts and built-in authoring schemas."
+  },
+  "GalNet.Engine": {
+    "projects": ["Shared/GalNet.Runtime", "Shared/GalNet.Primitives.Builtins", "Shared/GalNet.Presentation.Abstractions", "Shared/GalNet.GameHost", "Shared/GalNet.Assets", "Shared/GalNet.Debugging", "Shared/GalNet.Diagnostics"],
+    "dependencies": ["GalNet.Contracts"],
+    "description": "GalNet narrative runtime, content abstractions and host sessions."
+  },
+  "GalNet.Desktop": {
+    "projects": ["Infrastructure/GalNet.Storage.FileSystem", "Infrastructure/GalNet.Media.Audio", "Infrastructure/GalNet.Media.Miniaudio", "Infrastructure/GalNet.Media.LibVlc"],
+    "dependencies": ["GalNet.Engine"],
+    "description": "GalNet default file storage and audio/video backends. Native audio assets currently support Windows x64."
+  },
+  "GalNet.Avalonia": {
+    "projects": ["Presentation/GalNet.Avalonia.Controls", "Presentation/GalNet.Avalonia.Rendering", "Presentation/GalNet.Avalonia.GameView", "Presentation/GalNet.Avalonia.Themes", "Presentation/GalNet.Avalonia.GameHost"],
+    "dependencies": ["GalNet.Desktop"],
+    "description": "GalNet Avalonia player views, rendering, themes and host composition."
+  },
+  "GalNet.SchemaGenerator": {
+    "projects": ["Tooling/GalNet.SchemaGenerator"],
+    "dependencies": [],
+    "description": "Compile-time GalNet field schema generator. Reference with PrivateAssets=all."
+  }
+}

@@ -2,43 +2,94 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Local-only candidate version (no upload)
+        required: true
+        default: 0.1.0-dev.1
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  publish:
+  build:
     runs-on: windows-latest
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.401
-      - name: Build release packages
+          global-json-file: global.json
+      - name: Run the same CI checks as local development
+        shell: pwsh
+        run: ./scripts/ci/Invoke-CI.ps1 -Stage All -OutputRoot out/ci/release
+      - name: Build and validate the local release
+        env:
+          CANDIDATE_VERSION: ${{ inputs.version }}
         shell: pwsh
         run: |
-          $tag = $env:GITHUB_REF_NAME
-          if ($tag -notmatch '^v([0-9]+\.[0-9]+\.[0-9]+(?:-preview\.[0-9]+)?)$') {
-            throw "Release tag '$tag' must use vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-preview.N."
+          if ('${{ github.event_name }}' -eq 'push') {
+            ./scripts/release/Release.ps1 -Tag $env:GITHUB_REF_NAME -SampleMode R2R
+          } else {
+            ./scripts/release/Release.ps1 -Version $env:CANDIDATE_VERSION -SampleMode R2R
           }
-          $version = $tag.Substring(1)
-          ./scripts/release/Publish.ps1 -Package All -Version $version
-      - name: Create GitHub Release
+      - name: Upload sealed release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: |
+            out/release/*/nuget/*.nupkg
+            out/release/*/assets/*.zip
+            out/release/*/SHA256SUMS
+            out/release/*/release-index.json
+          if-no-files-found: error
+      - name: Upload validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence
+          path: |
+            out/ci/release
+            out/release/.work/**/logs
+            out/release/.work/**/package-validation.json
+          include-hidden-files: true
+          if-no-files-found: warn
+
+  publish:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files
+          path: out/release
+      - name: Upload the verified files without rebuilding
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
         run: |
-          $tag = $env:GITHUB_REF_NAME
-          $version = $tag.Substring(1)
-          $assetDirectory = Join-Path $PWD "out/release/$version"
-          $assets = @(Get-ChildItem -LiteralPath $assetDirectory -File | Sort-Object Name | ForEach-Object FullName)
-          if ($assets.Count -lt 6) { throw "Expected three ZIP packages and three SHA-256 sidecars in $assetDirectory." }
-          $arguments = @('release', 'create', $tag, '--title', "GalNet $version", '--generate-notes')
-          if ($version -match '-preview\.') { $arguments += '--prerelease' }
-          $arguments += $assets
-          & gh @arguments
-          if ($LASTEXITCODE -ne 0) { throw "gh release create failed with exit code $LASTEXITCODE." }
+          $version = $env:GITHUB_REF_NAME.Substring(1)
+          ./scripts/release/Push.ps1 -Index "out/release/$version/release-index.json"
+      - name: Preserve upload journal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-push-journal
+          path: out/release/*/push-state.json
+          if-no-files-found: warn
