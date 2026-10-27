@@ -1,10 +1,14 @@
+#if GALNET_GAME_DEBUG
 using GalNet.Debugging;
+#endif
 
 namespace GalNet.Sample.Avalonia;
 
 internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileDirectory)
 {
+#if GALNET_GAME_DEBUG
     public DebugInvitation? DebugInvitation { get; init; }
+#endif
     public string LogDirectory =>
         Path.Combine(
             ProfileDirectory
@@ -17,16 +21,22 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
     {
         string? gameDirectory = null;
         string? profileDirectory = null;
+#if GALNET_GAME_DEBUG
         var debug = new Dictionary<string, string>(StringComparer.Ordinal);
+#endif
 
         for (var index = 0; index < args.Length; index++)
         {
             if (args[index].StartsWith("--debug-", StringComparison.Ordinal))
             {
+#if GALNET_GAME_DEBUG
                 var key = args[index];
                 if (index + 1 >= args.Length) throw new ArgumentException($"Missing value for '{key}'.");
                 debug.Add(key, args[++index]);
                 continue;
+#else
+                throw new ArgumentException("This application was built without game debugging support.");
+#endif
             }
             if (args[index] == "--profile" && index + 1 < args.Length)
             {
@@ -38,6 +48,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
                 gameDirectory = Path.GetFullPath(args[index]);
         }
 
+#if GALNET_GAME_DEBUG
         DebugInvitation? invitation = null;
         if (debug.Count > 0)
         {
@@ -54,5 +65,8 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
             invitation = new(port, token, session, new(project, DebugContentIdentity.Compute(gameDirectory), fingerprint));
         }
         return new GameLaunchOptions(gameDirectory, profileDirectory) { DebugInvitation = invitation };
+#else
+        return new GameLaunchOptions(gameDirectory, profileDirectory);
+#endif
     }
 }

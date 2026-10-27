@@ -16,6 +16,8 @@ pwsh -File scripts/release/Publish.ps1 -Package All -Version 1.2.3
 
 每个 ZIP 附有 `.sha256` 校验文件，ZIP 内的 `release-manifest.json` 列出所有文件的 SHA-256、包版本和构建 commit。发布使用 `win-x64`、Self-contained 和 ReadyToRun；压缩包解压后不要求玩家另装 .NET Runtime。契约 DLL 仍按 ReadyToRun 配置排除转换，保持严格字节身份。
 
+Sample 发布显式设置 `EnableGameDebugging=false`，不编入 Editor 外部调试接入、Sample 调试菜单/窗口和辅助存档工具；PDB 不进入发布目录。普通运行日志保留。需要 Release 联调时，应单独以 `EnableGameDebugging=true` 构建开发版本，不能用这里的玩家发行包连接 Editor。构建开关见[定制 Sample](customize-avalonia-sample.md#调试构建与玩家发行)。
+
 可单独生成一种包：
 
 ```powershell

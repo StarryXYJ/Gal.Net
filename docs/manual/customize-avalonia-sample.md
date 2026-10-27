@@ -2,6 +2,20 @@
 
 `GalNet.Sample.Avalonia` 是项目级组合根示例：保留启动参数、项目选择、本地化和调试策略；通用会话、页面与展示组合应优先复用 `Avalonia.GameHost`、`Avalonia.GameView` 和 Themes，而不是复制其生命周期代码。
 
+## 调试构建与玩家发行
+
+Sample 通过 MSBuild 属性 `EnableGameDebugging` 控制游戏调试能力，启用时定义 `GALNET_GAME_DEBUG`。Debug 配置默认开启，Release 默认关闭；也可以显式构建带调试能力的优化版本：
+
+```powershell
+dotnet build src/Samples/GalNet.Sample.Avalonia -c Release -p:EnableGameDebugging=true
+```
+
+关闭时不编译调试服务、存档辅助工具、日志窗口和菜单，不引用 `GalNet.Debugging`，也不接入 Avalonia Developer Tools。`--debug-*` 参数明确报错，不会静默启动一个无法连接 Editor 的玩家程序。普通游戏路径、profile 参数和运行错误日志仍然保留。
+
+`ConfigureServices` 的 `enableDebug` 只允许在已经编入调试能力的构建中抑制服务注册，不能给玩家构建重新启用调试。Release 关闭模式使用独立的 `packages.lock.NoGameDebugging.json`；切换开关后必须重新 restore，不能复用另一种依赖图的 `--no-restore` 输出。WindowsReadyToRun 发布沿用该 profile 的独立锁文件。
+
+仓库发行脚本显式关闭游戏调试，并用 `CopyOutputSymbolsToPublishDirectory=false` 排除 PDB；不改变契约程序集的编译参数和严格字节身份。符号文件仍可在构建输出中供开发者保留。此开关不改变游戏内容选择、PAK 覆盖顺序或补丁策略。
+
 默认宿主的扩展目标是让项目自己实现功能。手机、小游戏、商城等可以使用项目服务、XAML、primitive 与状态恢复组合，不需要给框架增加同名业务系统。
 
 ## 替换服务与页面行为

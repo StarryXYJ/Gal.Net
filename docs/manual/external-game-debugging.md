@@ -23,6 +23,8 @@ Editor 的旧内嵌 Preview 已移除，游戏测试统一使用本页的外部�
 
 ## 游戏接入
 
+Sample 必须以 `EnableGameDebugging=true` 构建才能接入（Debug 配置默认开启，Release 默认关闭）。发布给玩家的 Sample 不包含调试协议和工具；Release 联调可显式传入 `-p:EnableGameDebugging=true`。详见[调试构建与玩家发行](customize-avalonia-sample.md#调试构建与玩家发行)。
+
 引用 `GalNet.Debugging`，在项目组合根创建服务。开始回调可省略，开始/停止回调中所需的 UI 调度由宿主负责。
 
 ```csharp

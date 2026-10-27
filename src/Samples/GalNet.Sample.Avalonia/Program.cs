@@ -2,7 +2,9 @@ using System.Globalization;
 using Avalonia;
 using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Logging;
+#if GALNET_GAME_DEBUG
 using GalNet.Sample.Avalonia.Debug;
+#endif
 using Serilog;
 
 namespace GalNet.Sample.Avalonia;
@@ -20,7 +22,11 @@ sealed class Program
             var launchOptions = GameLaunchOptions.Parse(args);
             Directory.CreateDirectory(launchOptions.LogDirectory);
             Log.Logger = new LoggerConfiguration()
+#if GALNET_GAME_DEBUG
                 .MinimumLevel.Debug()
+#else
+                .MinimumLevel.Information()
+#endif
                 .Enrich.WithProperty("LogChannel", "Game")
                 .WriteTo.Console(
                     formatProvider: CultureInfo.InvariantCulture,
@@ -32,7 +38,9 @@ sealed class Program
                     retainedFileCountLimit: 14,
                     shared: true,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3} {LogChannel}] {Message:lj}{NewLine}{Exception}")
+#if GALNET_GAME_DEBUG
                 .WriteTo.Sink(SampleDebugLogStore.Shared)
+#endif
                 .CreateLogger();
 
             try
@@ -71,7 +79,7 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-#if DEBUG
+#if GALNET_GAME_DEBUG
             .WithDeveloperTools()
 #endif
             .WithInterFont()

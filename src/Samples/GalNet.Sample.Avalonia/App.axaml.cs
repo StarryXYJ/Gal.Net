@@ -67,8 +67,10 @@ public partial class App : Application
 #endif
                     var session = scopedServices.GetRequiredService<SampleGameSessionService>();
                     var ready = await session.InitializeAsync(LaunchOptions, mainWindow.SelectLanguageAsync, startupCancellation.Token);
+#if GALNET_GAME_DEBUG
                     if (ready && LaunchOptions.DebugInvitation is { } invitation)
                         await scopedServices.GetRequiredService<Debug.SampleExternalDebug>().ConnectAsync(invitation, startupCancellation.Token);
+#endif
                     if (!startupCancellation.IsCancellationRequested)
                         mainWindow.CompleteStartup(ready ? null : session.StatusMessage);
 #if BENCHMARK

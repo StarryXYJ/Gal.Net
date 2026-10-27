@@ -1,7 +1,6 @@
 <ursa:UrsaWindow xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:GalNet.Game.Controls"
-        xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
         xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
         xmlns:views="using:GalNet.Sample.Avalonia.Views"
         xmlns:ursa="https://irihi.tech/ursa"
@@ -10,22 +9,7 @@
         Background="Black"
         Icon="/Assets/avalonia-logo.ico"
         Title="{loc:Localize App.Title}">
-  <ursa:UrsaWindow.LeftContent>
-    <Menu x:Name="DebugMenu" IsVisible="False" x:DataType="debug:SampleDebugViewModel">
-      <MenuItem Header="{loc:Localize Debug.Menu}">
-        <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" />
-        <MenuItem Header="{loc:Localize Debug.ReloadGameResources}" Command="{Binding ReloadGameResourcesCommand}" />
-        <Separator />
-        <MenuItem Header="{loc:Localize Debug.Save}">
-          <MenuItem Header="{loc:Localize Debug.SaveProgressOnly}" Command="{Binding SaveProgressOnlyCommand}" />
-          <MenuItem Header="{loc:Localize Debug.SaveGalgroup}" Command="{Binding SaveGalGroupStartCommand}" />
-        </MenuItem>
-        <Separator />
-        <MenuItem Header="{loc:Localize Debug.ShowLog}" Command="{Binding ShowLogCommand}" />
-        <MenuItem Header="{loc:Localize Debug.OpenLogDirectory}" Command="{Binding OpenLogDirectoryCommand}" />
-      </MenuItem>
-    </Menu>
-  </ursa:UrsaWindow.LeftContent>
+
   <Grid x:Name="PlayerRoot" Classes="galnet-player" Background="{DynamicResource GalNet.Brush.Background}">
     <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"
                              DesignWidth="1920"

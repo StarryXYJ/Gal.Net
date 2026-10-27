@@ -194,8 +194,8 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
     New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
     try {
         $project = Join-Path $repoRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
-        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
+        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:EnableGameDebugging=false', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
+        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:EnableGameDebugging=false', '-p:CopyOutputSymbolsToPublishDirectory=false', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
 
         if ($IncludePure) {
             @'

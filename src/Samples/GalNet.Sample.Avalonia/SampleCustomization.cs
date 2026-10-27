@@ -19,7 +19,9 @@ using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Project.Contracts;
 using GalNet.GameHost.Content;
+#if GALNET_GAME_DEBUG
 using GalNet.Sample.Avalonia.Debug;
+#endif
 using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.ViewModels;
@@ -48,8 +50,10 @@ internal static class SampleCustomization
             .AddScoped<SampleGameSessionService>()
             .AddScoped<IGameSessionService>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddTransient<MainWindow>();
+#if GALNET_GAME_DEBUG
         if (enableDebug) services.AddSampleDebug();
         if (enableDebug) services.AddScoped<SampleExternalDebug>();
+#endif
     }
 
     internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
