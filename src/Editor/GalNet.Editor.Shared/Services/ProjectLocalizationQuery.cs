@@ -7,11 +7,14 @@ namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Project-scoped localization snapshots, including untracked disk sources and unsaved managed files.</summary>
 public sealed class ProjectLocalizationQuery(IProjectContentSession content, IEditorDocumentService documents,
-    IEntryCatalog catalog, IProjectService projects) : IDisposable
+    IEntryCatalog catalog, IProjectService projects, IEntryParameterMetadataSource? parameterMetadata) : IDisposable
 {
+    public ProjectLocalizationQuery(IProjectContentSession content, IEditorDocumentService documents, IEntryCatalog catalog, IProjectService projects)
+        : this(content, documents, catalog, projects, null) { }
     private bool _disposed;
     private string? _snapshot;
     private LocalizationReferenceIndex? _index;
+    private long _metadataRevision = -1;
     public long Revision { get; private set; }
 
     public LocalizationReferenceIndex? Get()
@@ -60,9 +63,11 @@ public sealed class ProjectLocalizationQuery(IProjectContentSession content, IEd
                 !diagnostic.File.StartsWith("I18n/External", StringComparison.OrdinalIgnoreCase))
             .Select(diagnostic => new LocalizationIssue("source.enumeration", diagnostic.File ?? "I18n", diagnostic.JsonPointer ?? "", diagnostic.Message)));
         var snapshot = JsonSerializer.Serialize(new { Document = document, Sources = sources.Values.OrderBy(source => source.Path, StringComparer.Ordinal), Issues = issues });
-        if (snapshot != _snapshot)
+        if (snapshot != _snapshot || _metadataRevision != (parameterMetadata?.Revision ?? 0))
         {
-            _index = new(document, catalog, sources.Values, issues);
+            var metadata = parameterMetadata?.Capture(document) ?? new EntryParameterMetadata();
+            _index = new(document, catalog, sources.Values, issues, metadata);
+            _metadataRevision = metadata.Revision ?? parameterMetadata?.Revision ?? 0;
             _snapshot = snapshot; Revision++;
         }
         return _index;
@@ -73,7 +78,7 @@ public sealed class ProjectLocalizationQuery(IProjectContentSession content, IEd
     private void Clear()
     {
         if (_snapshot is not null) Revision++;
-        _snapshot = null; _index = null;
+        _snapshot = null; _index = null; _metadataRevision = -1;
     }
     public void Dispose()
     {

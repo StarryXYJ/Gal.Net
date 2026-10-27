@@ -43,7 +43,9 @@ Transform/Flipbook 保留专用布局，子字段读取、修改和草稿保存�
 
 ## 边界与计划落实
 
-动态音效/视觉参数和 Timeline 的全量结构/索引迁移仍按设计留待后续。本次提供 IValueStructureProvider 的纯查询入口；返回结构或未解析结果，冻结上下文及其依赖有效性由调用方拥有，未引入额外的异步领域解析框架或独立依赖令牌系统。
+当前 shader 参数边界已按用户纠正修订为[开放参数对象](follow-up-open-shader-parameters.md)：已知 shader 的额外成员合法、原样保留且不 warning，不再按普通封闭 DTO 判为漏分析。声明字段仍校验；此规则不全局覆盖未知 schema 或其他封闭领域契约。
+
+首轮交付将动态音效/视觉参数和 Timeline 的全量结构/索引迁移按设计留待后续。用户随后反馈正常效果参数仍有 opaque，已追加[效果参数结构补全](follow-up-effect-parameters.md)：应用效果、shader 预设及音频 apply/update 接入领域 metadata。再次反馈后追加 [Timeline 结构与按目标诊断](follow-up-timeline-structure.md)，接通轨道、关键帧、作者 metadata 与按项目契约解析的事件 payload，修正无关能力缺失污染已知轨道的诊断。实际范围和验证分别以补充记录为准，其他未关联 JSON 仍保留覆盖诊断。IValueStructureProvider 保留纯查询入口；返回结构或未解析结果，冻结上下文及其依赖有效性由调用方拥有，未引入额外的异步领域解析框架或独立依赖令牌系统。
 
 未新增可变 SerializedObject 作者副本。ValueDocument 是只读快照/纯候选操作，作者数据、草稿与历史继续归现有项目会话。序列元素身份由当前快照索引及宿主结构代次保护，未增加全局元素 UID。失败的新增/改键候选仅留在当前控件；字段值草稿才进入跨视图的项目归档。
 

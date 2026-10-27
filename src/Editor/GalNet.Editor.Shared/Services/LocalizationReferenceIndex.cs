@@ -51,8 +51,13 @@ public sealed class LocalizationReferenceIndex
 
     public LocalizationReferenceIndex(EditorProjectDocument document, IEntryCatalog catalog, IEnumerable<LocalizationSource> sources,
         IEnumerable<LocalizationIssue>? sourceIssues = null)
+        : this(document, catalog, sources, sourceIssues, new()) { }
+
+    public LocalizationReferenceIndex(EditorProjectDocument document, IEntryCatalog catalog, IEnumerable<LocalizationSource> sources,
+        IEnumerable<LocalizationIssue>? sourceIssues, EntryParameterMetadata metadata)
     {
         using var structures = new ValueStructureResolver();
+        var parameters = new EntryParameterStructures(document, metadata, catalog);
         foreach (var issue in sourceIssues ?? []) Issue(issue.Code, issue.File, issue.JsonPointer, issue.Message);
         foreach (var source in sources.OrderBy(source => source.Path, StringComparer.Ordinal)) ReadSource(source);
         foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Group"))
@@ -75,7 +80,7 @@ public sealed class LocalizationReferenceIndex
                     Issue("field.unknown", groupId, "/" + Escape(name), "Unknown author field cannot be analyzed.", entryId: entry.StableId);
                 foreach (var field in definition.DynamicParameters.Fields)
                     if (entry.Parameters.TryGetValue(field.Id, out var value))
-                        Walk(field, value, groupId, entry.StableId, "/" + Escape(field.Id), structures);
+                        Walk(parameters.Describe(field, groupId, entry), value, groupId, entry.StableId, "/" + Escape(field.Id), structures, parameters, new EntryStructureContext(groupId, entry));
             }
         }
         foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Branch" && node.BranchType == "Choice"))
@@ -107,10 +112,11 @@ public sealed class LocalizationReferenceIndex
     public bool Complete { get; private set; } = true;
     public LocalizationText? FindDirect(string culture, string key) => _effective.GetValueOrDefault(culture)?.GetValueOrDefault(key);
 
-    private void Walk(FieldDescriptor field, JsonElement value, string owner, string entryId, string pointer, ValueStructureResolver structures)
+    private void Walk(FieldDescriptor field, JsonElement value, string owner, string entryId, string pointer, ValueStructureResolver structures,
+        IValueStructureProvider provider, object context)
     {
         if (IsEmpty(value)) return;
-        using var document = new ValueDocument(field, value, structures);
+        using var document = new ValueDocument(field, value, structures, provider, context);
         foreach (var property in document.GetIterator(new(MaximumDepth, Math.Max(1, _remaining))))
         {
             var logical = PropertyPath.Empty.Member(field.Id);

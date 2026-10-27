@@ -36,7 +36,8 @@ public sealed class ValueStructureResolver : IDisposable
             if (declaration?.Kind is { } explicitKind)
                 return new(explicitKind, Array.AsReadOnly(declaration.Fields?.Select(field => new ValueStructureMember(Inherit(field, descriptor.JsonOptions), field.Id)).ToArray() ?? []),
                     declaration.Element is { } elementField ? Inherit(elementField, descriptor.JsonOptions) : null,
-                    declaration.AllowsJsonString, declaration.IgnoresCase);
+                    declaration.AllowsJsonString, declaration.IgnoresCase)
+                { AdditionalField = declaration.AdditionalField is { } additional ? Inherit(additional, descriptor.JsonOptions) : null };
             var type = Nullable.GetUnderlyingType(declaration?.SchemaType ?? descriptor.ValueType) ?? declaration?.SchemaType ?? descriptor.ValueType;
             if (declaration is null && descriptor.IsStringEncoded && IsScalar(type)) return new(ValueStructureKind.Scalar, []);
             if (declaration is null && type == typeof(JsonElement)) return Opaque("Structured value has no traversable field schema.");

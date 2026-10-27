@@ -16,7 +16,12 @@ public sealed record EffectParameterDefinition(
     bool Required = false,
     float? Minimum = null,
     float? Maximum = null,
-    IReadOnlyList<string>? Options = null);
+    IReadOnlyList<string>? Options = null)
+{
+    public FieldDescriptor Field => ParameterValidation.Field(Name, Kind switch
+    { EffectParameterKind.Integer => typeof(int), EffectParameterKind.Float => typeof(float), EffectParameterKind.Boolean => typeof(bool), _ => typeof(string) },
+        Required, Minimum, Maximum, Options);
+}
 
 /// <summary>Platform-neutral authoring metadata emitted by an effect factory.</summary>
 public sealed record EffectDefinition(
@@ -51,9 +56,7 @@ public sealed class EffectCatalog : IEffectCatalog
         _parametersByEffect = _byId.Values.ToDictionary(
             definition => definition.Id,
             definition => (IReadOnlyDictionary<string, FieldDescriptor>)definition.Parameters.ToDictionary(parameter => parameter.Name,
-                parameter => ParameterValidation.Field(parameter.Name, parameter.Kind switch
-                { EffectParameterKind.Integer => typeof(int), EffectParameterKind.Float => typeof(float), EffectParameterKind.Boolean => typeof(bool), _ => typeof(string) },
-                    parameter.Required, parameter.Minimum, parameter.Maximum, parameter.Options), StringComparer.Ordinal),
+                parameter => parameter.Field, StringComparer.Ordinal),
             StringComparer.OrdinalIgnoreCase);
         Definitions = _byId.Values.OrderBy(definition => definition.Id, StringComparer.OrdinalIgnoreCase).ToArray();
     }

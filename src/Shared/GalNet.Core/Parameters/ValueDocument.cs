@@ -71,7 +71,8 @@ public sealed class ValueDocument : IDisposable
                 token.ThrowIfCancellationRequested();
                 var comparer = current.Structure.IgnoresCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
                 if (!string.Equals(child.Path[^1].Value, segment, comparer) &&
-                    !(current.Structure.Kind == ValueStructureKind.Object && string.Equals(child.Field.Id, segment, comparer))) continue;
+                    !(current.Structure.Kind == ValueStructureKind.Object && child.Field != current.Structure.AdditionalField
+                        && string.Equals(child.Field.Id, segment, comparer))) continue;
                 if (match is not null || child.Issue?.Code == "field.duplicate") return null;
                 match = child;
             }
@@ -122,7 +123,8 @@ public sealed class ValueDocument : IDisposable
         {
             token.ThrowIfCancellationRequested();
             if (--budget < 0) return new(null, new("analysis.limit", "Property lookup exceeded its budget."));
-            if (!comparer.Equals(child.Path[^1].Value, name) && !(structure.Kind == ValueStructureKind.Object && comparer.Equals(child.Field.Id, name))) continue;
+            if (!comparer.Equals(child.Path[^1].Value, name) && !(structure.Kind == ValueStructureKind.Object
+                && child.Field != structure.AdditionalField && comparer.Equals(child.Field.Id, name))) continue;
             if (selected is not null || child.Issue?.Code is "field.unknown" or "field.duplicate")
                 return new(null, new("structure.ambiguous", "The property name is ambiguous or unknown."));
             selected = child;
@@ -220,9 +222,10 @@ public sealed class ValueProperty
                 foreach (var property in obj.EnumerateObject())
                 {
                     var member = Structure.Members.FirstOrDefault(member => comparer.Equals(member.WireName, property.Name));
+                    var field = member?.Field ?? Structure.AdditionalField;
                     var issue = !seen.Add(property.Name) ? new ValueIssue("field.duplicate", "Duplicate author property.")
-                        : member is null ? new ValueIssue("field.unknown", "Unknown author field cannot be analyzed.") : null;
-                    yield return new(_document, member?.Field ?? UnknownField, property.Value, path.Member(property.Name), issue);
+                        : field is null ? new ValueIssue("field.unknown", "Unknown author field cannot be analyzed.") : null;
+                    yield return new(_document, field ?? UnknownField, property.Value, path.Member(property.Name), issue);
                 }
             if (includeMissing)
                 foreach (var member in Structure.Members)

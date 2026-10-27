@@ -26,7 +26,7 @@ Core Entry 的参数权威是 `Arguments` JSON，不再保留字符串 Values。
 
 `ValueDescriptor.WithStructure` 为值关联不可变 ValueStructure，旧构造函数签名保留。原生 IFieldDto 使用其静态 Schema；固定 JsonElement 字段可用 Field.StructureType 关联结构类型，生成器输出延迟类型引用，不在初始化时递归展开 schema。StructureAllowsJsonString、StructureIgnoresCase、StructureUsesFieldIds 仅为显式兼容表示提供规则，不改变通用 JSON 的默认命名或运行 codec；内置 Transform 保留原成员拼写与字符串表示，Flipbook 新成员沿用字段 ID。
 
-ValueStructure 提供 ForType、Object、Sequence、Map 和 Dynamic 声明，集合元素/Map 值可拥有独立字段约束与文本/角色语义。ValueStructureResolver 使用实际 JSON options 解析 wire 成员，缓存属于调用方作用域；无法解释的 converter/结构返回可定位诊断。IValueStructureProvider 只消费调用方提供的冻结上下文；动态领域查询及依赖有效性仍由调用方负责，接口本身不执行项目 I/O。
+ValueStructure 提供 ForType、Object、OpenObject、Scalar、Sequence、Map 和 Dynamic 声明，集合元素/Map 值可拥有独立字段约束与文本/角色语义。Object 默认封闭；OpenObject 显式声明额外成员的值契约，附加字段描述的 ID 不作为这些成员的寻址别名。Scalar 可将领域明确不解释的 JSON 视为原子值，不假定其内部存在字段或引用语义。开放规则必须来自实际领域契约，不能从未知 JSON 自动推导。ValueStructureResolver 使用实际 JSON options 解析 wire 成员，缓存属于调用方作用域；无法解释的 converter/结构返回可定位诊断。IValueStructureProvider 只消费调用方提供的冻结上下文；动态领域查询及依赖有效性仍由调用方负责，接口本身不执行项目 I/O。
 
 ValueDocument 持有不可变 JSON 快照，提供 Root、FindProperty、GetIterator、Validate 和纯 Patch。PropertyPath 区分 Member、Index、MapKey、JsonString；对外实际 JSON Pointer 与逻辑内部路径分别编码。迭代由显式栈、节点/深度预算和取消控制；Validate 的 Partial 默认不要求缺失兄弟字段，完整模式显式检查已出现对象中的必填字段。展开、扫描和查找不写入默认值。Patch 仅产生候选值，不替代作者身份检查、事务或领域校验；它保留扩展与兄弟值，拒绝歧义和不存在的索引，显式 null 容器需要先被替换。旧索引句柄是否因重排失效由宿主结构代次核对，纯快照操作不会猜测元素身份。
 

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Parameters;
 
 namespace GalNet.Contracts.Builtins.Scene;
 
@@ -15,56 +16,63 @@ public enum AnimationInterpolation
 /// A timeline at 60 fps with <c>DurationFrames = 30</c> plays for half a second. A track whose
 /// keys are `(0, 0)` and `(30, 1)` linearly fades its target property from 0 to 1.
 /// </example>
-public sealed class TimelineDefinition
+[GenerateFieldSchema]
+public sealed partial class TimelineDefinition
 {
+    public TimelineDefinition() { Tracks = []; Events = []; }
     /// <summary>Opaque handle for this timeline playback; it must be unique while the timeline is active.</summary>
-    public string PlaybackHandleId { get; set; } = "";
+    [Field(0)] public string PlaybackHandleId { get; set; } = "";
     /// <summary>Timeline sampling frequency in frames per second. Valid authoring values are 1 through 240.</summary>
-    public int FrameRate { get; set; } = 60;
+    [Field(1)] public int FrameRate { get; set; } = 60;
     /// <summary>Inclusive timeline end frame. Tracks must start at frame 0 and may not exceed this value.</summary>
-    public int DurationFrames { get; set; }
-    public bool Blocking { get; set; }
-    public bool Skippable { get; set; }
+    [Field(2)] public int DurationFrames { get; set; }
+    [Field(3)] public bool Blocking { get; set; }
+    [Field(4)] public bool Skippable { get; set; }
     /// <summary>Whether the whole timeline plays once or is restarted after its final frame.</summary>
-    public AnimationLoopMode LoopMode { get; set; }
+    [Field(5)] public AnimationLoopMode LoopMode { get; set; }
     /// <summary>Property tracks sampled in parallel during playback.</summary>
-    public List<TimelineTrackDefinition> Tracks { get; set; } = [];
+    [Field(6)] public List<TimelineTrackDefinition> Tracks { get; set; }
     /// <summary>Entries dispatched at their declared frames without creating a separate engine checkpoint.</summary>
-    public List<TimelineEventDefinition> Events { get; set; } = [];
+    [Field(7)] public List<TimelineEventDefinition> Events { get; set; }
 }
 
 /// <summary>Keyframed values for one property on one active scene instance.</summary>
-public sealed class TimelineTrackDefinition
+[GenerateFieldSchema]
+public sealed partial class TimelineTrackDefinition
 {
-    public string HandleId { get; set; } = "";
-    public string Property { get; set; } = "";
+    public TimelineTrackDefinition() => Keys = [];
+    [Field(0)] public string HandleId { get; set; } = "";
+    [Field(1)] public string Property { get; set; } = "";
     /// <summary>Whether keys are absolute property values or relative offsets from the current Replace value.</summary>
-    public AnimationBlendMode BlendMode { get; set; }
+    [Field(2)] public AnimationBlendMode BlendMode { get; set; }
     /// <summary>Strictly frame-ordered keys; the first key must be at frame 0.</summary>
-    public List<TimelineKeyframeDefinition> Keys { get; set; } = [];
+    [Field(3)] public List<TimelineKeyframeDefinition> Keys { get; set; }
 }
 
 /// <summary>Tangents are values per timeline frame. Interpolation belongs to the segment after this key.</summary>
-public sealed class TimelineKeyframeDefinition
+[GenerateFieldSchema]
+public sealed partial class TimelineKeyframeDefinition
 {
-    public int Frame { get; set; }
-    public float Value { get; set; }
+    [Field(0)] public int Frame { get; set; }
+    [Field(1)] public float Value { get; set; }
     /// <summary>Incoming derivative in value-per-frame units, used only by cubic Hermite interpolation.</summary>
-    public float InTangent { get; set; }
+    [Field(2)] public float InTangent { get; set; }
     /// <summary>Outgoing derivative in value-per-frame units, used only by cubic Hermite interpolation.</summary>
-    public float OutTangent { get; set; }
-    public AnimationInterpolation InterpolationToNext { get; set; } = AnimationInterpolation.Linear;
+    [Field(3)] public float OutTangent { get; set; }
+    [Field(4)] public AnimationInterpolation InterpolationToNext { get; set; } = AnimationInterpolation.Linear;
 }
 
 /// <summary>Entry-like event embedded in a timeline and dispatched when its frame is reached.</summary>
-public sealed class TimelineEventDefinition
+[GenerateFieldSchema]
+public sealed partial class TimelineEventDefinition
 {
-    public int Frame { get; set; }
+    public TimelineEventDefinition() => Parameters = new(StringComparer.Ordinal);
+    [Field(0)] public int Frame { get; set; }
     /// <summary>Defaults to each iteration; setup and cleanup can instead belong to the whole playback.</summary>
-    public TimelineEventExecution Execution { get; set; }
-    public string Type { get; set; } = "";
+    [Field(1)] public TimelineEventExecution Execution { get; set; }
+    [Field(2)] public string Type { get; set; } = "";
     /// <summary>Structured entry parameters preserved until the event is dispatched.</summary>
-    public Dictionary<string, JsonElement> Parameters { get; set; } = new(StringComparer.Ordinal);
+    [Field(3)] public Dictionary<string, JsonElement> Parameters { get; set; }
 }
 
 public enum TimelineEventExecution { EachIteration, Once, OnCompletion }

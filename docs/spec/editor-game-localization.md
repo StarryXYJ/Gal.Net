@@ -26,7 +26,13 @@ Editor.Shared 的 LocalizationReferenceIndex 分析一个 EditorProjectDocument 
 - 缺省、null、空字符串和纯空白字符串不生成引用，不补默认值；空 LocalizedText key 表示有意的空文本，启动时不要求对应译文，运行时解析为空字符串。空对象和空数组也不包含引用，不因缺少 schema 或未知字段而阻止分析；非空的未知字段/类型、不可遍历结构与错误 shape 仍报告分析不完整。
 - 深度上限 16，整个分析的值预算 100,000。超限产生 analysis.limit，不能以未找到引用认定角色未使用。
 
-内置 Transform、ToTransform 与 Flipbook 字段关联其可编辑子字段的共享 schema，正常非空值不再因为 JsonElement 外层类型而产生 field.opaque；未知非空扩展仍报告未覆盖。Transform 的历史字符串编码由显式结构适配解释。LocalizationReference / LocalizationIssue 的 Path 保留带编码边界的类型化逻辑路径；JsonPointer 指向实际外层 wire 位置，不伪造穿过 JSON 字符串的 Pointer。Problems 使用逻辑路径定位内部字段。动态效果参数、Timeline 及其他未关联结构的 JSON 字段仍按原覆盖规则报告，未声称全量迁移。
+内置 Transform、ToTransform 与 Flipbook 字段关联其可编辑子字段的共享 schema，正常非空值不再因为 JsonElement 外层类型而产生 field.opaque；未知非空扩展仍报告未覆盖。Transform 的历史字符串编码由显式结构适配解释。LocalizationReference / LocalizationIssue 的 Path 保留带编码边界的类型化逻辑路径；JsonPointer 指向实际外层 wire 位置，不伪造穿过 JSON 字符串的 Pointer。Problems 使用逻辑路径定位内部字段。
+
+effect.apply、SpeedLines/Impact 预设的 parameters 按所选 shader metadata 解析；无 program 的 effect.apply 使用宿主效果目录。音频 apply 使用当前音效目录，update 使用作者 Graph 前缀按 scope/targetId/instanceId 确定的实例类型。字段沿用目录和表单的 FieldDescriptor，由 ValueDocument 遍历；向量作为数值序列，颜色、纹理 ID、选项字符串不被猜测为本地化 key。显式契约结构优先。未知类型、缺失 metadata、封闭参数契约中的未知参数或不确定的更新类型仍报告未覆盖。项目扫描同时依赖作者快照和资源代次，使用未保存的托管 shader 内容；资源声明与代次在同一锁内捕获，加载完成后触发重新检查。磁盘验证读取 effect-program 资产声明，重复资源 ID 不被选作确定结构。
+
+Timeline 根、轨道、关键帧与事件复用 Timeline DTO 的共享 schema，Editor.Shared 补充 editorId/editorTangents 作者 metadata；兼容既有大小写不敏感成员和枚举编码。事件 parameters 通过当前项目 Entry catalog 的字段解析，事件中的 effect.apply 继续使用所选 shader metadata，资产发现与场景查询共用同一入口。运行结构检查和事件 allow-list 仍归原契约；未知事件参数/成员与其他尚未关联的 JSON 继续报告未覆盖。
+
+已知 shader 的参数对象是开放的：渲染器只消费声明成员，切换后保留的旧参数或其他额外 JSON 都是合法附加数据，不产生 field.unknown/field.opaque，也不导致引用分析不完整。扫描通过 OpenObject 和原子 JSON 附加值契约保留这些数据，不猜测其内部的文本/角色引用；该规则同样适用于 Timeline 中的 shader 参数。声明成员的类型/范围及重复成员仍诊断。未知 shader 不推定开放结构，普通 DTO、音效和 legacy catalog 的封闭校验不受影响。
 
 引用的 LocationKey 使用逻辑位置区分同一外层字符串中的多个叶值，Rewrite 使用类型化路径产生新参数快照并保留编码。角色引用比较/替换、文本草稿/复制写入以及本地化来源显示已接入该位置；旧公开 Pointer Set 入口保留，新的引用回写不再以外层 Pointer 猜测内部地址。
 

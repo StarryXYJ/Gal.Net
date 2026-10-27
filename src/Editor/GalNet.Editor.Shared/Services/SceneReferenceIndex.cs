@@ -7,7 +7,10 @@ public sealed record SceneAuthorAddress(string GroupId, string EntryId);
 public sealed record SceneIdentityDefinition(SceneAuthorAddress Owner, string JsonPointer, string Handle, SceneOutputSlot Slot, string? EventId)
 { public string? Qualifier { get; init; } }
 public sealed record SceneIdentityReference(SceneAuthorAddress Owner, string JsonPointer, string Handle, SceneReferenceSlot Slot, SceneTimelinePosition? Position, string? EventId)
-{ public string? Qualifier { get; init; } }
+{
+    public string? Qualifier { get; init; }
+    public string? RequiredProperty { get; init; }
+}
 public sealed record SceneReferenceDiagnostic(string Code, SceneAuthorAddress Owner, string JsonPointer, string? Handle = null, IReadOnlyList<SceneIdentityDefinition>? Candidates = null, long? Revision = null);
 
 /// <summary>Syntactic relationships include unreachable and unopened Groups. They do not prove a unique creator.</summary>
@@ -34,7 +37,7 @@ public sealed class SceneReferenceIndex
                     if (--remaining < 0) throw new IndexBudgetExceededException();
                     if (string.IsNullOrWhiteSpace(slot.Handle)) return;
                     if (slot.Output is { } output) definitions.Add(new(owner, slot.Pointer, slot.Handle, output, slot.EventId) { Qualifier = slot.Qualifier });
-                    if (slot.Reference is { } reference) references.Add(new(owner, slot.Pointer, slot.Handle, reference, slot.Position, slot.EventId) { Qualifier = slot.Qualifier });
+                    if (slot.Reference is { } reference) references.Add(new(owner, slot.Pointer, slot.Handle, reference, slot.Position, slot.EventId) { Qualifier = slot.Qualifier, RequiredProperty = slot.RequiredProperty });
                 }, gap => { if (--remaining < 0) throw new IndexBudgetExceededException(); coverage.Add(new(gap.Code, owner, gap.Pointer)); }, step: () => { if (--remaining < 0) throw new IndexBudgetExceededException(); });
                 }
                 catch (IndexBudgetExceededException) { coverage.Add(new("scene.analysis.limit", owner, "/parameters")); goto Finished; }
@@ -79,12 +82,23 @@ public static class SceneReferenceAnalysis
             : matching.Any(target => target.Presence == TargetPresence.Possible) ? "scene.reference.possible" : "scene.reference.resolved";
         return new(code, result.Complete, result.Reachable, matching);
     }
-    public static IReadOnlyList<SceneReferenceDiagnostic> Diagnose(SceneReferenceIndex index, SceneTargetAnalysis analysis) => index.Coverage.Concat(index.References.Select(reference =>
+    public static IReadOnlyList<SceneReferenceDiagnostic> Diagnose(SceneReferenceIndex index, SceneTargetAnalysis analysis)
     {
-        var state = Resolve(reference, analysis);
-        return state.Code == "scene.reference.resolved" && state.Complete ? null : new SceneReferenceDiagnostic(state.Code == "scene.reference.resolved" ? "scene.reference.uncertain" : state.Code,
-            reference.Owner, reference.JsonPointer, reference.Handle, index.Candidates(reference));
-    }).OfType<SceneReferenceDiagnostic>()).ToArray();
+        var diagnostics = new List<SceneReferenceDiagnostic>(index.Coverage);
+        foreach (var reference in index.References)
+        {
+            var state = Resolve(reference, analysis);
+            var resolved = state.Code == "scene.reference.resolved";
+            // An unrelated metadata gap must not invalidate a fully described target.
+            var targetComplete = state.Targets.Count > 0 && state.Targets.All(target => target.CapabilitiesComplete
+                && (reference.RequiredProperty is null || target.Properties.Any(property => property.Name == reference.RequiredProperty)
+                    && target.Values.ContainsKey(reference.RequiredProperty)));
+            if (resolved && (state.Complete || targetComplete)) continue;
+            diagnostics.Add(new(resolved ? "scene.reference.uncertain" : state.Code,
+                reference.Owner, reference.JsonPointer, reference.Handle, index.Candidates(reference)));
+        }
+        return diagnostics.AsReadOnly();
+    }
 
     public static SceneEditImpact Compare(EditorGraphDocument graph, IReadOnlyDictionary<string, List<EditorEntryData>> before, IReadOnlyDictionary<string, List<EditorEntryData>> after,
         IReadOnlyDictionary<SceneAuthorAddress, SceneAuthorAddress>? originalOwners = null)

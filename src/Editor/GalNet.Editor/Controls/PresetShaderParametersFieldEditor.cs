@@ -3,7 +3,6 @@ using System.Text.Json;
 using Avalonia.Controls;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Parameters;
-using GalNet.Editor.Inspector.ViewModels;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Game.Controls.Forms;
@@ -45,7 +44,7 @@ internal static class PresetShaderParametersFieldEditor
                     if (descriptor is not null)
                         foreach (var parameter in descriptor.Parameters.Where(parameter => !Generated.Contains(parameter.Name)))
                         {
-                            var field = ShaderParameterFormBinding.CreateField(parameter);
+                            var field = ShaderEffectFields.Create(parameter);
                             var boundProgram = program;
                             var binding = new MemberBinding(context, field,
                                 () => disposed || !context.IsEnabled || CurrentProgram(context) != boundProgram || !TryRead(context, out _),

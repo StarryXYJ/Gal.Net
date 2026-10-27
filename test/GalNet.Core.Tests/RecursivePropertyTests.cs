@@ -7,6 +7,30 @@ namespace GeneralTest;
 public sealed class RecursivePropertyTests
 {
     [Test]
+    public void OpenObjectsRetainAtomicJsonExtensionsWithoutLosingKnownValidationOrDuplicateChecks()
+    {
+        var known = new FieldDescriptor("amount", new(typeof(float)), isRequired: true);
+        var extension = new FieldDescriptor("extension", new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Scalar()));
+        var descriptor = new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.OpenObject([known], extension));
+        var source = Json("""{"amount":0.5,"angle":0,"":{"caption":"literal"},"future":[1,{"speaker":"not-a-reference"}]}""");
+        using var document = new ValueDocument(new("root", descriptor), source);
+        Assert.That(document.Validate(requireAllFields: true), Is.Empty);
+        Assert.That(document.GetIterator().Count(), Is.EqualTo(5), "Additional JSON is an explicit atomic value, not an unknown DTO subtree.");
+        Assert.That(document.FindProperty([""])!.Value!.Value.GetProperty("caption").GetString(), Is.EqualTo("literal"));
+        Assert.That(document.FindProperty(["extension"]), Is.Null, "The additional-value descriptor ID is not an alias for all extension keys.");
+        var patch = document.Patch(["amount"], Json("0.8"));
+        Assert.That(patch.Issue, Is.Null);
+        Assert.That(patch.Value!.Value.GetProperty("future").GetRawText(), Is.EqualTo(source.GetProperty("future").GetRawText()));
+        Assert.That(document.Root.Value, Is.EqualTo(source));
+        using var duplicate = new ValueDocument(new("root", descriptor), Json("""{"angle":0,"angle":1}"""));
+        Assert.That(duplicate.Validate().Single().Code, Is.EqualTo("field.duplicate"));
+        using var invalid = new ValueDocument(new("root", descriptor), Json("""{"amount":"bad","angle":0}"""));
+        Assert.That(invalid.Validate().Single().Code, Is.EqualTo("value.type"));
+        using var closed = new ValueDocument(new("root", new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Object([known]))), source);
+        Assert.That(closed.GetIterator().Count(node => node.Issue?.Code == "field.unknown"), Is.EqualTo(3));
+    }
+
+    [Test]
     public void ExplicitMapValuesInheritTheParentsWireCodec()
     {
         var options = new JsonSerializerOptions { Converters = { new StringBooleanValueConverter() } };

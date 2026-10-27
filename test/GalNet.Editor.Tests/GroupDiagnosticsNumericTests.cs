@@ -99,7 +99,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var parameters = new Dictionary<string, JsonElement>(entry.Source.Parameters)
                 {
-                    ["timeline"] = JsonSerializer.SerializeToElement(new { frameRate = 60, durationFrames = 30, tracks = Array.Empty<object>(), events = Array.Empty<object>() })
+                    ["timeline"] = JsonSerializer.SerializeToElement(new { frameRate = 60, durationFrames = 30, tracks = Array.Empty<object>(),
+                        events = new[] { new { frame = 0, type = BuiltinEntryIds.ApplyEffect,
+                            parameters = new { instanceId = "unresolved", program = "missing", parameters = new { amount = .5 } } } } })
                 };
                 authoring.SetParameters(group.Id, entry.Source, entry.Type, parameters);
             }

@@ -17,7 +17,7 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Services;
 
 /// <summary>One immutable author snapshot plus asynchronously loaded resource declarations per project scope.</summary>
-public sealed class ProjectSceneTargets : IDisposable
+public sealed class ProjectSceneTargets : IDisposable, IEntryParameterMetadataSource
 {
     private readonly IEditorDocumentService _documents;
     private readonly IAssetManager? _assets;
@@ -95,6 +95,17 @@ public sealed class ProjectSceneTargets : IDisposable
     {
         if (string.IsNullOrWhiteSpace(id)) return null;
         lock (_gate) { if (!Capture()) return null; QueuePreparation(); return _programs.GetValueOrDefault(id.Trim()); }
+    }
+    EntryParameterMetadata IEntryParameterMetadataSource.Capture(EditorProjectDocument document)
+    {
+        lock (_gate)
+        {
+            if (!Capture()) return new(Revision: Revision);
+            QueuePreparation();
+            // Capture declarations and revision together; a completed load must not relabel an older snapshot.
+            return new(_effects, AudioCatalog, EntryParameterMetadata.ProgramIds(document).Take(256)
+                .ToDictionary(id => id, id => _programs.GetValueOrDefault(id.Trim()), StringComparer.Ordinal), Revision);
+        }
     }
     private void OnContentChanged()
     {
@@ -232,7 +243,7 @@ public sealed class ProjectSceneTargets : IDisposable
     {
         if (_assets is null || _frozen is null || _disposed) return null;
         if (_loading is not null) return _loading;
-        var ids = Programs(_frozen).Distinct(StringComparer.Ordinal).Take(256).Where(id => !_programs.ContainsKey(id)).ToArray();
+        var ids = EntryParameterMetadata.ProgramIds(_frozen).Take(256).Where(id => !_programs.ContainsKey(id)).ToArray();
         var variants = Variants(_frozen).Distinct(StringComparer.OrdinalIgnoreCase).Take(256).Where(id => !_variants.ContainsKey(id)).ToArray();
         if (ids.Length == 0 && variants.Length == 0) return null;
         var epoch = _resourceEpoch;
@@ -257,7 +268,7 @@ public sealed class ProjectSceneTargets : IDisposable
                 {
                     var file = await _assets!.GetFileAsync(id, token);
                     if (file is null || file.TypeId != "effect-program" || file.Length > 1024 * 1024) continue;
-                    var bytes = await file.ReadAllBytesAsync(token);
+                    var bytes = working.TryGetValue("Assets/" + file.Path, out var author) ? author : await file.ReadAllBytesAsync(token);
                     if (bytes.Length > 1024 * 1024) continue;
                     var source = new UTF8Encoding(false, true).GetString(bytes);
                     var parsed = ShaderEffectMetadataParser.Parse(new EffectProgramResource(id), source);
@@ -291,7 +302,7 @@ public sealed class ProjectSceneTargets : IDisposable
             lock (_gate)
             {
                 if (_disposed || epoch != _resourceEpoch || _frozen is null) return;
-                var referenced = Programs(_frozen!).Distinct(StringComparer.Ordinal).Take(256).ToHashSet(StringComparer.Ordinal);
+                var referenced = EntryParameterMetadata.ProgramIds(_frozen!).Take(256).ToHashSet(StringComparer.Ordinal);
                 var merged = _programs.Where(pair => referenced.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
                 foreach (var pair in loaded.Where(pair => referenced.Contains(pair.Key))) merged[pair.Key] = pair.Value;
                 var referencedVariants = Variants(_frozen).Distinct(StringComparer.OrdinalIgnoreCase).Take(256).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -309,28 +320,6 @@ public sealed class ProjectSceneTargets : IDisposable
         .Where(entry => entry.Type == BuiltinEntryIds.ShowVariants).Select(entry => entry.Parameters.GetValueOrDefault("assetId"))
         .Where(value => value.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(value.GetString())).Select(value => value.GetString()!.Trim());
 
-    private static IEnumerable<string> Programs(EditorProjectDocument project)
-    {
-        foreach (var entry in project.GroupEntries.Values.SelectMany(entries => entries))
-        {
-            if ((entry.Type is BuiltinEntryIds.ApplyEffect or BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
-                && entry.Parameters.TryGetValue("program", out var program)
-                && program.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(program.GetString())) yield return program.GetString()!;
-            if (entry.Type != "timeline.play" || !entry.Parameters.TryGetValue("timeline", out var timeline) || timeline.ValueKind != JsonValueKind.Object) continue;
-            var events = Member(timeline, "events");
-            if (events.ValueKind != JsonValueKind.Array) continue;
-            foreach (var item in events.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object || Member(item, "type") is not { ValueKind: JsonValueKind.String } type || type.GetString() != "effect.apply") continue;
-                var parameters = Member(item, "parameters");
-                if (parameters.ValueKind == JsonValueKind.Object && parameters.TryGetProperty("program", out program)
-                    && program.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(program.GetString())) yield return program.GetString()!;
-            }
-        }
-    }
-
-    private static JsonElement Member(JsonElement element, string name) => element.EnumerateObject()
-        .FirstOrDefault(property => string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase)).Value;
     private void OnResourcesChanged() => Dispatcher.UIThread.Post(InvalidateResources);
     public void InvalidateResources()
     {

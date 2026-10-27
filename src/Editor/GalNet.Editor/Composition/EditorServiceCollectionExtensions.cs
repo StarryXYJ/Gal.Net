@@ -67,6 +67,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<ProblemsPanelViewModel>();
         services.AddScoped<TimelineEditSession>();
         services.AddScoped<ProjectSceneTargets>();
+        services.AddScoped<IEntryParameterMetadataSource>(sp => sp.GetRequiredService<ProjectSceneTargets>());
         services.AddScoped<ProjectLocalizationQuery>();
         services.AddScoped<LocalizationDocumentStore>();
         services.AddScoped<LocalizationAuthoringService>();

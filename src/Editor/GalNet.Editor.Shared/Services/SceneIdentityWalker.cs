@@ -7,6 +7,7 @@ internal sealed record SceneIdentitySlot(JsonObject Owner, string Field, string 
 {
     public string? Handle => Owner[Field] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
     public string? Qualifier => Domain == SceneIdentityDomain.AudioEffect ? AudioAuthoringTarget.Qualifier(Owner) : null;
+    public string? RequiredProperty { get; init; }
 }
 internal sealed record SceneCoverageGap(string Pointer, string Code);
 
@@ -48,7 +49,9 @@ internal static class SceneIdentityWalker
                 var path = root + "/" + Escape(tracks) + "/" + index;
                 if (trackArray[index] is not JsonObject track) { gap(new(path, "scene.coverage.structure")); continue; }
                 var handle = Key(track, "handleId", path, gap);
-                if (handle is not null) Visit(track, handle, path, SceneIdentityDomain.Object, null, new(handle, SceneIdentityDomain.Object, [SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect]), new(0), null, slot, gap);
+                var propertyKey = Key(track, "property", path, gap);
+                var property = propertyKey is not null && track[propertyKey] is JsonValue propertyValue && propertyValue.TryGetValue<string>(out var propertyText) ? propertyText : "";
+                if (handle is not null) Visit(track, handle, path, SceneIdentityDomain.Object, null, new(handle, SceneIdentityDomain.Object, [SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect]), new(0), null, slot, gap, property);
             }
         else if (tracks is not null) gap(new(root + "/" + Escape(tracks), "scene.coverage.structure"));
         var events = Key(timeline, "events", root, gap);
@@ -72,10 +75,10 @@ internal static class SceneIdentityWalker
             }
         else if (events is not null) gap(new(root + "/" + Escape(events), "scene.coverage.structure"));
     }
-    private static void Visit(JsonObject owner, string field, string pointer, SceneIdentityDomain domain, SceneOutputSlot? output, SceneReferenceSlot? reference, SceneTimelinePosition? position, string? eventId, Action<SceneIdentitySlot> slot, Action<SceneCoverageGap> gap)
+    private static void Visit(JsonObject owner, string field, string pointer, SceneIdentityDomain domain, SceneOutputSlot? output, SceneReferenceSlot? reference, SceneTimelinePosition? position, string? eventId, Action<SceneIdentitySlot> slot, Action<SceneCoverageGap> gap, string? requiredProperty = null)
     {
         if (!owner.ContainsKey(field)) return;
-        var value = new SceneIdentitySlot(owner, field, pointer + "/" + Escape(field), domain, output, reference, position, eventId);
+        var value = new SceneIdentitySlot(owner, field, pointer + "/" + Escape(field), domain, output, reference, position, eventId) { RequiredProperty = requiredProperty };
         if (value.Handle is null) gap(new(value.Pointer, "scene.coverage.structure"));
         slot(value);
     }

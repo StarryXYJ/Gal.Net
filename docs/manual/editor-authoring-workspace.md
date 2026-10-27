@@ -88,4 +88,8 @@ var values = new ValueDescriptor(typeof(JsonElement))
 
 读取/检查可使用 `using var document = new ValueDocument(field, json);`，然后调用 GetIterator、FindProperty 或 Validate。Patch 只返回候选值和诊断，宿主仍须通过原作者意图提交，复核来源并记录历史。共享 PropertyFieldBinding 为专用控件提供子字段访问；通过相同父 Context 和 registry 继承草稿、宿主能力和数字编辑路径。
 
-通用表单按 Header 分组并缩进，字典支持键/值操作，重复键拒绝提交。字段值草稿由项目会话保留；新增/改键等结构操作的未成功键名仅留在当前控件。八层/200 元素的 UI 回退与引用分析预算分别生效；动态音效参数与 Timeline 的结构描述暂未全量接入，遇到未覆盖提示需按实际契约补充结构，不能靠改 UI 工厂来宣布引用检查完整。
+通用表单按 Header 分组并缩进，字典支持键/值操作，重复键拒绝提交。字段值草稿由项目会话保留；新增/改键等结构操作的未成功键名仅留在当前控件。八层/200 元素的 UI 回退与引用分析预算分别生效。
+
+应用特效与 SpeedLines/Impact 预设的参数分析复用 shader metadata，shader 表单与扫描共用 ShaderEffectFields；音频效果复用 ISEffectCatalog 中的字段，更新参数按前文挂载的实例解析。Editor 的 ProjectSceneTargets 通过 IEntryParameterMetadataSource 将现有资源查询快照接给 ProjectLocalizationQuery，随资源刷新重新分析，托管 shader 未保存的内容同样生效。独立调用 LocalizationReferenceIndex 可通过 EntryParameterMetadata 提供宿主目录与 shader 声明；未提供时仍能分析内置音效。
+
+Timeline 的轨道、关键帧和事件参数也进入同一遍历；运行 DTO schema 与 editorId/editorTangents 作者 metadata 分别提供结构，事件按项目 catalog/type 选择参数字段。事件中的 shader 资源会进入同一 metadata 快照。已知 shader 允许额外参数，切换后保留的 angle 等旧值属于合法数据，不需要为消除 warning 手工删除；只有声明字段仍按元数据校验。未知效果类型、资源声明不可用，以及其他尚未关联结构的 JSON 仍提示未覆盖，不能仅靠增加 UI 工厂来宣布引用检查完整。

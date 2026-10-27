@@ -21,7 +21,7 @@ public static class LocalizationValidation
             var paths = Directory.Exists(reader.Resolve("I18n")) ? reader.Files("I18n", diagnostics) : [];
             var sources = paths.Where(path => path.EndsWith(".json", StringComparison.OrdinalIgnoreCase) && !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))
                 .Select(path => new LocalizationSource(path, File.ReadAllText(reader.Resolve(path)))).ToArray();
-            var index = new LocalizationReferenceIndex(snapshot, catalog, sources);
+            var index = new LocalizationReferenceIndex(snapshot, catalog, sources, null, DiskEntryParameterMetadata.Capture(root, snapshot));
             foreach (var issue in index.Issues)
             {
                 var file = issue.File; var pointer = issue.JsonPointer;

@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [开放 shader 参数](lessons/L-20261027-10-open-shader-parameters.md)：已知 shader 的额外参数是合法、不解释的 JSON，保留且不 warning；声明字段仍校验，未知 shader 与封闭契约仍诊断。
+
 - [属性逻辑路径与 wire 边界](lessons/L-20261027-06-property-wire-boundaries.md)：JSON Pointer 不能穿过 JSON 字符串；引用识别、比较、复制与回写须同时迁移类型化路径。JsonArray 递归修改返回原节点时不能再次挂载该实例。
 
 - [数值模板与作者草稿](lessons/L-20261027-05-numeric-template-drafts.md)：NumericUpDown 的模板/Value 初始化不能成为作者输入；借用主题时由字段上下文拥有原始文字与提交，TextBox.PropertyChanged 同步捕获，验证挂载无草稿及输入后立即 Enter。
