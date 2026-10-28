@@ -581,7 +581,7 @@ public sealed class EditorDockFactory : Factory, IDisposable
         _inspector.RemoveInspectorAndRecover(document, () => FindActiveInspectableDockable(FactoryExtensions.GetActiveRoot(this)));
         _panelByDockable.Remove(document);
         // Localization drafts belong to the project scope and survive dock closure.
-        if (document.Context is not (GameLocalizationPanelViewModel or AssetPanelViewModel or ProblemsPanelViewModel or EditorWorkspaceViewModel))
+        if (document.Context is not (GameLocalizationPanelViewModel or ResourceOverridesPanelViewModel or AssetPanelViewModel or ProblemsPanelViewModel or EditorWorkspaceViewModel))
             (document.Context as IDisposable)?.Dispose();
         LayoutChanged?.Invoke();
     }

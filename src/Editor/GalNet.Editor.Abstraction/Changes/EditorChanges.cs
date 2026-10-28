@@ -65,6 +65,7 @@ public static class EditorDocumentCloner
         X = source.X,
         Y = source.Y,
         File = source.File,
+        StoryPackage = source.StoryPackage,
         BranchType = source.BranchType,
         Options = source.Options?.Select(option => new EditorGraphBranchOptionDto
         {

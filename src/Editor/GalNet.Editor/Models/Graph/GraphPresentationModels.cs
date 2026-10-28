@@ -54,6 +54,18 @@ public partial class GraphNode : ObservableObject
     private double _y;
 
     private string _name = "";
+    private string _storyPackage = "";
+    public Action<string>? StoryPackageRequested { get; set; }
+    public string StoryPackage
+    {
+        get => _storyPackage;
+        set
+        {
+            if (_storyPackage == value) return;
+            if (StoryPackageRequested is { } update) { update(value); return; }
+            if (SetProperty(ref _storyPackage, value)) Source.StoryPackage = value.Length == 0 ? null : value;
+        }
+    }
     public Action<string>? RenameRequested { get; set; }
     public string Name
     {
@@ -99,6 +111,7 @@ public partial class GraphNode : ObservableObject
     public void RefreshAuthorValues()
     {
         SetProperty(ref _name, Source.Name, nameof(Name));
+        SetProperty(ref _storyPackage, Source.StoryPackage ?? "", nameof(StoryPackage));
         X = Source.X;
         Y = Source.Y;
         RefreshBranchItems();
@@ -158,6 +171,7 @@ public partial class GraphNode : ObservableObject
         Source = source;
         NodeKind = nodeKind;
         _name = source.Name;
+        _storyPackage = source.StoryPackage ?? "";
         _x = source.X;
         _y = source.Y;
 

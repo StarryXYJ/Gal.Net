@@ -26,6 +26,7 @@ public static class EditorDockPanelIds
     public const string Variables = "Variables";
     public const string Characters = "Characters";
     public const string Localization = "Localization";
+    public const string ResourceOverrides = "ResourceOverrides";
     public const string Timeline = "Timeline";
     public const string ExternalDebug = "ExternalDebug";
     public const string Problems = "Problems";
@@ -44,6 +45,9 @@ public static class BuiltInDockContributions
         registry.RegisterDockPanel(new DelegateDockPanelContribution<GameLocalizationPanelViewModel>(
             EditorDockPanelIds.Localization, "Dock.Panel.Localization", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<GameLocalizationPanelViewModel>(), typeof(GameLocalizationPanelView), null));
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<ResourceOverridesPanelViewModel>(
+            EditorDockPanelIds.ResourceOverrides, "Packaging.Panel", DockPanelPlacement.MainDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<ResourceOverridesPanelViewModel>(), typeof(ResourceOverridesPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<CharactersPanelViewModel>(
             EditorDockPanelIds.Characters, "Dock.Panel.Characters", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<CharactersPanelViewModel>(), typeof(CharactersPanelView), null));

@@ -21,6 +21,8 @@ public sealed record EditorText(string? Key, params object[] Arguments)
         "Delete nodes and Group sources" => new("History.DeleteNodes"),
         "Create node and source" => new("History.CreateNode"),
         "Change project name and settings" => new("History.Settings"),
+        "Change Group story package" => new("Packaging.HistoryGroup"),
+        "Change resource patches" => new("Packaging.HistoryOverrides"),
         "Add choice option" => new("History.AddChoice"),
         "Delete choice option" => new("History.DeleteChoice"),
         "Move choice option" => new("History.MoveChoice"),

@@ -75,6 +75,8 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<GameLocalizationPanelService>();
         services.AddScoped<LocalizationExchangeService>();
         services.AddScoped<GameLocalizationPanelViewModel>();
+        services.AddScoped<ResourceOverrideAuthoringService>();
+        services.AddScoped<ResourceOverridesPanelViewModel>();
         services.AddScoped<CharacterAuthoringService>();
         services.AddScoped<CharacterPanelState>();
         services.AddTransient<CharactersPanelViewModel>();

@@ -66,6 +66,31 @@ public sealed partial class GraphAuthoringService(IEditorDocumentService documen
         if (changes.Length > 0) histories.Content.Execute(new MoveEdit(documents, changes));
     }
 
+    public void SetStoryPackage(string id, string value)
+    {
+        var node = Find(id);
+        if (node.Type != "Group") throw new EditorOperationException("graph.groupRequired", "Only Groups may declare a story package.");
+        value = value.Trim();
+        if (value.Length > 128 || value.Any(char.IsControl)) throw new EditorOperationException("graph.packageName", "Story package names must be at most 128 characters without control characters.");
+        if (documents.CurrentDocument.Nodes.Any(other => other.Id != id && string.Equals(other.StoryPackage, value, StringComparison.OrdinalIgnoreCase)
+                && other.StoryPackage != value)) throw new EditorOperationException("graph.packageName", "Story package names cannot differ only by case.");
+        if ((node.StoryPackage ?? "") != value) histories.Content.Execute(new StoryPackageEdit(documents, id, node.StoryPackage, value.Length == 0 ? null : value));
+    }
+
+    private sealed record StoryPackageEdit(IEditorDocumentService Source, string Id, string? Before, string? After) : IUndoableEdit
+    {
+        public string Description => "Change Group story package";
+        public long RetainedBytes => ((Before?.Length ?? 0) + (After?.Length ?? 0) + Id.Length) * 2L;
+        public void Undo() => Apply(After, Before);
+        public void Redo() => Apply(Before, After);
+        private void Apply(string? expected, string? value)
+        {
+            var node = Source.CurrentDocument.Nodes.Single(node => node.Id == Id);
+            if (node.StoryPackage != expected) throw new EditorOperationException("graph.changed", "The Group story package changed outside this edit.");
+            node.StoryPackage = value; Changed(Source);
+        }
+    }
+
     public void Connect(string fromId, int outlet, string toId)
     {
         ValidateConnection(fromId, outlet, Find(toId));

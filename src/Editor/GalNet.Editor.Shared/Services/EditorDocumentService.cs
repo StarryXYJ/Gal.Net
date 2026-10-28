@@ -47,6 +47,7 @@ public sealed class EditorDocumentService : IEditorDocumentService
             var existing = old.Nodes.SingleOrDefault(item => item.Id == node.Id && item.Type == node.Type && item.BranchType == node.BranchType);
             if (existing is null) return node;
             existing.Name = node.Name; existing.X = node.X; existing.Y = node.Y; existing.File = node.File;
+            existing.StoryPackage = node.StoryPackage;
             existing.Options = node.Options; existing.Conditions = node.Conditions;
             return existing;
         }).ToList();

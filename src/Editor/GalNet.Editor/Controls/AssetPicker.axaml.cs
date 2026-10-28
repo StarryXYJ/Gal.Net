@@ -16,6 +16,7 @@ public partial class AssetPicker : UserControl, IDisposable
     public static readonly StyledProperty<string> SelectedAssetIdProperty = AvaloniaProperty.Register<AssetPicker, string>(nameof(SelectedAssetId), string.Empty, defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
     public static readonly StyledProperty<AssetPickerFilter> FilterProperty = AvaloniaProperty.Register<AssetPicker, AssetPickerFilter>(nameof(Filter));
     public static readonly StyledProperty<IAssetManager?> AssetManagerProperty = AvaloniaProperty.Register<AssetPicker, IAssetManager?>(nameof(AssetManager));
+    public static readonly StyledProperty<string?> ResourceTypeIdProperty = AvaloniaProperty.Register<AssetPicker, string?>(nameof(ResourceTypeId));
     public static readonly DirectProperty<AssetPicker, string> DisplayTextProperty = AvaloniaProperty.RegisterDirect<AssetPicker, string>(nameof(DisplayText), x => x.DisplayText);
     public static readonly DirectProperty<AssetPicker, string> DisplayIconProperty = AvaloniaProperty.RegisterDirect<AssetPicker, string>(nameof(DisplayIcon), x => x.DisplayIcon);
     public static readonly DirectProperty<AssetPicker, string> DetailPathProperty = AvaloniaProperty.RegisterDirect<AssetPicker, string>(nameof(DetailPath), x => x.DetailPath);
@@ -29,6 +30,7 @@ public partial class AssetPicker : UserControl, IDisposable
     public string SelectedAssetId { get => GetValue(SelectedAssetIdProperty); set => SetValue(SelectedAssetIdProperty, value ?? string.Empty); }
     public AssetPickerFilter Filter { get => GetValue(FilterProperty); set => SetValue(FilterProperty, value); }
     public IAssetManager? AssetManager { get => GetValue(AssetManagerProperty); set => SetValue(AssetManagerProperty, value); }
+    public string? ResourceTypeId { get => GetValue(ResourceTypeIdProperty); set => SetValue(ResourceTypeIdProperty, value); }
     public string DisplayText => _displayText;
     public string DisplayIcon => _displayIcon;
     public string DetailPath => _detailPath;
@@ -38,6 +40,7 @@ public partial class AssetPicker : UserControl, IDisposable
         SelectedAssetIdProperty.Changed.AddClassHandler<AssetPicker>((picker, args) => { _ = picker.ResolveCurrentAsync(); });
         AssetManagerProperty.Changed.AddClassHandler<AssetPicker>((picker, args) => picker.ManagerChanged());
         FilterProperty.Changed.AddClassHandler<AssetPicker>((picker, args) => { if (picker._flyoutOpen) _ = picker.LoadItemsAsync(); });
+        ResourceTypeIdProperty.Changed.AddClassHandler<AssetPicker>((picker, args) => { if (picker._flyoutOpen) _ = picker.LoadItemsAsync(); });
     }
     public AssetPicker()
     {
@@ -139,10 +142,11 @@ public partial class AssetPicker : UserControl, IDisposable
         try
         {
             if (manager is null) { Items.Clear(); PickerPanel.SetItems([]); return; }
-            var type = filter switch { AssetPickerFilter.Image => "sprite", AssetPickerFilter.Audio => "audio", AssetPickerFilter.Video => "video", AssetPickerFilter.EffectProgram => "effect-program", AssetPickerFilter.ImageVariants => "image-variants", _ => null };
+            var type = ResourceTypeId is { } declared ? declared == "*" ? null : declared : filter switch { AssetPickerFilter.Image => "sprite", AssetPickerFilter.Audio => "audio", AssetPickerFilter.Video => "video", AssetPickerFilter.EffectProgram => "effect-program", AssetPickerFilter.ImageVariants => "image-variants", _ => null };
             var files = await manager.GetFilesAsync(type, ct);
             if (!Current(generation, manager, revision) || version != _listVersion) return;
-            if (filter == AssetPickerFilter.All) files = files.Where(file => file.TypeId is "sprite" or "audio" or "video" or "effect-program" or "image-variants").ToArray();
+            if (ResourceTypeId is not null) files = files.Where(file => file.TypeId is not ("graph" or "group")).ToArray();
+            else if (filter == AssetPickerFilter.All) files = files.Where(file => file.TypeId is "sprite" or "audio" or "video" or "effect-program" or "image-variants").ToArray();
             else if (filter == AssetPickerFilter.Text) files = files.Where(file => IsTextPath(file.Path)).ToArray();
             var items = await Task.WhenAll(files.Select(ItemAsync));
             if (!Current(generation, manager, revision) || version != _listVersion) return;

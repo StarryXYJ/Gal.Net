@@ -123,7 +123,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
         _histories.Changed -= OnHistoryChanged;
         _documentService.DocumentChanged -= SynchronizeGraph;
-        foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
+        foreach (var node in Nodes) { node.RenameRequested = null; node.StoryPackageRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
         GC.SuppressFinalize(this);
     }
@@ -303,7 +303,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     {
         _isLoadingGraph = true;
         ClearSelection();
-        foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
+        foreach (var node in Nodes) { node.RenameRequested = null; node.StoryPackageRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
         _nodes.Clear();
         _edges.Clear();
@@ -356,7 +356,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             foreach (var node in Nodes.ToArray())
                 if (!source.Nodes.Any(dto => ReferenceEquals(dto, node.Source)))
                 {
-                    node.RenameRequested = null; node.BranchValueRequested = null;
+                    node.RenameRequested = null; node.StoryPackageRequested = null; node.BranchValueRequested = null;
                     _nodes.Remove(node);
                     if (node.NodeKind == GraphNodeKind.LinearGroup) _dockFactory.CloseGroupEditor(node.Id);
                 }
@@ -436,6 +436,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         node.GameTexts = _projectService.Current?.Services.GetService<GameTextAuthoringService>();
         foreach (var option in node.Options) option.BindText(node.GameTexts, node.Id);
         node.RenameRequested = value => { try { _graphAuthoring.Rename(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
+        node.StoryPackageRequested = value => { try { _graphAuthoring.SetStoryPackage(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
         node.BranchValueRequested = (itemId, field, value) => EditBranch(() => _graphAuthoring.SetBranchValue(node.Id, itemId, field, value));
     }
 

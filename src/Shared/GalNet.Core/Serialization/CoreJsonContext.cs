@@ -64,4 +64,5 @@ namespace GalNet.Core.Serialization;
 [JsonSerializable(typeof(GameContentManifest))]
 [JsonSerializable(typeof(ContentPackagingOptions))]
 [JsonSerializable(typeof(ResourceOverrideDefinition))]
+[JsonSerializable(typeof(ResourceOverrideOptions))]
 internal sealed partial class CoreJsonContext : JsonSerializerContext;

@@ -3,13 +3,13 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using GalNet.Assets;
+using GalNet.Assets.Provider;
+using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
-using GalNet.Contracts.Builtins.Gallery;
-using GalNet.Contracts.Builtins;
-using GalNet.Assets.Provider;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -143,6 +143,7 @@ public static class GamePackageExporter
             var configuration = GalNet.Editor.Shared.Commands.DirectProjectPersistence.LoadSettings(privateStage);
             var options = configuration.Read(ContentPackagingOptions.Section);
             var roots = options.IncludeResources.Concat(gallery.Items.Select(item => item.ResourceId))
+                .Concat(configuration.Read(ResourceOverrideOptions.Section).AdditionalOriginals)
                 .Concat(configuration.ReadDefaultOptions().DefaultVisualPrograms.Values.Where(id => !string.IsNullOrWhiteSpace(id))).ToArray();
             var complete = options.DeclaredCompleteResources.Select(id => available.Any(file => StringComparer.OrdinalIgnoreCase.Equals(file.Id, id)) ? id : StoryResourceIds.Group(id)).ToArray();
             var plan = ContentPackagePlanner.Plan(available, roots, types, options.MaxPakBytes, complete, token);
@@ -169,8 +170,12 @@ public static class GamePackageExporter
                     : $"StoryPatches/{buildId}/story-{CryptoHelper.HashSHA256(Encoding.UTF8.GetBytes(part.PackageId))[..16]}-{part.PartIndex:D3}.pak";
                 var bytes = PakBuilder.Build("assets", part.Files, types, descriptor: new()
                 {
-                    Kind = part.PackageId.Length == 0 ? "base" : "story", ProjectId = projectId, BuildId = buildId,
-                    PackageId = part.PackageId, PartIndex = part.PartIndex, PartCount = part.PartCount
+                    Kind = part.PackageId.Length == 0 ? "base" : "story",
+                    ProjectId = projectId,
+                    BuildId = buildId,
+                    PackageId = part.PackageId,
+                    PartIndex = part.PartIndex,
+                    PartCount = part.PartCount
                 });
                 var payload = Write(privateStage, path, bytes);
                 (part.PackageId.Length == 0 ? baseline : stories).Add(payload);
@@ -179,12 +184,24 @@ public static class GamePackageExporter
                     if (!storyEntries.TryGetValue(part.PackageId, out var entries)) storyEntries.Add(part.PackageId, entries = []);
                     entries.Add(payload.Entry);
                 }
-                foreach (var file in part.Files) layout.Add(new { id = file.Id, file.Path, file.TypeId, package = part.PackageId, pak = path,
+                foreach (var file in part.Files) layout.Add(new
+                {
+                    id = file.Id,
+                    file.Path,
+                    file.TypeId,
+                    package = part.PackageId,
+                    pak = path,
                     dependencies = file.Metadata is IAssetDependencies dependencies ? dependencies.GetDependencies().Direct : [],
-                    root = roots.Contains(file.Id, StringComparer.OrdinalIgnoreCase) || file.Id == StoryResourceIds.Graph });
+                    root = roots.Contains(file.Id, StringComparer.OrdinalIgnoreCase) || file.Id == StoryResourceIds.Graph
+                });
             }
-            var descriptor = new GameContentManifest { ProjectId = projectId, BuildId = buildId, BasePaks = baseline.Select(file => file.Entry).ToList(),
-                Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList() };
+            var descriptor = new GameContentManifest
+            {
+                ProjectId = projectId,
+                BuildId = buildId,
+                BasePaks = baseline.Select(file => file.Entry).ToList(),
+                Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList()
+            };
             baseline.Add(Write(privateStage, GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(descriptor, JsonOptions)));
             foreach (var file in content) baseline.Add(Write(privateStage, file.Path, file.Data));
             var files = baseline.Select(file => file.Entry).ToArray();

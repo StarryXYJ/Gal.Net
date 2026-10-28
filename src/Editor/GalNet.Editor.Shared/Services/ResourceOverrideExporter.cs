@@ -9,12 +9,18 @@ namespace GalNet.Editor.Shared.Services;
 public static class ResourceOverrideExporter
 {
     public static async Task ExportAsync(string projectId, string projectRoot, ResourceOverrideDefinition definition,
-        string targetPath, IResourceTypeCatalog types, CancellationToken ct = default)
+        string targetPath, IResourceTypeCatalog types, CancellationToken ct = default, Action? snapshotCaptured = null)
     {
         // Capture author edits before the first await. The caller may continue editing its own definition.
-        var captured = new ResourceOverrideDefinition { Id = definition.Id, Name = definition.Name, Priority = definition.Priority,
-            Mappings = new(definition.Mappings, StringComparer.OrdinalIgnoreCase), IncludeResources = [..definition.IncludeResources],
-            DeclaredCompleteResources = [..definition.DeclaredCompleteResources] };
+        var captured = new ResourceOverrideDefinition
+        {
+            Id = definition.Id,
+            Name = definition.Name,
+            Priority = definition.Priority,
+            Mappings = new(definition.Mappings, StringComparer.OrdinalIgnoreCase),
+            IncludeResources = [.. definition.IncludeResources],
+            DeclaredCompleteResources = [.. definition.DeclaredCompleteResources]
+        };
         var source = Path.GetFullPath(Path.Combine(projectRoot, "Assets"));
         var target = Path.GetFullPath(targetPath);
         if (!target.EndsWith(".pak", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Resource patch output must end in .pak.", nameof(targetPath));
@@ -28,6 +34,7 @@ public static class ResourceOverrideExporter
             Directory.CreateDirectory(stage);
             // Reject links and copy the complete author resource tree to a private compilation snapshot.
             Copy(source, stage, ct);
+            snapshotCaptured?.Invoke();
             using var provider = new LocalFileProvider(stage, types);
             using var archive = await provider.OpenArchiveAsync("assets", ct);
             var files = archive.AssetIds.Select(id => archive.GetAsset(id)!).ToArray();

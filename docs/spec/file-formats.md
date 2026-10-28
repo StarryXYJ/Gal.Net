@@ -37,7 +37,7 @@ Project/
 
 Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。项目保持唯一 Graph；Graph/Group 发布为 PAK 内的 graph/group 资源，开发编译目录由 CompiledStoryAssetProvider 适配同一资源 ID。保留 Graph ID 为 `galnet:graph:main`，Group ID 从稳定节点 ID 派生为 `galnet:group:<id>`；不新增多图列表、默认图选择或跨图存档字段。运行图还保留 playerVariables/saveVariables 声明，宿主创建新 Run 时据此初始化默认值。
 
-Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本体，同名聚合为剧情包。编译 Graph 保留节点和包名，正文只进入相应 story PAK。GUI 编辑入口见后续作者工具阶段，现阶段可在作者 JSON 中填写。
+Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本体，同名聚合为剧情包。编译 Graph 保留节点和包名，正文只进入相应 story PAK。GUI 节点检查器可编辑名称，进入项目历史并随 Graph 保存。
 
 ## 项目配置 `settings.json`
 
@@ -58,6 +58,8 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 通用作者表单通过 section.Resolve 读取隔离的有效值快照（含默认值），不会把默认值写回原始配置；原始 section 仍是唯一持久源。项目设置窗口的字段草稿通过所选 schema 校验后批量进入项目历史，Undo/Redo 保留 section 的缺省状态及无关 section。
 
 配置补丁命令为 `project.configuration.patch`，接收 `sectionId`、必需的 `values` 对象及可选 `remove` 字段 ID 列表。先删除、后覆盖，显式 null 与缺省分开；仅允许修改声明的字段，完整候选验证成功才替换 section，其他字段/section 保留。构建与导出使用调用方所选 schema，在发布产物前验证已存储配置。
+
+资源补丁作者数据使用可选 `galnet.resourceOverrides` section（版本 1）：packages 为 ResourceOverrideDefinition 列表（稳定 id、name、priority、mappings、includeResources、declaredCompleteResources），additionalOriginals 为补充的原资源 ID 列表。定义随 settings 保存并进入已有 Undo/Redo、工作版/保存版和作者恢复快照；不创建独立 UI 状态文件作为真源。矩阵的名称/优先级草稿须回车或随保存提交，无效草稿阻止保存。additionalOriginals 同时成为基础打包根。
 
 ## `.galpak` 导出与安装
 

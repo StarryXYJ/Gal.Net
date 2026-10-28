@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [PAK 索引与 payload 验证](lessons/L-20261028-02-pak-index-payload-verification.md)：MetadataIndex 不校验普通 payload；独立覆盖包准备需逐项验证，当前文件 hash 排序不能代替已知校验和。
+
 - [原生发布载荷](lessons/L-20261028-01-native-publish-payload.md)：RID/托管符号开关不能保证 native NuGet 内容自动裁掉多余架构与 PDB；在 manifest 前过滤最终应用载荷，并验收所需 x64 native 文件仍在。
 
 - 本地 CI 入口为 `scripts/ci/Invoke-CI.ps1`（默认 All，可 Coverage），Actions 调用同一脚本；SDK 精确固定为 global.json 版本。`scripts/release/Release.ps1` 生成并验收 5 个聚合 NuGet 与 Windows x64 R2R 的 Editor、纯/整合 Sample、Contracts 四 ZIP；包归属见 packaging/packages.json，操作见 docs/manual/release-packaging.md。桌面 Sample AOT 尚未通过严格链接，不能从 Headless 自检推导支持；F-20261027-04 的 summary 保留未完成项。
