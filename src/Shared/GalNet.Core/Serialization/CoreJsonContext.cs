@@ -61,4 +61,5 @@ namespace GalNet.Core.Serialization;
 [JsonSerializable(typeof(AssetMeta))]
 [JsonSerializable(typeof(DependentAssetMeta))]
 [JsonSerializable(typeof(PakDescriptor))]
+[JsonSerializable(typeof(GameContentManifest))]
 internal sealed partial class CoreJsonContext : JsonSerializerContext;

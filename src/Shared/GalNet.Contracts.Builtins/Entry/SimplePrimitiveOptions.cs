@@ -38,7 +38,7 @@ public partial class LayerReplaceOptions
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
     [Common]
     public string? HandleId { get; set; }
-    [Field(1, AllowNull = true, EditorId = "entry.imageasset")]
+    [Field(1, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")]
     [Common]
     public string? AssetId { get; set; }
 }

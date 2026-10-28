@@ -191,7 +191,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
                 await Submit(JsonCodec.SerializeToElement(items.ToArray()), generation, CancellationToken.None);
             }).IsEnabled = values.Count < 200;
             row.Children.Add(buttons);
-            var descriptor = new FieldDescriptor(_shape.Element!.Id, _shape.Element.Value, isRequired: true, editor: _shape.Element.Editor, labelKey: _shape.Element.LabelKey, semantic: _shape.Element.Semantic);
+            var descriptor = new FieldDescriptor(_shape.Element!.Id, _shape.Element.Value, isRequired: true, editor: _shape.Element.Editor, labelKey: _shape.Element.LabelKey, semantic: _shape.Element.Semantic, resourceTypeId: _shape.Element.ResourceTypeId);
             var binding = Bind(descriptor, null, position);
             row.Children.Add(new SchemaForm { ShowLabels = false, Depth = Context.Depth + 1, Schema = [descriptor], Registry = Context.Registry, Binding = _ => binding });
             panel.Children.Add(row);

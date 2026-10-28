@@ -14,17 +14,33 @@ public sealed class GameSession(Func<CancellationToken, Task<IGameRun>> createRu
     public Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken = default) =>
         ExecuteAsync(token => PrepareCoreAsync(snapshot, token), cancellationToken);
 
+    public Task PrepareNewAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default)
+    {
+        var copied = NewGameVariables.Capture(initialSaveVariables);
+        return ExecuteAsync(token => PrepareCoreAsync(null, token, copied), cancellationToken);
+    }
+
     public Task PrepareFromAsync(Func<CancellationToken, Task<GameSnapshot>> load,
         CancellationToken cancellationToken = default) =>
         ExecuteAsync(async token => await PrepareCoreAsync(await load(token), token), cancellationToken);
 
-    private async Task PrepareCoreAsync(GameSnapshot? snapshot, CancellationToken token)
+    private async Task PrepareCoreAsync(GameSnapshot? snapshot, CancellationToken token,
+        IReadOnlyDictionary<string, object>? initialSaveVariables = null)
     {
         if (snapshot is not null && _run is not null) await _run.ValidateSnapshotAsync(snapshot, token);
         await ReleaseRunAsync();
         var run = await createRun(token);
         _run = run;
-        try { await run.PrepareAsync(snapshot, token); }
+        try
+        {
+            await run.PrepareAsync(snapshot, token);
+            if (initialSaveVariables is { Count: > 0 })
+            {
+                if (run is not IParameterizedGameRun configurable)
+                    throw new NotSupportedException("This game run does not accept initial save variables.");
+                await configurable.InitializeSaveVariablesAsync(initialSaveVariables, token);
+            }
+        }
         catch (Exception error)
         {
             _run = null;

@@ -10,7 +10,7 @@ namespace GalNet.Contracts.Builtins;
 public partial class LayerShowOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
-    [Common, Field(1, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? AssetId { get; set; }
     [Field(2, EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.FlipbookDefinition), StructureIgnoresCase = true, StructureUsesFieldIds = true)] public JsonElement Flipbook { get; set; }
     [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
@@ -74,7 +74,7 @@ public partial class AudioPlayOptions
 {
     public AudioPlayOptions() => TrackId = "";
     [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
-    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset", ResourceTypeId = "audio")] public string? Asset { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
     [Field(3, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioPlacementValueConverter))]
     public AudioPlacement? Placement { get; set; } = AudioPlacement.Enqueue;
@@ -116,7 +116,7 @@ public partial class AudioLevelOptions
 [GenerateFieldSchema]
 public partial class VideoPlayOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = "entry.videoasset")] public string? Asset { get; set; }
+    [Common, Field(0, AllowNull = true, EditorId = "entry.videoasset", ResourceTypeId = "video")] public string? Asset { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; } = "video";
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? Blocking { get; set; } = true;
@@ -131,7 +131,7 @@ public partial class VideoPlayOptions
 [GenerateFieldSchema]
 public partial class EffectApplyOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = "entry.effectprogramasset")] public string? Program { get; set; } = "";
+    [Common, Field(0, AllowNull = true, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string? Program { get; set; } = "";
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; } = "";
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
     [Common, Field(3, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TargetHandleId { get; set; } = "";

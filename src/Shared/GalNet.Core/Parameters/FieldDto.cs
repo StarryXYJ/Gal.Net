@@ -32,6 +32,7 @@ public sealed class FieldAttribute(int order) : Attribute
     public bool Required { get; set; }
     public bool AllowNull { get; set; }
     public string? EditorId { get; set; }
+    public string? ResourceTypeId { get; set; }
     public double Step { get; set; } = double.NaN;
     public string? Format { get; set; }
     public string? UnitKey { get; set; }

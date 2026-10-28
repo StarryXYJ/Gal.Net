@@ -8,6 +8,8 @@ namespace GalNet.Core.Graph;
 public sealed class Group : Node
 {
     public override NodeType NodeType => NodeType.Group;
+    public string ResourceId { get; init; } = "";
+    public string StoryPackage { get; init; } = "";
 
     /// <summary>该组包含的复杂条目列表（开发期编写）</summary>
     public List<EntryModel> Entries { get; init; } = [];

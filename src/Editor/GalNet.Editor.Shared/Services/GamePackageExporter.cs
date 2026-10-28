@@ -144,8 +144,11 @@ public static class GamePackageExporter
             {
                 var assets = await LoadAssetsAsync(Path.Combine(stage, "Assets"), resourceTypes, token).ConfigureAwait(false);
                 var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-                var assetsPak = PakBuilder.Build("assets", assets, resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
-                var payloads = new[] { (Path: AssetsPakPath, Data: assetsPak) }.Concat(BuildContentFiles(stage, gallery, token)).ToArray();
+                var story = StoryResourceCompiler.Compile(stage, entryCatalog, token);
+                var assetsPak = PakBuilder.Build("assets", assets.Concat(story).ToArray(), resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
+                var payloads = new[] { (Path: AssetsPakPath, Data: assetsPak),
+                    (Path: GameContentManifest.FileName, Data: JsonSerializer.SerializeToUtf8Bytes(new GameContentManifest(), JsonOptions)) }
+                    .Concat(BuildContentFiles(stage, gallery, token)).ToArray();
                 var files = payloads.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
                 var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, files);
                 return new PreparedExport(payloads, files, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions));
@@ -164,7 +167,7 @@ public static class GamePackageExporter
     {
         return Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
             .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))
-            .Where(path => path is "settings.json" || path.StartsWith("Graph/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+            .Where(path => path is "settings.json" || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
             .OrderBy(path => path, StringComparer.Ordinal)

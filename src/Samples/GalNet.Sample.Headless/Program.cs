@@ -56,7 +56,8 @@ try
         characters: content.Localization.Characters, imageVariants: imageVariants, audioConfiguration: new GalNet.Contracts.Builtins.Audio.AudioConfiguration(content.Configuration.ReadDefaultOptions().AudioTracks, content.Configuration.ReadDefaultOptions().AudioBuses)).BuildView();
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
-    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, variables);
+    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, variables,
+        saveDefaults: content.Graph.SaveVariables, playerDefaults: content.Graph.PlayerVariables);
     await using var run = new GameRun(content.Graph, runtime, view, progress, presentation);
     var engine = run.Engine;
 

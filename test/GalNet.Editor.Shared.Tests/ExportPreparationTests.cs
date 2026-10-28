@@ -5,6 +5,9 @@ using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Entry;
+using GalNet.Core.Assets;
+using GalNet.Core.Serialization;
+using GalNet.Storage.FileSystem;
 using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Shared.Tests;
@@ -71,6 +74,38 @@ public sealed class ExportPreparationTests
         Assert.That(File.ReadAllText(Path.Combine(packages, "Game.galpak")), Is.EqualTo("previous"));
         Assert.That(Directory.Exists(Path.Combine(_root, "directory")), Is.False);
         Assert.That(Directory.GetDirectories(_root, ".*.build-*"), Is.Empty);
+    }
+
+    [Test]
+    public async Task SingleGraphAndGroupsAreAddressableWithoutLooseRuntimeStoryFiles()
+    {
+        Put("Graph/graph.json", """{"version":2,"name":"Game","rootNodeId":"main","nodes":[{"id":"main","type":"Group","name":"Chapter","file":"groups/main.rawgalgroup"}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
+        Put("Graph/groups/main.rawgalgroup", """{"version":2,"kind":"Raw","entries":[]}""");
+        var types = BuiltinResourceTypes.CreateCatalog();
+        var gallery = BuiltinGalleryTypes.CreateCatalog(types);
+        var directory = await GamePackageExporter.ExportDirectoryAsync("id", "Game", Project, Path.Combine(_root, "runtime"), types, gallery, _entries);
+        Assert.That(directory.Success, Is.True, directory.Error);
+        var installed = directory.ContentDirectory!;
+        Assert.That(Directory.Exists(Path.Combine(installed, "Graph")), Is.False);
+        Assert.That(File.Exists(Path.Combine(installed, GameContentManifest.FileName)), Is.True);
+        using (var assets = new AssetManager((await GameInstallation.OpenAsync(installed)).CreateAssetProviders(types)))
+        {
+            Assert.That((await assets.GetFileAsync(StoryResourceIds.Graph))!.TypeId, Is.EqualTo("graph"));
+            Assert.That((await assets.GetFileAsync(StoryResourceIds.Group("main")))!.TypeId, Is.EqualTo("group"));
+        }
+        var content = await new InstalledGameContentProvider(installed, types, gallery).LoadAsync();
+        Assert.That(content.Graph.Id, Is.EqualTo(StoryResourceIds.Graph));
+        Assert.That(content.Graph.RootNodeId, Is.EqualTo("main"));
+        var development = Path.Combine(_root, "development");
+        await new ProjectContentBuilder(_entries, types).BuildAsync(Project, development);
+        var sourceContent = await new ProjectGameContentProvider(development, types, gallery).LoadAsync();
+        Assert.That(sourceContent.Graph.Id, Is.EqualTo(content.Graph.Id));
+        using (var assets = new AssetManager((await GameInstallation.OpenAsync(development)).CreateAssetProviders(types)))
+            Assert.That((await assets.GetFileAsync(StoryResourceIds.Group("main")))!.TypeId, Is.EqualTo("group"));
+        File.Delete(Path.Combine(installed, "Assets/Paks/000-base.pak"));
+        Directory.CreateDirectory(Path.Combine(installed, "Graph"));
+        File.WriteAllText(Path.Combine(installed, "Graph/graph.json"), File.ReadAllText(Path.Combine(Project, "Graph/graph.json")));
+        Assert.ThrowsAsync<InvalidDataException>(() => new InstalledGameContentProvider(installed, types, gallery).LoadAsync());
     }
 
     private void Put(string relative, string text)

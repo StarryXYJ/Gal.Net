@@ -2,6 +2,7 @@ using GalNet.Assets.Provider;
 using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.GameHost.Content;
+using GalNet.Assets;
 
 namespace GalNet.Storage.FileSystem;
 
@@ -21,10 +22,11 @@ public sealed class ProjectGameContentProvider : IGameContentProvider
         _galleryTypes = galleryTypes ?? throw new ArgumentNullException(nameof(galleryTypes));
     }
 
-    public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default) => Task.Run(() =>
+    public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default) => Task.Run(async () =>
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var graph = GameGraphContentLoader.Load(_directory, Path.Combine("Graph", "graph.json"), Path.Combine("Graph", "groups"), cancellationToken);
+        using var storyAssets = new AssetManager([new CompiledStoryAssetProvider(_directory)]);
+        var graph = await GameGraphContentLoader.LoadResourcesAsync(storyAssets, StoryResourceIds.Graph, cancellationToken);
         var assetsDirectory = Path.Combine(_directory, "Assets");
         using var assets = new LocalFileProvider(assetsDirectory, _resourceTypes, optional: true);
         using var archive = assets.OpenArchive("assets");

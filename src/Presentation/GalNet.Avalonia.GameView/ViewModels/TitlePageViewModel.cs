@@ -70,6 +70,17 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
         finally { IsLoading = false; }
     }
 
+    [RelayCommand]
+    protected virtual async Task StartNewGameWithVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken)
+    {
+        if (!CanStartNewGame) return;
+        if (_session is not IParameterizedGameSessionService configured)
+            throw new NotSupportedException("This session does not accept new game variables.");
+        IsLoading = true;
+        try { await LaunchGameAsync(token => configured.PrepareNewGameAsync(variables, token), cancellationToken); }
+        finally { IsLoading = false; }
+    }
+
     private Task LaunchGameAsync(Func<CancellationToken, Task> prepare, CancellationToken cancellationToken)
     {
         Func<CancellationToken, Task>? begin = null;

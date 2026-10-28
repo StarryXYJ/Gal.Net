@@ -64,7 +64,8 @@ public sealed class GameInstallationTests
 
             var installation = await GameInstallation.OpenAsync(export.PackagePath!);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.True);
-            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.True);
+            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.False);
+            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, GameContentManifest.FileName)), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
             var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes,
                 new GameContentLoadOptions { Configurations = configurations }).LoadAsync();
@@ -188,8 +189,12 @@ public sealed class GameInstallationTests
     {
         var galleryTypes = BuiltinGalleryTypes.CreateCatalog(types);
         var gallery = new GalleryConfiguration { Types = galleryTypes.Types.ToList(), Items = [] };
+        var graphMeta = new DependentAssetMeta { Id = StoryResourceIds.Graph, TypeId = "graph", Path = "Story/main.galgraph", DependenciesComplete = true };
+        var graph = new GameFile(graphMeta.Id, graphMeta.Path, graphMeta.TypeId, graphMeta,
+            System.Text.Encoding.UTF8.GetBytes("""{"id":"galnet:graph:main","name":"package-test","rootNodeId":"","nodes":[],"edges":[]}"""));
         return [
-            ("Graph/graph.json", System.Text.Encoding.UTF8.GetBytes("{\"name\":\"package-test\",\"rootNodeId\":\"\",\"nodes\":[],\"edges\":[]}")),
+            (GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(new GameContentManifest(), JsonSerializerOptions.Web)),
+            ("Assets/Paks/010-story.pak", PakBuilder.Build("assets", [graph], types)),
             ("gallery.json", JsonSerializer.SerializeToUtf8Bytes(gallery))
         ];
     }

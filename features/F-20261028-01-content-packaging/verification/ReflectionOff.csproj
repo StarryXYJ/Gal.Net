@@ -6,5 +6,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../../src/Shared/GalNet.Assets/GalNet.Assets.csproj" />
+    <ProjectReference Include="../../../src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
   </ItemGroup>
 </Project>

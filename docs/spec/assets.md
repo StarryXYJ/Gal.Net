@@ -52,12 +52,16 @@ IAssetProvider / IArchive / IGameFile
 
 | 输入 | 内容 provider | 资源 provider |
 | --- | --- | --- |
-| 开发项目目录 | `ProjectGameContentProvider` 读取 `Graph/`、`settings.json`、`I18n/`，并从 `Assets/**/*.meta` 编译 Gallery | `LocalFileProvider(Assets/)` |
-| 已安装包目录 | `InstalledGameContentProvider` 读取 `Graph/`、`settings.json`、`I18n/` 和生成的 `gallery.json` | 所有 `Assets/Paks/**/*.pak` |
+| 开发编译目录 | `ProjectGameContentProvider` 经资源 ID 加载剧情，读取 settings/I18n，并从 Assets metadata 编译 Gallery | `CompiledStoryAssetProvider(Graph/)` + `LocalFileProvider(Assets/)` |
+| 已安装包目录 | `InstalledGameContentProvider` 读取 `content.json` 唯一 Graph 入口并按资源 ID 加载剧情，读取 settings/I18n 和生成的 gallery | 所有 `Assets/Paks/**/*.pak` |
 
 同一宿主在创建内容 provider、资源 provider、Preview 与导出器时必须传入同一对冻结 `IResourceTypeCatalog` / `IGalleryTypeCatalog`。不能在下游入口重新创建 built-in catalog，否则插件注册无法贯穿完整路径。
 
-安装内容的 PAK 按相对路径倒序注册；更靠后的路径优先，因此 `100-extra.pak` 可覆盖 `000-base.pak`。`Graph/`、`I18n/`、`settings.json`、生成的 `gallery.json` 和 manifest 是特殊内容，永不注册为资源 provider。
+安装内容的 PAK 当前按相对路径倒序注册；更靠后的路径优先，因此 `100-extra.pak` 可覆盖 `000-base.pak`。`I18n/`、`settings.json`、生成的 `gallery.json`、`content.json` 和 manifest 是特殊内容。发行 Graph/Group 已作为资源进入 PAK，不从 loose Graph 目录回退读取。
+
+项目仍只有一张 Graph，清单指向保留 ID `galnet:graph:main`；Group 正文 ID 为 `galnet:group:<稳定节点ID>`，与节点身份分开。两种资源使用 `DependentAssetMeta`。这些 metadata 由编译适配层生成，不需要在作者目录补 sidecar 或新增选图配置；自定义发行资源目录也须注册 graph/group 的 DependentAssetMeta。`CompiledStoryResources` 为发布和开发适配生成同一剧情 payload，开发 provider 按会话持有不可变快照。开发输入需已有编译 Group，缺少正文不再静默当空 Group。
+
+Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute.ResourceTypeId` / `FieldDescriptor.ResourceTypeId` 明确声明字符串字段为资源 ID；源生成器与结构遍历保留该声明，不从 EditorId、GUID 外形或任意字符串推断。opaque 结构或 custom.invoke 无法证明静态引用完整时，metadata 标记为不完整。开发 provider 没有编译 schema 上下文时不伪造非空 Group 的完整依赖，发行编译使用调用方 catalog 提供分析结果。
 
 ## PAK
 

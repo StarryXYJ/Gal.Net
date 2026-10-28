@@ -19,4 +19,6 @@ public sealed class Graph
 
     /// <summary>所有边</summary>
     public List<Edge> Edges { get; init; } = [];
+    public List<GalNet.Core.Variable.ProjectVariableDefinition> PlayerVariables { get; init; } = [];
+    public List<GalNet.Core.Variable.ProjectVariableDefinition> SaveVariables { get; init; } = [];
 }

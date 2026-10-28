@@ -10,7 +10,7 @@ namespace GalNet.Contracts.Builtins;
 public partial class VariantsShowOptions
 {
     [Common, Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
-    [Common, Field(1, Required = true, EditorId = "entry.variantsasset")] public string AssetId { get; set; } = "";
+    [Common, Field(1, Required = true, EditorId = "entry.variantsasset", ResourceTypeId = "image-variants")] public string AssetId { get; set; } = "";
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Selection { get; set; }
     [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;

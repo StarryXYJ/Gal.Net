@@ -15,7 +15,7 @@ public static class GraphLoader
     {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new NodeJsonConverter() }
+        Converters = { new NodeJsonConverter(), new JsonStringEnumConverter<GalNet.Core.Variable.VariableType>() }
     }, RuntimeJsonContext.Default);
 
     /// <summary>从 JSON 字符串加载图。</summary>
@@ -26,10 +26,13 @@ public static class GraphLoader
 
         var graph = new Graph
         {
+            Id = dto.Id ?? GalNet.Core.Assets.StoryResourceIds.Graph,
             Name = dto.Name,
             RootNodeId = dto.RootNodeId,
             Nodes = dto.Nodes?.Select(ConvertNode).ToList() ?? [],
-            Edges = dto.Edges?.Select(e => new Edge(e.FromNodeId, e.FromOutlet, e.ToNodeId)).ToList() ?? []
+            Edges = dto.Edges?.Select(e => new Edge(e.FromNodeId, e.FromOutlet, e.ToNodeId)).ToList() ?? [],
+            PlayerVariables = dto.PlayerVariables ?? [],
+            SaveVariables = dto.SaveVariables ?? []
         };
 
         return graph;
@@ -41,6 +44,8 @@ public static class GraphLoader
         {
             Id = dto.Id,
             Name = dto.Name ?? "",
+            ResourceId = dto.ResourceId ?? GalNet.Core.Assets.StoryResourceIds.Group(dto.Id),
+            StoryPackage = dto.StoryPackage ?? "",
             Entries = [] // entries loaded separately from .galgroup
         },
         "Branch" => new Branch
@@ -65,6 +70,9 @@ public static class GraphLoader
 
     internal sealed class GraphDto
     {
+        public string? Id { get; set; }
+        public List<GalNet.Core.Variable.ProjectVariableDefinition>? PlayerVariables { get; set; }
+        public List<GalNet.Core.Variable.ProjectVariableDefinition>? SaveVariables { get; set; }
         public string Name { get; set; } = "";
         public string RootNodeId { get; set; } = "";
         public List<NodeDto>? Nodes { get; set; }
@@ -73,6 +81,8 @@ public static class GraphLoader
 
     internal sealed class NodeDto
     {
+        public string? ResourceId { get; set; }
+        public string? StoryPackage { get; set; }
         public string Id { get; set; } = "";
         public string Type { get; set; } = "";
         public string? Name { get; set; }
@@ -117,6 +127,8 @@ public static class GraphLoader
 
             if (element.TryGetProperty("name", out var nameProp))
                 dto.Name = nameProp.GetString();
+            if (element.TryGetProperty("resourceId", out var resource)) dto.ResourceId = resource.GetString();
+            if (element.TryGetProperty("storyPackage", out var package)) dto.StoryPackage = package.GetString();
 
             if (element.TryGetProperty("branchType", out var btProp))
                 dto.BranchType = btProp.GetString();

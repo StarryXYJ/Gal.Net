@@ -32,7 +32,9 @@ public sealed class GameRuntime : IGameRuntime
     private readonly IVariableService? _variableService;
 
     public GameRuntime(ITextResolver? textResolver, string rootNodeId = "",
-        IVariableService? variableService = null, StateCatalog? stateCatalog = null)
+        IVariableService? variableService = null, StateCatalog? stateCatalog = null,
+        IReadOnlyList<ProjectVariableDefinition>? saveDefaults = null,
+        IReadOnlyList<ProjectVariableDefinition>? playerDefaults = null)
     {
         TextResolver = textResolver ?? PassthroughTextResolver.Instance;
         CurrentNodeId = rootNodeId;
@@ -48,6 +50,19 @@ public sealed class GameRuntime : IGameRuntime
             _variables.RestorePlayerFrom(variableService.GetSnapshot(VariableScope.Player));
             _variables.RestoreSaveFrom(variableService.GetSnapshot(VariableScope.Save));
         }
+
+        if (saveDefaults is not null)
+            _variables.RestoreSaveFrom(saveDefaults.ToDictionary(definition => definition.Name, definition => definition.DefaultValue.Clone(definition.Name)));
+        var playerValues = _variables.PlayerSnapshot.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+        foreach (var definition in playerDefaults ?? [])
+        {
+            var name = definition.Name.StartsWith("player.", StringComparison.Ordinal) ? definition.Name[7..] : definition.Name;
+            if (playerValues.ContainsKey(name)) continue;
+            var value = definition.DefaultValue.Clone(name);
+            playerValues.Add(name, value);
+            variableService?.NotifyVariableChanged(VariableScope.Player, "player." + name, value);
+        }
+        _variables.RestorePlayerFrom(playerValues);
 
         _evaluator = new ExpressionEvaluator(_variables, (expression, error) => GameLog.Logger.Warning(error,
             "{DiagnosticCode} at group {GroupId}, entry index {EntryIndex}: {Expression}",

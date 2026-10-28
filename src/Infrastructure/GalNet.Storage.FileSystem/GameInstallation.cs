@@ -42,10 +42,15 @@ public sealed class GameInstallation
     {
         ArgumentNullException.ThrowIfNull(resourceTypes);
         var assetsDirectory = Path.Combine(RootDirectory, "Assets");
-        if (!IsPackaged) return [new LocalFileProvider(assetsDirectory, resourceTypes, optional: true)];
+        if (!IsPackaged) return [new CompiledStoryAssetProvider(RootDirectory), new LocalFileProvider(assetsDirectory, resourceTypes, optional: true)];
 
+        return CreateInstalledAssetProviders(RootDirectory, resourceTypes);
+    }
+
+    internal static IReadOnlyList<IAssetProvider> CreateInstalledAssetProviders(string rootDirectory, IResourceTypeCatalog resourceTypes)
+    {
         var providers = new List<IAssetProvider>();
-        var resourcePaksDirectory = Path.Combine(assetsDirectory, "Paks");
+        var resourcePaksDirectory = Path.Combine(rootDirectory, "Assets", "Paks");
         if (Directory.Exists(resourcePaksDirectory))
         {
             foreach (var pakPath in Directory.EnumerateFiles(resourcePaksDirectory, "*.pak", SearchOption.AllDirectories)

@@ -11,3 +11,9 @@ public interface IGameRun : IAsyncDisposable
     Task StopAsync();
     GameSnapshot CreateSaveData();
 }
+
+/// <summary>Optional startup initialization, executed after preparation and before the first entry.</summary>
+public interface IParameterizedGameRun
+{
+    Task InitializeSaveVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken);
+}

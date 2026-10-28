@@ -25,5 +25,15 @@ try
         if (restored.Descriptor.Kind != kind || ((IAssetDependencies)restored.GetAsset("atlas")!.Metadata).GetDependencies().Direct.Count != 1) throw new Exception("Metadata/control roundtrip failed.");
     }
     Console.WriteLine("P1_REFLECTION_OFF_OK kinds=3 dependencies=2 reflectionJson=false");
+    var story = CompiledStoryResources.Create(System.Text.Encoding.UTF8.GetBytes("""
+        {"name":"single","rootNodeId":"main","nodes":[{"id":"main","type":"Group"}],"edges":[],
+         "saveVariables":[{"name":"chapter","defaultValue":{"Uid":"chapter-id","Name":"chapter","Type":1,"Value":1},"type":"Int"}]}
+        """), _ => GalNet.Core.Serialization.JsonCodec.SerializeToUtf8Bytes(new GalNet.Core.Serialization.CompiledGroupDocument()));
+    using var storyPak = Archive.Deserialize("assets", PakBuilder.Build("assets", story, types), types);
+    var loadedGraph = GalNet.Runtime.Loader.GraphLoader.LoadFromJson(System.Text.Encoding.UTF8.GetString(storyPak.GetAsset(StoryResourceIds.Graph)!.ReadAllBytes()));
+    var runtime = new GalNet.Runtime.Runtime.GameRuntime(null, loadedGraph.RootNodeId, saveDefaults: loadedGraph.SaveVariables);
+    if (loadedGraph.Id != StoryResourceIds.Graph || storyPak.GetAsset(StoryResourceIds.Group("main"))?.TypeId != "group"
+        || runtime.GetVariable("chapter")?.AsInt() != 1) throw new Exception("Story resource/default variable roundtrip failed.");
+    Console.WriteLine("P2_STORY_REFLECTION_OFF_OK graph=galnet:graph:main groups=1 saveDefault=1");
 }
 finally { Directory.Delete(root, true); }

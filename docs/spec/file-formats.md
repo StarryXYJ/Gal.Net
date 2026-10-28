@@ -35,7 +35,9 @@ Project/
 
 共享保存先准备并校验 Graph/Group 写入计划，再暂存全部目标文件后发布。删除 Group 节点并删除其 entries 时同步删除该源文件；保留 entries 时源文件成为孤立作者文件。同一 Group 变更 source path 时，新路径写入计划并删除旧源文件。GUI 保存全部将 settings、editor-state 和已跟踪的普通文本字节合入同一计划，失败不更新作者基线。普通文本描述项的 ID/路径/存在状态/字节属于 Editor 会话与恢复材料，不改变游戏源文件格式；结构操作对 Working/Saved 分别变换，文件页关闭不丢弃缓冲。作者文件事务在 `.galnet/editor/transactions/` 持久化 manifest、前后哈希和备份，后续发布失败逆序恢复；恢复失败明确报告并保留材料。GUI 打开项目核对未完成计划，外部内容不匹配时停止恢复，不承诺断电或跨进程修改下的整体原子事务。周期作者恢复快照另存于 `.galnet/editor/recovery/`，不进入游戏内容或跨重启 Undo 栈。普通文件事务也记录目录状态与大小写改名的中间路径；会话历史字节材料另存 `.galnet/editor/history/`，不进入发布包或跨重启 Undo 栈。详见 [Editor 项目历史与保存](editor-history-and-save.md) 和 [项目文件操作](editor-files.md)。
 
-Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。Graph 与 Group 目前是特殊内容文件，不通过资源 GUID provider 查询。
+Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。项目保持唯一 Graph；Graph/Group 发布为 PAK 内的 graph/group 资源，开发编译目录由 CompiledStoryAssetProvider 适配同一资源 ID。保留 Graph ID 为 `galnet:graph:main`，Group ID 从稳定节点 ID 派生为 `galnet:group:<id>`；不新增多图列表、默认图选择或跨图存档字段。运行图还保留 playerVariables/saveVariables 声明，宿主创建新 Run 时据此初始化默认值。
+
+Group 节点 DTO 可保存可选字符串 `storyPackage`；它是正文包归属的作者真源，编译 Graph 的节点描述与依赖 metadata 同步携带。包名编辑与实际剧情拆包/缺席跳过在后续阶段接入，不能仅填写该字段就假定当前导出已拆分。
 
 ## 项目配置 `settings.json`
 
@@ -65,7 +67,7 @@ Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封
 <Project>.galpak
   <Project>.galnet          JSON manifest，版本 1
   settings.json
-  Graph/**
+  content.json             唯一 Graph 的资源入口，版本 1
   I18n/**
   gallery.json              从 metadata 派生
   Assets/Paks/000-base.pak  资源 PAK
@@ -75,7 +77,7 @@ manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时�
 
 传入 `.galpak` 时，`GameInstallation.OpenAsync` 先校验 ZIP 根目录唯一 manifest、声明路径、条目大小与 SHA-256，再原子解压到包文件旁的同名目录。已存在且与 manifest 一致的安装目录可复用；不同或损坏内容不会覆盖现有目录。
 
-运行时从解压目录读取特殊内容，并且只扫描 `Assets/Paks/**/*.pak` 作为资源源。PAK 按相对路径倒序覆盖：`000-base.pak` 是基础包，后续/更高排序路径的包可作为补丁覆盖同 GUID 资源。ZIP、manifest、Graph、I18n、settings 和 gallery 不进入 `IAssetProvider`。
+运行时从解压目录读取特殊内容，并且扫描 `Assets/Paks/**/*.pak` 作为资源源。PAK 当前按相对路径倒序覆盖：`000-base.pak` 是基础包，后续/更高排序路径的包可覆盖同 ID 资源。Graph 和编译 Group 已进入资源 provider；ZIP、manifest、content.json、I18n、settings 和 gallery 不进入 provider。content.json 包含 `version: 1` 和固定的 `graphId: "galnet:graph:main"`，宿主自动加载该入口；缺描述、缺资源或身份/类型错误明确失败，不回退到 loose Graph。旧发行内容需重新导出。
 
 资源归档格式现为 GPAK v3，增加独立的 base/story/override 用途控制描述；旧 v2 PAK 需重新导出。控制字段和 metadata 依赖校验见 [资源规范](assets.md#pak)。当前安装扫描路径尚不应用新描述的 story 跳过或 override 映射；格式支持不等于已接入完整补丁安装协议。
 

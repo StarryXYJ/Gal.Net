@@ -23,8 +23,8 @@ internal static class TimelineValueStructure
 
     public static FieldDescriptor Describe(FieldDescriptor field) => new(field.Id,
         field.Value.WithJsonOptions(JsonOptions).WithStructure(Timeline),
-        field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
+        field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
     private static ValueStructure List(ValueStructure element) => ValueStructure.Sequence(new("element", new ValueDescriptor(typeof(JsonElement)).WithStructure(element)));
     private static FieldDescriptor Structure(FieldDescriptor field, ValueStructure structure) => new(field.Id, field.Value.WithStructure(structure),
-        field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
+        field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
 }

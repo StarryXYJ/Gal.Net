@@ -201,10 +201,10 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         for (var i = 0; i < nodes.Count; i++)
         {
             var node = nodes[i]; var pointer = $"/nodes/{i}";
-            if (!Shape(node, GraphFile, pointer, diagnostics, ["id", "type", "name", "x", "y", "file", "branchType", "options", "conditions"])) continue;
+            if (!Shape(node, GraphFile, pointer, diagnostics, ["id", "type", "name", "x", "y", "file", "storyPackage", "branchType", "options", "conditions"])) continue;
             Identity(node, "id", nodeIds, GraphFile, pointer, diagnostics);
             String(node, "name", GraphFile, pointer, diagnostics, required: true);
-            foreach (var key in new[] { "file", "branchType" })
+            foreach (var key in new[] { "file", "storyPackage", "branchType" })
                 if (node.TryGetProperty(key, out var optional) && optional.ValueKind != JsonValueKind.Null)
                     String(node, key, GraphFile, pointer, diagnostics);
             foreach (var key in new[] { "x", "y" })

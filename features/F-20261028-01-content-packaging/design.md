@@ -1,6 +1,6 @@
 # 单 Graph 资源化、剧情分包与资源覆盖设计
 
-状态：根据 2026-10-28 用户讨论整理的实施设计，P1 已验证；未实现部分仍为目标状态。范围与状态见 [feature 清单](feature.md)。
+状态：根据 2026-10-28 用户讨论整理的实施设计，P1/P2 已验证；未实现部分仍为目标状态。范围与状态见 [feature 清单](feature.md)。
 
 实现顺序与退出条件见 [阶段计划](phase-plan.md)。
 
@@ -35,6 +35,8 @@
 ### 3.1 Graph / Group
 
 新增运行时资源类型 `graph` 和 `group`，具有各自稳定的资源 ID。作者目录布局可以继续使用 Graph 目录，不要求用户先移动现有工程文件；构建适配层统一产出 `IGameFile`。新建资源的 sidecar/作者身份布局需要由实现阶段统一确定，不能让路径成为发行身份。
+
+P2 已确定：单图使用保留 ID `galnet:graph:main`，Group ID 为 `galnet:group:<稳定节点ID>`；生成 metadata，不额外写作者 sidecar。开发编译目录经 CompiledStoryAssetProvider 适配，发行内容直接读 PAK，共用 CompiledStoryResources 的剧情 payload 生成。每个游戏内容作用域独立，因此不引入用于跨游戏合并的全局 Graph 身份。
 
 Graph 资源保存稳定 Graph 身份、节点、边、变量声明，以及节点引用的 Group 资源 ID 和所属剧情包。Node ID 与 Group 资源 ID 分开：前者标识图中位置，后者标识被加载的正文。
 

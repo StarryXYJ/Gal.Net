@@ -48,7 +48,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         ICatchUpPresentation? catchUpPresentation = null)
         : this(
             graph,
-            new GameRuntime(textResolver, graph?.RootNodeId ?? ""),
+            new GameRuntime(textResolver, graph?.RootNodeId ?? "", saveDefaults: graph?.SaveVariables, playerDefaults: graph?.PlayerVariables),
             view,
             progress,
             choicePresenter,

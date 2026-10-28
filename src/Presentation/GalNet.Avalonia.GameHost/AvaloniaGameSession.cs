@@ -15,7 +15,7 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Default Avalonia session adapter. Neutral GameSession owns command coordination.</summary>
-public partial class AvaloniaGameSession : ObservableObject, IGameSessionService, IPreparedGameSessionService, IFirstEmptySlotSession, IGameGallerySession, IAsyncDisposable
+public partial class AvaloniaGameSession : ObservableObject, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, IGameGallerySession, IAsyncDisposable
 {
     private readonly AvaloniaGameHostOptions _options;
     private readonly GamePageViewModel _gameplay;
@@ -168,6 +168,15 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
         await PrepareNewGameAsync(cancellationToken);
         await BeginPreparedGameAsync(cancellationToken);
     }
+
+    public async Task StartNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default)
+    {
+        await PrepareNewGameAsync(initialSaveVariables, cancellationToken);
+        await BeginPreparedGameAsync(cancellationToken);
+    }
+
+    public Task PrepareNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default) =>
+        _session.PrepareNewAsync(initialSaveVariables, cancellationToken);
 
     public async Task ContinueAsync(CancellationToken cancellationToken = default)
     {

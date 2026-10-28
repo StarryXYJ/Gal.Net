@@ -37,6 +37,13 @@ public interface IPreparedGameSessionService
     Task BeginPreparedGameAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Optional chapter/route startup parameters, applied only when creating a new game.</summary>
+public interface IParameterizedGameSessionService : IPreparedGameSessionService
+{
+    Task StartNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default);
+    Task PrepareNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Optional safe save action; null means every normal slot is occupied.</summary>
 public interface IFirstEmptySlotSession
 {

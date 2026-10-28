@@ -49,7 +49,7 @@ internal sealed class EntryParameterStructures(EditorProjectDocument document, E
         if (field.Id != "parameters") return field;
         var structure = ParameterStructure(group, entry);
         return structure is null ? field : new(field.Id, field.Value.WithStructure(structure), field.IsRequired,
-            field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
+            field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
     }
 
     private ValueStructure? ParameterStructure(string group, EditorEntryData entry)

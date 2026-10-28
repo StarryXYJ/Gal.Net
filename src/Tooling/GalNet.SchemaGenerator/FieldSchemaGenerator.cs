@@ -139,7 +139,9 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
                 .Append(", semantic: global::GalNet.Core.Parameters.FieldValueSemantic.")
                 .Append(field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.LocalizedTextAttribute")
                     ? "LocalizedText" : field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.CharacterReferenceAttribute")
-                        ? "CharacterReference" : "None").Append(").WithMember(").Append(Quote(field.Member.Name)).Append(", ")
+                        ? "CharacterReference" : "None")
+                .Append(", resourceTypeId: ").Append(Named(field.Attribute, "ResourceTypeId", "null"))
+                .Append(").WithMember(").Append(Quote(field.Member.Name)).Append(", ")
                 .Append(field.Member.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonPropertyNameAttribute")
                     ?.ConstructorArguments[0].ToCSharpString() ?? "null").AppendLine("),");
         }

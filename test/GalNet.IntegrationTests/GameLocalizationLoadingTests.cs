@@ -11,6 +11,9 @@ using GalNet.Core.Graph;
 using GalNet.GameHost.Content;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
+using GalNet.Assets;
+using GalNet.Core.Serialization;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.IntegrationTests;
 
@@ -148,6 +151,7 @@ public sealed class GameLocalizationLoadingTests
         File.WriteAllText(Path.Combine(_root, "gallery.json"), JsonSerializer.Serialize(
             new GalleryConfiguration { Types = galleries.Types.ToList(), Items = [] }, JsonSerializerOptions.Web));
         var project = await new ProjectGameContentProvider(_root, types, galleries).LoadAsync();
+        PrepareInstalledStory(types);
         var installed = await new InstalledGameContentProvider(_root, types, galleries).LoadAsync();
         Assert.Multiple(() =>
         {
@@ -174,6 +178,7 @@ public sealed class GameLocalizationLoadingTests
         var galleries = BuiltinGalleryTypes.CreateCatalog(types);
         File.WriteAllText(Path.Combine(_root, "gallery.json"), JsonSerializer.Serialize(
             new GalleryConfiguration { Types = galleries.Types.ToList(), Items = [] }, JsonSerializerOptions.Web));
+        if (installed) PrepareInstalledStory(types);
         IGameContentProvider Provider(GameContentLoadOptions? options = null) => installed
             ? new InstalledGameContentProvider(_root, types, galleries, options)
             : new ProjectGameContentProvider(_root, types, galleries, options);
@@ -190,5 +195,14 @@ public sealed class GameLocalizationLoadingTests
             }
         }).LoadAsync();
         Assert.That(observed, Is.True);
+    }
+
+    private void PrepareInstalledStory(IResourceTypeCatalog types)
+    {
+        Directory.CreateDirectory(Path.Combine(_root, "Assets", "Paks"));
+        File.WriteAllText(Path.Combine(_root, GameContentManifest.FileName),
+            JsonSerializer.Serialize(new GameContentManifest(), JsonSerializerOptions.Web));
+        File.WriteAllBytes(Path.Combine(_root, "Assets/Paks/000-base.pak"),
+            PakBuilder.Build("assets", StoryResourceCompiler.Compile(_root, new TargetProfileEntryCatalog([])), types));
     }
 }

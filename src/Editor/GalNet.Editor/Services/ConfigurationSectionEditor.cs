@@ -31,7 +31,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
         _isCurrent = isCurrent; _changed = changed; Registry = registry;
         // Ordinary object/list DTOs use the shared JSON editor; no second reflection-based configuration form.
         var fields = section.Fields.Select(field => field.Editor is null && !IsScalar(field.Value.ValueType)
-            ? new FieldDescriptor(field.Id, field.Value, field.IsRequired, field.DefaultValue, new(ValueEditorIds.Json), field.LabelKey, field.DescriptionKey, field.Semantic)
+            ? new FieldDescriptor(field.Id, field.Value, field.IsRequired, field.DefaultValue, new(ValueEditorIds.Json), field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId)
             : field).ToArray();
         _fields = fields.ToDictionary(field => field.Id, field => new Field(this, field, canEdit(field)), StringComparer.Ordinal);
         Item = new(section.Id, null, fields, Binding, async (patch, token) =>

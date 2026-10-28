@@ -52,6 +52,10 @@ public sealed class EditorGraphNodeDto
     [JsonPropertyName("file")]
     public string? File { get; set; }
 
+    [JsonPropertyName("storyPackage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StoryPackage { get; set; }
+
     [JsonPropertyName("branchType")]
     public string? BranchType { get; set; }
 

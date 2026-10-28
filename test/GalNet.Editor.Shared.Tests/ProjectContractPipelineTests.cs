@@ -4,6 +4,9 @@ using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GeneralTest.Editor.Shared;
+using GalNet.Assets;
+using GalNet.Core.Assets;
+using GalNet.Contracts.Builtins.Assets;
 
 namespace GalNet.Editor.Shared.Tests;
 
@@ -53,8 +56,12 @@ public sealed class ProjectContractPipelineTests
         });
         using var result = JsonDocument.Parse(export.Output);
         using var zip = ZipFile.OpenRead(result.RootElement.GetProperty("data").GetProperty("packagePath").GetString()!);
-        using var entry = zip.GetEntry("Graph/groups/a.galgroup")!.Open();
-        using var compiled = JsonDocument.Parse(entry);
+        Assert.That(zip.Entries.Any(item => item.FullName.StartsWith("Graph/", StringComparison.Ordinal)), Is.False);
+        using var entry = zip.GetEntry("Assets/Paks/000-base.pak")!.Open();
+        using var bytes = new MemoryStream();
+        await entry.CopyToAsync(bytes);
+        using var archive = Archive.Deserialize("assets", bytes.ToArray(), BuiltinResourceTypes.CreateCatalog());
+        using var compiled = JsonDocument.Parse(archive.GetAsset(StoryResourceIds.Group("a"))!.ReadAllBytes());
         Assert.That(compiled.RootElement.GetProperty("entries")[0].GetProperty("typeId").GetString(), Is.EqualTo("custom.example"));
         Assert.That(zip.Entries.Any(item => item.FullName.StartsWith("Contracts/", StringComparison.Ordinal)), Is.False);
     }

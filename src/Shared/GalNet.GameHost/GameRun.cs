@@ -10,10 +10,11 @@ using GalNet.Runtime.Runtime;
 namespace GalNet.GameHost;
 
 /// <summary>Default engine lifecycle. The caller owns the view and platform backends; a supplied restore session is borrowed.</summary>
-public sealed class GameRun : IGameRun
+public sealed class GameRun : IGameRun, IParameterizedGameRun
 {
     private readonly StateRestoreSession? _restoration;
     private bool _prepared;
+    private bool _newGame;
     private readonly bool _ownsRestoration;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
@@ -28,6 +29,12 @@ public sealed class GameRun : IGameRun
     }
 
     public GameEngine Engine { get; }
+    public async Task InitializeSaveVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken)
+    {
+        if (!_prepared || !_newGame) throw new InvalidOperationException("Initial variables require a newly prepared game.");
+        await Engine.SetVariablesAsync(NewGameVariables.Capture(variables), cancellationToken);
+        _newGame = false;
+    }
     public GameSnapshot CreateSaveData() => Engine.CreateSaveData();
     public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken) =>
         Engine.ValidateRestoreAsync(snapshot, cancellationToken);
@@ -42,6 +49,7 @@ public sealed class GameRun : IGameRun
                 await Engine.SynchronizePresentationAsync(_restoration.RestoreAsync, cancellationToken);
         }
         _prepared = true;
+        _newGame = snapshot is null;
     }
 
     public async Task StartPreparedAsync(CancellationToken cancellationToken = default)

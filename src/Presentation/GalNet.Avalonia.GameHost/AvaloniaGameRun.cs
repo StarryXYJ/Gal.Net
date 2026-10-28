@@ -13,7 +13,7 @@ using LibVLCSharp.Shared;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Default page binding and run ownership; the engine owns execution and terminal states.</summary>
-internal sealed class AvaloniaGameRun : IGameRun
+internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
 {
     private readonly GamePageViewModel _gameplay;
     private readonly GameRun _run;
@@ -70,7 +70,8 @@ internal sealed class AvaloniaGameRun : IGameRun
         AvaloniaGameRun? adapter = null;
         try
         {
-            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, saveSession.Variables);
+            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, saveSession.Variables,
+                saveDefaults: resources.Content.Graph.SaveVariables, playerDefaults: resources.Content.Graph.PlayerVariables);
             run = new GameRun(resources.Content.Graph, runtime, presentation.View,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer,
                 playbackOptions: playerSettings.PlaybackOptions);
@@ -98,6 +99,8 @@ internal sealed class AvaloniaGameRun : IGameRun
     }
 
     public GameSnapshot CreateSaveData() => _run.CreateSaveData();
+    public Task InitializeSaveVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken) =>
+        _run.InitializeSaveVariablesAsync(variables, cancellationToken);
     public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken) =>
         _run.ValidateSnapshotAsync(snapshot, cancellationToken);
 
