@@ -37,6 +37,8 @@ public sealed class Archive : IPakArchive
     public string Name { get; }
     public PakDescriptor Descriptor => _descriptor with { Mappings = new(_descriptor.Mappings, StringComparer.OrdinalIgnoreCase) };
     public IEnumerable<string> AssetIds => _entries.Keys;
+    public IReadOnlyList<PakAssetIndexEntry> MetadataIndex => _entries.Values.Select(entry => new PakAssetIndexEntry(
+        entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, entry.OriginalLength, entry.Hash)).ToArray();
     public bool Contains(string assetId) => _entries.ContainsKey(assetId.Trim());
 
     public IGameFile? GetAsset(string assetId)

@@ -64,7 +64,7 @@ public class ModularSaveRestoreTests
             }
             var snapshot = await saves.LoadAsync(0);
             Assert.That(snapshot, Is.Not.Null);
-            Assert.That(snapshot!.Version, Is.EqualTo(4));
+            Assert.That(snapshot!.Version, Is.EqualTo(5));
             await using var restored = new GameEngine(graph, view);
             await restored.RestoreFromAsync(snapshot);
             await using var restoration = new StateRestoreSession(view);

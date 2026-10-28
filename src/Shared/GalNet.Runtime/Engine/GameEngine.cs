@@ -24,6 +24,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     private IGameContext _dispatchRuntime;
     private readonly ActivePrimitiveRegistry _active;
     private GameSnapshot _lastStableSnapshot;
+    private readonly string _contentBuildId;
+    private readonly string[] _storyPackages;
     private PendingChoice? _pendingChoice;
     private Exception? _flowError;
     private readonly object _lifecycleSync = new();
@@ -66,6 +68,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         PlaybackOptions? playbackOptions = null)
     {
         ArgumentNullException.ThrowIfNull(graph);
+        _contentBuildId = graph.ContentBuildId;
+        _storyPackages = graph.InstalledStoryPackages.Order(StringComparer.Ordinal).ToArray();
         _playbackOptions = playbackOptions ?? new PlaybackOptions();
         _playbackOptions.Validate();
         _navigation = new GameGraphNavigator(graph);
@@ -82,7 +86,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         _progress = progress;
         _choicePresenter = choicePresenter;
         _catchUpPresentation = catchUpPresentation;
-        _lastStableSnapshot = _runtime.CreateSnapshot();
+        _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
     }
 
     public event Action<GameSnapshot>? CheckpointCreated { add => _notifications.CheckpointCreated += value; remove => _notifications.CheckpointCreated -= value; }
@@ -206,9 +210,11 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private GameRestorePoint PrepareRestore(GameSnapshot data)
     {
+        if (data.ContentBuildId != _contentBuildId || data.StoryPackages is null || data.StoryPackages.Any(package => !_storyPackages.Contains(package, StringComparer.Ordinal)))
+            throw new InvalidDataException("The save requires a different content build or a missing story package.");
         var candidate = _runtime.PrepareRestore(data);
         var node = _navigation.FindNode(candidate.NodeId);
-        if (node is null || candidate.EntryIndex > (node is Group group ? group.Entries.Count : 0))
+        if (node is null || node is Group { IsAvailable: false } || candidate.EntryIndex > (node is Group group ? group.Entries.Count : 0))
             throw new InvalidDataException("The save position does not exist in this game graph.");
         _view.ValidateState(_runtime, candidate.State);
         return candidate;
@@ -243,7 +249,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             _restorationPending = _view.RequiresStateRestore;
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
-            _lastStableSnapshot = _runtime.CreateSnapshot();
+            _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
             _active.EndGroup();
             _flowError = null;
             IsRunning = true;
@@ -679,7 +685,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     {
         if (_active.HasBlockingInstance() || _pendingChoice is not null)
             return;
-        _lastStableSnapshot = _runtime.CreateSnapshot();
+        _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
         _notifications.Checkpoint(_lastStableSnapshot);
     }
 
@@ -691,6 +697,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             return;
         CancelDetachedScope(pending.Cancellation);
     }
+
+    private GameSnapshot StampContent(GameSnapshot snapshot) => SnapshotCopy.Clone(snapshot, _contentBuildId, _storyPackages);
 
     private static void CancelDetachedScope(CancellationTokenSource cancellation)
     {

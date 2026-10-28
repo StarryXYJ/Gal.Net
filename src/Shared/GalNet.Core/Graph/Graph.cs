@@ -21,4 +21,6 @@ public sealed class Graph
     public List<Edge> Edges { get; init; } = [];
     public List<GalNet.Core.Variable.ProjectVariableDefinition> PlayerVariables { get; init; } = [];
     public List<GalNet.Core.Variable.ProjectVariableDefinition> SaveVariables { get; init; } = [];
+    public string ContentBuildId { get; set; } = "";
+    public IReadOnlyList<string> InstalledStoryPackages { get; set; } = [];
 }

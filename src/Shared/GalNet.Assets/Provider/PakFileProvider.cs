@@ -12,6 +12,7 @@ public sealed class PakFileProvider : IAssetProvider
     private readonly string? _archiveName;
     private readonly bool _optional;
     private readonly IResourceTypeCatalog _resourceTypes;
+    private readonly string? _expectedSha256;
 
     public PakFileProvider(string pakDirectory, IResourceTypeCatalog resourceTypes, bool optional = false)
     {
@@ -21,7 +22,7 @@ public sealed class PakFileProvider : IAssetProvider
     }
 
     /// <summary>Maps one explicitly named archive to a PAK file, for example a patch PAK.</summary>
-    public PakFileProvider(string pakPath, string archiveName, IResourceTypeCatalog resourceTypes, bool optional = false)
+    public PakFileProvider(string pakPath, string archiveName, IResourceTypeCatalog resourceTypes, bool optional = false, string? expectedSha256 = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pakPath);
         ArgumentException.ThrowIfNullOrWhiteSpace(archiveName);
@@ -30,6 +31,7 @@ public sealed class PakFileProvider : IAssetProvider
         _archiveName = NormalizeArchiveName(archiveName);
         _optional = optional;
         _resourceTypes = resourceTypes ?? throw new ArgumentNullException(nameof(resourceTypes));
+        _expectedSha256 = expectedSha256;
     }
 
     public string Name => $"PakFile({_pakPath ?? _pakDirectory})";
@@ -49,6 +51,7 @@ public sealed class PakFileProvider : IAssetProvider
         }
 
         var data = File.ReadAllBytes(path);
+        Verify(data);
         return Archive.Deserialize(archiveName, data, _resourceTypes);
     }
 
@@ -62,6 +65,7 @@ public sealed class PakFileProvider : IAssetProvider
         }
 
         var data = await File.ReadAllBytesAsync(path, ct);
+        Verify(data);
         return Archive.Deserialize(archiveName, data, _resourceTypes);
     }
 
@@ -77,6 +81,12 @@ public sealed class PakFileProvider : IAssetProvider
             : $"{archiveName}.pak";
         path = $"{_pakDirectory}/{name}";
         return true;
+    }
+
+    private void Verify(byte[] bytes)
+    {
+        if (_expectedSha256 is not null && CryptoHelper.HashSHA256(bytes) != _expectedSha256)
+            throw new InvalidDataException("PAK content changed after the content session was prepared.");
     }
 
     private static string NormalizeArchiveName(string archiveName) =>

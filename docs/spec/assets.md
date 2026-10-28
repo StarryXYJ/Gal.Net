@@ -81,6 +81,14 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 
 图集有效 metadata 使用 `DependentAssetMeta`，包含编译定义中全部 sprite ID，引用预期类型为 sprite。PAK 写出和打开时检查依赖与图集 payload 一致；本地目录扫描不为此修改源 `.meta`。缺少这些依赖 metadata 的旧编译图集必须重新构建。
 
+## 内容分包规划
+
+`ContentPackagePlanner` 先收集唯一 Graph、全部非补丁 Group 和额外根的闭包 B；每个剧情包独立取 C(P)−B，不扣除其他剧情包。基础 Gallery 项和默认视觉程序绑定也作为根。未知依赖必须由 `galnet.packaging` 的 includeResources 补根，并用 declaredCompleteResources 显式确认覆盖；后者可写资源 ID 或 Group 节点 ID，不会自动补根。
+
+每个集合按资源 ID ordinal 排序，以未压缩编译载荷的累计 Length 切片。maxPakBytes 缺省 64 MiB，是软目标，超限单项独占，不拆资源；PAK 头部、压缩和索引开销不计入阈值。分片逐个写到私有磁盘阶段，不同时保留全部 PAK 字节。当前 Archive 仍以内存打开单个 PAK，64 MiB 并非内存上限。
+
+只有闭包中的资源进入 PAK。图集包含全部声明图片、条件分支包含所有静态引用；UI/自定义运行代码的资源需显式补根。源资源校验仍覆盖整个目录，未被打包的坏作者资源也可能阻止构建。安装校验本体和每个剧情包的独立依赖闭包，重复 ID 的内容和 metadata 必须一致。
+
 ## 图片差分资源
 
 `image-variants` 的作者扩展名为 `.variants`，metadata DTO 为 `ImageVariantsAssetMeta`。它管理一组完整 sprite 图片，不表示纹理合并、Flipbook 或 CG Gallery。游戏显示/切换使用 [variants 指令](entry-types.md#图片差分指令)；编辑器支持从目录创建、配置和差分预览，操作见[图集手册](../manual/image-variants.md)。

@@ -11,7 +11,7 @@ public static class CompiledStoryResources
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     public static IReadOnlyList<IGameFile> Create(byte[] graphBytes, Func<string, byte[]?> readGroup,
-        Func<CompiledGroupDocument, AssetDependencyInfo>? analyzeGroup = null, CancellationToken cancellationToken = default)
+        Func<string, CompiledGroupDocument, AssetDependencyInfo>? analyzeGroup = null, CancellationToken cancellationToken = default)
     {
         var graph = JsonNode.Parse(graphBytes)?.AsObject() ?? throw new InvalidDataException("Missing compiled graph.");
         graph["id"] = StoryResourceIds.Graph;
@@ -33,7 +33,7 @@ public static class CompiledStoryResources
                 ?? throw new InvalidDataException($"Compiled group '{id}' is invalid.");
             if (document.Kind != GroupDocumentKind.Compiled || document.Version != CompiledGroupDocument.CurrentVersion)
                 throw new InvalidDataException($"Group '{id}' is not compiled for this runtime.");
-            var dependencies = analyzeGroup?.Invoke(document) ?? new AssetDependencyInfo([], document.Entries.Count == 0);
+            var dependencies = analyzeGroup?.Invoke(id, document) ?? new AssetDependencyInfo([], document.Entries.Count == 0);
             var meta = new DependentAssetMeta { Id = resourceId, TypeId = "group",
                 Path = "Story/groups/" + Uri.EscapeDataString(id) + ".galgroup",
                 Dependencies = dependencies.Direct.ToList(), DependenciesComplete = dependencies.Complete };

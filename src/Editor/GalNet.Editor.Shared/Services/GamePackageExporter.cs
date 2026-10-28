@@ -1,234 +1,247 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using GalNet.Assets;
-using GalNet.Assets.Provider;
-using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Contracts.Builtins;
+using GalNet.Assets.Provider;
 
 namespace GalNet.Editor.Shared.Services;
 
+/// <summary>Plans dependency-owned PAKs in a private stage and publishes verified game content.</summary>
 public static class GamePackageExporter
 {
-    private const string AssetsPakPath = "Assets/Paks/000-base.pak";
-
-    /// <summary>Builds a distributable content directory without creating an intermediate .galpak archive.</summary>
-    public static async Task<GameContentExportResult> ExportDirectoryAsync(
-        string projectId,
-        string projectName,
-        string projectRoot,
-        string outputDirectory,
-        IResourceTypeCatalog resourceTypes,
-        IGalleryTypeCatalog galleryTypes,
-        IEntryCatalog entryCatalog,
-        ProjectConfigurationSchema? configurations = null,
-        CancellationToken cancellationToken = default)
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private sealed record Payload(string Path, string StagedPath, string Sha256, long Size)
     {
-        string? stagingRoot = null;
-        string? publishRoot = null;
+        public GalpakFileEntry Entry => new(Path, Sha256, Size);
+    }
+    private sealed record Prepared(Payload[] Base, Payload[] Stories, string ManifestPath, byte[] Manifest, byte[] Layout, string BuildId);
+
+    public static async Task<GameContentExportResult> ExportDirectoryAsync(string projectId, string projectName, string projectRoot,
+        string outputDirectory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
+        ProjectConfigurationSchema? configurations = null, CancellationToken cancellationToken = default)
+    {
+        string? stage = null;
+        string? publish = null;
         try
         {
-            ArgumentNullException.ThrowIfNull(entryCatalog);
-            ArgumentNullException.ThrowIfNull(resourceTypes);
-            ArgumentNullException.ThrowIfNull(galleryTypes);
-            var sourceRoot = Path.GetFullPath(projectRoot);
-            var targetRoot = Path.GetFullPath(outputDirectory);
-            ProjectContentBuilder.ValidateOutputPath(sourceRoot, targetRoot);
-            if (Directory.Exists(targetRoot) || File.Exists(targetRoot))
-                throw new InvalidOperationException($"Export directory '{targetRoot}' already exists.");
-
-            var targetParent = Path.GetDirectoryName(targetRoot)
-                ?? throw new InvalidOperationException("Export directory must have a parent directory.");
-            Directory.CreateDirectory(targetParent);
-            publishRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.export-{Guid.NewGuid():N}");
-            stagingRoot = Path.Combine(targetParent, $".{Path.GetFileName(targetRoot)}.content-{Guid.NewGuid():N}");
-            var prepared = await PrepareAsync(projectId, projectName, sourceRoot, stagingRoot,
-                resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken).ConfigureAwait(false);
-
-            Directory.CreateDirectory(publishRoot);
-            foreach (var (relativePath, data) in prepared.Payloads)
+            var source = Path.GetFullPath(projectRoot);
+            var target = Path.GetFullPath(outputDirectory);
+            ProjectContentBuilder.ValidateOutputPath(source, target);
+            if (Directory.Exists(target) || File.Exists(target)) throw new InvalidOperationException($"Export directory '{target}' already exists.");
+            var parent = Path.GetDirectoryName(target)!;
+            Directory.CreateDirectory(parent);
+            stage = Path.Combine(parent, ".content-" + Guid.NewGuid().ToString("N"));
+            publish = Path.Combine(parent, ".export-" + Guid.NewGuid().ToString("N"));
+            var prepared = await PrepareAsync(projectId, projectName, source, stage, resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken);
+            Directory.CreateDirectory(publish);
+            foreach (var file in prepared.Base.Concat(prepared.Stories))
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                var destination = GetSafeDestination(publishRoot, relativePath);
+                var destination = Safe(publish, file.Path);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                await File.WriteAllBytesAsync(destination, data, cancellationToken).ConfigureAwait(false);
+                File.Copy(Safe(stage, file.StagedPath), destination);
             }
-            await File.WriteAllBytesAsync(GetSafeDestination(publishRoot, prepared.ManifestPath), prepared.ManifestBytes, cancellationToken).ConfigureAwait(false);
-            Directory.CreateDirectory(Path.Combine(publishRoot, "I18n", "External"));
-            await VerifyDirectoryAsync(publishRoot, prepared.Files, resourceTypes, cancellationToken).ConfigureAwait(false);
-
+            await File.WriteAllBytesAsync(Safe(publish, prepared.ManifestPath), prepared.Manifest, cancellationToken);
+            await File.WriteAllBytesAsync(Path.Combine(publish, "packaging-layout.json"), prepared.Layout, cancellationToken);
+            Directory.CreateDirectory(Path.Combine(publish, "I18n", "External"));
+            await VerifyDirectoryAsync(publish, prepared.Base.Concat(prepared.Stories), resourceTypes, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            Directory.Move(publishRoot, targetRoot);
-            publishRoot = null;
-            return GameContentExportResult.Succeeded(targetRoot);
+            Directory.Move(publish, target);
+            publish = null;
+            return GameContentExportResult.Succeeded(target);
         }
-        catch (OperationCanceledException)
-        {
-            return GameContentExportResult.Failed("Export canceled.");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException)
-        {
-            return GameContentExportResult.Failed(ex.Message);
-        }
-        finally
-        {
-            if (stagingRoot is not null && Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
-            if (publishRoot is not null && Directory.Exists(publishRoot)) Directory.Delete(publishRoot, recursive: true);
-        }
+        catch (OperationCanceledException) { return GameContentExportResult.Failed("Export canceled."); }
+        catch (Exception error) when (ExportError(error)) { return GameContentExportResult.Failed(error.Message); }
+        finally { Cleanup(stage); Cleanup(publish); }
     }
 
-    public static async Task<GamePackageExportResult> ExportAsync(
-        string projectId,
-        string projectName,
-        string projectRoot,
-        string outputDirectory,
-        IResourceTypeCatalog resourceTypes,
-        IGalleryTypeCatalog galleryTypes,
-        IEntryCatalog entryCatalog,
-        ProjectConfigurationSchema? configurations = null,
-        CancellationToken cancellationToken = default)
+    public static async Task<GamePackageExportResult> ExportAsync(string projectId, string projectName, string projectRoot,
+        string outputDirectory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
+        ProjectConfigurationSchema? configurations = null, CancellationToken cancellationToken = default)
     {
-        string? temporaryPath = null;
-        string? stagingRoot = null;
+        string? stage = null;
+        string? temporary = null;
+        string? storyStage = null;
         try
         {
-            ArgumentNullException.ThrowIfNull(entryCatalog);
-            ProjectContentBuilder.ValidateOutputPath(Path.GetFullPath(projectRoot), Path.GetFullPath(outputDirectory));
-            Directory.CreateDirectory(outputDirectory);
-            var packagePath = Path.Combine(outputDirectory, $"{SafeFileName(projectName)}.galpak");
-            temporaryPath = packagePath + ".export-" + Guid.NewGuid().ToString("N") + ".tmp";
-            ArgumentNullException.ThrowIfNull(resourceTypes);
-            ArgumentNullException.ThrowIfNull(galleryTypes);
-            stagingRoot = Path.Combine(Path.GetTempPath(), $"galnet-export-{Guid.NewGuid():N}");
-            var prepared = await PrepareAsync(projectId, projectName, projectRoot, stagingRoot,
-                resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken).ConfigureAwait(false);
-            await using (var file = File.Create(temporaryPath))
-            using (var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: false))
+            var source = Path.GetFullPath(projectRoot);
+            var output = Path.GetFullPath(outputDirectory);
+            ProjectContentBuilder.ValidateOutputPath(source, output);
+            Directory.CreateDirectory(output);
+            stage = Path.Combine(output, ".content-" + Guid.NewGuid().ToString("N"));
+            var target = Path.Combine(output, SafeName(projectName) + ".galpak");
+            temporary = target + ".export-" + Guid.NewGuid().ToString("N") + ".tmp";
+            var prepared = await PrepareAsync(projectId, projectName, source, stage, resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken);
+            await using (var file = File.Create(temporary))
+            using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
             {
-                foreach (var packageFile in prepared.Payloads)
-                    await WriteEntryAsync(zip, packageFile.Item1, packageFile.Item2, cancellationToken);
-                await WriteEntryAsync(zip, prepared.ManifestPath, prepared.ManifestBytes, cancellationToken);
+                foreach (var payload in prepared.Base)
+                {
+                    var entry = zip.CreateEntry(payload.Path, CompressionLevel.NoCompression);
+                    await using var input = File.OpenRead(Safe(stage, payload.StagedPath));
+                    await using var destination = entry.Open();
+                    await input.CopyToAsync(destination, cancellationToken);
+                }
+                var manifestEntry = zip.CreateEntry(prepared.ManifestPath, CompressionLevel.Optimal);
+                await using var manifestStream = manifestEntry.Open();
+                await manifestStream.WriteAsync(prepared.Manifest, cancellationToken);
             }
-            await VerifyAsync(temporaryPath, prepared.Files, resourceTypes, cancellationToken);
+            await VerifyZipAsync(temporary, prepared.Base, resourceTypes, cancellationToken);
+            if (prepared.Stories.Length > 0)
+            {
+                var stories = Path.Combine(output, "StoryPatches");
+                Directory.CreateDirectory(stories);
+                var destination = Path.Combine(stories, prepared.BuildId);
+                if (!Directory.Exists(destination))
+                {
+                    storyStage = Path.Combine(stories, ".export-" + Guid.NewGuid().ToString("N"));
+                    Directory.CreateDirectory(storyStage);
+                    foreach (var payload in prepared.Stories)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        File.Copy(Safe(stage, payload.StagedPath), Path.Combine(storyStage, Path.GetFileName(payload.Path)));
+                    }
+                    Directory.Move(storyStage, destination);
+                    storyStage = null;
+                }
+                foreach (var payload in prepared.Stories)
+                    await VerifyFileAsync(Safe(output, payload.Path), payload, resourceTypes, cancellationToken);
+            }
+            await File.WriteAllBytesAsync(Path.Combine(output, SafeName(projectName) + ".layout.json"), prepared.Layout, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporaryPath, packagePath, true);
-            return GamePackageExportResult.Succeeded(packagePath);
+            File.Move(temporary, target, true);
+            temporary = null;
+            return GamePackageExportResult.Succeeded(target);
         }
-        catch (OperationCanceledException)
-        {
-            DeleteTemporary(temporaryPath);
-            return GamePackageExportResult.Failed("Export canceled.");
-        }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException)
-        {
-            DeleteTemporary(temporaryPath);
-            return GamePackageExportResult.Failed(ex.Message);
-        }
-        finally
-        {
-            if (stagingRoot is not null && Directory.Exists(stagingRoot)) Directory.Delete(stagingRoot, recursive: true);
-        }
+        catch (OperationCanceledException) { return GamePackageExportResult.Failed("Export canceled."); }
+        catch (Exception error) when (ExportError(error)) { return GamePackageExportResult.Failed(error.Message); }
+        finally { Cleanup(stage); Cleanup(storyStage); if (temporary is not null && File.Exists(temporary)) File.Delete(temporary); }
     }
 
-    private sealed record PreparedExport((string Path, byte[] Data)[] Payloads, GalpakFileEntry[] Files, string ManifestPath, byte[] ManifestBytes);
-
-    private static async Task<PreparedExport> PrepareAsync(string projectId, string projectName, string projectRoot,
-        string stagingRoot, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
-        ProjectConfigurationSchema? configurations, CancellationToken ct)
+    private static async Task<Prepared> PrepareAsync(string projectId, string projectName, string source, string stage,
+        IResourceTypeCatalog types, IGalleryTypeCatalog galleryTypes, IEntryCatalog catalog, ProjectConfigurationSchema? configurations, CancellationToken ct)
     {
-        var (_, prepared) = await new ProjectContentBuilder(entryCatalog, resourceTypes, configurations).BuildPreparedAsync(
-            projectRoot, stagingRoot, async (stage, token) =>
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectId);
+        ArgumentNullException.ThrowIfNull(types);
+        ArgumentNullException.ThrowIfNull(galleryTypes);
+        ArgumentNullException.ThrowIfNull(catalog);
+        var (_, prepared) = await new ProjectContentBuilder(catalog, types, configurations).BuildPreparedAsync(source, stage, async (privateStage, token) =>
+        {
+            using var provider = new LocalFileProvider(Path.Combine(privateStage, "Assets"), types, optional: true);
+            using var archive = await provider.OpenArchiveAsync("assets", token);
+            var assets = archive.AssetIds.Select(id => archive.GetAsset(id)!).ToArray();
+            var gallery = new GalleryCatalogCompiler(types, galleryTypes).Compile(assets.Select(file => file.Metadata));
+            var story = StoryResourceCompiler.Compile(privateStage, catalog, token, assets);
+            var available = assets.Concat(story).ToArray();
+            var configuration = GalNet.Editor.Shared.Commands.DirectProjectPersistence.LoadSettings(privateStage);
+            var options = configuration.Read(ContentPackagingOptions.Section);
+            var roots = options.IncludeResources.Concat(gallery.Items.Select(item => item.ResourceId))
+                .Concat(configuration.ReadDefaultOptions().DefaultVisualPrograms.Values.Where(id => !string.IsNullOrWhiteSpace(id))).ToArray();
+            var complete = options.DeclaredCompleteResources.Select(id => available.Any(file => StringComparer.OrdinalIgnoreCase.Equals(file.Id, id)) ? id : StoryResourceIds.Group(id)).ToArray();
+            var plan = ContentPackagePlanner.Plan(available, roots, types, options.MaxPakBytes, complete, token);
+            var content = ContentFiles(privateStage, gallery).ToArray();
+            using var buildHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+            buildHash.AppendData(Encoding.UTF8.GetBytes(projectId + "\n"));
+            var codec = new AssetMetaCodec(types);
+            foreach (var file in plan.Paks.SelectMany(part => part.Files).DistinctBy(file => file.Id, StringComparer.OrdinalIgnoreCase).OrderBy(file => file.Id, StringComparer.Ordinal))
             {
-                var assets = await LoadAssetsAsync(Path.Combine(stage, "Assets"), resourceTypes, token).ConfigureAwait(false);
-                var gallery = new GalleryCatalogCompiler(resourceTypes, galleryTypes).Compile(assets.Select(asset => asset.Metadata));
-                var story = StoryResourceCompiler.Compile(stage, entryCatalog, token);
-                var assetsPak = PakBuilder.Build("assets", assets.Concat(story).ToArray(), resourceTypes, GalNet.Core.Assets.CompressionMode.Brotli);
-                var payloads = new[] { (Path: AssetsPakPath, Data: assetsPak),
-                    (Path: GameContentManifest.FileName, Data: JsonSerializer.SerializeToUtf8Bytes(new GameContentManifest(), JsonOptions)) }
-                    .Concat(BuildContentFiles(stage, gallery, token)).ToArray();
-                var files = payloads.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
-                var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, files);
-                return new PreparedExport(payloads, files, $"{SafeFileName(projectName)}.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions));
-            }, ct).ConfigureAwait(false);
+                token.ThrowIfCancellationRequested();
+                using var input = file.OpenRead();
+                buildHash.AppendData(Encoding.UTF8.GetBytes(file.Id + "\n" + CryptoHelper.HashSHA256(input) + "\n" + codec.Serialize(file.Metadata) + "\n"));
+            }
+            foreach (var file in content) buildHash.AppendData(Encoding.UTF8.GetBytes(file.Path + "\n" + CryptoHelper.HashSHA256(file.Data) + "\n"));
+            var buildId = Convert.ToHexStringLower(buildHash.GetHashAndReset());
+            var baseline = new List<Payload>();
+            var stories = new List<Payload>();
+            var storyEntries = new Dictionary<string, List<GalpakFileEntry>>(StringComparer.Ordinal);
+            var layout = new List<object>();
+            foreach (var part in plan.Paks)
+            {
+                token.ThrowIfCancellationRequested();
+                var path = part.PackageId.Length == 0 ? $"Assets/Paks/{part.PartIndex:D3}-base.pak"
+                    : $"StoryPatches/{buildId}/story-{CryptoHelper.HashSHA256(Encoding.UTF8.GetBytes(part.PackageId))[..16]}-{part.PartIndex:D3}.pak";
+                var bytes = PakBuilder.Build("assets", part.Files, types, descriptor: new()
+                {
+                    Kind = part.PackageId.Length == 0 ? "base" : "story", ProjectId = projectId, BuildId = buildId,
+                    PackageId = part.PackageId, PartIndex = part.PartIndex, PartCount = part.PartCount
+                });
+                var payload = Write(privateStage, path, bytes);
+                (part.PackageId.Length == 0 ? baseline : stories).Add(payload);
+                if (part.PackageId.Length > 0)
+                {
+                    if (!storyEntries.TryGetValue(part.PackageId, out var entries)) storyEntries.Add(part.PackageId, entries = []);
+                    entries.Add(payload.Entry);
+                }
+                foreach (var file in part.Files) layout.Add(new { id = file.Id, file.Path, file.TypeId, package = part.PackageId, pak = path,
+                    dependencies = file.Metadata is IAssetDependencies dependencies ? dependencies.GetDependencies().Direct : [],
+                    root = roots.Contains(file.Id, StringComparer.OrdinalIgnoreCase) || file.Id == StoryResourceIds.Graph });
+            }
+            var descriptor = new GameContentManifest { ProjectId = projectId, BuildId = buildId, BasePaks = baseline.Select(file => file.Entry).ToList(),
+                Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList() };
+            baseline.Add(Write(privateStage, GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(descriptor, JsonOptions)));
+            foreach (var file in content) baseline.Add(Write(privateStage, file.Path, file.Data));
+            var files = baseline.Select(file => file.Entry).ToArray();
+            var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, files);
+            var report = JsonSerializer.SerializeToUtf8Bytes(new { buildId, resources = layout, unused = plan.Unused.Select(file => new { file.Id, file.Path, file.TypeId }) }, JsonOptions);
+            return new Prepared(baseline.ToArray(), stories.ToArray(), SafeName(projectName) + ".galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), report, buildId);
+        }, ct);
         return prepared;
     }
 
-    private static async Task<IReadOnlyList<IGameFile>> LoadAssetsAsync(string assetsPath, IResourceTypeCatalog resourceTypes, CancellationToken ct)
+    private static Payload Write(string stage, string path, byte[] data)
     {
-        using var provider = new LocalFileProvider(assetsPath, resourceTypes, optional: true);
-        using var archive = await provider.OpenArchiveAsync("assets", ct);
-        return archive.AssetIds.OrderBy(id => id, StringComparer.Ordinal).Select(id => archive.GetAsset(id)!).ToArray();
+        var staged = ".package/" + path;
+        var destination = Safe(stage, staged);
+        Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+        File.WriteAllBytes(destination, data);
+        return new(path, staged, CryptoHelper.HashSHA256(data), data.LongLength);
     }
+    private static IEnumerable<(string Path, byte[] Data)> ContentFiles(string stage, GalleryCatalog gallery) =>
+        Directory.EnumerateFiles(stage, "*", SearchOption.AllDirectories).Select(path => Path.GetRelativePath(stage, path).Replace('\\', '/'))
+            .Where(path => path == "settings.json" || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+            .Where(path => !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+            .Order(StringComparer.Ordinal).Select(path => (path, File.ReadAllBytes(Safe(stage, path))))
+            .Append(("gallery.json", JsonSerializer.SerializeToUtf8Bytes(new GalleryConfiguration { Types = gallery.Types.ToList(), Items = gallery.Items.ToList() }, JsonOptions)));
 
-    private static (string Path, byte[] Data)[] BuildContentFiles(string projectRoot, GalleryCatalog gallery, CancellationToken ct)
+    private static async Task VerifyDirectoryAsync(string root, IEnumerable<Payload> files, IResourceTypeCatalog types, CancellationToken ct)
+    { foreach (var file in files) await VerifyFileAsync(Safe(root, file.Path), file, types, ct); }
+    private static async Task VerifyFileAsync(string path, Payload file, IResourceTypeCatalog types, CancellationToken ct)
     {
-        return Directory.EnumerateFiles(projectRoot, "*", SearchOption.AllDirectories)
-            .Select(path => Path.GetRelativePath(projectRoot, path).Replace('\\', '/'))
-            .Where(path => path is "settings.json" || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
-            .Where(path => !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase))
-            .Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(path => path, StringComparer.Ordinal)
-            .Select(path =>
-            {
-                ct.ThrowIfCancellationRequested();
-                return (path, File.ReadAllBytes(Path.Combine(projectRoot, path.Replace('/', Path.DirectorySeparatorChar))));
-            })
-            .Append(("gallery.json", JsonSerializer.SerializeToUtf8Bytes(new GalleryConfiguration { Types = gallery.Types.ToList(), Items = gallery.Items.ToList() }, JsonOptions)))
-            .ToArray();
+        await using var input = File.OpenRead(path);
+        if (input.Length != file.Size || Convert.ToHexStringLower(await SHA256.HashDataAsync(input, ct)) != file.Sha256)
+            throw new InvalidDataException($"Checksum mismatch for '{file.Path}'.");
+        if (file.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
+        { using var archive = Archive.Deserialize("assets", await File.ReadAllBytesAsync(path, ct), types); }
     }
-
-    private static async Task WriteEntryAsync(ZipArchive zip, string path, byte[] data, CancellationToken ct)
+    private static async Task VerifyZipAsync(string path, IEnumerable<Payload> files, IResourceTypeCatalog types, CancellationToken ct)
     {
-        var entry = zip.CreateEntry(path, CompressionLevel.Optimal);
-        await using var stream = entry.Open();
-        await stream.WriteAsync(data, ct);
-    }
-
-    private static async Task VerifyAsync(string path, IReadOnlyList<GalpakFileEntry> packages, IResourceTypeCatalog resourceTypes, CancellationToken ct)
-    {
-        await using var file = File.OpenRead(path);
-        using var zip = new ZipArchive(file, ZipArchiveMode.Read);
-        foreach (var package in packages)
+        using var zip = ZipFile.OpenRead(path);
+        foreach (var file in files)
         {
-            var entry = zip.GetEntry(package.Path) ?? throw new InvalidDataException($"Export package is missing '{package.Path}'.");
+            var entry = zip.GetEntry(file.Path) ?? throw new InvalidDataException($"Missing ZIP entry '{file.Path}'.");
             await using var stream = entry.Open();
-            using var memory = new MemoryStream();
-            await stream.CopyToAsync(memory, ct);
-            var data = memory.ToArray();
-            if (!string.Equals(Hash(data), package.Sha256, StringComparison.Ordinal)) throw new InvalidDataException($"Checksum mismatch for '{package.Path}'.");
-            if (package.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
+            if (entry.Length != file.Size || Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct)) != file.Sha256)
+                throw new InvalidDataException($"Checksum mismatch for '{file.Path}'.");
+            if (file.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
             {
-                using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data, resourceTypes);
+                await using var source = entry.Open();
+                using var buffer = new MemoryStream();
+                await source.CopyToAsync(buffer, ct);
+                using var archive = Archive.Deserialize("assets", buffer.ToArray(), types);
             }
         }
     }
-
-    private static async Task VerifyDirectoryAsync(string root, IReadOnlyList<GalpakFileEntry> packages, IResourceTypeCatalog resourceTypes, CancellationToken ct)
-    {
-        foreach (var package in packages)
-        {
-            ct.ThrowIfCancellationRequested();
-            var path = GetSafeDestination(root, package.Path);
-            if (!File.Exists(path)) throw new InvalidDataException($"Export directory is missing '{package.Path}'.");
-            var data = await File.ReadAllBytesAsync(path, ct).ConfigureAwait(false);
-            if (data.LongLength != package.Size || !string.Equals(Hash(data), package.Sha256, StringComparison.Ordinal))
-                throw new InvalidDataException($"Checksum mismatch for '{package.Path}'.");
-            if (package.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
-            {
-                using var archive = Archive.Deserialize(Path.GetFileNameWithoutExtension(package.Path), data, resourceTypes);
-            }
-        }
-    }
-
-    private static string GetSafeDestination(string root, string relativePath) => FileSystemPaths.ResolveRelativeFile(root, relativePath);
-
-    private static void DeleteTemporary(string? path) { if (path is not null && File.Exists(path)) File.Delete(path); }
-    private static string Hash(byte[] data) => Convert.ToHexString(SHA256.HashData(data)).ToLowerInvariant();
-    private static string SafeFileName(string name) => string.Concat(name.Select(ch => Path.GetInvalidFileNameChars().Contains(ch) ? '_' : ch));
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static bool ExportError(Exception error) => error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException;
+    private static string Safe(string root, string relative) => FileSystemPaths.ResolveRelativeFile(root, relative);
+    private static string SafeName(string name) => string.Concat(name.Select(character => Path.GetInvalidFileNameChars().Contains(character) ? '_' : character));
+    private static void Cleanup(string? directory) { if (directory is not null && Directory.Exists(directory)) Directory.Delete(directory, true); }
 }
 
 public sealed record GamePackageExportResult(bool Success, string? PackagePath, string? Error)
@@ -236,7 +249,6 @@ public sealed record GamePackageExportResult(bool Success, string? PackagePath, 
     public static GamePackageExportResult Succeeded(string path) => new(true, path, null);
     public static GamePackageExportResult Failed(string error) => new(false, null, error);
 }
-
 public sealed record GameContentExportResult(bool Success, string? ContentDirectory, string? Error)
 {
     public static GameContentExportResult Succeeded(string path) => new(true, path, null);

@@ -10,6 +10,7 @@ public sealed class Group : Node
     public override NodeType NodeType => NodeType.Group;
     public string ResourceId { get; init; } = "";
     public string StoryPackage { get; init; } = "";
+    public bool IsAvailable { get; set; } = true;
 
     /// <summary>该组包含的复杂条目列表（开发期编写）</summary>
     public List<EntryModel> Entries { get; init; } = [];

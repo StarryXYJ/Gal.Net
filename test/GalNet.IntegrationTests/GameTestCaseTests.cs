@@ -33,7 +33,7 @@ public class GameTestCaseTests
             var exported = await GamePackageExporter.ExportDirectoryAsync("visuals", "Visuals", project, output, types,
                 BuiltinGalleryTypes.CreateCatalog(types), new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), DefaultProjectConfiguration.Schema);
             Assert.That(exported.Success, Is.True, exported.Error);
-            var content = await new ProjectGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
+            var content = await new InstalledGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             using var assets = new AssetManager([new PakFileProvider(Path.Combine(output, "Assets/Paks/000-base.pak"), "assets", types)]);
             var programs = content.Configuration.ReadDefaultOptions().DefaultVisualPrograms;
             Assert.That(programs, Has.Count.EqualTo(8));

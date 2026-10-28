@@ -12,6 +12,7 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
     private readonly GameContentLoadOptions _options;
     private readonly IGalleryTypeCatalog _galleryTypes;
     private readonly IResourceTypeCatalog _resourceTypes;
+    private readonly Func<InstalledPackageSet>? _packages;
 
     public InstalledGameContentProvider(string directory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, GameContentLoadOptions? options = null)
     {
@@ -22,11 +23,18 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
         _galleryTypes = galleryTypes ?? throw new ArgumentNullException(nameof(galleryTypes));
     }
 
+    internal InstalledGameContentProvider(string directory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes,
+        GameContentLoadOptions? options, Func<InstalledPackageSet> packages) : this(directory, resourceTypes, galleryTypes, options) => _packages = packages;
+
     public Task<GameContent> LoadAsync(CancellationToken cancellationToken = default) => Task.Run(async () =>
     {
         cancellationToken.ThrowIfCancellationRequested();
-        using var assets = new AssetManager(GameInstallation.CreateInstalledAssetProviders(_directory, _resourceTypes));
-        var graph = await GameGraphContentLoader.LoadResourcesAsync(_directory, assets, cancellationToken);
+        var packages = _packages?.Invoke() ?? InstalledPackageSet.Load(_directory, _resourceTypes);
+        using var assets = new AssetManager(packages.CreateProviders());
+        var graph = await GameGraphContentLoader.LoadResourcesAsync(assets, packages.Manifest.GraphId, cancellationToken,
+            packages.InstalledStories, packages.Manifest.Stories.Select(story => story.PackageId).ToHashSet(StringComparer.Ordinal));
+        graph.ContentBuildId = packages.Manifest.BuildId;
+        graph.InstalledStoryPackages = packages.InstalledStories.Order(StringComparer.Ordinal).ToArray();
         var gallery = GalleryFileLoader.LoadGenerated(Path.Combine(_directory, "gallery.json"), _galleryTypes);
         var settings = GameProjectConfigurationLoader.Load(_directory, _options.Configurations);
         var localization = GameLocalizationLoader.Load(_directory, graph, _options.SelectDefaultCulture?.Invoke(settings), cancellationToken);

@@ -200,9 +200,12 @@ public sealed class GameLocalizationLoadingTests
     private void PrepareInstalledStory(IResourceTypeCatalog types)
     {
         Directory.CreateDirectory(Path.Combine(_root, "Assets", "Paks"));
+        var buildId = new string('a', 64);
+        var bytes = PakBuilder.Build("assets", StoryResourceCompiler.Compile(_root, new TargetProfileEntryCatalog([])), types,
+            descriptor: new() { ProjectId = "test", BuildId = buildId });
         File.WriteAllText(Path.Combine(_root, GameContentManifest.FileName),
-            JsonSerializer.Serialize(new GameContentManifest(), JsonSerializerOptions.Web));
-        File.WriteAllBytes(Path.Combine(_root, "Assets/Paks/000-base.pak"),
-            PakBuilder.Build("assets", StoryResourceCompiler.Compile(_root, new TargetProfileEntryCatalog([])), types));
+            JsonSerializer.Serialize(new GameContentManifest { ProjectId = "test", BuildId = buildId,
+                BasePaks = [new("Assets/Paks/000-base.pak", CryptoHelper.HashSHA256(bytes), bytes.LongLength)] }, JsonSerializerOptions.Web));
+        File.WriteAllBytes(Path.Combine(_root, "Assets/Paks/000-base.pak"), bytes);
     }
 }

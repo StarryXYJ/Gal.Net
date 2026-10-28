@@ -21,7 +21,7 @@ public static class DefaultProjectConfiguration
         Field("audioBuses", typeof(List<AudioBusDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>)),
         Field("defaultVisualPrograms", typeof(Dictionary<string, string>))
     ], value => _ = new AudioConfiguration(value.AudioTracks, value.AudioBuses), version: 2, jsonResolver: BuiltinJson.Resolver);
-    public static ProjectConfigurationSchema Schema { get; } = new([Section]);
+    public static ProjectConfigurationSchema Schema { get; } = new([Section, GalNet.Core.Configuration.ContentPackagingOptions.Section]);
 
     public static DefaultProjectOptions ReadDefaultOptions(this ProjectConfiguration configuration) => configuration.Read(Section);
     public static ProjectConfiguration ToConfiguration(this DefaultProjectOptions value)

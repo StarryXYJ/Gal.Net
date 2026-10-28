@@ -20,6 +20,19 @@ public sealed class StoryResourceCompilerTests
     }
 
     [Test]
+    public void BuiltinNestedParticleAndTimelineResourcesAreCollected()
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var result = StoryResourceCompiler.Dependencies(new() { Entries = [new() { Id = "particles", TypeId = "particle.play",
+            Arguments = JsonSerializer.SerializeToElement(new { parameters = new { particleTexture = "snow", motion = new { gravityY = 12 } } }) },
+            new() { Id = "timeline", TypeId = "timeline.play", Arguments = JsonSerializer.SerializeToElement(new { timeline = new {
+                durationFrames = 1, events = new[] { new { frame = 0, type = "layer.show", parameters = new { assetId = "hero" } } }
+            } }) }] }, catalog);
+        Assert.That(result.Complete, Is.True);
+        Assert.That(result.Direct.Select(reference => reference.AssetId), Is.EquivalentTo(new[] { "snow", "hero" }));
+    }
+
+    [Test]
     public void UnknownInstructionAndCustomInvocationCannotPretendToHaveNoDependencies()
     {
         var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());

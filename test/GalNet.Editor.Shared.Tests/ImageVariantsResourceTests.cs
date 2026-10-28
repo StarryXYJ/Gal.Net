@@ -37,7 +37,7 @@ public sealed class ImageVariantsResourceTests
         File.WriteAllText(full + ".meta", JsonSerializer.Serialize(new { id = Guid.NewGuid().ToString(), type }));
     }
 
-    private string Id(string path) => new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Deserialize(File.ReadAllText(Path.Combine(_root, "Assets", path + ".meta")), path).Id;
+    private string Id(string path) => JsonDocument.Parse(File.ReadAllText(Path.Combine(_root, "Assets", path + ".meta"))).RootElement.GetProperty("id").GetString()!;
 
     private async Task<byte[]> Compiled(string descriptor, IResourceTypeCatalog? resourceTypes = null)
     {
@@ -160,8 +160,12 @@ public sealed class ImageVariantsResourceTests
             .Add<DependentAssetMeta>("image-variants", ".variants")
             .Add<DependentAssetMeta>("graph", ".galgraph")
             .Add<DependentAssetMeta>("group", ".galgroup")
-            .Add<CustomMeta>("custom-test", ".customtest").Build();
+            .Add<CustomMeta>("custom-test", ".customtest").WithoutDependencies("sprite", "audio", "video", "custom-test").Build();
         PutAsset("extra.customtest", "custom-test", "custom");
+        var configuration = DirectProjectPersistence.LoadSettings(_root);
+        configuration.Set(GalNet.Core.Configuration.ContentPackagingOptions.Section,
+            new GalNet.Core.Configuration.ContentPackagingOptions { IncludeResources = [Id("alice.variants"), Id("extra.customtest")] });
+        File.WriteAllText(Path.Combine(_root, "settings.json"), JsonSerializer.Serialize(configuration));
         var before = await Compiled("alice.variants", types);
         var result = await GamePackageExporter.ExportAsync("variants", "Variants", _root, Path.Combine(_root, "Output"), types, BuiltinGalleryTypes.CreateCatalog(types), _catalog);
         Assert.That(result.Success, Is.True, result.Error);

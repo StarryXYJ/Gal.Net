@@ -43,7 +43,8 @@ public static class ShaderEffectFields
             _ => null
         };
         var fallback = Default(parameter, descriptor);
-        return new(parameter.Name, descriptor, parameter.Required, fallback, new EditorHints(editor, parameter.Step));
+        return new(parameter.Name, descriptor, parameter.Required, fallback, new EditorHints(editor, parameter.Step),
+            resourceTypeId: parameter.Kind == ShaderEffectParameterKind.Texture ? "sprite" : null);
     }
 
     private static JsonElement? Default(ShaderEffectParameterDescriptor parameter, ValueDescriptor descriptor)

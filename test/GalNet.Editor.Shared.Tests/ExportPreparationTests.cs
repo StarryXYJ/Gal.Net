@@ -27,6 +27,7 @@ public sealed class ExportPreparationTests
         Put("Assets/pose.png.meta", """{"id":"pose","type":"sprite"}""");
         Put("Assets/character.variants", """{"version":1,"folder":".","default":"pose"}""");
         Put("Assets/character.variants.meta", """{"id":"character","type":"image-variants"}""");
+        Put("settings.json", """{"version":1,"sections":{"galnet.packaging":{"version":1,"data":{"includeResources":["character"]}}}}""");
     }
 
     [TearDown] public void TearDown() => Directory.Delete(_root, true);

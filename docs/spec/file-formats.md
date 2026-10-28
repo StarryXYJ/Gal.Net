@@ -37,7 +37,7 @@ Project/
 
 Compiled primitive 使用 `{ id, typeId, batchId, condition, arguments }` 信封。`arguments` 保存 JSON 值，不保存 CLR 类型名；当前 target profile 的冻结 schema 负责校验。项目保持唯一 Graph；Graph/Group 发布为 PAK 内的 graph/group 资源，开发编译目录由 CompiledStoryAssetProvider 适配同一资源 ID。保留 Graph ID 为 `galnet:graph:main`，Group ID 从稳定节点 ID 派生为 `galnet:group:<id>`；不新增多图列表、默认图选择或跨图存档字段。运行图还保留 playerVariables/saveVariables 声明，宿主创建新 Run 时据此初始化默认值。
 
-Group 节点 DTO 可保存可选字符串 `storyPackage`；它是正文包归属的作者真源，编译 Graph 的节点描述与依赖 metadata 同步携带。包名编辑与实际剧情拆包/缺席跳过在后续阶段接入，不能仅填写该字段就假定当前导出已拆分。
+Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本体，同名聚合为剧情包。编译 Graph 保留节点和包名，正文只进入相应 story PAK。GUI 编辑入口见后续作者工具阶段，现阶段可在作者 JSON 中填写。
 
 ## 项目配置 `settings.json`
 
@@ -67,7 +67,7 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；它是正文包归属
 <Project>.galpak
   <Project>.galnet          JSON manifest，版本 1
   settings.json
-  content.json             唯一 Graph 的资源入口，版本 1
+  content.json             唯一 Graph 与分包描述，版本 2
   I18n/**
   gallery.json              从 metadata 派生
   Assets/Paks/000-base.pak  资源 PAK
@@ -77,9 +77,15 @@ manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时�
 
 传入 `.galpak` 时，`GameInstallation.OpenAsync` 先校验 ZIP 根目录唯一 manifest、声明路径、条目大小与 SHA-256，再原子解压到包文件旁的同名目录。已存在且与 manifest 一致的安装目录可复用；不同或损坏内容不会覆盖现有目录。
 
-运行时从解压目录读取特殊内容，并且扫描 `Assets/Paks/**/*.pak` 作为资源源。PAK 当前按相对路径倒序覆盖：`000-base.pak` 是基础包，后续/更高排序路径的包可覆盖同 ID 资源。Graph 和编译 Group 已进入资源 provider；ZIP、manifest、content.json、I18n、settings 和 gallery 不进入 provider。content.json 包含 `version: 1` 和固定的 `graphId: "galnet:graph:main"`，宿主自动加载该入口；缺描述、缺资源或身份/类型错误明确失败，不回退到 loose Graph。旧发行内容需重新导出。
+运行时只装载 content.json 中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。content.json v2 保存固定 graphId、projectId、buildId、basePaks 和 stories；每个分片描述路径、大小、SHA-256。Graph 和编译 Group 经资源 provider 加载，特殊 JSON/I18n 文件仍走内容加载入口。旧内容需重新导出，不回退到 loose Graph。
 
-资源归档格式现为 GPAK v3，增加独立的 base/story/override 用途控制描述；旧 v2 PAK 需重新导出。控制字段和 metadata 依赖校验见 [资源规范](assets.md#pak)。当前安装扫描路径尚不应用新描述的 story 跳过或 override 映射；格式支持不等于已接入完整补丁安装协议。
+正常导出还在 galpak 旁生成 `StoryPatches/<buildId>/*.pak`；目录导出则放在目标目录内同一路径。装载同时检查安装根及其父目录下当前 buildId 的剧情目录，以头部而非文件名识别分片。整个剧情包零分片表示未安装；存在部分分片、哈希错误、用途/项目/构建不匹配或依赖缺失都拒绝。缺席 Group 沿正常出口跳过；纯空 Group 推进循环拒绝。剧情目录按构建隔离并整体发布，旧基础包不会采用新构建的剧情片段。
+
+导出产生布局报告（galpak 旁 `<Project>.layout.json` 或目录内 packaging-layout.json），列出资源归属、直接依赖和未打包项。settings/I18n/人物数据仍完整留在基础内容，不按剧情拆分；未安装剧情不参与正文文本引用校验。Gallery 保持原基础聚合。
+
+GameSnapshot 当前为 v5，记录 ContentBuildId 和 StoryPackages；恢复拒绝不同构建或缺少记录的剧情包。首版保守记录会话准备时已安装的全部剧情包，因此删除当时尚未播放的包也会阻止恢复；不自动降级到跳过剧情。开发目录构建标识为空。
+
+资源归档格式为 GPAK v3，包含 base/story/override 用途控制描述；旧 v2 PAK 需重新导出。控制字段和 metadata 依赖校验见 [资源规范](assets.md#pak)。override 装载在独立资源补丁阶段接入。
 
 ## 生成的 `gallery.json`
 

@@ -46,6 +46,17 @@ internal sealed class EntryParameterStructures(EditorProjectDocument document, E
         // Explicit contract structures, including custom providers, take precedence.
         if (field.Value.ValueType != typeof(JsonElement) || field.Value.Structure is not null) return field;
         if (field.Id == "timeline" && entry.Type == BuiltinEntryIds.PlayTimeline) return TimelineValueStructure.Describe(field);
+        ValueStructure? known = (entry.Type, field.Id) switch
+        {
+            (BuiltinEntryIds.ShowVariants, "selection") => ValueStructure.Map(new("value", new(typeof(string)))),
+            ("video.play", "skipPoints") => ValueStructure.Sequence(new("value", new(typeof(double)))),
+            (BuiltinEntryIds.PlayParticleEmitter or BuiltinEntryIds.BurstParticles, "parameters") => ValueStructure.OpenObject(
+                [new("particleTexture", new(typeof(string)), resourceTypeId: "sprite")], ShaderExtension),
+            _ => null
+        };
+        // These codecs have one resource field (particles) or exclusively numeric/name values.
+        if (known is not null) return new(field.Id, field.Value.WithStructure(known), field.IsRequired,
+            field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
         if (field.Id != "parameters") return field;
         var structure = ParameterStructure(group, entry);
         return structure is null ? field : new(field.Id, field.Value.WithStructure(structure), field.IsRequired,

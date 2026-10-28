@@ -87,7 +87,7 @@ public sealed class GameInstallationTests
             Assert.That(installedContent.Configuration.ReadDefaultOptions().AudioTracks.Single().OverflowPolicy, Is.EqualTo(GalNet.Contracts.Builtins.Audio.AudioOverflowPolicy.StopOldest));
 
             using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
-            Assert.That((await assets.GetFileAsync("hero"))?.Path, Is.EqualTo("hero.png"));
+            Assert.That(await assets.GetFileAsync("hero"), Is.Null, "Unused source resources are excluded from the installed build.");
         }
         finally
         {
@@ -123,7 +123,7 @@ public sealed class GameInstallationTests
 
             using var manager = new AssetManager(installation.CreateAssetProviders(types));
             using var handle = await manager.AcquireAsync<string>("hero");
-            Assert.That(handle?.Value, Is.EqualTo("patch"));
+            Assert.That(handle?.Value, Is.EqualTo("base"), "An undeclared base PAK cannot act as a resource override.");
         }
         finally
         {
@@ -201,6 +201,21 @@ public sealed class GameInstallationTests
 
     private static async Task CreatePackageAsync(string path, IReadOnlyList<(string Path, byte[] Data)> files)
     {
+        var types = BuiltinResourceTypes.CreateCatalog();
+        var data = files.Where(file => file.Path != GameContentManifest.FileName).ToList();
+        var paks = data.Select((file, index) => (file, index)).Where(item => item.file.Path.EndsWith(".pak", StringComparison.Ordinal)).ToArray();
+        var buildId = new string('a', 64);
+        for (var part = 0; part < paks.Length; part++)
+        {
+            var item = paks[part];
+            using var source = Archive.Deserialize("assets", item.file.Data, types);
+            data[item.index] = (item.file.Path, PakBuilder.Build("assets", source.AssetIds.Select(id => source.GetAsset(id)!).ToArray(), types,
+                descriptor: new() { ProjectId = "test", BuildId = buildId, PartIndex = part, PartCount = paks.Length }));
+        }
+        data.Add((GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(new GameContentManifest
+        { ProjectId = "test", BuildId = buildId, BasePaks = data.Where(file => file.Path.EndsWith(".pak", StringComparison.Ordinal))
+            .Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.LongLength)).ToList() }, JsonSerializerOptions.Web)));
+        files = data;
         var entries = files.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
         var manifest = new GalpakManifest(1, "test", "sample", DateTimeOffset.UtcNow, entries);
         await using var file = File.Create(path);
