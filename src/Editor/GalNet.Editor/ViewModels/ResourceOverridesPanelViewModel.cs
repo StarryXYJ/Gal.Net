@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Core.Configuration;
@@ -15,27 +14,21 @@ namespace GalNet.Editor.ViewModels;
 
 public sealed class ResourcePatchColumn : ObservableObject
 {
-    private readonly Action _changed;
-    private string _name, _priority;
     public ResourceOverrideDefinition Definition { get; private set; }
     public IReadOnlyDictionary<string, string> Mappings { get; private set; }
     public string Id => Definition.Id;
-    public string Name { get => _name; set { if (SetProperty(ref _name, value)) _changed(); } }
-    public string Priority { get => _priority; set { if (SetProperty(ref _priority, value)) _changed(); } }
-    public bool HasDraft => Name != Definition.Name || Priority != Definition.Priority.ToString(CultureInfo.InvariantCulture);
-    public ResourcePatchColumn(ResourceOverrideDefinition definition, Action changed)
-    { Definition = definition; Mappings = definition.Mappings; _name = definition.Name; _priority = definition.Priority.ToString(CultureInfo.InvariantCulture); _changed = changed; }
-    public void Refresh(ResourceOverrideDefinition definition)
-    {
-        Mappings = definition.Mappings;
-        if (HasDraft) return;
-        Accept(definition);
-    }
+    public string Name => Definition.Name;
+    public int Priority => Definition.Priority;
+    public ResourcePatchColumn(ResourceOverrideDefinition definition)
+    { Definition = definition; Mappings = definition.Mappings; }
     public void Accept(ResourceOverrideDefinition definition)
     {
+        var nameChanged = Name != definition.Name;
+        var priorityChanged = Priority != definition.Priority;
         Mappings = definition.Mappings;
-        Definition = definition; _name = definition.Name; _priority = definition.Priority.ToString(CultureInfo.InvariantCulture);
-        OnPropertyChanged(nameof(Name)); OnPropertyChanged(nameof(Priority));
+        Definition = definition;
+        if (nameChanged) OnPropertyChanged(nameof(Name));
+        if (priorityChanged) OnPropertyChanged(nameof(Priority));
     }
 }
 
@@ -43,11 +36,11 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
 {
     private readonly IProjectService _projects;
     private readonly IFileDialogService _dialogs;
-    private readonly IDisposable _draft;
+    private readonly SemaphoreSlim _actions = new(1, 1);
     private readonly IEditorAssetChanges? _assetChanges;
     private CancellationTokenSource? _refresh, _export;
     private Task? _refreshTask;
-    private bool _disposed, _notifyingDraft;
+    private bool _disposed;
     private long _revision;
     private string _analysisMessage = "";
     private string _structureKey = "";
@@ -59,13 +52,15 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
     public event Action? StructureChanged;
     [ObservableProperty] private string _message = "";
     [ObservableProperty] private bool _busy;
+    public bool CanExport => !Busy;
+    partial void OnBusyChanged(bool value) => OnPropertyChanged(nameof(CanExport));
     [ObservableProperty] private bool _showDependencies = true;
+    [ObservableProperty] private string _search = "";
     private IReadOnlyList<ResourceReferenceRow> _allRows = [];
     public ResourceOverridesPanelViewModel(ResourceOverrideAuthoringService service, IProjectService projects,
         IFileDialogService dialogs, IEditorLocalizationService text)
     {
         Service = service; _projects = projects; _dialogs = dialogs; L = text;
-        _draft = service.Content.RegisterDraft(() => Columns.Any(column => column.HasDraft), CommitHeadersAsync, DiscardDrafts);
         service.Content.Changed += OnContentChanged;
         _assetChanges = service.Assets as IEditorAssetChanges;
         if (_assetChanges is not null) _assetChanges.Changed += RequestRefresh;
@@ -73,14 +68,10 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
         RequestRefresh();
     }
     partial void OnShowDependenciesChanged(bool value) => ShowRows();
-    private void OnContentChanged() { if (!_notifyingDraft) RequestRefresh(); }
+    partial void OnSearchChanged(string value) => ShowRows();
+    private void OnContentChanged() => RequestRefresh();
     private void ProjectChanged(GalNet.Editor.Abstraction.Project.GalProject? _) => RequestRefresh();
     private void LanguageChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") StructureChanged?.Invoke(); }
-    private void NotifyDraft()
-    {
-        _notifyingDraft = true;
-        try { Service.Content.Refresh(); } finally { _notifyingDraft = false; }
-    }
     public void RequestRefresh()
     {
         Interlocked.Increment(ref _revision);
@@ -110,7 +101,7 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
                 foreach (var definition in definitions)
                 {
                     var column = Columns.FirstOrDefault(column => column.Id == definition.Id);
-                    if (column is null) Columns.Add(new(definition, NotifyDraft)); else column.Refresh(definition);
+                    if (column is null) Columns.Add(new(definition)); else column.Accept(definition);
                 }
                 _allRows = snapshot.Rows; ShowRows();
                 var analysis = string.Join("\n", snapshot.Issues);
@@ -124,7 +115,8 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
     }
     private void ShowRows()
     {
-        var visible = _allRows.Where(row => ShowDependencies || row.Uses.Any(use => use.Through is null)).ToArray();
+        var visible = _allRows.Where(row => (ShowDependencies || row.Uses.Any(use => use.Through is null)) &&
+            (row.Path.Contains(Search.Trim(), StringComparison.OrdinalIgnoreCase) || row.Id.Contains(Search.Trim(), StringComparison.OrdinalIgnoreCase))).ToArray();
         var key = System.Text.Json.JsonSerializer.Serialize(new
         {
             rows = visible,
@@ -140,32 +132,23 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
         Rows.Clear(); foreach (var row in visible) Rows.Add(row);
         StructureChanged?.Invoke();
     }
-    public async Task<bool> RunAsync(Func<Task> action)
+    public async Task<bool> RunAsync(Func<Task> action, bool serialize = true)
     {
         if (_disposed) return false;
-        try { Message = ""; await action(); return true; }
+        if (serialize) await _actions.WaitAsync();
+        try { if (_disposed) return false; Message = ""; await action(); return true; }
         catch (OperationCanceledException) { Message = L["Packaging.Canceled"]; return false; }
         catch (Exception error) { Message = EditorText.Error(error).Render(L); return false; }
+        finally { if (serialize) _actions.Release(); }
     }
-    public async Task CommitHeaderAsync(ResourcePatchColumn column)
+    public async Task SetHeaderAsync(ResourcePatchColumn column, string name, int priority)
     {
-        if (!column.HasDraft) return;
-        if (!int.TryParse(column.Priority, NumberStyles.Integer, CultureInfo.InvariantCulture, out var priority))
-            throw new InvalidOperationException(L["Packaging.InvalidPriority"]);
-        Service.SetHeader(column.Id, column.Name, priority, column.Definition.Name, column.Definition.Priority);
-        // Refresh synchronously before Save All can capture this draft again.
-        var definition = Service.Read().Packages.Single(item => item.Id == column.Id);
-        column.Accept(definition);
-        await Task.CompletedTask;
+        await RunAsync(() => Service.SetHeaderAsync(column.Id, name, priority));
+        await RefreshAsync();
     }
-    public async Task CommitHeadersAsync() { foreach (var column in Columns.ToArray()) await CommitHeaderAsync(column); }
-    public void DiscardDrafts()
-    {
-        Columns.Clear(); foreach (var definition in Service.Read().Packages) Columns.Add(new(definition, NotifyDraft));
-        StructureChanged?.Invoke(); NotifyDraft();
-    }
-    public async Task CreateAsync() { await RunAsync(() => { Service.Create(L["Packaging.NewPatch"]); return Task.CompletedTask; }); }
-    public async Task DeleteAsync(string id) { await RunAsync(() => { Service.Delete(id); return Task.CompletedTask; }); }
+    public async Task CreateAsync() { await RunAsync(async () => await Service.CreateAsync(L["Packaging.NewPatch"])); }
+    public async Task DeleteAsync(string id) { await RunAsync(() => Service.DeleteAsync(id)); }
+    public Task AddOriginalAsync(string id) => RunAsync(() => Service.AddOriginalAsync(id));
     public async Task SetMappingAsync(ResourcePatchColumn column, ResourceReferenceRow row, string target)
     {
         var expected = column.Mappings.GetValueOrDefault(row.Id);
@@ -178,7 +161,8 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
         var target = await _dialogs.SaveFilePickerAsync(L["Packaging.Export"], "resource-" + id + ".pak");
         if (target is null || _disposed) return;
         _export = new(); Busy = true;
-        await RunAsync(async () => { await CommitHeadersAsync(); await Service.ExportAsync(id, target, _export.Token); Message = L["Packaging.Exported"] + " " + target; });
+        await _actions.WaitAsync(); _actions.Release();
+        await RunAsync(async () => { await Service.ExportAsync(id, target, _export.Token); Message = L["Packaging.Exported"] + " " + target; }, serialize: false);
         Busy = false; _export.Dispose(); _export = null;
     }
     public void CancelExport() => _export?.Cancel();
@@ -194,7 +178,7 @@ public sealed partial class ResourceOverridesPanelViewModel : ObservableObject, 
     {
         if (_disposed) return; _disposed = true;
         _refresh?.Cancel(); _refresh?.Dispose(); _export?.Cancel();
-        _draft.Dispose(); Service.Content.Changed -= OnContentChanged;
+        Service.Content.Changed -= OnContentChanged;
         if (_assetChanges is not null) _assetChanges.Changed -= RequestRefresh;
         _projects.CurrentChanged -= ProjectChanged; L.PropertyChanged -= LanguageChanged;
         StructureChanged = null;

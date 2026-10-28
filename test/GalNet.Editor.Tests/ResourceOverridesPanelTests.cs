@@ -49,6 +49,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var parameters = new Dictionary<string, JsonElement>(entry.Source.Parameters) { ["assetId"] = JsonSerializer.SerializeToElement(original) };
             scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type, parameters);
             scope.GetRequiredService<GraphAuthoringService>().SetStoryPackage(group.Id, "bonus");
+            await scope.GetRequiredService<IProjectContentSession>().SaveAsync();
             var dock = scope.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>();
             var layout = dock.CreateLayout(); dock.InitLayout(layout);
             var model = scope.GetRequiredService<ResourceOverridesPanelViewModel>(); await model.RefreshAsync();
@@ -57,13 +58,30 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 Assert.That(model.Rows.Any(row => row.Id == original), Is.True, model.Message);
+                var search = view.FindControl<TextBox>("ResourcePatchSearch")!;
+                search.Text = "no-such-resource";
+                await WaitForResourceUi(window, () => model.Rows.Count == 0);
+                search.Text = "";
+                await WaitForResourceUi(window, () => model.Rows.Any(row => row.Id == original));
                 TimelineClick(window, view.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "CreateResourcePatch"));
                 await WaitForResourceUi(window, () => model.Columns.Count == 1);
                 var id = model.Columns[0].Id;
                 var name = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "PatchName_" + id);
                 name.Focus(); name.Text = "Clothes B";
-                name.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+                view.FindControl<Button>("CreateResourcePatch")!.Focus();
                 await WaitForResourceUi(window, () => model.Service.Read().Packages.Single().Name == "Clothes B");
+                var priority = view.GetVisualDescendants().OfType<NumericUpDown>().Single(input => input.Name == "PatchPriority_" + id);
+                priority.Value = 7;
+                await WaitForResourceUi(window, () => model.Service.Read().Packages.Single().Priority == 7);
+                Assert.That(view.GetVisualDescendants().OfType<Button>().Any(button => button.Name?.StartsWith("DiscardPatch_") == true), Is.False);
+                foreach (var button in view.GetVisualDescendants().OfType<Button>().Where(button => button.Name is "CreateResourcePatch" || button.Name == "ExportPatch_" + id || button.Name == "DeletePatch_" + id))
+                    Assert.That(button.Content, Is.TypeOf<PathIcon>(), "Patch actions should use the shared icon-button style.");
+                var dependencies = view.FindControl<CheckBox>("ShowResourceDependencies")!;
+                var createButton = view.FindControl<Button>("CreateResourcePatch")!;
+                Assert.That(dependencies.VerticalAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center));
+                Assert.That(dependencies.VerticalContentAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center));
+                Assert.That(dependencies.TranslatePoint(new Point(0, dependencies.Bounds.Height / 2), view)!.Value.Y,
+                    Is.EqualTo(createButton.TranslatePoint(new Point(0, createButton.Bounds.Height / 2), view)!.Value.Y).Within(1));
                 var picker = view.GetVisualDescendants().OfType<AssetPicker>().Single(control => control.Name == "Replacement_" + id + "_" + original);
                 TimelineClick(window, picker.FindControl<Button>("PickerButton")!);
                 await WaitForResourceUi(window, () => picker.ResourcePanel.Results.Any(item => item.Id == replacement) || picker.ResourcePanel.Hint.Length > 0);
@@ -74,14 +92,14 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var history = scope.GetRequiredService<EditorHistories>().Content;
                 await history.UndoAsync(); Assert.That(model.Service.Read().Packages.Single().Mappings.ContainsKey(original), Is.False);
                 await history.RedoAsync(); await model.RefreshAsync(); TimelinePump(window);
-                for (var index = 0; index < 4; index++) model.Service.Create("Extra " + index);
+                for (var index = 0; index < 4; index++) await model.Service.CreateAsync("Extra " + index);
                 await model.RefreshAsync(); TimelinePump(window);
                 foreach (var column in model.Columns)
                 {
                     var header = view.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "PatchName_" + column.Id);
                     var left = header.TranslatePoint(default, view)!.Value.X;
                     foreach (var button in view.GetVisualDescendants().OfType<Button>().Where(button => button.Name is { } name &&
-                        (name == "ExportPatch_" + column.Id || name == "DeletePatch_" + column.Id || name == "DiscardPatch_" + column.Id)))
+                        (name == "ExportPatch_" + column.Id || name == "DeletePatch_" + column.Id)))
                         Assert.That(button.TranslatePoint(new Avalonia.Point(button.Bounds.Width, 0), view)!.Value.X, Is.LessThanOrEqualTo(left + 260), "Column actions must not overlap the next patch.");
                 }
                 var scroll = view.GetVisualDescendants().OfType<ScrollViewer>().Single(control => control.Name == "ResourcePatchHorizontalScroll");
@@ -95,6 +113,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var types = scope.GetRequiredService<GalNet.Core.Assets.IResourceTypeCatalog>();
                 using (var pak = Archive.Deserialize("assets", File.ReadAllBytes(output), types))
                 {
+                    Assert.That(pak.Descriptor.Priority, Is.EqualTo(7));
                     Assert.That(pak.Descriptor.Mappings[original], Is.EqualTo(replacement));
                     Assert.That(pak.GetAsset(replacement)!.ReadAllBytes(), Is.EqualTo(replacementBytes));
                 }
@@ -138,7 +157,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task ResourcePatchHeaderInvalidDraftBlocksSaveAndGroupPackageHistoryRestoresAbsence()
+    public async Task ResourcePatchesPersistWithoutSavingOtherContentAndExportDoesNotCommitDrafts()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
@@ -153,14 +172,40 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             await history.UndoAsync(); Assert.That(group.Source.StoryPackage, Is.Null);
             await history.RedoAsync(); Assert.That(group.Source.StoryPackage, Is.EqualTo("bonus"));
             var model = scope.GetRequiredService<ResourceOverridesPanelViewModel>();
-            model.Service.Create("Clothes"); await model.RefreshAsync();
-            model.Columns.Single().Priority = "bad";
-            Assert.ThrowsAsync<InvalidOperationException>(() => scope.GetRequiredService<IProjectContentSession>().SaveAsync());
-            Assert.That(model.Columns.Single().Priority, Is.EqualTo("bad"));
-            model.Columns.Single().Priority = "5"; await scope.GetRequiredService<IProjectContentSession>().SaveAsync();
-            Assert.That(model.Service.Read().Packages.Single().Priority, Is.EqualTo(5));
+            var content = scope.GetRequiredService<IProjectContentSession>();
+            var graphPath = Path.Combine(project.RootPath, "Graph", "graph.json");
+            var graphBytes = File.ReadAllBytes(graphPath);
+            ResourceOverrideOptions Disk() => GalNet.Core.Serialization.JsonCodec.Deserialize<ProjectConfiguration>(File.ReadAllText(Path.Combine(project.RootPath, "settings.json")))!.Read(ResourceOverrideOptions.Section);
+            await model.Service.CreateAsync("Clothes"); await model.RefreshAsync();
+            Assert.That(Disk().Packages.Single().Name, Is.EqualTo("Clothes"));
+            Assert.That(File.ReadAllBytes(graphPath), Is.EqualTo(graphBytes), "Patch autosave must preserve unrelated unsaved Graph edits.");
+            Assert.That(content.IsDirty, Is.True);
+            var column = model.Columns.Single();
+            await model.SetHeaderAsync(column, "Clothes B", 5);
+            Assert.That(Disk().Packages.Single().Priority, Is.EqualTo(5));
+            await history.UndoAsync(); Assert.That(Disk().Packages.Single().Name, Is.EqualTo("Clothes"));
+            await history.RedoAsync(); Assert.That(Disk().Packages.Single().Name, Is.EqualTo("Clothes B"));
+            await model.RefreshAsync();
+            await model.SetHeaderAsync(column, "", 5);
+            Assert.That(model.Message, Is.Not.Empty);
+            Assert.That(Disk().Packages.Single().Name, Is.EqualTo("Clothes B"));
             var original = model.Service.Read().Packages.Single().Id;
-            model.Service.Delete(original); await history.UndoAsync(); Assert.That(model.Service.Read().Packages.Single().Id, Is.EqualTo(original));
+            await model.Service.DeleteAsync(original); Assert.That(Disk().Packages, Is.Empty);
+            await history.UndoAsync(); Assert.That(Disk().Packages.Single().Id, Is.EqualTo(original));
+            var files = scope.GetRequiredService<ProjectFileAuthoringService>();
+            await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "Assets/a.png", Content: [1]));
+            await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "Assets/b.png", Content: [2]));
+            var assets = scope.GetRequiredService<IAssetCatalogService>();
+            await model.Service.SetMappingAsync(original, assets.GetEntry("a.png")!.Id!, assets.GetEntry("b.png")!.Id!, null);
+            using (content.RegisterDraft(() => true, () => throw new InvalidOperationException("Unrelated unfinished input")))
+            {
+                var output = Path.Combine(_root, "pure-export.pak");
+                var settingsBeforeExport = File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json"));
+                await model.Service.ExportAsync(original, output, CancellationToken.None);
+                Assert.That(File.Exists(output), Is.True);
+                Assert.That(File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")), Is.EqualTo(settingsBeforeExport));
+                Assert.That(File.ReadAllBytes(graphPath), Is.EqualTo(graphBytes));
+            }
             await projects.CloseAsync(); return true;
         }, CancellationToken.None);
     }

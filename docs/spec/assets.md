@@ -85,7 +85,7 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 
 `ContentPackagePlanner` 先收集唯一 Graph、全部非补丁 Group 和额外根的闭包 B；每个剧情包独立取 C(P)−B，不扣除其他剧情包。基础 Gallery 项和默认视觉程序绑定也作为根。未知依赖必须由 `galnet.packaging` 的 includeResources 补根，并用 declaredCompleteResources 显式确认覆盖；后者可写资源 ID 或 Group 节点 ID，不会自动补根。
 
-每个集合按资源 ID ordinal 排序，以未压缩编译载荷的累计 Length 切片。maxPakBytes 缺省 32 MiB，是软目标，超限单项独占，不拆资源；PAK 头部、压缩和索引开销不计入阈值。分片逐个写到私有磁盘阶段，不同时保留全部 PAK 字节。当前 Archive 仍以内存打开单个 PAK，目标大小不是内存上限。
+每个集合按资源 ID ordinal 排序，以未压缩编译载荷的累计 Length 切片。maxPakBytes 缺省 128 MiB，是软目标，超限单项独占，不拆资源；PAK 头部、压缩和索引开销不计入阈值。分片逐个写到私有磁盘阶段，不同时保留全部 PAK 字节。当前 Archive 仍以内存打开单个 PAK，目标大小不是内存上限。
 
 只有闭包中的资源进入 PAK。图集包含全部声明图片、条件分支包含所有静态引用；UI/自定义运行代码的资源需显式补根。源资源校验仍覆盖整个目录，未被打包的坏作者资源也可能阻止构建。安装校验本体和每个剧情包的独立依赖闭包，重复 ID 的内容和 metadata 必须一致。
 

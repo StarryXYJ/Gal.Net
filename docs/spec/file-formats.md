@@ -59,7 +59,7 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 
 配置补丁命令为 `project.configuration.patch`，接收 `sectionId`、必需的 `values` 对象及可选 `remove` 字段 ID 列表。先删除、后覆盖，显式 null 与缺省分开；仅允许修改声明的字段，完整候选验证成功才替换 section，其他字段/section 保留。构建与导出使用调用方所选 schema，在发布产物前验证已存储配置。
 
-资源补丁作者数据使用可选 `galnet.resourceOverrides` section（版本 1）：packages 为 ResourceOverrideDefinition 列表（稳定 id、name、priority、mappings、includeResources、declaredCompleteResources），additionalOriginals 为补充的原资源 ID 列表。定义随 settings 保存并进入已有 Undo/Redo、工作版/保存版和作者恢复快照；不创建独立 UI 状态文件作为真源。矩阵的名称/优先级草稿须回车或随保存提交，无效草稿阻止保存。additionalOriginals 同时成为基础打包根。
+资源补丁作者数据使用可选 `galnet.resourceOverrides` section（版本 1）：packages 为 ResourceOverrideDefinition 列表（稳定 id、name、priority、mappings、includeResources、declaredCompleteResources），additionalOriginals 为补充的原资源 ID 列表。定义随 settings 保存并进入已有 Undo/Redo、工作版/保存版和作者恢复快照；不创建独立 UI 状态文件作为真源。矩阵名称回车/失焦、数字优先级变更及映射/列操作自动发布该配置节，撤销/重做同样持久化；不提交其他页面输入，不保存其他未发布配置。资源补丁导出只读取保存版定义并捕获资源快照。additionalOriginals 同时成为基础打包根。
 
 ## `.galpak` 导出与安装
 

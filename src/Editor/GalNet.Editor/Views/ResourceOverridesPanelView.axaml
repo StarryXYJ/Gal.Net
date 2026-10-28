@@ -1,0 +1,50 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels" xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.ResourceOverridesPanelView" x:DataType="vm:ResourceOverridesPanelViewModel">
+  <UserControl.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Editor/Themes/AuthoringPanelResources.axaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></UserControl.Resources>
+  <UserControl.Styles>
+    <Style Selector="TextBox.patchName">
+      <Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/>
+      <Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Padding" Value="6,4"/>
+    </Style>
+    <Style Selector="TextBox.patchName:focus"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/></Style>
+  </UserControl.Styles>
+  <Grid RowDefinitions="Auto,*,Auto" Margin="8" RowSpacing="8">
+    <Grid ColumnDefinitions="*,Auto,Auto,Auto,Auto" ColumnSpacing="8">
+      <TextBox x:Name="ResourcePatchSearch" Text="{Binding Search}" PlaceholderText="{loc:Localize Packaging.Search}" MinWidth="80" VerticalContentAlignment="Center"/>
+      <CheckBox x:Name="ShowResourceDependencies" Grid.Column="1" Content="{loc:Localize Packaging.Dependencies}" IsChecked="{Binding ShowDependencies}"
+                VerticalAlignment="Center" VerticalContentAlignment="Center"/>
+      <Button x:Name="ManageResourceOriginals" Grid.Column="2" Theme="{StaticResource EditorIconButton}" VerticalAlignment="Center"
+              ToolTip.Tip="{loc:Localize Packaging.AddOriginal}" AutomationProperties.Name="{loc:Localize Packaging.AddOriginal}">
+        <PathIcon Width="16" Height="16" Data="{StaticResource PanelImportIcon}"/>
+        <Button.Flyout><Flyout><StackPanel Width="300" Spacing="8">
+          <TextBlock Text="{loc:Localize Packaging.AddOriginal}" FontWeight="SemiBold"/>
+          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
+            <controls:AssetPicker x:Name="AdditionalOriginal" AssetManager="{Binding Service.Assets}" ResourceTypeId="*" VerticalAlignment="Center"/>
+            <Button x:Name="AddResourceOriginal" Grid.Column="1" Theme="{StaticResource EditorIconButton}" Click="AddOriginal"
+                    ToolTip.Tip="{loc:Localize Packaging.AddOriginal}" AutomationProperties.Name="{loc:Localize Packaging.AddOriginal}">
+              <PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/>
+            </Button>
+          </Grid>
+        </StackPanel></Flyout></Button.Flyout>
+      </Button>
+      <Button x:Name="CancelResourceExport" Grid.Column="3" Theme="{StaticResource EditorIconButton}" IsVisible="{Binding Busy}" Click="CancelExport"
+              ToolTip.Tip="{loc:Localize Packaging.Cancel}" AutomationProperties.Name="{loc:Localize Packaging.Cancel}" VerticalAlignment="Center">
+        <PathIcon Width="16" Height="16" Data="{StaticResource PanelCancelIcon}"/>
+      </Button>
+      <Button x:Name="CreateResourcePatch" Grid.Column="4" Theme="{StaticResource EditorIconButton}" Click="CreatePatch"
+              ToolTip.Tip="{loc:Localize Packaging.Create}" AutomationProperties.Name="{loc:Localize Packaging.Create}" VerticalAlignment="Center">
+        <PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/>
+      </Button>
+    </Grid>
+    <Grid Grid.Row="1" Background="{DynamicResource SemiColorBackground0}">
+      <ScrollViewer x:Name="ResourcePatchHorizontalScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+        <Grid x:Name="ResourcePatchTable" RowDefinitions="Auto,*" HorizontalAlignment="Left"/>
+      </ScrollViewer>
+      <TextBlock x:Name="ResourcePatchEmpty" Text="{loc:Localize Uiux.Panel.NoResults}" IsHitTestVisible="False"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource SemiColorText2}"/>
+    </Grid>
+    <TextBlock Grid.Row="2" Text="{Binding Message}" TextWrapping="Wrap" MaxHeight="100" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
+  </Grid>
+</UserControl>

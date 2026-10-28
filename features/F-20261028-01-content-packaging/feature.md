@@ -87,3 +87,7 @@
 - [阶段计划](phase-plan.md)
 - 当前事实：`docs/spec/assets.md`、`docs/spec/file-formats.md`、`docs/spec/i18n.md`。
 - 现有应用扩展：`docs/manual/customize-avalonia-sample.md`。
+
+## 后续界面调整
+
+用户要求提高默认分包阈值、资源补丁面板采用图标及紧凑布局，配置改动即时持久化，导出只导出；本轮独立验证和提交，见 [调整记录](follow-up-panel-20261028.md)。

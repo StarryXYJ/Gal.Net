@@ -27,7 +27,7 @@ internal sealed class ProjectContentBaseline
         Map(a.GroupEntries, b.GroupEntries, (x, y) => Sequence(x, y, Entry)) && Map(a.Files, b.Files, File);
 
     private static bool Node(EditorGraphNodeDto a, EditorGraphNodeDto b) =>
-        a.Id == b.Id && a.Type == b.Type && a.Name == b.Name && a.X.Equals(b.X) && a.Y.Equals(b.Y) && a.File == b.File && a.BranchType == b.BranchType &&
+        a.Id == b.Id && a.Type == b.Type && a.Name == b.Name && a.X.Equals(b.X) && a.Y.Equals(b.Y) && a.File == b.File && a.BranchType == b.BranchType && a.StoryPackage == b.StoryPackage &&
         Sequence(a.Options, b.Options, (x, y) => x.Id == y.Id && x.Text == y.Text && x.Condition == y.Condition) &&
         Sequence(a.Conditions, b.Conditions, (x, y) => x.Id == y.Id && x.Expression == y.Expression);
     private static bool Edge(EditorGraphEdgeDto a, EditorGraphEdgeDto b) =>

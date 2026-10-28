@@ -5,7 +5,7 @@ namespace GalNet.Core.Configuration;
 /// <summary>Explicit roots and dynamic-reference declarations used by publication.</summary>
 public sealed class ContentPackagingOptions
 {
-    public long MaxPakBytes { get; set; } = 32 * 1024 * 1024;
+    public long MaxPakBytes { get; set; } = 128 * 1024 * 1024;
     public List<string> IncludeResources { get; set; } = [];
     public List<string> DeclaredCompleteResources { get; set; } = [];
 

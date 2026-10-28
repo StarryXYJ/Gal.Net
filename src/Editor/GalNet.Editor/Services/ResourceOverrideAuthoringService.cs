@@ -1,6 +1,8 @@
 using GalNet.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
+using GalNet.Editor.Abstraction.Changes;
+using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Shared.Services;
@@ -23,27 +25,24 @@ public sealed class ResourceOverrideAuthoringService(IProjectService projects, I
         ct.ThrowIfCancellationRequested();
         return new(document, catalog, files, fields);
     }
-    public string Create(string name)
+    public async Task<string> CreateAsync(string name)
     {
         var id = Guid.NewGuid().ToString("N");
-        Update(options => options.Packages.Add(new() { Id = id, Name = Name(name) }));
+        await UpdateAsync(options => options.Packages.Add(new() { Id = id, Name = Name(name) }));
         return id;
     }
-    public void Rename(string id, string name) => Update(options => Package(options, id).Name = Name(name));
-    public void SetPriority(string id, int priority) => Update(options => Package(options, id).Priority = priority);
-    public void SetHeader(string id, string name, int priority, string expectedName, int expectedPriority) => Update(options =>
+    public Task SetHeaderAsync(string id, string name, int priority) => UpdateAsync(options =>
     {
         var package = Package(options, id);
-        if (package.Name != expectedName || package.Priority != expectedPriority) throw new InvalidOperationException("This resource patch header changed. Discard the draft and retry.");
         package.Name = Name(name); package.Priority = priority;
     });
-    public void Delete(string id) => Update(options => options.Packages.Remove(Package(options, id)));
+    public Task DeleteAsync(string id) => UpdateAsync(options => options.Packages.Remove(Package(options, id)));
     public async Task AddOriginalAsync(string id)
     {
         var project = projects.Current;
         var file = await assets.GetFileAsync(id) ?? throw new InvalidDataException("Original resource is missing.");
         if (!ReferenceEquals(projects.Current, project) || file.TypeId is "graph" or "group") throw new InvalidDataException("Original resource is unavailable.");
-        Update(options => { if (!options.AdditionalOriginals.Contains(file.Id, StringComparer.OrdinalIgnoreCase)) options.AdditionalOriginals.Add(file.Id); });
+        await UpdateAsync(options => { if (!options.AdditionalOriginals.Contains(file.Id, StringComparer.OrdinalIgnoreCase)) options.AdditionalOriginals.Add(file.Id); });
     }
     public async Task SetMappingAsync(string packageId, string sourceId, string targetId, string? expected)
     {
@@ -59,7 +58,7 @@ public sealed class ResourceOverrideAuthoringService(IProjectService projects, I
         }
         if (!ReferenceEquals(project, projects.Current) || revision != (assets as Interfaces.IEditorAssetChanges)?.Revision)
             throw new InvalidOperationException("Resources changed while selecting the replacement. Choose again.");
-        Update(options =>
+        await UpdateAsync(options =>
         {
             var package = Package(options, packageId);
             if (package.Mappings.GetValueOrDefault(sourceId) != expected) throw new InvalidOperationException("This override cell changed. Choose again.");
@@ -69,7 +68,6 @@ public sealed class ResourceOverrideAuthoringService(IProjectService projects, I
     public async Task ExportAsync(string id, string target, CancellationToken ct)
     {
         var project = projects.Current ?? throw new InvalidOperationException("Open a project first.");
-        await content.SaveAsync(ct);
         using var capture = await histories.Content.AcquireCaptureAsync(cancellationToken: ct);
         if (!ReferenceEquals(projects.Current, project)) throw new InvalidOperationException("The project was closed.");
         var definition = Package(content.CaptureSaved().Configuration.Read(ResourceOverrideOptions.Section), id);
@@ -79,26 +77,30 @@ public sealed class ResourceOverrideAuthoringService(IProjectService projects, I
     private static ResourceOverrideDefinition Package(ResourceOverrideOptions options, string id) => options.Packages.SingleOrDefault(package => package.Id == id)
         ?? throw new InvalidOperationException("This resource patch no longer exists.");
     private static string Name(string value) => string.IsNullOrWhiteSpace(value) ? throw new ArgumentException("Patch name is required.") : value.Trim();
-    private void Update(Action<ResourceOverrideOptions> change)
+    private async Task UpdateAsync(Action<ResourceOverrideOptions> change)
     {
         var configuration = projects.Current?.Configuration ?? throw new InvalidOperationException("Open a project first.");
         var before = configuration.Sections.GetValueOrDefault(ResourceOverrideOptions.Section.Id);
         var next = configuration.Clone();
         var options = next.Read(ResourceOverrideOptions.Section); change(options); next.Set(ResourceOverrideOptions.Section, options);
         var after = next.Sections[ResourceOverrideOptions.Section.Id];
-        if (!ConfigurationSectionEditor.Equal(before, after)) histories.Content.Execute(new DefinitionEdit(configuration, before, after));
+        if (!ConfigurationSectionEditor.Equal(before, after)) await histories.Content.ExecuteAsync(new DefinitionEdit(content, before, after));
     }
-    private sealed record DefinitionEdit(ProjectConfiguration Configuration, ProjectSectionData? Before, ProjectSectionData After) : IUndoableEdit
+    private sealed record DefinitionEdit(IProjectContentSession Content, ProjectSectionData? Before, ProjectSectionData After) : IAsyncUndoableEdit
     {
         public string Description => "Change resource patches";
         public long RetainedBytes => (Before?.Data.GetRawText().Length ?? 0) * 2L + After.Data.GetRawText().Length * 2L;
-        public void Undo() => Apply(After, Before);
-        public void Redo() => Apply(Before, After);
-        private void Apply(ProjectSectionData? expected, ProjectSectionData? value)
+        public ValueTask UndoAsync() => new(Content.PublishStructureAsync(new SectionChange(After, Before)));
+        public ValueTask RedoAsync() => new(Content.PublishStructureAsync(new SectionChange(Before, After)));
+    }
+    private sealed record SectionChange(ProjectSectionData? Expected, ProjectSectionData? Value) : IProjectStructureChange
+    {
+        public void Apply(EditorProjectDocument document, AuthorDocumentVersion version)
         {
-            if (!ConfigurationSectionEditor.Equal(Configuration.Sections.GetValueOrDefault(ResourceOverrideOptions.Section.Id), expected))
+            var configuration = document.Configuration;
+            if (version == AuthorDocumentVersion.Working && !ConfigurationSectionEditor.Equal(configuration.Sections.GetValueOrDefault(ResourceOverrideOptions.Section.Id), Expected))
                 throw new InvalidOperationException("Resource patch definitions changed outside this edit.");
-            if (value is null) Configuration.Remove(ResourceOverrideOptions.Section.Id); else Configuration.SetRaw(ResourceOverrideOptions.Section.Id, value);
+            if (Value is null) configuration.Remove(ResourceOverrideOptions.Section.Id); else configuration.SetRaw(ResourceOverrideOptions.Section.Id, Value);
         }
     }
 }
