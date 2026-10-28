@@ -8,6 +8,7 @@ public sealed record ResourceTypeRegistration(string TypeId, Type MetaDtoType, I
 {
     public IJsonTypeInfoResolver? JsonResolver { get; init; }
     public Func<AssetMeta>? Create { get; init; }
+    public bool HasNoDependencies { get; init; }
 }
 
 public interface IResourceTypeCatalog
@@ -25,6 +26,12 @@ public sealed class ResourceTypeCatalogBuilder
     private readonly Dictionary<string, (Type Type, IJsonTypeInfoResolver? Resolver, Func<AssetMeta> Create)> _registrations = new(StringComparer.Ordinal);
     private readonly List<(string TypeId, string Extension)> _extensions = [];
     private string? _defaultTypeId;
+    private readonly HashSet<string> _leafTypes = new(StringComparer.Ordinal);
+    public ResourceTypeCatalogBuilder WithoutDependencies(params string[] typeIds)
+    {
+        foreach (var id in typeIds) _leafTypes.Add(ResourceTypeCatalog.NormalizeTypeIdCore(id));
+        return this;
+    }
     public ResourceTypeCatalogBuilder DefaultType(string typeId)
     { _defaultTypeId = ResourceTypeCatalog.NormalizeTypeIdCore(typeId); return this; }
 
@@ -41,6 +48,8 @@ public sealed class ResourceTypeCatalogBuilder
 
     public IResourceTypeCatalog Build()
     {
+        foreach (var id in _leafTypes)
+            if (!_registrations.ContainsKey(id)) throw new InvalidOperationException($"Leaf resource type '{id}' is not registered.");
         var owners = new Dictionary<string, string>(StringComparer.Ordinal);
         var byType = _registrations.Keys.ToDictionary(key => key, _ => new List<string>(), StringComparer.Ordinal);
         foreach (var (typeId, extension) in _extensions)
@@ -54,7 +63,7 @@ public sealed class ResourceTypeCatalogBuilder
             throw new InvalidOperationException($"Default resource type '{_defaultTypeId}' must be registered.");
         return new ResourceTypeCatalog(_registrations.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
             new ResourceTypeRegistration(pair.Key, pair.Value.Type, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))
-            { JsonResolver = pair.Value.Resolver, Create = pair.Value.Create }).ToList(), _defaultTypeId);
+            { JsonResolver = pair.Value.Resolver, Create = pair.Value.Create, HasNoDependencies = _leafTypes.Contains(pair.Key) }).ToList(), _defaultTypeId);
     }
 
     private ResourceTypeCatalogBuilder Add(string typeId, Type metaType, bool replace, IEnumerable<string> extensions,
@@ -62,6 +71,7 @@ public sealed class ResourceTypeCatalogBuilder
     {
         var normalized = ResourceTypeCatalog.NormalizeTypeIdCore(typeId);
         if (_registrations.ContainsKey(normalized) && !replace) throw new InvalidOperationException($"Resource type '{normalized}' is already fully registered. Use Replace explicitly.");
+        if (replace) _leafTypes.Remove(normalized);
         _registrations[normalized] = (metaType, resolver, create);
         return AddExtensions(normalized, extensions.ToArray());
     }

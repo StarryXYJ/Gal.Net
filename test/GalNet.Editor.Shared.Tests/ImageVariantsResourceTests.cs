@@ -157,7 +157,7 @@ public sealed class ImageVariantsResourceTests
             .Add<SpriteAssetMeta>("sprite", ".png")
             .Add<AssetMeta>("audio", ".ogg")
             .Add<AssetMeta>("video", ".mp4")
-            .Add<AssetMeta>("image-variants", ".variants")
+            .Add<DependentAssetMeta>("image-variants", ".variants")
             .Add<CustomMeta>("custom-test", ".customtest").Build();
         PutAsset("extra.customtest", "custom-test", "custom");
         var before = await Compiled("alice.variants", types);

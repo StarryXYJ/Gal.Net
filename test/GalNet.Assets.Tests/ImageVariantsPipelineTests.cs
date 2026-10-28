@@ -45,7 +45,7 @@ public sealed class ImageVariantsPipelineTests
         using (var archive = await provider.OpenArchiveAsync("assets"))
         {
             var file = archive.GetAsset("atlas")!;
-            Assert.That(file.Metadata, Is.TypeOf<AssetMeta>());
+            Assert.That(file.Metadata, Is.TypeOf<DependentAssetMeta>());
             Assert.That(file.Path, Is.EqualTo("alice.variants"));
             localBytes = file.ReadAllBytes();
             Assert.That(System.Text.Encoding.UTF8.GetString(localBytes), Does.Not.Contain("folder"));
@@ -208,7 +208,9 @@ public sealed class ImageVariantsPipelineTests
         byte[] payload;
         using (var provider = new LocalFileProvider(Assets, Types))
         using (var archive = await provider.OpenArchiveAsync("assets")) payload = archive.GetAsset("atlas")!.ReadAllBytes();
-        var meta = new AssetMeta { Id = "atlas", Path = "alice.variants", TypeId = "image-variants" };
+        var meta = new DependentAssetMeta { Id = "atlas", Path = "alice.variants", TypeId = "image-variants",
+            DependenciesComplete = true, Dependencies = ImageVariantsCodec.Decode(payload).Variants
+                .Select(variant => new AssetDependency(variant.AssetId, "sprite")).ToList() };
         var files = new List<IGameFile> { new GameFile(meta.Id, meta.Path, meta.TypeId, meta, payload) };
         foreach (var key in new[] { "idle_coat", "idle_skirt", "smile_coat", "smile_skirt", "weap" })
         {

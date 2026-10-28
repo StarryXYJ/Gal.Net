@@ -54,7 +54,14 @@ public static class LocalAssetCompiler
                     facts.Add(new ImageVariantFile(path[(path.LastIndexOf('/') + 1)..], asset.Id, asset.TypeId));
                 }
                 var definition = ImageVariantsCodec.RequireDefinition(ImageVariantsBuilder.Build(source, facts));
-                assets[original.Path] = new GameFile(original.Id, original.Path, original.TypeId, original.Metadata, ImageVariantsCodec.Encode(definition));
+                var metadata = codec.Deserialize(codec.Serialize(original.Metadata));
+                if (metadata is not DependentAssetMeta dependent)
+                    throw new InvalidDataException("Image variants metadata must expose compiled dependencies.");
+                dependent.Dependencies = definition.Variants.Select(variant => variant.AssetId)
+                    .Distinct(StringComparer.OrdinalIgnoreCase).Order(StringComparer.Ordinal)
+                    .Select(id => new AssetDependency(id, "sprite")).ToList();
+                dependent.DependenciesComplete = true;
+                assets[original.Path] = new GameFile(original.Id, original.Path, original.TypeId, dependent, ImageVariantsCodec.Encode(definition));
             }
             catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException or ArgumentException or System.Text.Json.JsonException)
             {

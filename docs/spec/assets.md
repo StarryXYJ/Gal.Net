@@ -61,9 +61,21 @@ IAssetProvider / IArchive / IGameFile
 
 ## PAK
 
-`.pak` 当前版本为 2，使用 `GPAK` magic。每个表项保存 UTF-8 GUID、逻辑路径、字符串 type ID、注册 DTO 序列化的 metadata JSON、数据偏移、原始/存储长度、压缩模式与 SHA-256。读取时 metadata 的 GUID、路径和 type ID 必须与表项一致，否则包无效。
+`.pak` 当前版本为 3，使用 `GPAK` magic。magic/version 后写入长度前缀的 UTF-8 控制 JSON，再写条目数量、资源表及连续数据块。每个表项保存 UTF-8 GUID、逻辑路径、字符串 type ID、注册 DTO 序列化的 metadata JSON、数据偏移、原始/存储长度、压缩模式与 64 字符小写十六进制 SHA-256。读取时 metadata 的 GUID、路径和 type ID 必须与表项一致，重复 ID/逻辑路径、非法范围和尾随数据拒绝；读取资源时验证实际载荷长度与 SHA-256。
 
-数据块可使用 `none`、`deflate`、`gzip` 或 `brotli`；`PakBuilder` 默认选择 Brotli，并会跳过过小数据的压缩。旧 enum PAK 格式不受支持。
+控制描述 `PakDescriptor` 的 `kind` 为 `base`、`story` 或 `override`，与资源 `typeId` 独立。共用 PAK 格式，未知 kind/控制字段、重复控制属性和不支持的版本拒绝。story 描述需要项目、基础构建和包身份及合法分片序号；override 需要包身份、单分片、整数 priority 和资源映射表，映射目标必须在本包内。base/story 不能携带 priority 或覆盖映射；`Archive.Descriptor` 返回隔离的映射快照。旧调用省略 descriptor 时生成匿名 base 包，游戏级构建身份由上层提供。
+
+上述是归档格式与校验协议；剧情包安装/跳过和资源映射应用仍需由宿主的内容装载层接入，不能仅把任意新 kind PAK 放入旧扫描目录就认为其用途语义已生效。
+
+数据块可使用 `none`、`deflate`、`gzip` 或 `brotli`；`PakBuilder` 默认选择 Brotli，并会跳过过小数据的压缩。写出按资源 ID 稳定排序，重新计算实际 payload 的 hash，不沿用可能过时的 IGameFile.Hash；控制映射按原 ID 排序，无归档名/时间戳写入。旧 enum PAK 和 v2 格式不受支持，需重新导出。
+
+## 资源依赖 metadata
+
+有依赖的 metadata DTO 可实现 Core 的 `IAssetDependencies`，返回直接引用列表及 `Complete`。`DependentAssetMeta` 提供可序列化的 `Dependencies` / `DependenciesComplete`；payload 编译器在同一快照生成依赖，不自动回写作者 sidecar。叶类型通过 `ResourceTypeCatalogBuilder.WithoutDependencies(...)` 明确声明；既没有接口也未声明叶类型时，按依赖分析不完整处理。内置 sprite、audio、video、font、effect-program 声明为叶；data 未默认视为无依赖。
+
+`AssetDependencyCollector` 按规范化资源 ID 收集闭包，检查缺失与预期类型、处理循环、支持取消，返回稳定排序的资源与不完整项，不负责切包或运行时 acquire。构建入口可给出已经由人工依赖声明覆盖的不完整资源 ID；该声明只确认分析完整性，不自动增加资源根。只有 graph 的直接引用可以携带 `RequiredStoryPackage`，仅在收集对应剧情包时跨入；普通必需资源缺失不能静默忽略。
+
+图集有效 metadata 使用 `DependentAssetMeta`，包含编译定义中全部 sprite ID，引用预期类型为 sprite。PAK 写出和打开时检查依赖与图集 payload 一致；本地目录扫描不为此修改源 `.meta`。缺少这些依赖 metadata 的旧编译图集必须重新构建。
 
 ## 图片差分资源
 
@@ -87,7 +99,7 @@ folder 相对描述文件，允许 `.` 和不越过 Assets 的 `..`，兼容两�
 
 编译后的 IGameFile 保留图集自身 ID、逻辑路径、类型和 metadata，payload 为 `kind="image-variants"`、version=1 的定义，包含维度 key/label、default 和各变体 key/sprite ID，不含 folder。解码后重新校验并建立不可变 `ImageVariantsDefinition`，选项从变体事实推导。`ImageVariantsCodec` 严格拒绝未知/重复 JSON 属性；作者描述不能当作发行 payload 解码。
 
-`PakBuilder` 直接打包本地归档的编译结果及正常 sprite，PAK 格式仍为 2。导出和包内验证沿用调用方的同一 resource catalog；从 PAK 读取定义无需原始图片文件夹。`project.validate`（项目范围，包括 structure-only）与 build 校验该资源，业务错误报告 `variants.invalid`；原始目录索引刷新不写作者文件或 dirty 状态。
+`PakBuilder` 直接打包本地归档的编译结果及正常 sprite，PAK 格式为 3。导出和包内验证沿用调用方的同一 resource catalog；从 PAK 读取定义无需原始图片文件夹。`project.validate`（项目范围，包括 structure-only）与 build 校验该资源，业务错误报告 `variants.invalid`；原始目录索引刷新不写作者文件或 dirty 状态。
 
 解码注册仍与类型注册分离。使用 Assets 中的 `RegisterImageVariantsDecoder()` 扩展方法注册 `(image-variants, ImageVariantsDefinition)`，默认 Avalonia 游戏宿主与项目级 EditorAssetManager 已接入；自定义宿主覆写 decoder 配置时需自行注册。编辑器资源刷新重建内部 manager 时重新注册该 decoder。
 

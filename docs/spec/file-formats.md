@@ -77,6 +77,8 @@ manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时�
 
 运行时从解压目录读取特殊内容，并且只扫描 `Assets/Paks/**/*.pak` 作为资源源。PAK 按相对路径倒序覆盖：`000-base.pak` 是基础包，后续/更高排序路径的包可作为补丁覆盖同 GUID 资源。ZIP、manifest、Graph、I18n、settings 和 gallery 不进入 `IAssetProvider`。
 
+资源归档格式现为 GPAK v3，增加独立的 base/story/override 用途控制描述；旧 v2 PAK 需重新导出。控制字段和 metadata 依赖校验见 [资源规范](assets.md#pak)。当前安装扫描路径尚不应用新描述的 story 跳过或 override 映射；格式支持不等于已接入完整补丁安装协议。
+
 ## 生成的 `gallery.json`
 
 生成文件是版本 2 的只读运行时数据，含冻结的 Gallery type 快照和聚合后的 item：

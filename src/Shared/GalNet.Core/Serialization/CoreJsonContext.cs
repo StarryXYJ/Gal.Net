@@ -59,4 +59,6 @@ namespace GalNet.Core.Serialization;
 [JsonSerializable(typeof(GalpakManifest))]
 [JsonSerializable(typeof(List<GalNet.Core.I18n.CharacterDefinition>))]
 [JsonSerializable(typeof(AssetMeta))]
+[JsonSerializable(typeof(DependentAssetMeta))]
+[JsonSerializable(typeof(PakDescriptor))]
 internal sealed partial class CoreJsonContext : JsonSerializerContext;
