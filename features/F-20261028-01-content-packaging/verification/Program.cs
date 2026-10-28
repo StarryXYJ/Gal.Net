@@ -35,5 +35,19 @@ try
     if (loadedGraph.Id != StoryResourceIds.Graph || storyPak.GetAsset(StoryResourceIds.Group("main"))?.TypeId != "group"
         || runtime.GetVariable("chapter")?.AsInt() != 1) throw new Exception("Story resource/default variable roundtrip failed.");
     Console.WriteLine("P2_STORY_REFLECTION_OFF_OK graph=galnet:graph:main groups=1 saveDefault=1");
+    var original = new GameFile("original", "original.png", "sprite", new SpriteAssetMeta { Id = "original", Path = "original.png", TypeId = "sprite" }, "old"u8.ToArray());
+    var definition = new GalNet.Core.Configuration.ResourceOverrideDefinition { Id = "clothes", Mappings = new() { ["original"] = "sprite" } };
+    definition = GalNet.Core.Serialization.JsonCodec.Deserialize<GalNet.Core.Configuration.ResourceOverrideDefinition>(GalNet.Core.Serialization.JsonCodec.Serialize(definition))!;
+    var overrideBytes = ResourceOverrideBuilder.Build("game", definition, [original, local.GetAsset("sprite")!], types);
+    var overridePath = Path.Combine(root, "clothes.pak"); File.WriteAllBytes(overridePath, overrideBytes);
+    var originalPath = Path.Combine(root, "base.pak"); File.WriteAllBytes(originalPath, PakBuilder.Build("assets", [original], types));
+    var baseProvider = new PakFileProvider(originalPath, "assets", types);
+    var overrideProvider = new PakFileProvider(overridePath, "assets", types);
+    using var overlayPak = overrideProvider.OpenArchive("assets");
+    using var assets = new AssetManager([new ResourceOverlayProvider([new(original, baseProvider)],
+        [new(((IPakArchive)overlayPak).Descriptor, CryptoHelper.HashSHA256(overrideBytes), overlayPak.AssetIds.Select(id => new ResourceFileSource(overlayPak.GetAsset(id)!, overrideProvider)).ToArray())], types)]);
+    using var replaced = await assets.AcquireAsync<string>("original");
+    if (replaced?.Value != "sprite") throw new InvalidDataException("Override reflection-off roundtrip failed.");
+    Console.WriteLine("P4_OVERRIDE_REFLECTION_OFF_OK original=sprite");
 }
 finally { Directory.Delete(root, true); }

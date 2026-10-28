@@ -11,12 +11,13 @@ internal sealed class InstalledPackageSet
 {
     private sealed record Pak(string Path, string Hash, string PackageId, IReadOnlyList<IGameFile> Index);
     private readonly List<Pak> _paks = [];
+    private readonly List<ResourceOverrideSource> _overrides = [];
     private readonly IResourceTypeCatalog _types;
     public GameContentManifest Manifest { get; }
     public HashSet<string> InstalledStories { get; } = new(StringComparer.Ordinal);
     private InstalledPackageSet(GameContentManifest manifest, IResourceTypeCatalog types) { Manifest = manifest; _types = types; }
-    public IReadOnlyList<IAssetProvider> CreateProviders() => _paks.Select(pak =>
-        (IAssetProvider)new PakFileProvider(pak.Path, "assets", _types, expectedSha256: pak.Hash)).ToArray();
+    public IReadOnlyList<IAssetProvider> CreateProviders() => [new ResourceOverlayProvider(_paks.SelectMany(pak =>
+        pak.Index.Select(file => new ResourceFileSource(file, new PakFileProvider(pak.Path, "assets", _types, expectedSha256: pak.Hash)))).ToArray(), _overrides, _types)];
 
     public static InstalledPackageSet Load(string root, IResourceTypeCatalog types)
     {
@@ -78,7 +79,37 @@ internal sealed class InstalledPackageSet
             result._paks.AddRange(own);
         }
         result.ValidateDependencies();
+        result.LoadOverrides(root);
         return result;
+    }
+
+    private void LoadOverrides(string root)
+    {
+        var hashes = new HashSet<string>(StringComparer.Ordinal);
+        var directories = new[] { Path.Combine(root, "ResourcePatches"),
+            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(root)) ?? root, "ResourcePatches") }.Distinct(StringComparer.OrdinalIgnoreCase);
+        foreach (var directory in directories.Where(Directory.Exists))
+        {
+            if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0) throw new InvalidDataException("Resource patch directory cannot be a link.");
+            foreach (var path in Directory.EnumerateFiles(directory, "*.pak").Order(StringComparer.Ordinal))
+            {
+                var bytes = File.ReadAllBytes(path);
+                var hash = CryptoHelper.HashSHA256(bytes);
+                if (!hashes.Add(hash)) continue;
+                using var archive = Archive.Deserialize("assets", bytes, _types);
+                var descriptor = archive.Descriptor;
+                if (descriptor.Kind != "override" || descriptor.ProjectId != Manifest.ProjectId || descriptor.BuildId.Length != 0)
+                    throw new InvalidDataException("Resource override PAK has the wrong kind/project or binds a base build.");
+                foreach (var id in archive.AssetIds) _ = archive.GetAsset(id)!.ReadAllBytes();
+                var files = archive.MetadataIndex.Select(entry => (IGameFile)new IndexFile(entry)).ToArray();
+                if (files.Any(file => file.TypeId is "graph" or "group")) throw new InvalidDataException("Resource overrides cannot carry graph/group resources.");
+                _ = AssetDependencyCollector.Collect(files, files.Select(file => file.Id), _types, declaredComplete: files.Select(file => file.Id));
+                var provider = new PakFileProvider(path, "assets", _types, expectedSha256: hash);
+                _overrides.Add(new(descriptor, hash, files.Select(file => new ResourceFileSource(file, provider)).ToArray()));
+            }
+        }
+        // Resolve once during preparation, so invalid mappings cannot be swallowed as a presentation fallback.
+        _ = CreateProviders();
     }
 
     private Pak Read(string path, GalpakFileEntry expected, string kind, string packageId, int index, int count, byte[]? bytes = null)

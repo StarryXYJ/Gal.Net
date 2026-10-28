@@ -89,6 +89,14 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 
 只有闭包中的资源进入 PAK。图集包含全部声明图片、条件分支包含所有静态引用；UI/自定义运行代码的资源需显式补根。源资源校验仍覆盖整个目录，未被打包的坏作者资源也可能阻止构建。安装校验本体和每个剧情包的独立依赖闭包，重复 ID 的内容和 metadata 必须一致。
 
+## 独立资源覆盖
+
+`ResourceOverrideBuilder.Build(projectId, definition, available, types)` 验证作者 A/B 均存在且类型相同，生成单个 override PAK；映射和资源稳定排序，同内容重复导出 hash 稳定。`ResourceOverrideExporter.ExportAsync` 从 Assets 私有快照独立导出，不编译剧情、不要求 galpak、不写源 sidecar，失败/取消不替换旧目标。
+
+`ResourceOverlayProvider` 是冻结的统一逻辑资源视图。A→B 直接绑定包内 B，一次请求只查映射一次，A→B/B→C 不把 A 串成 C。有效文件保留原 ID/路径，metadata 和字节来自替换资源；ID、路径、解码和媒体实体化因此一致。图集替换保留原维度键和全部原变体键，可增加变体；递归图片由覆盖包提供，后续图片请求可再独立命中显式映射。
+
+夹带资源不会隐式覆盖本体同 ID。递归依赖若与本体/其他有效来源同 ID 却内容或 metadata 不一致，准备期拒绝，作者须为改动资源分配新 ID，再显式映射。直接替换目标 B 的来源被明确绑定，对原 B 的独立请求仍按自身映射或本体解析。有效视图和 manager 缓存限定于该安装会话；源文件定位继续使用作者目录。
+
 ## 图片差分资源
 
 `image-variants` 的作者扩展名为 `.variants`，metadata DTO 为 `ImageVariantsAssetMeta`。它管理一组完整 sprite 图片，不表示纹理合并、Flipbook 或 CG Gallery。游戏显示/切换使用 [variants 指令](entry-types.md#图片差分指令)；编辑器支持从目录创建、配置和差分预览，操作见[图集手册](../manual/image-variants.md)。

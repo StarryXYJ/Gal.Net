@@ -85,7 +85,11 @@ manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时�
 
 GameSnapshot 当前为 v5，记录 ContentBuildId 和 StoryPackages；恢复拒绝不同构建或缺少记录的剧情包。首版保守记录会话准备时已安装的全部剧情包，因此删除当时尚未播放的包也会阻止恢复；不自动降级到跳过剧情。开发目录构建标识为空。
 
-资源归档格式为 GPAK v3，包含 base/story/override 用途控制描述；旧 v2 PAK 需重新导出。控制字段和 metadata 依赖校验见 [资源规范](assets.md#pak)。override 装载在独立资源补丁阶段接入。
+资源归档格式为 GPAK v3，包含 base/story/override 用途控制描述；旧 v2 PAK 需重新导出。控制字段和 metadata 依赖校验见 [资源规范](assets.md#pak)。
+
+资源覆盖包独立放在安装根或其父目录的 `ResourcePatches/*.pak`。头部 kind=override、projectId 对应项目、buildId 为空，不依赖先导出基础构建。包保存 packageId、priority、原资源 ID→替换资源 ID 的 mappings，携带替换资源完整闭包。准备期校验全部 payload，按 priority 降序、完整文件 SHA-256 ordinal 降序决定各原资源的胜者，同 hash 去重。文件名不参与优先级，无语言条件。
+
+GameInstallation 缓存当前包集合；重启或新建安装会话采用新增/移除包。已持有 handle 保持值和释放约定。未安装剧情的映射不创建原资源，不能使剧情被视为已安装。Graph/Group 禁止通过资源补丁覆盖。
 
 ## 生成的 `gallery.json`
 

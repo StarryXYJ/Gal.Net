@@ -88,6 +88,51 @@ public sealed class StoryPackageExportTests
     }
 
     [Test]
+    public async Task ResourcePatchExportsBeforeBaseAndSessionsFreezeTheSelectedOverrideSet()
+    {
+        Put("Assets/coat.png", "coat-B");
+        Put("Assets/coat.png.meta", """{"id":"coat","type":"sprite"}""");
+        var definition = new ResourceOverrideDefinition { Id = "clothes", Mappings = new() { ["shared-base"] = "coat", ["a-only"] = "coat" } };
+        var patchPath = Path.Combine(_root, "independent.pak");
+        var sourceMeta = File.ReadAllBytes(Path.Combine(Source, "Assets/coat.png.meta"));
+        await ResourceOverrideExporter.ExportAsync("story-project", Source, definition, patchPath, _types);
+        var firstBytes = File.ReadAllBytes(patchPath);
+        await ResourceOverrideExporter.ExportAsync("story-project", Source, definition, patchPath, _types);
+        Assert.That(File.ReadAllBytes(patchPath), Is.EqualTo(firstBytes));
+        Assert.That(File.ReadAllBytes(Path.Combine(Source, "Assets/coat.png.meta")), Is.EqualTo(sourceMeta));
+        using (var patch = Archive.Deserialize("assets", firstBytes, _types))
+        {
+            Assert.That(patch.Descriptor.Kind, Is.EqualTo("override"));
+            Assert.That(patch.AssetIds, Is.EquivalentTo(new[] { "coat" }));
+        }
+        var stories = await Export(); SetInstalled(stories, 0);
+        var patchDirectory = Path.Combine(Installed, "ResourcePatches"); Directory.CreateDirectory(patchDirectory);
+        File.Copy(patchPath, Path.Combine(patchDirectory, "renamed.pak"));
+        File.Copy(patchPath, Path.Combine(patchDirectory, "duplicate.pak"));
+        var installation = await GameInstallation.OpenAsync(Installed);
+        Assert.That((await installation.CreateContentProvider(_types, BuiltinGalleryTypes.CreateCatalog(_types)).LoadAsync()).Graph.InstalledStoryPackages, Is.Empty);
+        using var assets = new AssetManager(installation.CreateAssetProviders(_types));
+        using var oldHandle = await assets.AcquireAsync<string>("shared-base");
+        Assert.That(oldHandle!.Value, Is.EqualTo("coat-B"));
+        Assert.That(await assets.GetFileAsync("a-only"), Is.Null, "An override cannot install an absent story's original resource.");
+        Put("Assets/coat-c.png", "coat-C"); Put("Assets/coat-c.png.meta", """{"id":"coat-c","type":"sprite"}""");
+        var high = new ResourceOverrideDefinition { Id = "higher", Priority = 1, Mappings = new() { ["shared-base"] = "coat-c" } };
+        await ResourceOverrideExporter.ExportAsync("story-project", Source, high, Path.Combine(patchDirectory, "higher.pak"), _types);
+        using var frozen = new AssetManager(installation.CreateAssetProviders(_types));
+        using var frozenHandle = await frozen.AcquireAsync<string>("shared-base");
+        Assert.That(frozenHandle!.Value, Is.EqualTo("coat-B"));
+        var reopened = await GameInstallation.OpenAsync(Installed);
+        using var updated = new AssetManager(reopened.CreateAssetProviders(_types));
+        using var updatedHandle = await updated.AcquireAsync<string>("shared-base");
+        Assert.That(updatedHandle!.Value, Is.EqualTo("coat-C"));
+        Assert.That(oldHandle.Value, Is.EqualTo("coat-B"));
+        var invalid = File.ReadAllBytes(Path.Combine(patchDirectory, "higher.pak")); invalid[^1] ^= 1;
+        File.WriteAllBytes(Path.Combine(patchDirectory, "higher.pak"), invalid);
+        var corrupted = await GameInstallation.OpenAsync(Installed);
+        Assert.Throws<InvalidDataException>(() => corrupted.CreateAssetProviders(_types));
+    }
+
+    [Test]
     public async Task GalpakPublishesExternalStoriesAndRepeatExportKeepsContentHashes()
     {
         var output = Path.Combine(_root, "release");

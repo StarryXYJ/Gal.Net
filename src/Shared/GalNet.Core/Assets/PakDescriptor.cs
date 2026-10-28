@@ -20,7 +20,7 @@ public sealed record PakDescriptor
             throw new InvalidDataException("Invalid PAK part index/count.");
         if (ProjectId is null || BuildId is null || PackageId is null || Mappings is null)
             throw new InvalidDataException("PAK control fields cannot be null.");
-        if (string.IsNullOrWhiteSpace(ProjectId) != string.IsNullOrWhiteSpace(BuildId))
+        if (Kind != "override" && string.IsNullOrWhiteSpace(ProjectId) != string.IsNullOrWhiteSpace(BuildId))
             throw new InvalidDataException("PAK project and build identities must be supplied together.");
         if (Kind == "story" && (string.IsNullOrWhiteSpace(ProjectId) || string.IsNullOrWhiteSpace(PackageId)))
             throw new InvalidDataException("Story PAKs require project, build and package identities.");
