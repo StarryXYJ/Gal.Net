@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
+using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Game.Controls.Forms;
@@ -26,6 +27,15 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var path = Path.Combine(_root, "CustomAudio");
         var project = await projects.CreateAsync(path, "CustomAudio", new(), Contracts());
         var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
+        var section = panel.Sections.Single(item => item.Id == "galnet.project");
+        foreach (var id in new[] { "audioBuses", "audioTracks" })
+        {
+            var field = section.Item.Fields.Single(item => item.Id == id);
+            using var resolver = new ValueStructureResolver();
+            var sequence = resolver.Resolve(field);
+            Assert.That(sequence.Kind, Is.EqualTo(ValueStructureKind.Sequence));
+            Assert.That(resolver.Resolve(sequence.Element!).Kind, Is.EqualTo(ValueStructureKind.Object));
+        }
         await Stage(panel, "audioBuses", new[] { new { id = "ambience", name = "Environment" } });
         await Stage(panel, "audioTracks", new[] { new { id = "rain", busId = "ambience", preserveDuringCatchUp = true } });
         await panel.CommitDraftAsync();

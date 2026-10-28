@@ -1,6 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Avalonia.Threading;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Views;
@@ -39,6 +41,16 @@ public partial class ProjectSettingsPanelView : UserControl
         }
     }
 
+    private void OnSettingsFocusLost(object? sender, RoutedEventArgs args)
+    {
+        Dispatcher.UIThread.Post(async () =>
+        {
+            if (SettingsForm.IsKeyboardFocusWithin || DataContext is not ProjectSettingsPanelViewModel viewModel) return;
+            try { await viewModel.CommitDraftAsync(); }
+            catch (Exception) { /* The view model keeps the draft and displays the validation error. */ }
+        });
+    }
+
     private async void OnKeyDown(object? sender, KeyEventArgs args)
     {
         if (args.Handled || DataContext is not ProjectSettingsPanelViewModel viewModel) return;
@@ -47,11 +59,12 @@ public partial class ProjectSettingsPanelView : UserControl
             viewModel.CancelDraftCommand.Execute(null);
             args.Handled = true;
         }
-        else if (args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.None)
+        else if (args.Key == Key.Enter && args.KeyModifiers == KeyModifiers.None &&
+                 args.Source is not TextBox { AcceptsReturn: true })
         {
             args.Handled = true;
             try { await viewModel.CommitDraftAsync(); }
-            catch (System.IO.IOException) { }
+            catch (Exception) { /* The view model displays the validation error. */ }
         }
     }
 }

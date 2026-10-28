@@ -63,8 +63,10 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     partial void OnErrorChanged(string value)
     {
         OnPropertyChanged(nameof(HasError));
-        if (!string.IsNullOrWhiteSpace(value) && !_closed)
-            _projects.Current?.Services.GetService<ProblemsPanelViewModel>()?.Report("error", value, "Debug");
+        if (_closed) return;
+        var problems = _projects.Current?.Services.GetService<ProblemsPanelViewModel>();
+        problems?.ClearReports("Debug");
+        if (!string.IsNullOrWhiteSpace(value)) problems?.Report("error", value, "Debug");
     }
     [ObservableProperty] private bool _busy;
     [ObservableProperty] private bool _contentChanged;

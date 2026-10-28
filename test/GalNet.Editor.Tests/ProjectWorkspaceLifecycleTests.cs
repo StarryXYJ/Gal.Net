@@ -173,7 +173,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await Stage(panel, "saveSlotCount", 19);
                 Assert.That(project.Name, Is.EqualTo("Original"), "Typing stays in the page draft until explicit commit.");
                 Assert.That(await projects.CheckUnsavedChangesAsync(), Is.True);
-                await ((IAsyncRelayCommand)view.FindControl<Button>("ApplySettingsButton")!.Command!).ExecuteAsync(null);
+                await panel.CommitDraftAsync();
                 Assert.That(input.CanUndo, Is.False, "Committed text must not merge with an earlier local input gesture.");
                 window.UpdateLayout();
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)

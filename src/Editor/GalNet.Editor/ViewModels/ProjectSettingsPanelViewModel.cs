@@ -21,6 +21,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     private readonly EditorHistories _histories;
     private readonly IProjectContentSession _session;
     private readonly IDisposable _registration;
+    private readonly SemaphoreSlim _commitGate = new(1, 1);
     private GalProject? _project;
     private string _originalName = "";
     private bool _loading, _disposed;
@@ -36,6 +37,28 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     [ObservableProperty] private string _debugArguments = "";
     [ObservableProperty] private string _debugWorkingDirectory = "";
     [ObservableProperty] private string _debugConfigurationMessage = "";
+    [ObservableProperty] private string _targetLocale = "";
+
+    partial void OnDebugExecutableChanged(string value) => SaveDebugAutomatically();
+    partial void OnDebugArgumentsChanged(string value) => SaveDebugAutomatically();
+    partial void OnDebugWorkingDirectoryChanged(string value) => SaveDebugAutomatically();
+    private void SaveDebugAutomatically() { if (!_loading && IsCurrent) SaveDebugConfiguration(); }
+
+    [RelayCommand]
+    private async Task BrowseDebugExecutableAsync()
+    {
+        if (_projects.Current?.Services.GetService<IFileDialogService>() is not { } dialogs) return;
+        var paths = await dialogs.OpenFilePickerAsync(L["Debug.Executable"], false);
+        if (paths.Count > 0 && IsCurrent) DebugExecutable = paths[0];
+    }
+
+    [RelayCommand]
+    private async Task BrowseDebugWorkingDirectoryAsync()
+    {
+        if (_projects.Current?.Services.GetService<IFileDialogService>() is not { } dialogs) return;
+        var path = await dialogs.OpenFolderPickerAsync(L["Debug.WorkingDirectory"]);
+        if (path is not null && IsCurrent) DebugWorkingDirectory = path;
+    }
 
     public ProjectSettingsPanelViewModel(IProjectService projects, EditorHistories histories,
         IEditorLocalizationService localization, IProjectContentSession session, EditorRegistry fieldEditors)
@@ -74,9 +97,15 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         Sections.Clear();
         _project = _projects.Current;
         _originalName = _project?.Name ?? ""; ProjectName = _originalName;
+        TargetLocale = "";
         DebugExecutable = DebugArguments = DebugWorkingDirectory = DebugConfigurationMessage = "";
         if (_project is { } project)
         {
+            if (project.Configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id))
+            {
+                try { TargetLocale = project.Configuration.ReadDefaultOptions().TargetLocale.Code; }
+                catch (Exception error) when (error is System.IO.InvalidDataException or JsonException or ArgumentException) { }
+            }
             foreach (var section in project.Configurations.Sections)
                 Sections.Add(new(section, project.Configuration, FieldEditors, () => IsCurrent, RefreshDirty,
                     field => section.Id != DefaultProjectConfiguration.Section.Id || field.Id is not ("targetLocale" or "availableLocales")));
@@ -101,6 +130,12 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         catch (Exception error) { _validationError = error; UpdateStatus(); }
     }
     public async Task CommitDraftAsync()
+    {
+        await _commitGate.WaitAsync();
+        try { await CommitDraftCoreAsync(); }
+        finally { _commitGate.Release(); }
+    }
+    private async Task CommitDraftCoreAsync()
     {
         if (!HasDraft) return;
         try

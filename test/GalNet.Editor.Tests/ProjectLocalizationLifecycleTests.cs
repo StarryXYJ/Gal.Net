@@ -77,7 +77,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     var save = dialog.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "CloseSave");
                     Assert.That(save.Content, Is.EqualTo(localization["Close.Save"]));
                     Assert.That(save.Bounds.Width, Is.GreaterThan(0));
-                    Assert.That(settingsView.FindControl<Button>("ApplySettingsButton")!.Content, Is.EqualTo(localization["Settings.Project.Apply"]));
+                    Assert.That(settingsView.FindControl<TextBlock>("ProjectSettingsTitle")!.Text, Is.EqualTo(localization["Settings.Project.Title"]));
                     Assert.That(graphView.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == localization["Graph.Kind.LinearGroup"]), Is.True);
                     Assert.That(inspectorView.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == localization["Graph.Kind.LinearGroup"]), Is.True);
                     Assert.That(page.MenuItems.SelectMany(menu => menu.Children ?? []).Any(item => item.Header?.Contains(localization["History.Rename"], StringComparison.Ordinal) == true), Is.True);
@@ -103,11 +103,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 {
                     language.SelectedItem = editorSettings.AvailableCultures.Single(culture => culture.Name == locale);
                     window.UpdateLayout();
-                    var gain = settingsView.GetVisualDescendants().OfType<TextBox>().Single(input => input.DataContext is GalNet.Game.Controls.Forms.FieldEditorContext context && context.Field.Id == "audioTracks");
+                    Assert.That(settingsView.GetVisualDescendants().OfType<GalNet.Game.Controls.Forms.StructuredFieldEditor>()
+                        .Any(editor => editor.Context.Field.Id == "audioTracks"), Is.True);
                     var expectedGain = gains[gainIndex++];
                     var tracks = project.Configuration.ReadDefaultOptions().AudioTracks;
                     tracks[0] = tracks[0] with { DefaultGain = (float)expectedGain };
-                    gain.Text = JsonSerializer.Serialize(tracks, new JsonSerializerOptions(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } });
+                    await Stage(panel, "audioTracks", tracks);
                     await panel.SaveSettingsCommand.ExecuteAsync(null);
                     await workspace.SaveAsync();
                     using var json = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")));

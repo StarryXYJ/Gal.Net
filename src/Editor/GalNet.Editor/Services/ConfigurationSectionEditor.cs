@@ -2,6 +2,7 @@ using System.Text.Json;
 using GalNet.Core.Configuration;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
+using GalNet.Contracts.Builtins.Audio;
 
 namespace GalNet.Editor.Services;
 
@@ -30,7 +31,8 @@ public sealed class ConfigurationSectionEditor : IDisposable
         { _resolved = JsonSerializer.SerializeToElement(new { }); }
         _isCurrent = isCurrent; _changed = changed; Registry = registry;
         // Ordinary object/list DTOs use the shared JSON editor; no second reflection-based configuration form.
-        var fields = section.Fields.Select(field => field.Editor is null && !IsScalar(field.Value.ValueType)
+        var fields = section.Fields.Where(field => section.Id != "galnet.project" || field.Id is not ("targetLocale" or "availableLocales"))
+            .Select(Decorate).Select(field => field.Editor is null && !IsScalar(field.Value.ValueType)
             ? new FieldDescriptor(field.Id, field.Value, field.IsRequired, field.DefaultValue, new(ValueEditorIds.Json), field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId)
             : field).ToArray();
         _fields = fields.ToDictionary(field => field.Id, field => new Field(this, field, canEdit(field)), StringComparer.Ordinal);
@@ -40,6 +42,46 @@ public sealed class ConfigurationSectionEditor : IDisposable
                 if (await Binding(fields.Single(field => field.Id == id)).CommitAsync(value, token) is { } issue) return issue;
             return null;
         });
+    }
+    private FieldDescriptor Decorate(FieldDescriptor field)
+    {
+        if (_section.Id != "galnet.project") return field;
+        var label = field.Id switch
+        {
+            "defaultWidth" => "Settings.Project.DefaultWidth",
+            "defaultHeight" => "Settings.Project.DefaultHeight",
+            "defaultVisualPrograms" => "Settings.Project.DefaultVisualPrograms",
+            "saveSlotCount" => "Settings.Project.SaveSlotCount",
+            "audioBuses" => "Settings.Project.AudioBuses",
+            "audioTracks" => "Settings.Project.AudioTracks",
+            _ => field.LabelKey
+        };
+        if (field.Id == "defaultVisualPrograms")
+        {
+            var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)))));
+            return new(field.Id, map, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
+        }
+        if (field.Id is not ("audioBuses" or "audioTracks"))
+            return new(field.Id, field.Value, field.IsRequired, field.DefaultValue, field.Editor, label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
+        var type = field.Id == "audioBuses" ? typeof(AudioBusDefinition) : typeof(AudioTrackDefinition);
+        var options = field.Value.JsonOptions;
+        var members = type.GetProperties().Select(property =>
+        {
+            var id = JsonNamingPolicy.CamelCase.ConvertName(property.Name);
+            var key = id switch
+            {
+                "id" => type == typeof(AudioBusDefinition) ? "Settings.Project.GroupId" : "Settings.Project.TrackId", "name" => "Settings.Project.TrackName",
+                "busId" => "Settings.Project.BusId", "defaultGain" => "Settings.Project.Gain",
+                "maxVoices" => "Settings.Project.Voices", "maxQueuedItems" => "Settings.Project.Queue",
+                "preserveDuringCatchUp" => "Settings.Project.PreserveAudio",
+                "playbackOrder" => "Settings.Project.PlaybackOrder", "repeat" => "Settings.Project.Repeat",
+                "overflowPolicy" => "Settings.Project.OverflowPolicy", "queueOverflowPolicy" => "Settings.Project.QueueOverflowPolicy", _ => null
+            };
+            return new FieldDescriptor(id, new ValueDescriptor(property.PropertyType, jsonOptions: options), labelKey: key);
+        }).ToArray();
+        var element = new FieldDescriptor("element", new ValueDescriptor(type, jsonOptions: options).WithStructure(ValueStructure.Object(members)));
+        var value = field.Value.WithStructure(ValueStructure.Sequence(element));
+        return new(field.Id, value, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
     }
     private static bool IsScalar(Type type) => type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal);
     public IFieldBinding Binding(FieldDescriptor field) => _fields[field.Id];

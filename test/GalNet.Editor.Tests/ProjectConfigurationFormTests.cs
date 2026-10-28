@@ -22,6 +22,36 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task LeavingSettingsFormAppliesProjectName()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            Avalonia.Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
+            using var services = Services();
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "AutoSettings"), "Original", new(), Contracts());
+            var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
+            var view = new ProjectSettingsPanelView { DataContext = panel };
+            var other = new Button { Content = "Other" };
+            var layout = new StackPanel(); layout.Children.Add(view); layout.Children.Add(other);
+            var window = new Window { Width = 900, Height = 700, Content = layout }; window.Show(); window.UpdateLayout();
+            try
+            {
+                var name = view.FindControl<TextBox>("ProjectNameInput")!;
+                name.Focus(); name.Text = "Changed";
+                other.Focus();
+                for (var attempt = 0; attempt < 30 && project.Name != "Changed"; attempt++) await Task.Delay(20);
+                Assert.That(project.Name, Is.EqualTo("Changed"));
+                await panel.UndoRedoHistory.UndoAsync();
+                Assert.That(project.Name, Is.EqualTo("Original"));
+            }
+            finally { panel.Dispose(); window.Close(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task CustomConfigurationMountedFormPreservesUnknownDataThroughHistorySaveExportAndLoading()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

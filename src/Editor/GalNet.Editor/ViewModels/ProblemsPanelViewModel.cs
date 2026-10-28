@@ -276,6 +276,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     }
     public void Report(string severity, string message, string source, AuthorNavigationTarget? target = null)
     { if (!_external.Any(problem => problem.Source == source && problem.Message == message)) _external.Add(new(severity, message, source, target)); Refresh(); }
+    public void ClearReports(string source)
+    { if (_external.RemoveAll(problem => problem.Source == source) != 0) Refresh(); }
     private string Source(AuthorNavigationTarget? target)
     {
         if (target?.NodeId is not { } nodeId) return target?.File ?? "";
