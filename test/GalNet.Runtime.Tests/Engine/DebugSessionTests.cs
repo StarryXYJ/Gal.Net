@@ -14,6 +14,23 @@ namespace GeneralTest.Runtime;
 public class DebugSessionTests
 {
     [Test]
+    public async Task PackagedContentDebugSeekStampsInternalBaselinesButRejectsUnstampedExternalSaves()
+    {
+        var graph = GraphOf(Entry("test.text", "first"), Entry("test.text", "second"));
+        graph.ContentBuildId = "packaged-build";
+        graph.InstalledStoryPackages = ["extra"];
+        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(Options());
+        await engine.AdvanceAsync();
+        await debug.SeekAsync(debug.Generation, new("main", 1, []));
+        await debug.SeekAsync(debug.Generation, new("main", 0, []));
+        await debug.SeekAsync(debug.Generation, new("main", 1, [], InitialScene: true));
+        Assert.That(engine.EntryIndex, Is.EqualTo(1));
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(engine.Runtime.CreateSnapshot()));
+    }
+
+    [Test]
     public async Task CompressingTheCurrentUnreadTextForDebugSeekDoesNotMarkItRead()
     {
         var wait = new DeferredReadingWait();

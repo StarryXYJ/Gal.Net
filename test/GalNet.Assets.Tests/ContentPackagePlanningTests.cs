@@ -68,8 +68,14 @@ public sealed class ContentPackagePlanningTests
     }
 
     private static GameFile Dependent(string id, string type, List<AssetDependency> dependencies) => new(id,
-        Uri.EscapeDataString(id) + ".json", type, new DependentAssetMeta { Id = id, Path = Uri.EscapeDataString(id) + ".json",
-            TypeId = type, DependenciesComplete = true, Dependencies = dependencies }, [1, 2]);
+        Uri.EscapeDataString(id) + ".json", type, new DependentAssetMeta
+        {
+            Id = id,
+            Path = Uri.EscapeDataString(id) + ".json",
+            TypeId = type,
+            DependenciesComplete = true,
+            Dependencies = dependencies
+        }, [1, 2]);
     private static GameFile Sprite(string id) => new(id, id + ".png", "sprite",
         new SpriteAssetMeta { Id = id, Path = id + ".png", TypeId = "sprite" }, [1, 2]);
 }

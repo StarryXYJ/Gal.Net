@@ -15,7 +15,7 @@ using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Runtime;
 using GalNet.Storage.FileSystem;
 
-namespace GalNet.Editor.Shared.Tests;
+namespace GalNet.IntegrationTests;
 
 public sealed class StoryPackageExportTests
 {
@@ -210,7 +210,9 @@ public sealed class StoryPackageExportTests
     }
     private void Group(string id, params string[] images) => Put("Graph/groups/" + id + ".rawgalgroup", JsonSerializer.Serialize(new
     {
-        version = 2, kind = "Raw", entries = images.Select((image, index) => new { id = "e" + index, type = "layer.show", parameters = new { assetId = image } })
+        version = 2,
+        kind = "Raw",
+        entries = images.Select((image, index) => new { id = "e" + index, type = "layer.show", parameters = new { assetId = image } })
     }));
     private void Put(string path, string text) { var file = Path.Combine(Source, path); Directory.CreateDirectory(Path.GetDirectoryName(file)!); File.WriteAllText(file, text); }
 }

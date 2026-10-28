@@ -27,6 +27,14 @@ internal static class LayerVariantsRuntime
         try
         {
             var result = ImageVariantsResolver.Resolve(catalog.Get(state.AssetId), state.Request, state.ProtectedDimensions);
+            if (catalog.IsOverridden(state.AssetId) || state.UsesResourceOverride)
+            {
+                // Only the staged restore state is changed. Logical selection intent remains authoritative.
+                layer.AssetId = result.Variant.AssetId;
+                state.VariantKey = result.Variant.Key;
+                state.Reason = result.Reason;
+                state.UsesResourceOverride = catalog.IsOverridden(state.AssetId);
+            }
             if (result.Variant.Key != state.VariantKey || !string.Equals(result.Variant.AssetId, layer.AssetId, StringComparison.OrdinalIgnoreCase) || result.Reason != state.Reason)
                 throw new InvalidDataException($"Layer '{layer.Id}' image variants result differs from saved content.");
         }
@@ -43,7 +51,7 @@ internal static class LayerVariantsRuntime
         var request = new LayerRenderRequest(options.HandleId, resolution.Variant.AssetId,
             VariantsArgumentValidation.ReadTransform(options.Transform), options.Z,
             options.DisplayMode ?? LayerDisplayMode.Native, options.Opacity);
-        BuiltinRuntimeActions.ShowLayer(context.Runtime, presenter, request, variants: LayerVariantsState.From(options.AssetId, resolution));
+        BuiltinRuntimeActions.ShowLayer(context.Runtime, presenter, request, variants: LayerVariantsState.From(options.AssetId, resolution, catalog.IsOverridden(options.AssetId)));
     }
 
     public static void Select(PrimitiveCreateContext context, VariantsSelectOptions options, ImageVariantsCatalog catalog, ILayerPresenter? presenter)
@@ -56,7 +64,7 @@ internal static class LayerVariantsRuntime
             if (!context.Runtime.State.Table<Layer>().TryGet(options.HandleId, out var layer) || layer.Variants is not { } state)
                 throw new InvalidOperationException($"Layer '{options.HandleId}' is not an active image variants instance.");
             var result = ImageVariantsResolver.Select(catalog.Get(state.AssetId), state.Request, options.Dimension, options.Value);
-            var next = LayerVariantsState.From(state.AssetId, result);
+            var next = LayerVariantsState.From(state.AssetId, result, catalog.IsOverridden(state.AssetId));
             layer.Variants = next;
             layer.AssetId = assetId = result.Variant.AssetId;
         });

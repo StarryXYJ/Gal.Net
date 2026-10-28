@@ -114,9 +114,9 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 | `State` | 按注册类型/ID 存储的通用 GameState；契约可选择 keySpace 共享跨表身份索引 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 当前版本为 4，旧版本直接拒绝，不提供迁移兼容。它包含 `NodeId`、`EntryIndex`、Save 变量与 `States`：稳定 StateId → section version / JSON payload。模块组合时显式注册纯数据表与恢复处理器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷明确报错。builtin.animations 当前 section version 为 2，LoopAnimationState 保存 Request 或 Timeline；builtin.layers 当前 section version 也为 2，新增可选的 LayerVariantsState；两者均明确拒绝旧 v1 section。PrimitiveRegistry.State 的 version 参数传递到 Core 状态契约，其他模块默认仍为 1。每份存档写出全部注册表，包括空表；不写 CLR 类型名、Task 或后端对象。
+`GameSnapshot` 当前版本为 5，旧版本直接拒绝，不提供迁移兼容。它包含 NodeId、EntryIndex、Save 变量、ContentBuildId、StoryPackages 与 States（稳定 StateId → section version / JSON payload）。安装内容校验基础构建与准备时已安装的全部剧情包，缺少记录包不通过跳过降级恢复；开发目录构建标识为空。模块仍显式注册数据表及恢复器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷报错。builtin.animations 和 builtin.layers 的 section version 均为 2，拒绝旧 v1；其他模块默认仍为 1。每份存档包含全部注册表（含空表），不写 CLR 类型名、Task 或后端对象。
 
-差分 Layer 保存图集资源 ID、完整请求、最后保护集合、实际变体键和解析原因，实际 sprite ID 仍以 Layer.AssetId 为真源。解码阶段检查来源互斥与状态结构，模块的同步 ValidateState 使用会话已准备的不可变 ImageVariantsCatalog 重新解析，核对实际变体/图片/原因，再允许替换状态根；内容版本变更导致不一致时拒绝读档。展示恢复还会在呈现前复核内容。定义异步加载在会话准备阶段完成，show/select 本身同步，无需改变 Engine 读档协议。恢复后继续选择仍保留曾因缺组合而未显示的服装等意图。
+差分 Layer 保存逻辑图集 ID、完整请求、最后保护集合、变体键、解析原因及可选 UsesResourceOverride（缺省 false）。解码检查来源互斥与状态结构，ValidateState 按会话图集解析。普通内容核对实际变体/图片/原因，不一致拒绝；明确的图集资源覆盖在安装或移除后，以选择意图重算候选状态的显示缓存和标记，保留输入存档及旧运行根。未知维度/值仍报错。展示恢复在呈现前复核；定义在准备阶段异步加载，show/select 同步。继续选择保留曾因缺组合而未显示的服装等意图。
 
 状态编解码支持显式 `JsonTypeInfo<T[]>`：Core 使用 `StateCatalogBuilder.Register` 的 `jsonTypeInfo` 参数，执行模块可使用 metadata 在首位的 `PrimitiveRegistry.State` 重载。内置模块已注册源生成数组元数据，自定义 AOT 状态需在组合期提供相同契约。`GameState.JsonOptions` 公开冻结的存档设置，配置 section 也可显式提供 DTO resolver；接入见 [NativeAOT 手册](../manual/native-aot.md)。
 

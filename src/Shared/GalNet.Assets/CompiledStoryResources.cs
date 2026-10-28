@@ -34,14 +34,25 @@ public static class CompiledStoryResources
             if (document.Kind != GroupDocumentKind.Compiled || document.Version != CompiledGroupDocument.CurrentVersion)
                 throw new InvalidDataException($"Group '{id}' is not compiled for this runtime.");
             var dependencies = analyzeGroup?.Invoke(id, document) ?? new AssetDependencyInfo([], document.Entries.Count == 0);
-            var meta = new DependentAssetMeta { Id = resourceId, TypeId = "group",
+            var meta = new DependentAssetMeta
+            {
+                Id = resourceId,
+                TypeId = "group",
                 Path = "Story/groups/" + Uri.EscapeDataString(id) + ".galgroup",
-                Dependencies = dependencies.Direct.ToList(), DependenciesComplete = dependencies.Complete };
+                Dependencies = dependencies.Direct.ToList(),
+                DependenciesComplete = dependencies.Complete
+            };
             files.Add(new GameFile(meta.Id, meta.Path, meta.TypeId, meta, bytes));
             references.Add(new(resourceId, "group", package.Length == 0 ? null : package));
         }
-        var graphMeta = new DependentAssetMeta { Id = StoryResourceIds.Graph, TypeId = "graph", Path = "Story/main.galgraph",
-            DependenciesComplete = true, Dependencies = references };
+        var graphMeta = new DependentAssetMeta
+        {
+            Id = StoryResourceIds.Graph,
+            TypeId = "graph",
+            Path = "Story/main.galgraph",
+            DependenciesComplete = true,
+            Dependencies = references
+        };
         files.Add(new GameFile(graphMeta.Id, graphMeta.Path, graphMeta.TypeId, graphMeta, JsonCodec.SerializeToUtf8Bytes(graph, Options)));
         return files;
     }

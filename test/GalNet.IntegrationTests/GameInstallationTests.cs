@@ -213,8 +213,12 @@ public sealed class GameInstallationTests
                 descriptor: new() { ProjectId = "test", BuildId = buildId, PartIndex = part, PartCount = paks.Length }));
         }
         data.Add((GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(new GameContentManifest
-        { ProjectId = "test", BuildId = buildId, BasePaks = data.Where(file => file.Path.EndsWith(".pak", StringComparison.Ordinal))
-            .Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.LongLength)).ToList() }, JsonSerializerOptions.Web)));
+        {
+            ProjectId = "test",
+            BuildId = buildId,
+            BasePaks = data.Where(file => file.Path.EndsWith(".pak", StringComparison.Ordinal))
+            .Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.LongLength)).ToList()
+        }, JsonSerializerOptions.Web)));
         files = data;
         var entries = files.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
         var manifest = new GalpakManifest(1, "test", "sample", DateTimeOffset.UtcNow, entries);

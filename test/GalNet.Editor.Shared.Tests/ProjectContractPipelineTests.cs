@@ -1,12 +1,12 @@
 using System.IO.Compression;
 using System.Text.Json;
+using GalNet.Assets;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GeneralTest.Editor.Shared;
-using GalNet.Assets;
-using GalNet.Core.Assets;
-using GalNet.Contracts.Builtins.Assets;
 
 namespace GalNet.Editor.Shared.Tests;
 

@@ -16,7 +16,7 @@
 ```
 
 - `id` 是非空、全项目唯一的稳定资源 ID；推荐使用 GUID，但当前 codec 不限制其字符串形态。
-- `type` 是资源类型 ID；组合根通过冻结的 `IResourceTypeCatalog` 将其映射到具体 `AssetMeta` DTO。内置类型为 `sprite`、`image-variants`、`audio`、`video`、`font`、`effect-program` 和 `data`。
+- `type` 是资源类型 ID；组合根通过冻结的 `IResourceTypeCatalog` 将其映射到具体 `AssetMeta` DTO。内置作者资源类型为 `sprite`、`image-variants`、`audio`、`video`、`font`、`effect-program` 和 `data`；`graph`、`group` 用于编译生成的剧情资源。
 - `path` 相对 `Assets/`；provider 会以实际逻辑路径校正缺失或过时的值。
 - 可选字段缺失时使用 DTO 默认值；未知字段保存在 extension data，供 Editor 重写时保留。未知 `type`、无效 JSON、缺失 GUID 或缺失源文件是加载错误，不能静默跳过。
 - `gallery` 是 Gallery 的唯一作者真源。每项使用全局唯一正整数 ID；没有 `sortOrder` 或项目根可编辑 `gallery.json`。
@@ -53,11 +53,11 @@ IAssetProvider / IArchive / IGameFile
 | 输入 | 内容 provider | 资源 provider |
 | --- | --- | --- |
 | 开发编译目录 | `ProjectGameContentProvider` 经资源 ID 加载剧情，读取 settings/I18n，并从 Assets metadata 编译 Gallery | `CompiledStoryAssetProvider(Graph/)` + `LocalFileProvider(Assets/)` |
-| 已安装包目录 | `InstalledGameContentProvider` 读取 `content.json` 唯一 Graph 入口并按资源 ID 加载剧情，读取 settings/I18n 和生成的 gallery | 所有 `Assets/Paks/**/*.pak` |
+| 已安装包目录 | `InstalledGameContentProvider` 读取 `content.json` 唯一 Graph 入口并按资源 ID 加载剧情，读取 settings/I18n 和生成的 gallery | 清单声明的完整基础/剧情 PAK，经 ResourceOverlayProvider 应用独立资源覆盖 |
 
 同一宿主在创建内容 provider、资源 provider、Preview 与导出器时必须传入同一对冻结 `IResourceTypeCatalog` / `IGalleryTypeCatalog`。不能在下游入口重新创建 built-in catalog，否则插件注册无法贯穿完整路径。
 
-安装内容的 PAK 当前按相对路径倒序注册；更靠后的路径优先，因此 `100-extra.pak` 可覆盖 `000-base.pak`。`I18n/`、`settings.json`、生成的 `gallery.json`、`content.json` 和 manifest 是特殊内容。发行 Graph/Group 已作为资源进入 PAK，不从 loose Graph 目录回退读取。
+基础 PAK 只按清单装载，文件名排序不贡献覆盖。独立 override PAK 使用显式映射和 priority/hash 排序。`I18n/`、`settings.json`、生成的 `gallery.json`、`content.json` 和 manifest 是特殊内容。发行 Graph/Group 作为资源进入 PAK，不从 loose Graph 目录回退读取。
 
 项目仍只有一张 Graph，清单指向保留 ID `galnet:graph:main`；Group 正文 ID 为 `galnet:group:<稳定节点ID>`，与节点身份分开。两种资源使用 `DependentAssetMeta`。这些 metadata 由编译适配层生成，不需要在作者目录补 sidecar 或新增选图配置；自定义发行资源目录也须注册 graph/group 的 DependentAssetMeta。`CompiledStoryResources` 为发布和开发适配生成同一剧情 payload，开发 provider 按会话持有不可变快照。开发输入需已有编译 Group，缺少正文不再静默当空 Group。
 
@@ -69,7 +69,7 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 
 控制描述 `PakDescriptor` 的 `kind` 为 `base`、`story` 或 `override`，与资源 `typeId` 独立。共用 PAK 格式，未知 kind/控制字段、重复控制属性和不支持的版本拒绝。story 描述需要项目、基础构建和包身份及合法分片序号；override 需要包身份、单分片、整数 priority 和资源映射表，映射目标必须在本包内。base/story 不能携带 priority 或覆盖映射；`Archive.Descriptor` 返回隔离的映射快照。旧调用省略 descriptor 时生成匿名 base 包，游戏级构建身份由上层提供。
 
-上述是归档格式与校验协议；剧情包安装/跳过和资源映射应用仍需由宿主的内容装载层接入，不能仅把任意新 kind PAK 放入旧扫描目录就认为其用途语义已生效。
+默认安装内容加载器通过 `InstalledPackageSet` 验证剧情包集合，并通过 `ResourceOverlayProvider` 应用资源映射。自定义宿主须接入相同内容视图；仅扫描任意 PAK 文件不足以实现包的用途语义。
 
 数据块可使用 `none`、`deflate`、`gzip` 或 `brotli`；`PakBuilder` 默认选择 Brotli，并会跳过过小数据的压缩。写出按资源 ID 稳定排序，重新计算实际 payload 的 hash，不沿用可能过时的 IGameFile.Hash；控制映射按原 ID 排序，无归档名/时间戳写入。旧 enum PAK 和 v2 格式不受支持，需重新导出。
 
@@ -85,7 +85,7 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 
 `ContentPackagePlanner` 先收集唯一 Graph、全部非补丁 Group 和额外根的闭包 B；每个剧情包独立取 C(P)−B，不扣除其他剧情包。基础 Gallery 项和默认视觉程序绑定也作为根。未知依赖必须由 `galnet.packaging` 的 includeResources 补根，并用 declaredCompleteResources 显式确认覆盖；后者可写资源 ID 或 Group 节点 ID，不会自动补根。
 
-每个集合按资源 ID ordinal 排序，以未压缩编译载荷的累计 Length 切片。maxPakBytes 缺省 64 MiB，是软目标，超限单项独占，不拆资源；PAK 头部、压缩和索引开销不计入阈值。分片逐个写到私有磁盘阶段，不同时保留全部 PAK 字节。当前 Archive 仍以内存打开单个 PAK，64 MiB 并非内存上限。
+每个集合按资源 ID ordinal 排序，以未压缩编译载荷的累计 Length 切片。maxPakBytes 缺省 32 MiB，是软目标，超限单项独占，不拆资源；PAK 头部、压缩和索引开销不计入阈值。分片逐个写到私有磁盘阶段，不同时保留全部 PAK 字节。当前 Archive 仍以内存打开单个 PAK，目标大小不是内存上限。
 
 只有闭包中的资源进入 PAK。图集包含全部声明图片、条件分支包含所有静态引用；UI/自定义运行代码的资源需显式补根。源资源校验仍覆盖整个目录，未被打包的坏作者资源也可能阻止构建。安装校验本体和每个剧情包的独立依赖闭包，重复 ID 的内容和 metadata 必须一致。
 
@@ -96,6 +96,8 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 `ResourceOverlayProvider` 是冻结的统一逻辑资源视图。A→B 直接绑定包内 B，一次请求只查映射一次，A→B/B→C 不把 A 串成 C。有效文件保留原 ID/路径，metadata 和字节来自替换资源；ID、路径、解码和媒体实体化因此一致。图集替换保留原维度键和全部原变体键，可增加变体；递归图片由覆盖包提供，后续图片请求可再独立命中显式映射。
 
 夹带资源不会隐式覆盖本体同 ID。递归依赖若与本体/其他有效来源同 ID 却内容或 metadata 不一致，准备期拒绝，作者须为改动资源分配新 ID，再显式映射。直接替换目标 B 的来源被明确绑定，对原 B 的独立请求仍按自身映射或本体解析。有效视图和 manager 缓存限定于该安装会话；源文件定位继续使用作者目录。
+
+映射后的文件通过可选 IAssetOverrideFile 保留运行来源，图集目录记录采用覆盖的逻辑图集。图集 Layer 存档保留选择意图和 UsesResourceOverride 标记；安装或移除兼容覆盖时，在候选恢复状态中按当前图集重算显示图片，不改输入存档或旧运行状态。普通未覆盖内容不一致仍拒绝。自定义包装 provider 若替换 IGameFile 对象，应保留该来源标记。
 
 ## 图片差分资源
 

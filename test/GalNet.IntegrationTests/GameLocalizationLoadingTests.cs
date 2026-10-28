@@ -1,5 +1,6 @@
 using System.Text.Json;
 using DynamicLocalization.Core;
+using GalNet.Assets;
 using GalNet.Avalonia.GameHost;
 using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Assets;
@@ -8,12 +9,11 @@ using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
+using GalNet.Core.Serialization;
+using GalNet.Editor.Shared.Services;
 using GalNet.GameHost.Content;
 using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
-using GalNet.Assets;
-using GalNet.Core.Serialization;
-using GalNet.Editor.Shared.Services;
 
 namespace GalNet.IntegrationTests;
 
@@ -204,8 +204,12 @@ public sealed class GameLocalizationLoadingTests
         var bytes = PakBuilder.Build("assets", StoryResourceCompiler.Compile(_root, new TargetProfileEntryCatalog([])), types,
             descriptor: new() { ProjectId = "test", BuildId = buildId });
         File.WriteAllText(Path.Combine(_root, GameContentManifest.FileName),
-            JsonSerializer.Serialize(new GameContentManifest { ProjectId = "test", BuildId = buildId,
-                BasePaks = [new("Assets/Paks/000-base.pak", CryptoHelper.HashSHA256(bytes), bytes.LongLength)] }, JsonSerializerOptions.Web));
+            JsonSerializer.Serialize(new GameContentManifest
+            {
+                ProjectId = "test",
+                BuildId = buildId,
+                BasePaks = [new("Assets/Paks/000-base.pak", CryptoHelper.HashSHA256(bytes), bytes.LongLength)]
+            }, JsonSerializerOptions.Web));
         File.WriteAllBytes(Path.Combine(_root, "Assets/Paks/000-base.pak"), bytes);
     }
 }

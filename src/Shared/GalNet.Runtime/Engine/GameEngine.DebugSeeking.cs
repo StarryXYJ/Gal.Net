@@ -57,7 +57,7 @@ public sealed partial class GameEngine
         private GameSnapshot CaptureScene()
         {
             var snapshot = _engine._runtime.CreateSnapshot();
-            return new GameSnapshot { NodeId = snapshot.NodeId, EntryIndex = snapshot.EntryIndex, States = snapshot.States };
+            return _engine.StampContent(new GameSnapshot { NodeId = snapshot.NodeId, EntryIndex = snapshot.EntryIndex, States = snapshot.States });
         }
         internal bool BeforeEntry(string group, int index)
         {
@@ -156,13 +156,13 @@ public sealed partial class GameEngine
                     // compressed. A forward baseline must include that committed state.
                     var current = _engine._runtime.CreateSnapshot();
                     if (fromCurrent) baseline = current;
-                    baseline = new GameSnapshot
+                    baseline = _engine.StampContent(new GameSnapshot
                     {
                         NodeId = baseline.NodeId,
                         EntryIndex = baseline.EntryIndex,
                         States = baseline.States,
                         Variables = current.Variables
-                    };
+                    });
                 }
                 finally { _engine._dispatchGate.Release(); }
                 ownedGeneration = await _engine.RestoreFromCoreAsync(baseline, this, generation, cancellation.Token).ConfigureAwait(false);

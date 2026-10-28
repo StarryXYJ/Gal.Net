@@ -14,6 +14,8 @@ internal static class SampleDebugSnapshotFactory
         return new GameSnapshot
         {
             Version = source.Version,
+            ContentBuildId = source.ContentBuildId,
+            StoryPackages = source.StoryPackages.ToArray(),
             NodeId = source.NodeId,
             EntryIndex = kind == SampleDebugSaveKind.GalGroupStart ? 0 : source.EntryIndex,
             Variables = source.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value)),

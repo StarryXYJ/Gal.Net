@@ -120,6 +120,17 @@ public sealed class ResourceOverrideTests
     }
 
     [Test]
+    public void OverrideDefinitionKeepsCaseInsensitiveResourceIdentityAfterJsonRoundtrip()
+    {
+        var definition = Definition("case", 0, ("ORIGINAL", "replacement"));
+        var saved = GalNet.Core.Serialization.JsonCodec.Serialize(definition);
+        var restored = GalNet.Core.Serialization.JsonCodec.Deserialize<ResourceOverrideDefinition>(saved)!;
+        Assert.That(restored.Mappings["original"], Is.EqualTo("replacement"));
+        restored.Mappings["Original"] = "new-replacement";
+        Assert.That(restored.Mappings.Count, Is.EqualTo(1));
+    }
+
+    [Test]
     public void EquivalentMappingOrdersHaveIdenticalPakHashes()
     {
         var files = new[] { File("a", "A"), File("b", "B"), File("c", "C"), File("d", "D") };
@@ -131,8 +142,14 @@ public sealed class ResourceOverrideTests
     private static IGameFile Atlas(string id, string sprite, string key = "idle")
     {
         var definition = ImageVariantsBuilder.Build(new() { Folder = ".", Default = key }, [new ImageVariantFile(key + ".png", sprite)]).Definition!;
-        var metadata = new DependentAssetMeta { Id = id, TypeId = "image-variants", Path = id + ".variants", DependenciesComplete = true,
-            Dependencies = [new(sprite, "sprite")] };
+        var metadata = new DependentAssetMeta
+        {
+            Id = id,
+            TypeId = "image-variants",
+            Path = id + ".variants",
+            DependenciesComplete = true,
+            Dependencies = [new(sprite, "sprite")]
+        };
         return new GameFile(id, metadata.Path, metadata.TypeId, metadata, ImageVariantsCodec.Encode(definition));
     }
     private sealed class MemoryProvider(byte[] bytes) : IAssetProvider

@@ -27,6 +27,7 @@
 
 ## 二次开发手册
 
+- [内容分包与资源补丁](manual/content-packaging.md)：单图章节启动、依赖闭包、剧情分包和独立资源覆盖矩阵。
 - [Track / Bus 音频混音](manual/audio-mixing.md)
 - [跨平台后端接入](manual/cross-platform-backends.md)：原生媒体构建、包内 PAK、缓存目录、设备生命周期及移动端验收边界。
 - [NativeAOT 发布与扩展契约](manual/native-aot.md)：复用 Headless Sample 发布、自检与源生成 JSON 元数据注册。

@@ -34,7 +34,7 @@ public sealed class ResourceReferenceIndexTests
             GroupEntries = new()
             {
                 ["patch"] = [new() { StableId = "show", Type = "variants.show",
-                Parameters = new() { ["assetId"] = JsonSerializer.SerializeToElement("atlas") } }]
+                Parameters = new() { ["assetId"] = JsonSerializer.SerializeToElement(" ATLAS ") } }]
             }
         };
         var atlas = new DependentAssetMeta { Id = "atlas", TypeId = "image-variants", Path = "hero.variants", DependenciesComplete = true, Dependencies = [new("sprite", "sprite")] };

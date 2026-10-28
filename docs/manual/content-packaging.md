@@ -10,7 +10,7 @@
 
 本体先对全部普通 Group 和明确的基础根收集依赖。每个剧情包只扣除本体已有资源：A/B 都使用而本体没使用的资源，两包各带一份。条件分支里的静态资源全部计入，图集带齐其声明图片；不会因某次试玩没有走到分支而漏包。
 
-项目设置的 `galnet.packaging` 提供 maxPakBytes（默认 64 MiB）、includeResources 和 declaredCompleteResources。阈值按未压缩编译资源字节计算，单个超大资源独占一片，不拆资源。includeResources 用于 UI、自定义代码等静态剧情外的根；未知/动态引用还需在 declaredCompleteResources 中确认已补全依赖（资源 ID 或 Group 节点 ID）。声明完整不会自动添加资源。
+项目设置的 `galnet.packaging` 提供 maxPakBytes（默认 32 MiB）、includeResources 和 declaredCompleteResources。阈值按未压缩编译资源字节计算，单个超大资源独占一片，不拆资源。includeResources 用于 UI、自定义代码等静态剧情外的根；未知/动态引用还需在 declaredCompleteResources 中确认已补全依赖（资源 ID 或 Group 节点 ID）。声明完整不会自动添加资源。
 
 布局报告为 galpak 旁的 `<项目>.layout.json`，目录导出为 packaging-layout.json，可查看每个资源的归属、直接依赖及未打包项。已有 Gallery 和默认视觉程序绑定属于基础根。文本和人物文件完整保留在基础内容，不单独做剧情语言补丁。
 
@@ -34,3 +34,7 @@
 ## 存档与格式
 
 存档 v5 校验基础构建和准备时已安装的全部剧情包。删除其中任意剧情包都会阻止恢复，即使当时尚未播放到该包。旧 galpak/PAK 需重新导出；不自动转换旧格式。
+
+资源覆盖不改变存档中的逻辑资源 ID。图集替换后，读档会保留差分选择意图，并按当前有效图集重新解析实际图片；移除覆盖后也会重新解析。普通未覆盖图集仍严格校验保存结果与内容是否一致。
+
+分包阈值是布局目标，不是内存限制；当前归档写入和读取仍会保留整片缓冲。使用大资源时应结合实际导出与运行峰值调整阈值，单资源超过阈值时仍完整保留。

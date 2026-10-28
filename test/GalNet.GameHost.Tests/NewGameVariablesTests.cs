@@ -21,8 +21,12 @@ public sealed class NewGameVariablesTests
         registration.RegisterImplementation(new PrimitiveModule(registry => registry.Register("chapter.observe", context =>
             new ImmediatePrimitiveInstance(() => chapters.Add(context.Runtime.GetVariable("chapter")!.AsInt())))));
         await using var view = registration.BuildView();
-        var graph = new Graph { RootNodeId = "main", Nodes = [new Group { Id = "main", Entries =
-            [new PrimitiveEntry("chapter.observe", JsonSerializer.SerializeToElement(new { }))] }] };
+        var graph = new Graph
+        {
+            RootNodeId = "main",
+            Nodes = [new Group { Id = "main", Entries =
+            [new PrimitiveEntry("chapter.observe", JsonSerializer.SerializeToElement(new { }))] }]
+        };
         var defaults = new List<ProjectVariableDefinition> { new() { Name = "chapter", DefaultValue = new() { Uid = "chapter-id", Name = "chapter", Value = VariableValue.From(1) } } };
         GameRun? current = null;
         await using var session = new GameSession(_ =>

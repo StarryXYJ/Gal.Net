@@ -4,7 +4,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
     <ProjectReference Include="../../src/Editor/GalNet.Editor.DefaultContracts/GalNet.Editor.DefaultContracts.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../../src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="../Fixtures/SchemaA/SchemaA.csproj" ReferenceOutputAssembly="false" />

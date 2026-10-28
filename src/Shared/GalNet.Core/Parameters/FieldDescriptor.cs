@@ -5,6 +5,12 @@ namespace GalNet.Core.Parameters;
 /// <summary>Immutable field metadata; consumers own values, labels and commit behavior.</summary>
 public sealed class FieldDescriptor
 {
+    // Preserve the constructor signature used by already compiled project contracts.
+    public FieldDescriptor(string id, ValueDescriptor value, bool isRequired,
+        JsonElement? defaultValue, EditorHints? editor, string? labelKey,
+        string? descriptionKey, FieldValueSemantic semantic)
+        : this(id, value, isRequired, defaultValue, editor, labelKey, descriptionKey, semantic, null) { }
+
     public FieldDescriptor(string id, ValueDescriptor value, bool isRequired = false,
         JsonElement? defaultValue = null, EditorHints? editor = null,
         string? labelKey = null, string? descriptionKey = null,

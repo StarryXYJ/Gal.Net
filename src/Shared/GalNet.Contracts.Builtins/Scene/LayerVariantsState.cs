@@ -10,13 +10,19 @@ public sealed class LayerVariantsState
     public List<string> ProtectedDimensions { get; set; } = [];
     public string VariantKey { get; set; } = "";
     public ImageVariantResolutionReason Reason { get; set; }
+    /// <summary>The cached display result was produced through an explicit resource override.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool UsesResourceOverride { get; set; }
 
-    public static LayerVariantsState From(string assetId, ImageVariantResolution resolution) => new()
+    public static LayerVariantsState From(string assetId, ImageVariantResolution resolution) => From(assetId, resolution, false);
+
+    public static LayerVariantsState From(string assetId, ImageVariantResolution resolution, bool usesResourceOverride) => new()
     {
         AssetId = assetId,
         Request = resolution.Request.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
         ProtectedDimensions = resolution.ProtectedDimensions.ToList(),
         VariantKey = resolution.Variant.Key,
-        Reason = resolution.Reason
+        Reason = resolution.Reason,
+        UsesResourceOverride = usesResourceOverride
     };
 }

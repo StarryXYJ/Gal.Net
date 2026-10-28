@@ -4,13 +4,13 @@ using GalNet.Assets;
 using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Gallery;
-using GalNet.Core.Entry;
 using GalNet.Core.Assets;
+using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
-using GalNet.Storage.FileSystem;
 using GalNet.Editor.Shared.Services;
+using GalNet.Storage.FileSystem;
 
-namespace GalNet.Editor.Shared.Tests;
+namespace GalNet.IntegrationTests;
 
 public sealed class ExportPreparationTests
 {

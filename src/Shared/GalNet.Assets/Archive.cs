@@ -128,8 +128,11 @@ public sealed class Archive : IPakArchive
         if (!Enum.IsDefined(compression)) throw new ArgumentOutOfRangeException(nameof(compression));
         descriptor ??= new();
         descriptor.Validate();
-        descriptor = descriptor with { Mappings = descriptor.Mappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
-            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase) };
+        descriptor = descriptor with
+        {
+            Mappings = descriptor.Mappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase)
+        };
         var codec = new AssetMetaCodec(resourceTypes);
         var entries = new List<(EntryDescriptor Entry, byte[] Data)>();
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);

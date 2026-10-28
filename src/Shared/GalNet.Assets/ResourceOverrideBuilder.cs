@@ -11,9 +11,15 @@ public static class ResourceOverrideBuilder
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectId);
         ArgumentNullException.ThrowIfNull(definition);
-        var control = new PakDescriptor { Kind = "override", ProjectId = projectId, PackageId = definition.Id,
-            Priority = definition.Priority, Mappings = definition.Mappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
-                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase) };
+        var control = new PakDescriptor
+        {
+            Kind = "override",
+            ProjectId = projectId,
+            PackageId = definition.Id,
+            Priority = definition.Priority,
+            Mappings = definition.Mappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+                .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase)
+        };
         control.Validate();
         if (control.Mappings.Count == 0) throw new InvalidDataException("A resource override must contain at least one mapping.");
         var files = available.ToDictionary(file => file.Id, StringComparer.OrdinalIgnoreCase);

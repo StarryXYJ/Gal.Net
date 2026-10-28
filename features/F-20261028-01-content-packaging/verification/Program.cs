@@ -49,5 +49,16 @@ try
     using var replaced = await assets.AcquireAsync<string>("original");
     if (replaced?.Value != "sprite") throw new InvalidDataException("Override reflection-off roundtrip failed.");
     Console.WriteLine("P4_OVERRIDE_REFLECTION_OFF_OK original=sprite");
+    var layer = new GalNet.Contracts.Builtins.Scene.Layer { Id = "hero", AssetId = "sprite",
+        Variants = new() { AssetId = "atlas", VariantKey = "idle", UsesResourceOverride = true } };
+    var layerJson = JsonSerializer.Serialize(new[] { layer }, GalNet.Contracts.Builtins.BuiltinJson.StateTypeInfo<GalNet.Contracts.Builtins.Scene.Layer>());
+    var layerCopy = JsonSerializer.Deserialize(layerJson, GalNet.Contracts.Builtins.BuiltinJson.StateTypeInfo<GalNet.Contracts.Builtins.Scene.Layer>())!;
+    var configuration = new GalNet.Core.Configuration.ProjectConfiguration();
+    definition.Name = "Clothes";
+    configuration.Set(GalNet.Core.Configuration.ResourceOverrideOptions.Section, new() { Packages = [definition] });
+    var configurationCopy = GalNet.Core.Serialization.JsonCodec.Deserialize<GalNet.Core.Configuration.ProjectConfiguration>(GalNet.Core.Serialization.JsonCodec.Serialize(configuration))!;
+    if (layerCopy[0].Variants?.UsesResourceOverride != true || configurationCopy.Read(GalNet.Core.Configuration.ResourceOverrideOptions.Section).Packages[0].Mappings["ORIGINAL"] != "sprite")
+        throw new InvalidDataException("Override author/snapshot metadata requires reflection JSON.");
+    Console.WriteLine("P6_OVERRIDE_STATE_REFLECTION_OFF_OK");
 }
 finally { Directory.Delete(root, true); }

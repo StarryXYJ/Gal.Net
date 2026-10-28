@@ -72,7 +72,7 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
   content.json             唯一 Graph 与分包描述，版本 2
   I18n/**
   gallery.json              从 metadata 派生
-  Assets/Paks/000-base.pak  资源 PAK
+  Assets/Paks/000-base.pak  基础资源首片，后续为 001-base.pak 等
 ```
 
 manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时文件中创建，重新验证 ZIP 条目与 PAK 后才替换目标文件。
@@ -82,6 +82,8 @@ manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时�
 运行时只装载 content.json 中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。content.json v2 保存固定 graphId、projectId、buildId、basePaks 和 stories；每个分片描述路径、大小、SHA-256。Graph 和编译 Group 经资源 provider 加载，特殊 JSON/I18n 文件仍走内容加载入口。旧内容需重新导出，不回退到 loose Graph。
 
 正常导出还在 galpak 旁生成 `StoryPatches/<buildId>/*.pak`；目录导出则放在目标目录内同一路径。装载同时检查安装根及其父目录下当前 buildId 的剧情目录，以头部而非文件名识别分片。整个剧情包零分片表示未安装；存在部分分片、哈希错误、用途/项目/构建不匹配或依赖缺失都拒绝。缺席 Group 沿正常出口跳过；纯空 Group 推进循环拒绝。剧情目录按构建隔离并整体发布，旧基础包不会采用新构建的剧情片段。
+
+buildId 对资源内容、有效 metadata、特殊内容、格式标记和实际分片布局计算稳定指纹；默认阈值或切片算法改变物理布局时也产生新的构建身份。
 
 导出产生布局报告（galpak 旁 `<Project>.layout.json` 或目录内 packaging-layout.json），列出资源归属、直接依赖和未打包项。settings/I18n/人物数据仍完整留在基础内容，不按剧情拆分；未安装剧情不参与正文文本引用校验。Gallery 保持原基础聚合。
 

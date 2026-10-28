@@ -150,6 +150,16 @@ public static class GamePackageExporter
             var content = ContentFiles(privateStage, gallery).ToArray();
             using var buildHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             buildHash.AppendData(Encoding.UTF8.GetBytes(projectId + "\n"));
+            // The same logical resources can be split differently after a default/algorithm change.
+            // Keep immutable story directories distinct for those physical part sets as well.
+            buildHash.AppendData("galnet-content-v2/gpak-v3/brotli\n"u8);
+            buildHash.AppendData(JsonSerializer.SerializeToUtf8Bytes(plan.Paks.Select(part => new
+            {
+                part.PackageId,
+                part.PartIndex,
+                part.PartCount,
+                resources = part.Files.Select(file => file.Id)
+            }), JsonOptions));
             var codec = new AssetMetaCodec(types);
             foreach (var file in plan.Paks.SelectMany(part => part.Files).DistinctBy(file => file.Id, StringComparer.OrdinalIgnoreCase).OrderBy(file => file.Id, StringComparer.Ordinal))
             {

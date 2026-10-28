@@ -1,6 +1,6 @@
 # F-20261028-01 — 单 Graph 资源化与游戏内容分包
 
-状态：`in-progress`；用户已授权实施并要求每完成一个 Phase 提交一次 Git。P1–P5 已验证，P6 待完成。当前无已知需求阻塞，未宣称完整 feature 已完成。
+状态：`completed`，2026-10-28。P1–P6 全部 verified，按用户要求每阶段独立 Git 提交。实现结果、验证与限制见 [summary](summary.md)，收尾核对见 [review](review.md)。
 
 ## 用户目标
 

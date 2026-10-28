@@ -14,7 +14,7 @@
 
 - `GameEngine` 是唯一的剧情推进器；UI 不自行推进、跳过 batch 或推断 Engine 终态。
 - primitive 先在 `GameState.Update` 提交可存档事实，再通知 presenter。读档后的展示由注册的恢复处理器和 `StateRestoreSession` 重建。
-- `GameSnapshot` 当前版本为 4；不要序列化 UI、Task、取消源、播放器 identity 或媒体时间轴。
+- `GameSnapshot` 当前版本为 5；不要序列化 UI、Task、取消源、播放器 identity 或媒体时间轴。
 - 音频平台实现通过 `GalNet.Contracts.Builtins.Audio.IAudioPlaybackHost` 组合；同一逻辑轨道的队列和状态仍由 `AudioRuntime` 管理。
 - 新的自定义 primitive 需要同时提供 schema、执行注册、参数/恢复验证和覆盖其生命周期的测试。
 

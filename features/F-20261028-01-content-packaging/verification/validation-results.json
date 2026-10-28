@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "passed": true,
+  "phase": "P6",
+  "sdk": "10.0.401",
+  "configuration": "Release",
+  "initialFullRun": {
+    "source": "out/ci/content-packaging-p6/ci-results.json",
+    "failedChecks": [
+      "GalNet.Architecture.Tests",
+      "GalNet.SchemaGenerator.Tests"
+    ],
+    "resolvedBy": "Targeted final rechecks after fixes; initial failures retained."
+  },
+  "finalFormat": {
+    "passed": true,
+    "source": "out/ci/content-packaging-p6-final-format/ci-results.json"
+  },
+  "finalSolutionBuild": {
+    "passed": true,
+    "warnings": 386,
+    "errors": 0,
+    "elapsed": "00:03:40.32"
+  },
+  "defaultSuiteProjects": 15,
+  "defaultSuitePassed": 2064.0,
+  "suites": [
+    {
+      "project": "GalNet.Architecture.Tests",
+      "passed": 52,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6-recheck/test-results/GalNet.Architecture.Tests.trx"
+    },
+    {
+      "project": "GalNet.Assets.Tests",
+      "passed": 103,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Assets.Tests.trx"
+    },
+    {
+      "project": "GalNet.Core.Tests",
+      "passed": 139,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6-recheck/test-results/GalNet.Core.Tests.trx"
+    },
+    {
+      "project": "GalNet.Debugging.Tests",
+      "passed": 10,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Debugging.Tests.trx"
+    },
+    {
+      "project": "GalNet.Diagnostics.Tests",
+      "passed": 1,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Diagnostics.Tests.trx"
+    },
+    {
+      "project": "GalNet.Editor.Shared.Tests",
+      "passed": 476,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6-recheck/test-results/GalNet.Editor.Shared.Tests.trx"
+    },
+    {
+      "project": "GalNet.Editor.Tests",
+      "passed": 345,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Editor.Tests.trx"
+    },
+    {
+      "project": "GalNet.GameHost.Tests",
+      "passed": 8,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.GameHost.Tests.trx"
+    },
+    {
+      "project": "GalNet.IntegrationTests",
+      "passed": 138,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6-recheck/test-results/GalNet.IntegrationTests.trx"
+    },
+    {
+      "project": "GalNet.Media.Audio.Tests",
+      "passed": 26,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Media.Audio.Tests.trx"
+    },
+    {
+      "project": "GalNet.Presentation.Tests",
+      "passed": 276,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Presentation.Tests.trx"
+    },
+    {
+      "project": "GalNet.Primitives.Builtins.Tests",
+      "passed": 322,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Primitives.Builtins.Tests.trx"
+    },
+    {
+      "project": "GalNet.Runtime.Tests",
+      "passed": 124,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Runtime.Tests.trx"
+    },
+    {
+      "project": "GalNet.SchemaGenerator.Tests",
+      "passed": 20,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6-recheck/test-results/GalNet.SchemaGenerator.Tests.trx"
+    },
+    {
+      "project": "GalNet.Storage.FileSystem.Tests",
+      "passed": 24,
+      "failed": 0,
+      "notExecuted": 0,
+      "source": "out/ci/content-packaging-p6/test-results/GalNet.Storage.FileSystem.Tests.trx"
+    }
+  ],
+  "additionalChecks": [
+    {
+      "name": "Final mounted Editor authoring checks",
+      "passed": 3,
+      "source": "out/ci/content-packaging-p6-recheck/test-results/GalNet.Editor.Tests.trx"
+    },
+    {
+      "name": "Debug snapshot factories",
+      "passed": 2,
+      "source": "out/ci/content-packaging-p6-native/NativeAndSnapshot.trx"
+    },
+    {
+      "name": "Native packaged Sample explicit test",
+      "passed": 1,
+      "source": "out/ci/content-packaging-p6-native/NativeSample.trx"
+    },
+    {
+      "name": "Reflection-disabled JSON",
+      "passed": true,
+      "markers": [
+        "P1_REFLECTION_OFF_OK",
+        "P2_STORY_REFLECTION_OFF_OK",
+        "P4_OVERRIDE_REFLECTION_OFF_OK",
+        "P6_OVERRIDE_STATE_REFLECTION_OFF_OK"
+      ]
+    },
+    {
+      "name": "Default large-resource membership and memory",
+      "passed": true,
+      "source": "../memory-probe/result.json"
+    }
+  ],
+  "notes": [
+    "Suite evidence combines the initial full run with final affected-suite rechecks.",
+    "Eight default-run Explicit/environment cases were not executed; the packaged native Sample was separately selected and passed in Debug.",
+    "Archive remains buffered; the PAK size target is not a memory guarantee."
+  ],
+  "completedUtc": "2026-10-28T14:28:38.8897455Z"
+}

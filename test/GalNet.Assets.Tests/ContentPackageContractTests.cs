@@ -17,7 +17,9 @@ public sealed class ContentPackageContractTests
     {
         var descriptor = new PakDescriptor
         {
-            Kind = kind, ProjectId = "game", BuildId = "build",
+            Kind = kind,
+            ProjectId = "game",
+            BuildId = "build",
             PackageId = kind == "base" ? "" : "extra",
             Priority = kind == "override" ? 3 : 0,
             Mappings = kind == "override" ? new() { ["original"] = "replacement" } : []
@@ -131,8 +133,14 @@ public sealed class ContentPackageContractTests
     public void Only_graph_references_may_cross_an_optional_story_boundary()
     {
         var types = new ResourceTypeCatalogBuilder().Add<DependentAssetMeta>("graph").Add<DependentAssetMeta>("group").Build();
-        var meta = new DependentAssetMeta { Id = "graph", TypeId = "graph", Path = "graph", DependenciesComplete = true,
-            Dependencies = [new("optional", "group", "extra")] };
+        var meta = new DependentAssetMeta
+        {
+            Id = "graph",
+            TypeId = "graph",
+            Path = "graph",
+            DependenciesComplete = true,
+            Dependencies = [new("optional", "group", "extra")]
+        };
         var graph = new GameFile(meta.Id, meta.Path, meta.TypeId, meta, []);
         Assert.That(AssetDependencyCollector.Collect([graph], ["graph"], types).Files, Has.Count.EqualTo(1));
         Assert.Throws<InvalidDataException>(() => AssetDependencyCollector.Collect([graph], ["graph"], types, storyPackage: "extra"));

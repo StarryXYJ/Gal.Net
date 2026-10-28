@@ -1,12 +1,12 @@
+using System.Text;
 using System.Text.Json;
 using GalNet.Assets;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
-using GalNet.Contracts.Builtins.Scene;
-using System.Text;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -18,15 +18,19 @@ public static class StoryResourceCompiler
     {
         var graphBytes = File.ReadAllBytes(Path.Combine(stage, "Graph", "graph.json"));
         var graph = JsonSerializer.Deserialize<EditorGraphDocument>(graphBytes, new JsonSerializerOptions(JsonSerializerDefaults.Web)
-            { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } })!;
+        { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } })!;
         byte[]? ReadGroup(string id)
         {
             var path = GalNet.Assets.FileSystemPaths.ResolveRelativeFile(stage, "Graph/groups/" + id + ".galgroup");
             return File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
-        var document = new EditorProjectDocument { Graph = graph, GroupEntries = graph.Nodes
+        var document = new EditorProjectDocument
+        {
+            Graph = graph,
+            GroupEntries = graph.Nodes
             .Where(node => node.Type is "Group" or "Entry").ToDictionary(node => node.Id, node => ReadGroup(node.Id) is { } bytes
-                ? Authors(JsonCodec.Deserialize<CompiledGroupDocument>(bytes)!, catalog) : [], StringComparer.Ordinal) };
+                ? Authors(JsonCodec.Deserialize<CompiledGroupDocument>(bytes)!, catalog) : [], StringComparer.Ordinal)
+        };
         var programs = new Dictionary<string, ShaderEffectDescriptor?>(StringComparer.OrdinalIgnoreCase);
         foreach (var file in (assets ?? []).Where(file => file.TypeId == "effect-program"))
         {
@@ -43,8 +47,11 @@ public static class StoryResourceCompiler
     public static AssetDependencyInfo Dependencies(CompiledGroupDocument group, IEntryCatalog catalog)
     {
         const string id = "main";
-        var document = new EditorProjectDocument { Graph = new() { RootNodeId = id, Nodes = [new() { Id = id, Type = "Group" }] },
-            GroupEntries = new() { [id] = Authors(group, catalog) } };
+        var document = new EditorProjectDocument
+        {
+            Graph = new() { RootNodeId = id, Nodes = [new() { Id = id, Type = "Group" }] },
+            GroupEntries = new() { [id] = Authors(group, catalog) }
+        };
         return Dependencies(group, catalog, document, new(), id);
     }
 

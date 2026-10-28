@@ -55,8 +55,10 @@ public sealed class ResourceReferenceIndex
 
         void Add(string id, string? type, ResourceUse use, HashSet<string> visited)
         {
-            id = id.Trim(); if (id.Length == 0 || !visited.Add(id)) return;
+            id = id.Trim(); if (id.Length == 0) return;
             var file = resources.GetValueOrDefault(id);
+            id = file?.Id ?? id;
+            if (!visited.Add(id)) return;
             if (file?.TypeId is "graph" or "group") return;
             if (!references.TryGetValue(id, out var row)) references.Add(id, row = (type, []));
             row.Uses.Add(use);
