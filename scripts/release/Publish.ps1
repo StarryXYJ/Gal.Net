@@ -7,12 +7,16 @@ param(
     [string]$ProjectDirectory,
     [string]$Galpak,
     [string]$ContractOutputDirectory,
+    [ValidateSet('SelfContained', 'FrameworkDependent')]
+    [string]$Deployment = 'SelfContained',
     [switch]$IncludeModeInName
 )
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $headlessProject = Join-Path $repoRoot 'src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj'
+$selfContained = $Deployment -eq 'SelfContained'
+$deploymentProperty = "-p:SelfContained=$($selfContained.ToString().ToLowerInvariant())"
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $tag = (& git -C $repoRoot describe --tags --exact-match --match 'v[0-9]*' 2>$null)
@@ -137,7 +141,7 @@ function Add-PackageManifest([string]$PackageRoot, [string]$Kind) {
         version = $Version
         package = $Kind
         runtime = 'win-x64'
-        selfContained = $true
+        selfContained = $selfContained
         readyToRun = $true
         sourceCommit = $commit
         files = $files
@@ -160,8 +164,18 @@ function Complete-Package([string]$Kind, [string]$PackageRoot) {
         Remove-Item -LiteralPath $file.FullName -Force
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $PackageRoot 'LICENSE') -Force
+    if (!$selfContained) {
+        @'
+
+Requires the Windows x64 .NET 10 Runtime (latest servicing patch).
+Install the .NET Runtime, not the SDK; this Avalonia app does not require
+the Windows Desktop Runtime or ASP.NET Core Runtime.
+Download: https://dotnet.microsoft.com/download/dotnet/10.0
+'@ | Add-Content -LiteralPath (Join-Path $PackageRoot 'README.txt') -Encoding utf8
+    }
     Add-PackageManifest $PackageRoot $Kind
     $modeSuffix = if ($IncludeModeInName) { '-r2r' } else { '' }
+    if (!$selfContained) { $modeSuffix += '-framework-dependent' }
     $zipName = "GalNet-$Kind-$Version-win-x64$modeSuffix.zip"
     $zipPath = Join-Path $versionRoot $zipName
     if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
@@ -178,14 +192,32 @@ function Publish-Editor {
     New-Item -ItemType Directory -Path $hostRoot -Force | Out-Null
     try {
         $project = Join-Path $repoRoot 'src/Editor/GalNet.Editor/GalNet.Editor.csproj'
-        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $hostRoot)
-        Invoke-DotNet @('restore', $headlessProject, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $headlessProject, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', (Join-Path $hostRoot 'CLI'))
+        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
+        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $hostRoot)
+        $cliRoot = Join-Path $stage 'cli'
+        Invoke-DotNet @('restore', $headlessProject, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
+        Invoke-DotNet @('publish', $headlessProject, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $cliRoot)
+        # Both apphosts resolve dependencies beside their executables. Merge only
+        # byte-identical shared files; never silently replace an Editor dependency.
+        foreach ($file in Get-ChildItem -LiteralPath $cliRoot -Recurse -File) {
+            if ($file.Extension -eq '.pdb' -or $file.Name -eq 'README.md') { continue }
+            $destination = Join-Path $hostRoot (Get-RelativePath $cliRoot $file.FullName)
+            if (Test-Path -LiteralPath $destination) {
+                if ((Get-FileHash $destination).Hash -ne (Get-FileHash $file.FullName).Hash) {
+                    throw "Editor/CLI dependency collision: $destination"
+                }
+            }
+            else {
+                New-Item -ItemType Directory -Force -Path (Split-Path $destination -Parent) | Out-Null
+                Copy-Item -LiteralPath $file.FullName -Destination $destination
+            }
+        }
         @'
 GalNet Editor
 
 Run GalNet.Editor.exe to start the editor.
+Run GalNet.Editor.Headless.exe help to use the CLI. Keep both executables
+in this directory; they share dependencies and (in the full package) .NET.
 '@ | Set-Content -LiteralPath (Join-Path $hostRoot 'README.txt') -Encoding utf8
         Complete-Package 'Editor' $hostRoot
     }
@@ -222,8 +254,8 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
     New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
     try {
         $project = Join-Path $repoRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
-        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:EnableGameDebugging=false', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', '-p:SelfContained=true', '-p:EnableGameDebugging=false', '-p:CopyOutputSymbolsToPublishDirectory=false', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
+        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:EnableGameDebugging=false', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
+        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:EnableGameDebugging=false', '-p:CopyOutputSymbolsToPublishDirectory=false', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
 
         if ($ContractOutputDirectory) {
             New-Item -ItemType Directory -Force -Path $ContractOutputDirectory | Out-Null

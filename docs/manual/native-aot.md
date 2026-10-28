@@ -56,6 +56,19 @@ resources.Add<ProjectMeta>("project.data", ProjectJsonContext.Default, ".custom"
 
 ## 验收边界
 
+Sample 共享 UI 已完成一轮 AOT 准备：输入配置使用源生成 JSON 元数据，数值约束和共享表单 JSON 操作使用显式元数据，GamePage 内容绑定使用类型化 CompiledBinding；内置视觉效果按项目 shader 资源显式创建，不扫描程序集发现工厂。输入配置 wire 格式保持兼容。这些改进不等于桌面或 iOS Sample 已支持 NativeAOT，也尚无量化性能或包体收益数据。
+
+可独立验证这部分在 JSON 反射关闭时的行为：
+
+```powershell
+dotnet test test/GalNet.Presentation.Tests/GalNet.Presentation.Tests.csproj -c Release `
+  --artifacts-path out/sample-aot-tests `
+  -p:JsonSerializerIsReflectionEnabledByDefault=false `
+  --filter FullyQualifiedName~SampleAotPreparationTests
+```
+
+上述筛选测试不代替普通完整回归；普通测试使用默认反射设置。桌面最终链接仍通过 `scripts/release/Test-DesktopAot.ps1` 严格检查，不压制 ILLink/ILC 警告；本轮实现及具体剩余阻塞见 [Sample AOT 准备记录](../../features/F-20261027-04-tagged-release/sample-aot-preparation-20261028.md)。iOS 还需选择对应 .NET/Avalonia 发布路线，并在 Mac/Xcode 和真机上验证。
+
 本地已验证 Windows x64 NativeAOT 的 Headless 引擎闭包；CI 配置覆盖 Windows/Linux。测试工程本身是否支持 NativeAOT 取决于 test runner，普通 `dotnet test` 不等于运行了 NativeAOT。
 
 自检不验证 Avalonia/Skia 图形、LibVLC 视频、原生音频设备、动态加载项目程序集或 Editor/CLI 作者编译器。NativeAOT 玩家应在组合根静态引用项目契约。其他桌面 RID、Android/iOS 打包、系统媒体和移动端实机仍需在对应环境验证，不能由桌面自检推导已经支持。

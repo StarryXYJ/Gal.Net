@@ -127,12 +127,12 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         Changed?.Invoke();
         OnPropertyChanged(nameof(EastConfirms));
     }
-    public string Serialize() => JsonSerializer.Serialize(_configuration);
+    public string Serialize() => JsonSerializer.Serialize(_configuration, PlayerInputJsonContext.Default.PlayerInputConfiguration);
     public void Restore(string? json)
     {
         try
         {
-            var parsed = json is null ? null : JsonSerializer.Deserialize<PlayerInputConfiguration>(json);
+            var parsed = json is null ? null : JsonSerializer.Deserialize(json, PlayerInputJsonContext.Default.PlayerInputConfiguration);
             Apply(parsed is not null && Validate(parsed) is null ? parsed : Defaults());
         }
         catch (JsonException) { Apply(Defaults()); }

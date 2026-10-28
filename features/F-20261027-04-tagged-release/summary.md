@@ -31,6 +31,8 @@ ZIP 大小约：Editor 261.43 MiB，纯 Sample 191.81 MiB，整合 Sample 222.17
 
 ### 2026-10-28 发行体积跟进
 
+后续已完成 Editor/CLI 共目录共享运行时，并新增 framework-dependent 发行包；当前实现与验收见 [运行时共享跟进](runtime-sharing-20261028.md)。以下四 ZIP 与独立 CLI 描述保留为此前候选的历史记录，当前发行说明以手册为准。
+
 真实载荷发现 VLC NuGet 带了约 178.4 MiB 的 win-x86 / win-arm64，Editor 还有约 102.8 MiB PDB。现在在生成 manifest 前过滤全部 PDB 及上述非目标架构文件，保留 x64 核心与插件。Editor 的独立自包含 CLI 暂时仍保留运行时副本。
 
 | 应用 ZIP | 首次候选 MiB | 精简后 MiB |
@@ -48,6 +50,7 @@ ZIP 大小约：Editor 261.43 MiB，纯 Sample 191.81 MiB，整合 Sample 222.17
 ## 未完成与实际限制
 
 1. **桌面 Sample AOT 未完成。** 首次真实 ILC 严格链接约 60 条诊断，涉及 JSON、反射绑定、主题资源、DI 保留和 Serilog/Ursa 裁剪。没有全局吞警告，也没有伪造 AOT ZIP。`Test-DesktopAot.ps1` 可重现；Release 的 Aot/Both 明确失败。Headless 通过不能替代桌面验收。
+   2026-10-28 已完成一轮 Sample 自有 JSON、静态绑定、工厂与枚举路径准备：关闭 JSON 反射的 9 项测试及 276 项普通 Presentation 回归通过；最终严格链接仍有 21 条诊断。具体范围、证据及未完成的自有/第三方阻塞见 [Sample AOT 准备](sample-aot-preparation-20261028.md)。
 2. **中断恢复尚未实测。** 首次远端完整 CI、公开 NuGet 上传与 GitHub prerelease 已成功；跨服务部分上传中断后的恢复仍未实测。
 3. **桌面 smoke 范围有限。** 验证解压后玩家加载整合内容并初始化，不代表完整剧情、全部音视频设备、存读档和正常退出均已完成原生验收；测试只终止自己启动的进程。
 4. 首期仅 win-x64；ARM64、其他系统和移动端未纳入发行。CLI 自包含分发已验收，但 Editor 原有“导出游戏”界面的仓库脚本依赖仍保留，未宣称 GUI 已成为脱离源码的完整构建工具链。

@@ -34,9 +34,10 @@ public sealed class AvaloniaEffectRuntime : IDisposable, IEffectPresenter
     }
 
     public static IEffectCatalog CreateDefaultCatalog() => new EffectCatalog(DiscoverTextureFactories().Select(factory => factory.Definition));
-    public static IEnumerable<ITextureEffectFactory> DiscoverTextureFactories() => typeof(SceneLayerHost).Assembly
-        .GetTypes().Where(type => !type.IsAbstract && typeof(ITextureEffectFactory).IsAssignableFrom(type) && type.GetConstructor(Type.EmptyTypes) is not null)
-        .Select(type => (ITextureEffectFactory)Activator.CreateInstance(type)!);
+    // Built-in effects are project shader resources, resolved explicitly by
+    // GetProgramFactoryAsync. There are no parameterless renderer factories.
+    // Keep this public entry point without scanning/rooting the renderer assembly.
+    public static IEnumerable<ITextureEffectFactory> DiscoverTextureFactories() => [];
 
     public async Task StartEffectAsync(EffectRequest request, CancellationToken cancellationToken)
     {

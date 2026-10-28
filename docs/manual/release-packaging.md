@@ -32,7 +32,7 @@ pwsh -NoProfile -File scripts/release/Release.ps1 -Version 0.1.0-dev.1
 ```text
 out/release/<version>/
   nuget/                 五个 nupkg
-  assets/                四个 ZIP
+  assets/                七个 ZIP
   SHA256SUMS
   release-index.json
 ```
@@ -53,20 +53,23 @@ out/release/<version>/
 
 默认打包后，在仓库外临时目录及隔离 NuGet 缓存验证四种消费工程、生成器和原生资产传递，测试期间不借用源码 ProjectReference 或中央版本配置。现有包缓存也可作为第三方依赖的离线 feed。`-SkipPackageValidation` 只适合打包调查，产生的索引不允许公开上传。
 
-四个 Windows x64 ZIP：
+Windows x64 应用提供两种部署方式，均保留 R2R：默认完整版附带 .NET；`-framework-dependent` 精简版要求用户安装 Windows x64 **.NET 10 Runtime 的最新修补版本**，不需要 SDK、ASP.NET Core Runtime 或 Windows Desktop Runtime。Avalonia/Skia、Miniaudio 和 VLC 等应用原生依赖仍随两种版本提供。下载地址：https://dotnet.microsoft.com/download/dotnet/10.0 。
 
-- `GalNet-Editor-<version>-win-x64-r2r.zip`：自包含 Editor，附 `CLI/GalNet.Editor.Headless.exe` 和项目创作 Skill。
+共七个 ZIP：
+
+- `GalNet-Editor-<version>-win-x64-r2r.zip`：自包含 Editor，附同目录的 `GalNet.Editor.Headless.exe` 和 `Skills/galnet-project-authoring/`。Editor 与 CLI 共用一份运行时和字节相同的依赖；应保持整个目录完整，不单独移动 EXE。
 - `GalNet-Sample-<version>-win-x64-r2r.zip`：不含游戏内容，`Run-Sample.cmd <展开内容目录>` 启动。
 - `GalNet-Sample-GameTestCase-<version>-win-x64-r2r.zip`：包含编译并展开的 GameTestCase，运行 `Run-GameTestCase.cmd`。
 - `GalNet-Sample-Contracts-<version>.zip`：与 Sample 匹配的 Core、Contracts.Builtins、GalNet.Project.Contracts 三个 IL DLL，给 Editor 项目使用。
+- 上述 Editor、纯 Sample、整合 Sample 各有一个 `-win-x64-r2r-framework-dependent.zip` 版本，使用系统安装的 .NET；Contracts ZIP 两种部署共用。
 
 应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试接入。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
 
 整合 GameTestCase 经过 `project export-directory` 编译：资源在 `Assets/Paks/*.pak`，剧情在 `Graph/groups/*.galgroup`；Graph 索引、配置和本地化 JSON 按运行时格式保留，不是作者项目副本。验收要求非空 PAK、已编译剧情，并拒绝散装素材、rawgalgroup 和作者 Contracts 目录。
 
-这些应用自带 .NET 运行时，无需用户安装 .NET；系统 DLL、Avalonia/Skia/HarfBuzz 与 VLC 视频插件都是体积来源。R2R 保留 IL 并增加预编译代码，不能按 AOT 的体积预期评估。DLL 数量主要来自 VLC 插件，不能仅按扩展名删除；当前保留 x64 插件能力集合。Editor 内嵌 CLI 保持独立自包含目录，因此仍有一份运行时副本。
+完整版无需用户安装 .NET；系统 DLL、Avalonia/Skia/HarfBuzz 与 VLC 视频插件都是体积来源。R2R 保留 IL 并增加预编译代码，不能按 AOT 的体积预期评估。DLL 数量主要来自 VLC 插件，不能仅按扩展名删除；当前保留 x64 插件能力集合。Editor 与 CLI 先独立发布，再将字节一致的重名文件合并到同一目录，依赖冲突会明确失败，不覆盖另一程序的依赖。
 
-每个 ZIP 都有版本/commit/文件哈希清单。流水线还会重新解压、验证哈希、检查 R2R 标记和契约字节身份，并执行分发 CLI 的 help。可单独运行分发验证，`-DesktopSmoke` 额外验证真实桌面玩家使用展开内容完成初始化：
+每个 ZIP 都有版本/commit/文件哈希清单。流水线还会重新解压、验证哈希、检查 R2R 标记和契约字节身份、核对部署声明及运行时份数，并执行两种分发 CLI 的 help、创建项目和 schema 查询。可单独运行分发验证，`-DesktopSmoke` 额外检查两种 Editor 初始化及实际加载的运行时路径，并验证两种桌面玩家使用展开内容完成初始化（验证机需安装 .NET 10 x64 Runtime）：
 
 ```powershell
 pwsh -File scripts/release/Test-Release.ps1 -Version 0.1.0-dev.1 `
@@ -106,4 +109,4 @@ Push 先检查索引、全部文件哈希、版本和消费者验收状态；先
 
 ## 兼容原有本地应用入口
 
-`Publish.ps1 -Package Editor/Sample/SampleIntegrated/All -Version 1.2.3` 继续可用，默认仍生成旧式 ZIP 文件名，供 Editor 的仓库内导出窗口使用。整合自定义目录或 galpak 的参数保持原语义；完整五包与新索引流程使用 Release.ps1。直接运行旧入口不会产生可供 Push.ps1 使用的封存索引。
+`Publish.ps1 -Package Editor/Sample/SampleIntegrated/All -Version 1.2.3` 继续可用，默认仍生成旧式 ZIP 文件名，供 Editor 的仓库内导出窗口使用。可选 `-Deployment FrameworkDependent` 生成精简版，名称追加 `-framework-dependent`；默认 `SelfContained`。整合自定义目录或 galpak 的参数保持原语义；完整五包与新索引流程使用 Release.ps1，默认同时生成两种部署。直接运行旧入口不会产生可供 Push.ps1 使用的封存索引。`Test-Release.ps1 -Deployments SelfContained` 可单独验收完整版，默认验收两种部署。

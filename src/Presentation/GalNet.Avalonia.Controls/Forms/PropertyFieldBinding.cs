@@ -1,5 +1,5 @@
-using System.Text.Json;
 using GalNet.Core.Parameters;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Game.Controls.Forms;
 
@@ -18,7 +18,7 @@ public sealed class PropertyFieldBinding(FieldEditorContext parent, FieldDescrip
         using var document = new ValueDocument(parent.Field, parent.EffectiveValue, resolver);
         var property = document.FindProperty([segment]);
         return property is not null ? new(property.Value) : document.Root.Issue is not null
-            ? new(JsonSerializer.SerializeToElement("?")) : default;
+            ? new(JsonCodec.SerializeToElement("?")) : default;
     }
     public event EventHandler? Changed;
     public void Refresh() => Changed?.Invoke(this, EventArgs.Empty);

@@ -3,6 +3,7 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using GalNet.Core.Parameters;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Game.Controls.Forms;
 
@@ -184,10 +185,10 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
                 var element = _shape.Element!;
                 var wrapped = element.Semantic != FieldValueSemantic.None;
                 var descriptor = wrapped ? new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Object([element])) : element.Value;
-                var source = wrapped ? JsonSerializer.SerializeToElement(new Dictionary<string, JsonElement> { [element.Id] = items[position] }) : items[position];
+                var source = wrapped ? JsonCodec.SerializeToElement(new Dictionary<string, JsonElement> { [element.Id] = items[position] }) : items[position];
                 using var copy = Context.Registry?.CopyValue?.Invoke(descriptor, source) ?? new FieldCopy(source);
                 items.Insert(position + 1, wrapped ? copy.Value.GetProperty(element.Id) : copy.Value);
-                await Submit(JsonSerializer.SerializeToElement(items), generation, CancellationToken.None);
+                await Submit(JsonCodec.SerializeToElement(items.ToArray()), generation, CancellationToken.None);
             }).IsEnabled = values.Count < 200;
             row.Children.Add(buttons);
             var descriptor = new FieldDescriptor(_shape.Element!.Id, _shape.Element.Value, isRequired: true, editor: _shape.Element.Editor, labelKey: _shape.Element.LabelKey, semantic: _shape.Element.Semantic);
@@ -217,7 +218,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
                 if (candidate.ContainsKey(renamed)) { Context.ReportIssue(new("structure.keyDuplicate", DuplicateKeyText)); return; }
                 if (!candidate.ContainsKey(original)) return;
                 var ordered = candidate.Select(item => new KeyValuePair<string, JsonElement>(item.Key == original ? renamed : item.Key, item.Value)).ToDictionary();
-                await Submit(JsonSerializer.SerializeToElement(ordered), generation, CancellationToken.None);
+                await Submit(JsonCodec.SerializeToElement(ordered), generation, CancellationToken.None);
             }
             key.KeyDown += async (_, args) =>
             {
@@ -230,7 +231,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             {
                 if (!Available(generation)) return;
                 var candidate = MapValues(); candidate.Remove(original);
-                await Submit(JsonSerializer.SerializeToElement(candidate), generation, CancellationToken.None);
+                await Submit(JsonCodec.SerializeToElement(candidate), generation, CancellationToken.None);
             });
             row.Children.Add(keys);
             var descriptor = _shape.Element!;
@@ -245,7 +246,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             var candidate = MapValues(); var key = input.Text ?? "";
             if (candidate.ContainsKey(key)) { Context.ReportIssue(new("structure.keyDuplicate", DuplicateKeyText)); return; }
             candidate.Add(key, InitialValue(_shape.Element!.Value));
-            await Submit(JsonSerializer.SerializeToElement(candidate), generation, CancellationToken.None);
+            await Submit(JsonCodec.SerializeToElement(candidate), generation, CancellationToken.None);
         }).IsEnabled = values.Count < 200;
         panel.Children.Add(additions); Content = panel;
     }
@@ -261,15 +262,15 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     private static JsonElement InitialValue(ValueDescriptor descriptor, int depth = 0)
     {
         var type = Nullable.GetUnderlyingType(descriptor.ValueType) ?? descriptor.ValueType;
-        if (depth >= 8) return JsonSerializer.SerializeToElement<object?>(null);
+        if (depth >= 8) return JsonCodec.SerializeToElement<object?>(null);
         using var document = new ValueDocument(new("initial", descriptor), null);
         var shape = document.Root.Structure;
-        if (shape.Kind == ValueStructureKind.Sequence) return JsonSerializer.SerializeToElement(Array.Empty<object>());
-        if (shape.Kind == ValueStructureKind.Map) return JsonSerializer.SerializeToElement(new Dictionary<string, object>());
+        if (shape.Kind == ValueStructureKind.Sequence) return JsonCodec.SerializeToElement(Array.Empty<JsonElement>());
+        if (shape.Kind == ValueStructureKind.Map) return JsonCodec.SerializeToElement(new Dictionary<string, JsonElement>());
         if (shape.Kind == ValueStructureKind.Object)
-            return JsonSerializer.SerializeToElement(Members(descriptor, type).Where(member => member.Field.DefaultValue is not null || member.Field.IsRequired)
+            return JsonCodec.SerializeToElement(Members(descriptor, type).Where(member => member.Field.DefaultValue is not null || member.Field.IsRequired)
                 .ToDictionary(member => member.Wire, member => member.Field.DefaultValue ?? InitialValue(member.Field.Value, depth + 1)));
-        return JsonSerializer.SerializeToElement(type == typeof(string) ? "" : type.IsEnum ? Enum.GetValues(type).GetValue(0) : type.IsValueType ? Activator.CreateInstance(type) : null, descriptor.ValueType, descriptor.JsonOptions);
+        return JsonCodec.SerializeToElement(type == typeof(string) ? "" : type.IsEnum ? Enum.ToObject(type, Enum.GetValuesAsUnderlyingType(type).GetValue(0)!) : type.IsValueType ? Activator.CreateInstance(type) : null, descriptor.ValueType, descriptor.JsonOptions);
     }
     private ChildBinding Bind(FieldDescriptor field, string? wire, int? index)
     { var binding = new ChildBinding(this, field, wire, index, _generation); _bindings.Add(binding); return binding; }
@@ -290,7 +291,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     private async Task ChangeArray(int generation, Action<List<JsonElement>> edit)
     {
         if (!Available(generation)) return;
-        var values = ArrayValues(); edit(values); await Submit(JsonSerializer.SerializeToElement(values), generation, CancellationToken.None);
+        var values = ArrayValues(); edit(values); await Submit(JsonCodec.SerializeToElement(values.ToArray()), generation, CancellationToken.None);
     }
     private Task Move(int index, int offset, int generation) => ChangeArray(generation, values => { var item = values[index]; values.RemoveAt(index); values.Insert(index + offset, item); });
     private bool Available(int generation) => !_disposed && IsExpanded && generation == _generation && Context.IsEnabled;
@@ -299,7 +300,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     {
         if (!Available(generation)) return Obsolete();
         if (_shape.AllowsJsonString && Context.Value.Json is { ValueKind: JsonValueKind.String } && json.ValueKind != JsonValueKind.String)
-            json = JsonSerializer.SerializeToElement(json.GetRawText());
+            json = JsonCodec.SerializeToElement(json.GetRawText());
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _version.Token);
         _submitted = json.Clone(); _elementCommit = elementCommit;
         try { return await Context.CommitAsync(new(json), linked.Token) ? null : Context.Issue ?? Obsolete(); }
@@ -332,7 +333,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             if (wire is not null) return owner.CommitObject(new Dictionary<string, FieldValue> { [wire] = value }, generation, token);
             if (value.Json is not { } element) return Task.FromResult<ValueIssue?>(new("structure.element", "Array elements cannot be omitted; remove the element instead.", field.Id));
             var values = owner.ArrayValues(); values[index!.Value] = element;
-            return owner.Submit(JsonSerializer.SerializeToElement(values), generation, token, elementCommit: true);
+            return owner.Submit(JsonCodec.SerializeToElement(values.ToArray()), generation, token, elementCommit: true);
         }
     }
     private void Release()

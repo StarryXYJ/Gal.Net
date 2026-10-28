@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -44,14 +45,14 @@ public class GamePage : TemplatedControl
     public GamePage()
     {
         Scene = new Grid { ClipToBounds = true, Children = { SceneHost } };
-        BindContent(SceneHost, SceneLayerHost.ItemsSourceProperty, nameof(GamePageViewModel.Layers));
-        BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, nameof(GamePageViewModel.TextureEffects));
-        BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, nameof(GamePageViewModel.SceneRenderables));
-        BindContent(Dialogue, IsVisibleProperty, nameof(GamePageViewModel.IsDialogueOverlayVisible));
-        BindContent(Nvl, IsVisibleProperty, nameof(GamePageViewModel.IsNvlOverlayVisible));
-        BindContent(Choice, IsVisibleProperty, nameof(GamePageViewModel.IsChoiceOverlayVisible));
-        BindContent(Choice, ItemsControl.ItemsSourceProperty, nameof(GamePageViewModel.Choices));
-        BindContent(Choice, ChoiceList.SelectionCommandProperty, nameof(GamePageViewModel.CompleteChoiceCommand));
+        BindContent(SceneHost, SceneLayerHost.ItemsSourceProperty, page => ((GamePageViewModel)page.DataContext!).Layers);
+        BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, page => ((GamePageViewModel)page.DataContext!).TextureEffects);
+        BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, page => ((GamePageViewModel)page.DataContext!).SceneRenderables);
+        BindContent(Dialogue, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsDialogueOverlayVisible);
+        BindContent(Nvl, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsNvlOverlayVisible);
+        BindContent(Choice, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsChoiceOverlayVisible);
+        BindContent(Choice, ItemsControl.ItemsSourceProperty, page => ((GamePageViewModel)page.DataContext!).Choices);
+        BindContent(Choice, ChoiceList.SelectionCommandProperty, page => ((GamePageViewModel)page.DataContext!).CompleteChoiceCommand);
         AddHandler(PointerPressedEvent, OnPagePointerPressed, RoutingStrategies.Tunnel);
         AddHandler(KeyDownEvent, (_, _) => (DataContext as GamePageViewModel)?.ClearPlaybackPointer(), RoutingStrategies.Tunnel);
     }
@@ -86,8 +87,8 @@ public class GamePage : TemplatedControl
             throw new InvalidOperationException($"GamePage {name} must present the corresponding owned content using TemplateBinding.");
     }
 
-    private void BindContent(AvaloniaObject target, AvaloniaProperty property, string path) =>
-        target.Bind(property, new ReflectionBinding($"DataContext.{path}") { Source = this });
+    private void BindContent<T>(AvaloniaObject target, AvaloniaProperty property, Expression<Func<GamePage, T>> path) =>
+        target.Bind(property, CompiledBinding.Create(path, source: this));
 
     private void OnPagePointerPressed(object? sender, PointerPressedEventArgs eventArgs)
     {
