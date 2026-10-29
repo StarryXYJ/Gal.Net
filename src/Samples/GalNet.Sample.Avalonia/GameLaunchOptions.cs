@@ -1,3 +1,6 @@
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 #if GALNET_GAME_DEBUG
 using GalNet.Debugging;
 #endif
@@ -9,18 +12,50 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
 #if GALNET_GAME_DEBUG
     public DebugInvitation? DebugInvitation { get; init; }
 #endif
-    public string LogDirectory =>
-        Path.Combine(
-            ProfileDirectory
-            ?? (GameDirectory is null
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet", "Sample")
-                : Path.Combine(GameDirectory, ".galnet")),
-            "logs");
+    public string LogDirectory => Path.Combine(ProfileDirectory
+        ?? GetDefaultProfileDirectory(GameDirectory ?? Path.Combine(GetApplicationDirectory(AppContext.BaseDirectory), "pak")), "logs");
 
     public static GameLaunchOptions Parse(string[] args)
+        => Parse(args, GetApplicationDirectory(AppContext.BaseDirectory));
+
+    internal static string GetApplicationDirectory(string assemblyDirectory)
     {
-        string? gameDirectory = null;
+        var directory = new DirectoryInfo(Path.GetFullPath(assemblyDirectory));
+        return directory.Name.Equals("lib", StringComparison.OrdinalIgnoreCase) && directory.Parent is not null
+            && (File.Exists(Path.Combine(directory.Parent.FullName, "GalNet.Sample.Avalonia.exe"))
+                || File.Exists(Path.Combine(directory.Parent.FullName, "GalNet.Sample.Avalonia")))
+            ? directory.Parent.FullName : directory.FullName;
+    }
+
+    internal static string GetDefaultProfileDirectory(string gameDirectory)
+    {
+        var identity = "directory:" + Path.GetFullPath(gameDirectory);
+        try
+        {
+            var descriptor = Path.Combine(gameDirectory, "content.json");
+            if (File.Exists(descriptor))
+            {
+                using var json = JsonDocument.Parse(File.ReadAllBytes(descriptor));
+                if (json.RootElement.ValueKind == JsonValueKind.Object
+                    && json.RootElement.TryGetProperty("projectId", out var id)
+                    && id.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(id.GetString()))
+                    identity = "project:" + id.GetString();
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Content loading reports the original error in the startup window.
+        }
+        var projectKey = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet", projectKey);
+    }
+
+    internal static GameLaunchOptions Parse(string[] args, string applicationDirectory)
+    {
+        var gameDirectory = Path.Combine(Path.GetFullPath(applicationDirectory), "pak");
         string? profileDirectory = null;
+#if GALNET_LAUNCH_ARGS
+        var hasGameArgument = false;
 #if GALNET_GAME_DEBUG
         var debug = new Dictionary<string, string>(StringComparer.Ordinal);
 #endif
@@ -38,21 +73,32 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
                 throw new ArgumentException("This application was built without game debugging support.");
 #endif
             }
-            if (args[index] == "--profile" && index + 1 < args.Length)
+            if (args[index] == "--profile")
             {
+                if (index + 1 >= args.Length || args[index + 1].StartsWith('-'))
+                    throw new ArgumentException("Missing value for '--profile'.");
                 profileDirectory = Path.GetFullPath(args[++index]);
                 continue;
             }
 
-            if (!args[index].StartsWith('-') && gameDirectory is null)
+            if (!args[index].StartsWith('-') && !hasGameArgument)
+            {
                 gameDirectory = Path.GetFullPath(args[index]);
+                hasGameArgument = true;
+                continue;
+            }
+            throw new ArgumentException($"Unknown launch argument '{args[index]}'.");
         }
+#else
+        if (args.Length > 0) throw new ArgumentException("This player was built without launch argument support.");
+#endif
+        profileDirectory ??= GetDefaultProfileDirectory(gameDirectory);
 
 #if GALNET_GAME_DEBUG
         DebugInvitation? invitation = null;
         if (debug.Count > 0)
         {
-            if (gameDirectory is null || !debug.TryGetValue("--debug-port", out var portText) || !int.TryParse(portText, out var port) || port is <= 0 or > 65535 ||
+            if (!debug.TryGetValue("--debug-port", out var portText) || !int.TryParse(portText, out var port) || port is <= 0 or > 65535 ||
                 !debug.TryGetValue("--debug-token", out var token) || !debug.TryGetValue("--debug-session", out var session) || !debug.TryGetValue("--debug-project", out var project))
                 throw new ArgumentException("Debug launch requires a content directory, port, token, session and project identity.");
             string? fingerprint = null;

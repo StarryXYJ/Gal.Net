@@ -84,12 +84,12 @@ public static class GamePackageExporter
             {
                 foreach (var payload in prepared.Base)
                 {
-                    var entry = zip.CreateEntry(payload.Path, CompressionLevel.NoCompression);
+                    var entry = zip.CreateEntry("pak/" + payload.Path, CompressionLevel.NoCompression);
                     await using var input = File.OpenRead(Safe(stage, payload.StagedPath));
                     await using var destination = entry.Open();
                     await input.CopyToAsync(destination, cancellationToken);
                 }
-                var manifestEntry = zip.CreateEntry(prepared.ManifestPath, CompressionLevel.Optimal);
+                var manifestEntry = zip.CreateEntry("pak/" + prepared.ManifestPath, CompressionLevel.Optimal);
                 await using var manifestStream = manifestEntry.Open();
                 await manifestStream.WriteAsync(prepared.Manifest, cancellationToken);
             }
@@ -215,7 +215,7 @@ public static class GamePackageExporter
             baseline.Add(Write(privateStage, GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(descriptor, JsonOptions)));
             foreach (var file in content) baseline.Add(Write(privateStage, file.Path, file.Data));
             var files = baseline.Select(file => file.Entry).ToArray();
-            var manifest = new GalpakManifest(1, projectId, projectName, DateTimeOffset.UtcNow, files);
+            var manifest = new GalpakManifest(2, projectId, projectName, DateTimeOffset.UtcNow, files);
             var report = JsonSerializer.SerializeToUtf8Bytes(new { buildId, resources = layout, unused = plan.Unused.Select(file => new { file.Id, file.Path, file.TypeId }) }, JsonOptions);
             return new Prepared(baseline.ToArray(), stories.ToArray(), SafeName(projectName) + ".galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), report, buildId);
         }, ct);
@@ -252,7 +252,7 @@ public static class GamePackageExporter
         using var zip = ZipFile.OpenRead(path);
         foreach (var file in files)
         {
-            var entry = zip.GetEntry(file.Path) ?? throw new InvalidDataException($"Missing ZIP entry '{file.Path}'.");
+            var entry = zip.GetEntry("pak/" + file.Path) ?? throw new InvalidDataException($"Missing ZIP entry 'pak/{file.Path}'.");
             await using var stream = entry.Open();
             if (entry.Length != file.Size || Convert.ToHexStringLower(await SHA256.HashDataAsync(stream, ct)) != file.Sha256)
                 throw new InvalidDataException($"Checksum mismatch for '{file.Path}'.");

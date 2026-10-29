@@ -4,6 +4,7 @@ param(
     [string]$Tag,
     [ValidateSet('All', 'NuGet', 'Apps')][string]$Target = 'All',
     [ValidateSet('R2R', 'Aot', 'Both')][string]$SampleMode = 'R2R',
+    [ValidateSet('Player', 'Developer')][string]$SampleFlavor = 'Player',
     [string]$OutputRoot,
     [switch]$SkipPackageValidation
 )
@@ -38,7 +39,7 @@ if ($Target -in @('All', 'NuGet')) {
 if ($Target -in @('All', 'Apps')) {
     $contracts = Join-Path $work 'contracts'
     foreach ($deployment in @('SelfContained', 'FrameworkDependent')) {
-        & (Join-Path $PSScriptRoot 'Publish.ps1') -Package All -Version $Version -OutputRoot (Join-Path $work 'apps') -ContractOutputDirectory $contracts -IncludeModeInName -Deployment $deployment
+        & (Join-Path $PSScriptRoot 'Publish.ps1') -Package All -Version $Version -OutputRoot (Join-Path $work 'apps') -ContractOutputDirectory $contracts -IncludeModeInName -Deployment $deployment -SampleFlavor $SampleFlavor
         if (!$?) { throw "Application packaging failed: $deployment" }
     }
     Copy-Item (Join-Path $work "apps/$Version/*.zip") $assets
@@ -55,7 +56,7 @@ These IL DLLs match this release's Sample. They do not enable dynamic C# loading
     Write-ReleaseZip $contracts (Join-Path $assets "GalNet-Sample-Contracts-$Version.zip")
     $zipFiles = @(Get-ChildItem -LiteralPath $assets -Filter '*.zip')
     if ($zipFiles.Count -ne 7) { throw "Expected 7 ZIP files; found $($zipFiles.Count)." }
-    & (Join-Path $PSScriptRoot 'Test-Release.ps1') -Version $Version -AssetDirectory $assets -WorkDirectory (Join-Path $work 'app-validation')
+    & (Join-Path $PSScriptRoot 'Test-Release.ps1') -Version $Version -AssetDirectory $assets -WorkDirectory (Join-Path $work 'app-validation') -SampleFlavor $SampleFlavor
     if (!$?) { throw 'Release payload verification failed.' }
 }
 $files = @(Get-ChildItem -LiteralPath $candidate -File -Recurse | Sort-Object FullName | ForEach-Object {
@@ -64,7 +65,7 @@ $files = @(Get-ChildItem -LiteralPath $candidate -File -Recurse | Sort-Object Fu
 $files | ForEach-Object { "$($_.sha256)  $($_.path)" } | Set-Content (Join-Path $candidate 'SHA256SUMS') -Encoding ascii
 $index = [ordered]@{
     schemaVersion = 1; version = $Version; tag = $Tag; sourceCommit = $commit; dirty = $dirty
-    target = $Target; runtime = 'win-x64'; sampleModes = @('r2r'); deployments = @('self-contained', 'framework-dependent'); packageValidation = $packageValidation
+    target = $Target; runtime = 'win-x64'; sampleModes = @('r2r'); sampleFlavor = $SampleFlavor; deployments = @('self-contained', 'framework-dependent'); packageValidation = $packageValidation
     packageValidationSkipped = [bool]$SkipPackageValidation; files = $files; createdUtc = [DateTime]::UtcNow.ToString('O')
 }
 $index | ConvertTo-Json -Depth 8 | Set-Content (Join-Path $candidate 'release-index.json') -Encoding utf8

@@ -9,7 +9,6 @@ namespace GalNet.Storage.FileSystem;
 /// <summary>Verifies and installs a distributable <c>.galpak</c> beside its ZIP container.</summary>
 public static class GalpakInstaller
 {
-    private const int CurrentManifestVersion = 1;
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
 
     public static async Task<string> InstallAsync(string packagePath, string? installationDirectory = null, CancellationToken ct = default)
@@ -20,15 +19,21 @@ public static class GalpakInstaller
             throw new ArgumentException("A .galpak package is required.", nameof(packagePath));
         if (!File.Exists(sourcePath)) throw new FileNotFoundException("Game package was not found.", sourcePath);
 
-        var targetDirectory = installationDirectory is null
-            ? Path.Combine(Path.GetDirectoryName(sourcePath)!, Path.GetFileNameWithoutExtension(sourcePath))
-            : Path.GetFullPath(installationDirectory);
-
         using var source = File.OpenRead(sourcePath);
         using var zip = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: false);
         var manifestEntry = FindManifestEntry(zip);
         var manifest = await ReadManifestAsync(manifestEntry, ct);
-        ValidateManifest(manifest, zip);
+        var prefix = manifest.Version switch
+        {
+            1 when !manifestEntry.FullName.Contains('/', StringComparison.Ordinal) => "",
+            2 when manifestEntry.FullName.StartsWith("pak/", StringComparison.Ordinal)
+                && !manifestEntry.FullName[4..].Contains('/', StringComparison.Ordinal) => "pak/",
+            _ => throw new InvalidDataException($"Unsupported .galpak version or layout '{manifest.Version}'.")
+        };
+        ValidateManifest(manifest, zip, manifestEntry.FullName, prefix);
+        var targetDirectory = installationDirectory is null
+            ? Path.Combine(Path.GetDirectoryName(sourcePath)!, manifest.Version == 2 ? "pak" : Path.GetFileNameWithoutExtension(sourcePath))
+            : Path.GetFullPath(installationDirectory);
 
         if (Directory.Exists(targetDirectory))
         {
@@ -48,13 +53,13 @@ public static class GalpakInstaller
             foreach (var package in manifest.Files.OrderBy(entry => entry.Path, StringComparer.Ordinal))
             {
                 ct.ThrowIfCancellationRequested();
-                var sourceEntry = zip.GetEntry(package.Path) ?? throw new InvalidDataException($"Package is missing '{package.Path}'.");
+                var sourceEntry = zip.GetEntry(prefix + package.Path) ?? throw new InvalidDataException($"Package is missing '{prefix}{package.Path}'.");
                 var destinationPath = GetSafeDestination(stagingDirectory, package.Path);
                 Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
                 await CopyAndVerifyAsync(sourceEntry, destinationPath, package, ct);
             }
 
-            var installedManifest = GetSafeDestination(stagingDirectory, manifestEntry.FullName);
+            var installedManifest = GetSafeDestination(stagingDirectory, manifestEntry.FullName[prefix.Length..]);
             Directory.CreateDirectory(Path.GetDirectoryName(installedManifest)!);
             await using (var manifestSource = manifestEntry.Open())
             await using (var manifestDestination = File.Create(installedManifest))
@@ -84,11 +89,11 @@ public static class GalpakInstaller
     private static ZipArchiveEntry FindManifestEntry(ZipArchive zip)
     {
         var manifests = zip.Entries
-            .Where(entry => entry.FullName.EndsWith(".galnet", StringComparison.OrdinalIgnoreCase) && !entry.FullName.Contains('/', StringComparison.Ordinal))
+            .Where(entry => entry.FullName.EndsWith(".galnet", StringComparison.OrdinalIgnoreCase))
             .ToArray();
         return manifests.Length == 1
             ? manifests[0]
-            : throw new InvalidDataException("A .galpak must contain exactly one root .galnet manifest.");
+            : throw new InvalidDataException("A .galpak must contain exactly one .galnet manifest in its content root.");
     }
 
     private static async Task<GalpakManifest> ReadManifestAsync(ZipArchiveEntry entry, CancellationToken ct)
@@ -98,10 +103,22 @@ public static class GalpakInstaller
         return manifest ?? throw new InvalidDataException("Package manifest is empty.");
     }
 
-    private static void ValidateManifest(GalpakManifest manifest, ZipArchive zip)
+    private static void ValidateManifest(GalpakManifest manifest, ZipArchive zip, string manifestPath, string prefix)
     {
-        if (manifest.Version != CurrentManifestVersion) throw new InvalidDataException($"Unsupported .galpak version '{manifest.Version}'.");
         if (manifest.Files is not { Count: > 0 }) throw new InvalidDataException("Package manifest has no payloads.");
+
+        var archivePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in zip.Entries)
+        {
+            if (!archivePaths.Add(entry.FullName)) throw new InvalidDataException($"Duplicate ZIP entry '{entry.FullName}'.");
+            if (!entry.FullName.StartsWith(prefix, StringComparison.Ordinal))
+                throw new InvalidDataException("All version 2 package entries must be inside pak/.");
+            if (entry.FullName.EndsWith('/'))
+            {
+                if (entry.FullName != prefix) ValidateRelativePath(entry.FullName[prefix.Length..].TrimEnd('/'));
+            }
+            else ValidateRelativePath(entry.FullName[prefix.Length..]);
+        }
 
         var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var package in manifest.Files)
@@ -114,9 +131,12 @@ public static class GalpakInstaller
             if (package.Path.EndsWith(".galnet", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The package manifest cannot also be a payload file.");
             if (!paths.Add(package.Path)) throw new InvalidDataException($"Package manifest repeats '{package.Path}'.");
-            var zipEntry = zip.GetEntry(package.Path) ?? throw new InvalidDataException($"Package is missing '{package.Path}'.");
+            var zipEntry = zip.GetEntry(prefix + package.Path) ?? throw new InvalidDataException($"Package is missing '{prefix}{package.Path}'.");
             if (zipEntry.Length != package.Size) throw new InvalidDataException($"Package entry '{package.Path}' size does not match its manifest.");
         }
+        if (prefix.Length > 0 && zip.Entries.Any(entry => !entry.FullName.EndsWith('/')
+            && entry.FullName != manifestPath && !paths.Contains(entry.FullName[prefix.Length..])))
+            throw new InvalidDataException("Package contains an undeclared payload.");
     }
 
     private static async Task<bool> MatchesInstalledPackageAsync(string directory, GalpakManifest manifest, CancellationToken ct)

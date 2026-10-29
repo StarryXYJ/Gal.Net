@@ -67,17 +67,18 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 
 ```text
 <Project>.galpak
-  <Project>.galnet          JSON manifest，版本 1
-  settings.json
-  content.json             唯一 Graph 与分包描述，版本 2
-  I18n/**
-  gallery.json              从 metadata 派生
-  Assets/Paks/000-base.pak  基础资源首片，后续为 001-base.pak 等
+  pak/
+    <Project>.galnet        JSON manifest，版本 2
+    settings.json
+    content.json           唯一 Graph 与分包描述，版本 2
+    I18n/**
+    gallery.json            从 metadata 派生
+    Assets/Paks/000-base.pak 基础资源首片，后续为 001-base.pak 等
 ```
 
-manifest 列出每个 ZIP 条目的路径、大小和 SHA-256。导出在临时文件中创建，重新验证 ZIP 条目与 PAK 后才替换目标文件。
+manifest 列出载荷相对内容根的路径、大小和 SHA-256，例如 `Assets/Paks/000-base.pak`；ZIP 条目额外带 `pak/` 前缀。v2 拒绝内容根外条目、重复 ZIP 路径和未声明载荷。导出在临时文件中创建，重新验证 ZIP 条目与 PAK 后才替换目标文件。外层目录不改变 content/PAK/save 格式或构建身份算法。
 
-传入 `.galpak` 时，`GameInstallation.OpenAsync` 先校验 ZIP 根目录唯一 manifest、声明路径、条目大小与 SHA-256，再原子解压到包文件旁的同名目录。已存在且与 manifest 一致的安装目录可复用；不同或损坏内容不会覆盖现有目录。
+传入 `.galpak` 时，`GameInstallation.OpenAsync` 先校验内容根唯一 manifest、声明路径、条目大小与 SHA-256，再原子安装到包文件旁的 `pak/`。`GalpakInstaller.InstallAsync` 显式目标表示实际内容根，目标为 `app/pak` 时不会再追加 `pak`；返回实际内容根。普通解压工具选择解压到应用目录同样得到 `app/pak`。已存在且与 manifest 一致的安装目录可复用；不同或损坏内容不会覆盖现有目录。安装器仍兼容 v1 平铺归档，v1 未显式指定目标时保留原来的包文件同名目录；新导出只生成 v2。
 
 运行时只装载 content.json 中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。content.json v2 保存固定 graphId、projectId、buildId、basePaks 和 stories；每个分片描述路径、大小、SHA-256。Graph 和编译 Group 经资源 provider 加载，特殊 JSON/I18n 文件仍走内容加载入口。旧内容需重新导出，不回退到 loose Graph。
 

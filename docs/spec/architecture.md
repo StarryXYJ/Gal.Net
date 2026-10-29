@@ -84,11 +84,11 @@ src/
 开发项目 ── ProjectGameContentProvider ── .meta -> GalleryCatalog
            LocalFileProvider(Assets/) ───── GUID -> raw bytes
 
-安装目录 ── InstalledGameContentProvider ─ generated gallery.json + Graph/
+安装目录 ── InstalledGameContentProvider ─ content/settings/I18n/gallery JSON
            PakFileProvider(Assets/Paks/**/*.pak) ─ GUID -> PAK bytes
 ```
 
-`.galpak` 只是 ZIP 运输容器。`GameInstallation` 验证并解压后，内容 provider 读取 Graph/settings/I18n/gallery 等特殊文件；只有 PAK 会成为资源 provider。详见 [资源](assets.md) 与 [文件格式](file-formats.md)。
+`.galpak` 是带 `pak/` 外层的 ZIP 运输容器。`GameInstallation` 验证并安装后，内容 provider 读取 content/settings/I18n/gallery 等特殊文件，Graph/Group 从 PAK 资源加载；只有 PAK 会成为资源 provider。桌面 Sample 默认选择应用同级 `pak/`，应用根与托管依赖所在的 `lib/` 分离；此定位策略属于 Sample 组合根，不进入共享内容加载器。详见 [资源](assets.md) 与 [文件格式](file-formats.md)。
 
 ## 游戏运行
 

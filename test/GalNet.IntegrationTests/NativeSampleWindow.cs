@@ -27,7 +27,15 @@ internal static class NativeSampleWindow
             return true;
         }, 0), Is.True);
         Assert.That(windows, Has.Count.EqualTo(1), "Expected the Sample's visible titled window in its own process.");
-        Assert.That(PostMessage(windows.Single(), 0x0010, 0, 0), Is.True, "The Sample window must receive WM_CLOSE.");
+        var sampleWindow = windows.Single();
+        Assert.That(PostMessage(sampleWindow, 0x0010, 0, 0), Is.True, "The Sample window must receive WM_CLOSE.");
+        // The exit overlay focuses Cancel; Tab selects Confirm. Queue input on
+        // this owned window after WM_CLOSE, without changing foreground focus.
+        foreach (var key in new[] { 0x09, 0x0D })
+        {
+            Assert.That(PostMessage(sampleWindow, 0x0100, key, 0), Is.True);
+            Assert.That(PostMessage(sampleWindow, 0x0101, key, 0), Is.True);
+        }
     }
 
     private delegate bool WindowCallback(nint window, nint parameter);

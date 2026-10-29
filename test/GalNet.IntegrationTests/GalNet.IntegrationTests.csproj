@@ -4,6 +4,8 @@
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == '' And '$(Configuration)' == 'Debug'">true</EnableGameDebugging>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
     <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
+    <EnableLaunchArguments Condition="'$(EnableLaunchArguments)' == ''">$(EnableGameDebugging)</EnableLaunchArguments>
+    <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
     <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
   </PropertyGroup>
 

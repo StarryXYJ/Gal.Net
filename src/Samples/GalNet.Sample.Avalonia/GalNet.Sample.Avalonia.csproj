@@ -2,8 +2,11 @@
   <PropertyGroup>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == '' And '$(Configuration)' == 'Debug'">true</EnableGameDebugging>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
+    <EnableLaunchArguments Condition="'$(EnableLaunchArguments)' == ''">$(EnableGameDebugging)</EnableLaunchArguments>
     <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'WindowsReadyToRun'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
     <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'WindowsReadyToRun'">$(MSBuildProjectDirectory)/packages.lock.WindowsReadyToRun.Debugging.json</NuGetLockFilePath>
     <CopyOutputSymbolsToPublishDirectory Condition="'$(EnableGameDebugging)' != 'true'">false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
   <PropertyGroup>
@@ -73,6 +76,9 @@
     <AvaloniaXaml Remove="Views/Debug*.axaml" />
   </ItemGroup>
   <!-- The SDK property alone does not exclude referenced-project and native-package PDBs. -->
+  <Target Name="ValidateSampleLaunchCapabilities" BeforeTargets="CoreCompile">
+    <Error Condition="'$(EnableGameDebugging)' == 'true' And '$(EnableLaunchArguments)' != 'true'" Text="Game debugging requires EnableLaunchArguments=true." />
+  </Target>
   <Target Name="ExcludePlayerPublishSymbols" AfterTargets="ComputeFilesToPublish" Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'false'">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'" />

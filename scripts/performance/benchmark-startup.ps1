@@ -32,7 +32,8 @@ if ($Target -eq 'Sample') {
 $buildMilliseconds = $null
 if (-not $SkipBuild) {
     $buildWatch = [Diagnostics.Stopwatch]::StartNew()
-    & dotnet build (Join-Path $projectDirectory "$assemblyName.csproj") -c $Configuration -p:Benchmark=true -p:UseSharedCompilation=false -m:1 -nr:false -v:minimal *> (Join-Path $OutputDirectory 'build.log')
+    $launchProperties = if ($Target -eq 'Sample') { @('-p:EnableLaunchArguments=true') } else { @() }
+    & dotnet build (Join-Path $projectDirectory "$assemblyName.csproj") -c $Configuration -p:Benchmark=true @launchProperties -p:UseSharedCompilation=false -m:1 -nr:false -v:minimal *> (Join-Path $OutputDirectory 'build.log')
     $buildWatch.Stop()
     if ($LASTEXITCODE -ne 0) { throw "Benchmark build failed. See $OutputDirectory/build.log" }
     $buildMilliseconds = $buildWatch.Elapsed.TotalMilliseconds

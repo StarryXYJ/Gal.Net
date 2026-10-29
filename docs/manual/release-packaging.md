@@ -58,18 +58,24 @@ Windows x64 应用提供两种部署方式，均保留 R2R：默认完整版附�
 共七个 ZIP：
 
 - `GalNet-Editor-<version>-win-x64-r2r.zip`：自包含 Editor，附同目录的 `GalNet.Editor.Headless.exe` 和 `Skills/galnet-project-authoring/`。Editor 与 CLI 共用一份运行时和字节相同的依赖；应保持整个目录完整，不单独移动 EXE。
-- `GalNet-Sample-<version>-win-x64-r2r.zip`：不含游戏内容，`Run-Sample.cmd <展开内容目录>` 启动。
-- `GalNet-Sample-GameTestCase-<version>-win-x64-r2r.zip`：包含编译并展开的 GameTestCase，运行 `Run-GameTestCase.cmd`。
+- `GalNet-Sample-<version>-win-x64-r2r.zip`：不含游戏内容，将内容放入同级 `pak/` 后双击 `GalNet.Sample.Avalonia.exe`。
+- `GalNet-Sample-GameTestCase-<version>-win-x64-r2r.zip`：包含位于 `pak/` 的编译 GameTestCase，双击 `GalNet.Sample.Avalonia.exe`。
 - `GalNet-Sample-Contracts-<version>.zip`：与 Sample 匹配的 Core、Contracts.Builtins、GalNet.Project.Contracts 三个 IL DLL，给 Editor 项目使用。
 - 上述 Editor、纯 Sample、整合 Sample 各有一个 `-win-x64-r2r-framework-dependent.zip` 版本，使用系统安装的 .NET；Contracts ZIP 两种部署共用。
 
-应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试接入。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
+应用根只保留入口 EXE 与目录：全部托管依赖、runtimeconfig/deps、原生依赖及自包含运行时位于 `lib/`；`docs/` 保存 README、LICENSE 和 release-manifest.json；Editor 的作者 Skill 保留根 `Skills/`，默认作者契约位于 `lib/DefaultContracts/`。SDK 生成的原生 apphost 直接定位 `lib/<app>.dll`，仍是单个应用进程。Contracts ZIP 是作者 DLL 部署材料，保留原有平铺布局。
 
-整合 GameTestCase 经过 `project export-directory` 编译：资源在 `Assets/Paks/*.pak`，剧情在 `Graph/groups/*.galgroup`；Graph 索引、配置和本地化 JSON 按运行时格式保留，不是作者项目副本。验收要求非空 PAK、已编译剧情，并拒绝散装素材、rawgalgroup 和作者 Contracts 目录。
+默认应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试与启动参数。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
+
+整合 GameTestCase 经过 `project export-directory` 编译：Graph、Group 和资源均在 `pak/Assets/Paks/*.pak`，可选剧情分片位于 `pak/StoryPatches/<buildId>/`；content/settings/本地化/gallery JSON 保留为运行时内容。验收要求有效 content.json、非空 PAK，并拒绝 loose Graph、散装素材、rawgalgroup 和作者 Contracts 目录。`-Galpak` 安装到同一 `pak/`，同时收集归档旁当前 buildId 的剧情包及 ResourcePatches。
+
+Sample 默认使用用户 `LocalApplicationData/GalNet/<project identity digest>/` 保存玩家数据和日志，安装目录无需可写权限。profile 不随安装目录或 buildId 改变；旧存档位置不自动迁移。开发版可用 `--profile` 显式指定。
+
+需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，保留 PDB，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
 
 完整版无需用户安装 .NET；系统 DLL、Avalonia/Skia/HarfBuzz 与 VLC 视频插件都是体积来源。R2R 保留 IL 并增加预编译代码，不能按 AOT 的体积预期评估。DLL 数量主要来自 VLC 插件，不能仅按扩展名删除；当前保留 x64 插件能力集合。Editor 与 CLI 先独立发布，再将字节一致的重名文件合并到同一目录，依赖冲突会明确失败，不覆盖另一程序的依赖。
 
-每个 ZIP 都有版本/commit/文件哈希清单。流水线还会重新解压、验证哈希、检查 R2R 标记和契约字节身份、核对部署声明及运行时份数，并执行两种分发 CLI 的 help、创建项目和 schema 查询。可单独运行分发验证，`-DesktopSmoke` 额外检查两种 Editor 初始化及实际加载的运行时路径，并验证两种桌面玩家使用展开内容完成初始化（验证机需安装 .NET 10 x64 Runtime）：
+每个 ZIP 都有版本/commit/文件哈希清单（应用在 `docs/`，Contracts 在根）。流水线还会重新解压、验证哈希、检查 R2R 标记和契约字节身份、核对部署声明及运行时份数，并执行两种分发 CLI 的 help、创建项目和 schema 查询。可单独运行分发验证，`-DesktopSmoke` 额外检查两种 Editor 初始化及实际加载的运行时路径，并验证玩家在含空格路径、不同工作目录下无参数加载 `pak/`（验证机需安装 .NET 10 x64 Runtime）：
 
 ```powershell
 pwsh -File scripts/release/Test-Release.ps1 -Version 0.1.0-dev.1 `
@@ -77,7 +83,7 @@ pwsh -File scripts/release/Test-Release.ps1 -Version 0.1.0-dev.1 `
   -WorkDirectory out/release-smoke/dev1 -DesktopSmoke
 ```
 
-桌面 smoke 创建独立临时 profile，启动测试自己的进程，检查 session 初始化日志后终止该进程。它不证明完整剧情、存读档和音视频全流程验收通过。
+桌面 smoke 使用分发 CLI 创建并导出唯一项目，复制分发玩家到测试目录，通过其真实默认策略创建唯一用户 profile，准备已完成首次启动的计数。检查 session 初始化日志后终止测试自己的进程，保留日志副本并清理该唯一 profile；不借用现有游戏数据。它验证播放器和目录策略，整合内容另作清单/PAK 检查，不证明完整 GameTestCase 剧情、存读档和音视频全流程验收通过。
 
 ## AOT 当前状态
 

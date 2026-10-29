@@ -42,13 +42,23 @@ public sealed class ExportPreparationTests
         Assert.That(directory.Success, Is.True, directory.Error);
         Assert.That(package.Success, Is.True, package.Error);
         using var zip = ZipFile.OpenRead(package.PackagePath!);
+        Assert.That(zip.Entries.All(item => item.FullName.StartsWith("pak/", StringComparison.Ordinal)), Is.True);
         foreach (var item in zip.Entries.Where(item => !item.FullName.EndsWith(".galnet", StringComparison.Ordinal)))
         {
             using var input = item.Open();
             using var bytes = new MemoryStream();
             await input.CopyToAsync(bytes);
-            Assert.That(File.ReadAllBytes(Path.Combine(directory.ContentDirectory!, item.FullName)), Is.EqualTo(bytes.ToArray()), item.FullName);
+            Assert.That(File.ReadAllBytes(Path.Combine(directory.ContentDirectory!, item.FullName[4..])), Is.EqualTo(bytes.ToArray()), item.FullName);
         }
+        var extracted = Path.Combine(_root, "extracted");
+        ZipFile.ExtractToDirectory(package.PackagePath!, extracted);
+        var installed = await GalpakInstaller.InstallAsync(package.PackagePath!, Path.Combine(_root, "installed", "pak"));
+        Assert.That(Directory.Exists(Path.Combine(installed, "pak")), Is.False);
+        var extractedContent = await GameInstallation.OpenAsync(Path.Combine(extracted, "pak"));
+        var installedContent = await GameInstallation.OpenAsync(installed);
+        Assert.That((await extractedContent.CreateContentProvider(types, gallery).LoadAsync()).Graph.ContentBuildId,
+            Is.EqualTo((await installedContent.CreateContentProvider(types, gallery).LoadAsync()).Graph.ContentBuildId));
+        Assert.That(await GalpakInstaller.InstallAsync(package.PackagePath!, installed), Is.EqualTo(installed));
         using var archive = Archive.Deserialize("assets", File.ReadAllBytes(Path.Combine(directory.ContentDirectory!, "Assets/Paks/000-base.pak")), types);
         var variants = ImageVariantsCodec.Decode(archive.GetAsset("character")!.ReadAllBytes());
         Assert.That(variants.Default.AssetId, Is.EqualTo("pose"));

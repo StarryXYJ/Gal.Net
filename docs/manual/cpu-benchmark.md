@@ -14,6 +14,8 @@ Sample 的游戏内容需要预先构建，Profile 应是已完成语言选择�
 
 `-OutputDirectory` 指定结果目录；默认 `out/benchmarks/<target>-<timestamp>`。`-TimeoutSeconds` 默认 60。`-SkipBuild` 仅用于已经使用相同配置和 Benchmark=true 构建的输出，普通程序不会导出 trace。脚本串行运行，仅对自己创建的超时进程执行 Kill，不会结束已有 Editor 或游戏。超时、非零退出、缺失 Ready、事件溢出均中止并保留已生成数据。构建耗时仅代表本次实际构建（可能增量），不等同于 clean build 基线。
 
+Sample 的基准脚本构建时显式开启 `EnableLaunchArguments=true`，用于传入隔离的内容目录和 profile，不需要开启游戏调试。手动构建/发布用于 `-SkipBuild` 或采样分析的 Sample 时，也须传入 `-p:EnableLaunchArguments=true`；默认玩家构建只加载应用同级 `pak/`。
+
 在 Perfetto 或 Chrome Trace 查看器中手工打开任一 run JSON；CSV 可直接对比不同结果目录。元数据中的源码状态可能包含未提交文件，测量期间避免同时修改代码、编译或运行其他高负载任务。
 
 ## 添加埋点

@@ -1,5 +1,8 @@
 # GalNet Agent Knowledge
 
+- 2026-10-29 桌面发行布局：应用根只留入口 EXE 和目录；SDK apphost 直接指向 lib/<app>.dll，运行时与原生依赖都在 lib，清单/说明/许可在 docs。Sample 默认加载同级 pak，用户 profile 按 content.json projectId 的摘要定位；玩家关闭普通参数，EnableLaunchArguments 默认跟随 EnableGameDebugging，开发发行加 -SampleFlavor Developer。galpak v2 为 pak/ 外层、内部清单路径仍相对内容根；安装显式目标不追加第二层 pak，v1 读取兼容。见 docs/manual/release-packaging.md、docs/spec/file-formats.md 与 features/F-20261029-01-desktop-package-layout。
+- [原生退出确认](lessons/L-20261029-06-native-exit-confirmation.md)：WM_CLOSE 只打开确认遮罩；测试须在自有 HWND 确认退出，再验证零退出码和落盘，不能用强杀替代。
+
 - [预览效果像素边界](lessons/L-20261029-04-bounded-scene-capture.md)：外层缩图不限制 CPU 效果纹理；逻辑尺寸与像素尺寸分开，正式截图仍保持完整分辨率。
 - [存档缩略图通知](lessons/L-20261029-05-save-thumbnail-notifications.md)：整表一次 Reset，保存单槽 Replace，其他行与 Bitmap 复用；异步 I/O 不会消除重复解码卡顿。
 

@@ -25,8 +25,9 @@ public sealed class SampleBuildModeTests
 #endif
     }
 
+#if GALNET_LAUNCH_ARGS
     [Test]
-    public void OrdinaryContentAndProfileArgumentsRemainAvailable()
+    public void DeveloperBuildAcceptsContentAndProfileArguments()
     {
         var options = GameLaunchOptions.Parse(["game", "--profile", "profile"]);
         Assert.That(options.GameDirectory, Is.EqualTo(Path.GetFullPath("game")));
@@ -41,4 +42,65 @@ public sealed class SampleBuildModeTests
         Assert.That(error!.Message, Does.Contain("without game debugging support"));
     }
 #endif
+#else
+    [TestCase("game")]
+    [TestCase("--profile")]
+    [TestCase("--debug-port")]
+    public void PlayerBuildRejectsLaunchArguments(string argument)
+    {
+        var error = Assert.Throws<ArgumentException>(() => GameLaunchOptions.Parse([argument]));
+        Assert.That(error!.Message, Does.Contain("without launch argument support"));
+    }
+#endif
+
+    [Test]
+    public void DefaultLaunchUsesApplicationPakAndUserDataInsteadOfWorkingDirectory()
+    {
+        var application = Path.Combine(Path.GetTempPath(), "galnet-launch-" + Guid.NewGuid().ToString("N"));
+        var options = GameLaunchOptions.Parse([], application);
+        Assert.That(options.GameDirectory, Is.EqualTo(Path.Combine(application, "pak")));
+        Assert.That(options.ProfileDirectory, Does.StartWith(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet") + Path.DirectorySeparatorChar));
+        Assert.That(options.LogDirectory, Is.EqualTo(Path.Combine(options.ProfileDirectory!, "logs")));
+        Assert.That(Directory.Exists(application), Is.False);
+    }
+
+    [Test]
+    public void PackagedProfileFollowsProjectIdentityAcrossMovesAndBuilds()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "galnet-profile-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var first = Path.Combine(root, "first", "pak");
+            var second = Path.Combine(root, "second", "pak");
+            Directory.CreateDirectory(first);
+            Directory.CreateDirectory(second);
+            File.WriteAllText(Path.Combine(first, "content.json"), """{"projectId":"../../same-project","buildId":"first"}""");
+            File.WriteAllText(Path.Combine(second, "content.json"), """{"projectId":"../../same-project","buildId":"second"}""");
+            var profile = GameLaunchOptions.GetDefaultProfileDirectory(first);
+            Assert.That(GameLaunchOptions.GetDefaultProfileDirectory(second), Is.EqualTo(profile));
+            Assert.That(Path.GetFileName(profile), Does.Match("^[a-f0-9]{64}$"));
+            File.WriteAllText(Path.Combine(second, "content.json"), """{"projectId":"another-project"}""");
+            Assert.That(GameLaunchOptions.GetDefaultProfileDirectory(second), Is.Not.EqualTo(profile));
+            File.WriteAllText(Path.Combine(second, "content.json"), "broken JSON");
+            Assert.DoesNotThrow(() => GameLaunchOptions.Parse([], Path.GetDirectoryName(second)!));
+            Assert.That(Directory.Exists(profile), Is.False);
+        }
+        finally { Directory.Delete(root, true); }
+    }
+
+    [Test]
+    public void PackagedAssemblyDirectoryResolvesTheRootApphost()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "galnet-app-root-" + Guid.NewGuid().ToString("N"));
+        var library = Path.Combine(root, "lib");
+        Directory.CreateDirectory(library);
+        try
+        {
+            File.WriteAllText(Path.Combine(root, "GalNet.Sample.Avalonia.exe"), "apphost marker");
+            Assert.That(GameLaunchOptions.GetApplicationDirectory(library), Is.EqualTo(root));
+            Assert.That(GameLaunchOptions.GetApplicationDirectory(root), Is.EqualTo(root));
+        }
+        finally { Directory.Delete(root, true); }
+    }
 }

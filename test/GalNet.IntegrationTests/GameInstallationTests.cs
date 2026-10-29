@@ -155,8 +155,9 @@ public sealed class GameInstallationTests
         finally { Directory.Delete(root, true); }
     }
 
-    [Test]
-    public async Task Galpak_rejects_payloads_whose_manifest_hash_does_not_match()
+    [TestCase(1)]
+    [TestCase(2)]
+    public async Task Galpak_rejects_payloads_whose_manifest_hash_does_not_match(int version)
     {
         var root = Path.Combine(Path.GetTempPath(), $"galnet-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
@@ -164,22 +165,57 @@ public sealed class GameInstallationTests
         {
             var packagePath = Path.Combine(root, "broken.galpak");
             var bytes = "not a pak"u8.ToArray();
-            var manifest = new GalpakManifest(1, "test", "broken", DateTimeOffset.UtcNow,
+            var manifest = new GalpakManifest(version, "test", "broken", DateTimeOffset.UtcNow,
                 [new GalpakFileEntry("Assets/Paks/000-base.pak", new string('0', 64), bytes.Length)]);
+            var prefix = version == 2 ? "pak/" : "";
             await using (var file = File.Create(packagePath))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
             {
-                await WriteEntryAsync(zip, "Assets/Paks/000-base.pak", bytes);
-                await WriteEntryAsync(zip, "broken.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest));
+                await WriteEntryAsync(zip, prefix + "Assets/Paks/000-base.pak", bytes);
+                await WriteEntryAsync(zip, prefix + "broken.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest));
             }
 
             Assert.ThrowsAsync<InvalidDataException>(() => GalpakInstaller.InstallAsync(packagePath));
             Assert.That(Directory.Exists(Path.Combine(root, "broken")), Is.False);
+            Assert.That(Directory.Exists(Path.Combine(root, "pak")), Is.False);
         }
         finally
         {
             if (Directory.Exists(root)) Directory.Delete(root, recursive: true);
         }
+    }
+
+    [TestCase(null)]
+    [TestCase("settings.json")]
+    [TestCase("pak/undeclared.txt")]
+    [TestCase("pak/gallery.json")]
+    [TestCase("pak/../escape.txt")]
+    [TestCase("legacy.galnet")]
+    public async Task Wrapped_package_installs_once_or_rejects_mixed_duplicate_and_undeclared_entries(string? extra)
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"galnet-wrapped-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(root);
+        try
+        {
+            var package = Path.Combine(root, "sample.galpak");
+            await CreatePackageAsync(package, BuildContentFiles(BuiltinResourceTypes.CreateCatalog()), version: 2);
+            if (extra is not null)
+            {
+                using (var zip = ZipFile.Open(package, ZipArchiveMode.Update))
+                    await WriteEntryAsync(zip, extra, "invalid"u8.ToArray());
+                Assert.ThrowsAsync<InvalidDataException>(() => GalpakInstaller.InstallAsync(package));
+                Assert.That(Directory.Exists(Path.Combine(root, "pak")), Is.False);
+            }
+            else
+            {
+                var installed = await GalpakInstaller.InstallAsync(package);
+                Assert.That(installed, Is.EqualTo(Path.Combine(root, "pak")));
+                Assert.That(File.Exists(Path.Combine(installed, "sample.galnet")), Is.True);
+                Assert.That(Directory.Exists(Path.Combine(installed, "pak")), Is.False);
+                Assert.That(await GalpakInstaller.InstallAsync(package), Is.EqualTo(installed));
+            }
+        }
+        finally { Directory.Delete(root, true); }
     }
 
     private static GameFile Asset(string id, string value) => new(id, "hero.png", "sprite",
@@ -199,7 +235,7 @@ public sealed class GameInstallationTests
         ];
     }
 
-    private static async Task CreatePackageAsync(string path, IReadOnlyList<(string Path, byte[] Data)> files)
+    private static async Task CreatePackageAsync(string path, IReadOnlyList<(string Path, byte[] Data)> files, int version = 1)
     {
         var types = BuiltinResourceTypes.CreateCatalog();
         var data = files.Where(file => file.Path != GameContentManifest.FileName).ToList();
@@ -221,11 +257,12 @@ public sealed class GameInstallationTests
         }, JsonSerializerOptions.Web)));
         files = data;
         var entries = files.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
-        var manifest = new GalpakManifest(1, "test", "sample", DateTimeOffset.UtcNow, entries);
+        var manifest = new GalpakManifest(version, "test", "sample", DateTimeOffset.UtcNow, entries);
+        var prefix = version == 2 ? "pak/" : "";
         await using var file = File.Create(path);
         using var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true);
-        foreach (var entry in files) await WriteEntryAsync(zip, entry.Path, entry.Data);
-        await WriteEntryAsync(zip, "sample.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest));
+        foreach (var entry in files) await WriteEntryAsync(zip, prefix + entry.Path, entry.Data);
+        await WriteEntryAsync(zip, prefix + "sample.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest));
     }
 
     private static async Task WriteEntryAsync(ZipArchive zip, string path, byte[] data)

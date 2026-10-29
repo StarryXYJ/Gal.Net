@@ -8,6 +8,8 @@
 
 正常 galpak 导出会先保存当前项目，再从受保护的作者快照生成本体及全部剧情包。基础 PAK 放入 galpak，剧情 PAK 放在旁边 `StoryPatches/<buildId>/`。目录导出将它们放在输出目录内相同位置。分发时可以不带某个剧情包的所有分片，运行会沿其正常出口跳过；只缺一个分片、损坏或错版会报错。旧构建的剧情包不能配到新构建。
 
+新 galpak 使用 v2 布局，所有归档条目位于 `pak/` 下。使用普通解压工具解压到播放器目录后得到 EXE 同级的 `pak/`，玩家版双击 EXE 自动加载。剧情与资源覆盖包分别放入 `pak/StoryPatches/<buildId>/`、`pak/ResourcePatches/`；整合打包会将 galpak 旁匹配 buildId 的剧情目录与资源覆盖目录一并复制进去。目录导出与 `galpak install --output` 的参数均表示内容根，应指定 `app/pak`，不会生成双层 `pak/pak`。旧 v1 平铺 galpak 仍可用安装器读取。
+
 本体先对全部普通 Group 和明确的基础根收集依赖。每个剧情包只扣除本体已有资源：A/B 都使用而本体没使用的资源，两包各带一份。条件分支里的静态资源全部计入，图集带齐其声明图片；不会因某次试玩没有走到分支而漏包。
 
 项目设置的 `galnet.packaging` 提供 maxPakBytes（默认 128 MiB）、includeResources 和 declaredCompleteResources。阈值按未压缩编译资源字节计算，单个超大资源独占一片，不拆资源。includeResources 用于 UI、自定义代码等静态剧情外的根；未知/动态引用还需在 declaredCompleteResources 中确认已补全依赖（资源 ID 或 Group 节点 ID）。声明完整不会自动添加资源。

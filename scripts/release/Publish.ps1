@@ -9,6 +9,8 @@ param(
     [string]$ContractOutputDirectory,
     [ValidateSet('SelfContained', 'FrameworkDependent')]
     [string]$Deployment = 'SelfContained',
+    [ValidateSet('Player', 'Developer')]
+    [string]$SampleFlavor = 'Player',
     [switch]$IncludeModeInName
 )
 
@@ -17,6 +19,7 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $headlessProject = Join-Path $repoRoot 'src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj'
 $selfContained = $Deployment -eq 'SelfContained'
 $deploymentProperty = "-p:SelfContained=$($selfContained.ToString().ToLowerInvariant())"
+$sampleDebugging = ($SampleFlavor -eq 'Developer').ToString().ToLowerInvariant()
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
     $tag = (& git -C $repoRoot describe --tags --exact-match --match 'v[0-9]*' 2>$null)
@@ -118,7 +121,7 @@ function Copy-ContentTree([string]$Source, [string]$Target, [string[]]$Names) {
 function Copy-PublishedFiles([string]$Source, [string]$Target, [string[]]$ExcludedRootFiles = @()) {
     foreach ($file in Get-ChildItem -LiteralPath $Source -File -Recurse) {
         $relative = Get-RelativePath $Source $file.FullName
-        if ($relative.IndexOf([IO.Path]::DirectorySeparatorChar) -lt 0 -and $ExcludedRootFiles -contains $relative) { continue }
+        if ($ExcludedRootFiles -contains $relative.Replace('\', '/')) { continue }
         $destination = Join-Path $Target $relative
         New-Item -ItemType Directory -Path (Split-Path -Parent $destination) -Force | Out-Null
         Copy-Item -LiteralPath $file.FullName -Destination $destination
@@ -144,9 +147,26 @@ function Add-PackageManifest([string]$PackageRoot, [string]$Kind) {
         selfContained = $selfContained
         readyToRun = $true
         sourceCommit = $commit
+        sampleFlavor = if ($Kind.StartsWith('Sample')) { $SampleFlavor } else { $null }
         files = $files
     }
-    $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $PackageRoot 'release-manifest.json') -Encoding utf8
+    $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $PackageRoot 'docs/release-manifest.json') -Encoding utf8
+}
+
+function Set-PackageLayout([string]$PackageRoot) {
+    $rootPath = [IO.Path]::GetFullPath($PackageRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+    $libraryRoot = Join-Path $PackageRoot 'lib'
+    $documentsRoot = Join-Path $PackageRoot 'docs'
+    New-Item -ItemType Directory -Force -Path $libraryRoot, $documentsRoot | Out-Null
+    foreach ($item in Get-ChildItem -LiteralPath $PackageRoot -Force) {
+        if ($item.Name -in @('lib', 'docs', 'pak', 'Skills', 'GalNet.Editor.exe', 'GalNet.Editor.Headless.exe', 'GalNet.Sample.Avalonia.exe')) { continue }
+        $destination = Join-Path $(if ($item.Name -in @('README.txt', 'README.md', 'LICENSE')) { $documentsRoot } else { $libraryRoot }) $item.Name
+        if (!$item.FullName.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase) -or
+            ![IO.Path]::GetFullPath($destination).StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Refusing to move files outside the application payload.'
+        }
+        Move-Item -LiteralPath $item.FullName -Destination $destination -Force
+    }
 }
 
 function Complete-Package([string]$Kind, [string]$PackageRoot) {
@@ -154,7 +174,7 @@ function Complete-Package([string]$Kind, [string]$PackageRoot) {
     # Filter the final payload, including the nested CLI, before hashing it.
     $payloadRoot = [IO.Path]::GetFullPath($PackageRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
     $unwanted = @(Get-ChildItem -LiteralPath $PackageRoot -Recurse -File | Where-Object {
-        $_.Extension -eq '.pdb' -or
+        ($_.Extension -eq '.pdb' -and !($Kind.StartsWith('Sample') -and $SampleFlavor -eq 'Developer')) -or
         (Get-RelativePath $PackageRoot $_.FullName).Replace('\', '/') -match '(^|/)libvlc/win-(x86|arm64)/'
     })
     foreach ($file in $unwanted) {
@@ -164,6 +184,7 @@ function Complete-Package([string]$Kind, [string]$PackageRoot) {
         Remove-Item -LiteralPath $file.FullName -Force
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $PackageRoot 'LICENSE') -Force
+    Set-PackageLayout $PackageRoot
     if (!$selfContained) {
         @'
 
@@ -171,11 +192,12 @@ Requires the Windows x64 .NET 10 Runtime (latest servicing patch).
 Install the .NET Runtime, not the SDK; this Avalonia app does not require
 the Windows Desktop Runtime or ASP.NET Core Runtime.
 Download: https://dotnet.microsoft.com/download/dotnet/10.0
-'@ | Add-Content -LiteralPath (Join-Path $PackageRoot 'README.txt') -Encoding utf8
+'@ | Add-Content -LiteralPath (Join-Path $PackageRoot 'docs/README.txt') -Encoding utf8
     }
     Add-PackageManifest $PackageRoot $Kind
     $modeSuffix = if ($IncludeModeInName) { '-r2r' } else { '' }
     if (!$selfContained) { $modeSuffix += '-framework-dependent' }
+    if ($Kind.StartsWith('Sample') -and $SampleFlavor -eq 'Developer') { $modeSuffix += '-developer' }
     $zipName = "GalNet-$Kind-$Version-win-x64$modeSuffix.zip"
     $zipPath = Join-Path $versionRoot $zipName
     if (Test-Path -LiteralPath $zipPath) { Remove-Item -LiteralPath $zipPath -Force }
@@ -193,11 +215,11 @@ function Publish-Editor {
     try {
         $project = Join-Path $repoRoot 'src/Editor/GalNet.Editor/GalNet.Editor.csproj'
         Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $hostRoot)
+        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:PackageAppHostDestinationPath=$hostRoot/GalNet.Editor.exe", '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $hostRoot)
         $cliRoot = Join-Path $stage 'cli'
         Invoke-DotNet @('restore', $headlessProject, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $headlessProject, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $cliRoot)
-        # Both apphosts resolve dependencies beside their executables. Merge only
+        Invoke-DotNet @('publish', $headlessProject, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:PackageAppHostDestinationPath=$cliRoot/GalNet.Editor.Headless.exe", '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $cliRoot)
+        # Both apphosts target lib/<app>.dll. Merge only
         # byte-identical shared files; never silently replace an Editor dependency.
         foreach ($file in Get-ChildItem -LiteralPath $cliRoot -Recurse -File) {
             if ($file.Extension -eq '.pdb' -or $file.Name -eq 'README.md') { continue }
@@ -226,9 +248,15 @@ in this directory; they share dependencies and (in the full package) .NET.
 
 function Add-GameContent([string]$Stage, [string]$PackageRoot, [string]$ContractsRoot) {
     $contentBuildRoot = Join-Path $Stage 'GameTestCase'
-    $contentRoot = Join-Path $PackageRoot 'GameTestCase'
+    $contentRoot = Join-Path $PackageRoot 'pak'
     if (![string]::IsNullOrWhiteSpace($Galpak)) {
         Invoke-DotNet @('run', '--project', $headlessProject, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore', '--', 'galpak', 'install', $Galpak, '--output', $contentRoot)
+        $buildId = (Get-Content (Join-Path $contentRoot 'content.json') -Raw | ConvertFrom-Json).buildId
+        if ($buildId -cnotmatch '^[a-f0-9]{64}$') { throw 'Integrated content has an invalid buildId.' }
+        foreach ($patches in @("StoryPatches/$buildId", 'ResourcePatches')) {
+            $patchSource = Join-Path (Split-Path -Parent $Galpak) $patches
+            if (Test-Path -LiteralPath $patchSource) { Copy-ContentTree (Split-Path -Parent $Galpak) $contentRoot @($patches) }
+        }
         return
     }
     if ([string]::IsNullOrWhiteSpace($ProjectDirectory)) { throw 'Pass either -ProjectDirectory or -Galpak for SampleIntegrated.' }
@@ -239,6 +267,7 @@ function Add-GameContent([string]$Stage, [string]$PackageRoot, [string]$Contract
         Copy-ContentTree $ProjectDirectory $contentBuildRoot @('Contracts')
     }
     else {
+        if (Test-Path (Join-Path $ContractsRoot 'lib/GalNet.Core.dll')) { $ContractsRoot = Join-Path $ContractsRoot 'lib' }
         $targetContracts = Join-Path $contentBuildRoot 'Contracts'
         New-Item -ItemType Directory -Force -Path $targetContracts | Out-Null
         foreach ($name in @('GalNet.Core.dll', 'GalNet.Contracts.Builtins.dll', 'GalNet.Project.Contracts.dll')) {
@@ -254,8 +283,8 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
     New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
     try {
         $project = Join-Path $repoRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
-        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:EnableGameDebugging=false', '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, '-p:EnableGameDebugging=false', '-p:CopyOutputSymbolsToPublishDirectory=false', '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
+        Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:EnableGameDebugging=$sampleDebugging", '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
+        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:EnableGameDebugging=$sampleDebugging", "-p:EnableLaunchArguments=$sampleDebugging", "-p:CopyOutputSymbolsToPublishDirectory=$sampleDebugging", "-p:PackageAppHostDestinationPath=$runtimeRoot/GalNet.Sample.Avalonia.exe", '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
 
         if ($ContractOutputDirectory) {
             New-Item -ItemType Directory -Force -Path $ContractOutputDirectory | Out-Null
@@ -266,22 +295,14 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
 
         if ($IncludePure) {
             @'
-@echo off
-setlocal
-if "%~1"=="" (
-  echo Usage: Run-Sample.cmd "path-to-game-content"
-  exit /b 2
-)
-"%~dp0GalNet.Sample.Avalonia.exe" "%~f1" --profile "%LOCALAPPDATA%\GalNet\Sample\default"
-'@ | Set-Content -LiteralPath (Join-Path $runtimeRoot 'Run-Sample.cmd') -Encoding ascii
-            @'
 GalNet Sample
 
-This package contains the player runtime only. Supply a game content directory:
-  Run-Sample.cmd "C:\path\to\expanded-game-content"
-
-For packaged content, first expand the .galpak with the GalNet Editor or the
-Headless CLI `galpak install` command.
+Place the expanded game content in pak/ beside GalNet.Sample.Avalonia.exe,
+then double-click the executable. New .galpak archives already contain pak/;
+extract them into the application directory. Keep lib/ intact.
+Player data and logs are stored under the user's local application data,
+in GalNet/<project identity digest>/, independently of the installation path.
+The developer flavor also supports content, --profile and --debug-* arguments.
 '@ | Set-Content -LiteralPath (Join-Path $runtimeRoot 'README.txt') -Encoding utf8
             Complete-Package 'Sample' $runtimeRoot
         }
@@ -289,20 +310,16 @@ Headless CLI `galpak install` command.
         if ($IncludeIntegrated) {
             $packageRoot = Join-Path $stage 'integrated-payload'
             New-Item -ItemType Directory -Path $packageRoot -Force | Out-Null
-            $excluded = if ($IncludePure) { @('README.txt', 'Run-Sample.cmd', 'release-manifest.json') } else { @() }
+            $excluded = if ($IncludePure) { @('docs/README.txt', 'docs/release-manifest.json') } else { @() }
             Copy-PublishedFiles $runtimeRoot $packageRoot $excluded
             Add-GameContent $stage $packageRoot $runtimeRoot
             @'
-@echo off
-setlocal
-"%~dp0GalNet.Sample.Avalonia.exe" "%~dp0GameTestCase" --profile "%LOCALAPPDATA%\GalNet\Sample\GameTestCase"
-'@ | Set-Content -LiteralPath (Join-Path $packageRoot 'Run-GameTestCase.cmd') -Encoding ascii
-            @'
 GalNet Sample with compiled GameTestCase content
 
-Run Run-GameTestCase.cmd. Resources are compiled into Assets/Paks/*.pak,
-and story groups into Graph/groups/*.galgroup. This is installed runtime
-content; no authoring sources or .galpak extraction step are needed.
+Double-click GalNet.Sample.Avalonia.exe. Compiled content is in pak/;
+resources and story data are stored in pak/Assets/Paks/*.pak, with optional
+story packages in pak/StoryPatches/. Keep lib/ and pak/ beside the executable.
+Player data and logs are stored in the user's local application data.
 '@ | Set-Content -LiteralPath (Join-Path $packageRoot 'README.txt') -Encoding utf8
             Complete-Package 'Sample-GameTestCase' $packageRoot
         }
