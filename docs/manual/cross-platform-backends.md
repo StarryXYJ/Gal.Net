@@ -2,6 +2,8 @@
 
 本页覆盖引擎后端，不创建 Avalonia Android/iOS App 模板。Core/Runtime 的执行和存档逻辑、PAK 格式、PCM 混音/DSP 继续共享；平台宿主选择资源入口、媒体实现和原生库部署。普通目录中的存档/变量/进度继续使用现有 .NET 文件实现，由宿主传入沙盒可写目录，不再包装一套 File API。
 
+后端 Windows/Linux/macOS 矩阵保留在 `Backend portability` workflow，通过 `workflow_dispatch` 手动运行；勾选 `native_aot` 才额外执行 Windows/Linux 的 Headless AOT 验收。PR 默认仅运行一个 Windows job 的完整普通测试，避免重复后端矩阵进入日常检查。CI 与发布操作见 [本地 CI 与发布](release-packaging.md)。
+
 ## 从包内流读取 PAK
 
 ```csharp

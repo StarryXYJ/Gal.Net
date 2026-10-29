@@ -4,10 +4,14 @@ $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 function Invoke-ReleaseCommand([string]$Name, [string]$Command, [string[]]$Arguments) {
     $log = Join-Path $script:logRoot "$Name.log"
     Write-Host "[$Name] $Command $($Arguments -join ' ')"
+    $timer = [Diagnostics.Stopwatch]::StartNew()
     & $Command @Arguments *> $log
-    if ($LASTEXITCODE -ne 0) {
+    $code = $LASTEXITCODE
+    [ordered]@{ name = $Name; exitCode = $code; elapsedSeconds = $timer.Elapsed.TotalSeconds } |
+        ConvertTo-Json -Compress | Add-Content (Join-Path $script:logRoot 'timings.jsonl') -Encoding utf8
+    if ($code -ne 0) {
         Get-Content -LiteralPath $log -Tail 60 | Write-Host
-        throw "$Name failed ($LASTEXITCODE). Log: $log"
+        throw "$Name failed ($code). Log: $log"
     }
 }
 

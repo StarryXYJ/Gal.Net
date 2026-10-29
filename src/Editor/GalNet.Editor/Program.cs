@@ -52,6 +52,7 @@ sealed class Program
         catch (Exception ex)
         {
             Log.Fatal(ex, "Application terminated unexpectedly");
+            Environment.ExitCode = 1;
 #if BENCHMARK
             GalNet.Diagnostics.StartupBenchmark.Complete(false);
 #endif

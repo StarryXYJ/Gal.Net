@@ -5,19 +5,22 @@
 ## 本地运行 CI
 
 ```powershell
-pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1 -Coverage
+pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1
 ```
 
-入口先检查 SDK 和十七项发布保护用例（含 tag 主分支归属和七 ZIP 上传预检），再执行 locked restore、空白与 using 检查、Release solution 构建、solution 中全部 GalNet 测试项目。restore/build/test 使用同一 Configuration，fixture 工程也列在 solution 内。构建完成后才启动 no-build 测试。测试阶段收集全部项目的失败，最后返回非零；真实设备的 Explicit 测试不属于普通 CI。
+入口先检查 SDK、十七项发布保护用例与十九项发布发现/过滤器检查，再执行 locked restore、Release 构建、solution 中全部 GalNet 普通测试项目。测试不分块、不按路径选测。桌面构建从 `GalNet.slnx` 自动生成 `.slnf`，保留全部测试和 fixture，排除尚未接入的 `GalNet.Sample.CrossPlatform/` 模板，避免普通 Windows CI 要求 Android/iOS/Browser 工作负载。restore/build/test 使用同一 Configuration；构建完成后才串行启动 no-build 测试，收集全部项目的失败，最后返回非零。真实设备的 Explicit 测试不属于普通 CI。默认 `All` 和 `BuildTest` 均不运行格式检查，格式不作为 PR 或发布门禁。
 
 可以单独运行：
 
 ```powershell
+# 只检查空白与未使用的 using，不修改文件
 pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1 -Stage Format
+# 一键修复上述格式问题，会修改源码，运行后检查 diff
+pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1 -Stage Format -FixFormat
 pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1 -Stage BuildTest -Coverage
 ```
 
-默认日志保存在唯一的 `out/ci/<run>/`；`ci-results.json` 记录整体结果、各检查退出码和完整日志路径，`test-results/` 保存 TRX 与可选 coverage。`-OutputRoot` 可指定证据目录。Actions 的 CI workflow 调用相同脚本，分为 Format / BuildTest 两个 job。Windows 的 dotnet format/testhost 需要允许子进程与命名管道通信；受限执行沙箱内的管道拒绝不是源码格式错误。
+默认日志保存在唯一的 `out/ci/<run>/`；`ci-results.json` 记录整体结果、源码 commit、整体和每阶段耗时、退出码与完整日志路径，`test-results/` 保存 TRX 与可选 coverage。`-OutputRoot` 可指定证据目录。Actions 的 CI workflow 只在 PR 或手动触发时运行一个 BuildTest job；master 普通合并不重复跑 CI。默认关闭 coverage，手动 Actions 输入或本地 `-Coverage` 可开启；NuGet 依赖按 SDK 和锁文件缓存。后端三平台及 NativeAOT 矩阵保留为手动专项，NativeAOT 需勾选 `native_aot`。`-FixFormat` 只允许搭配 `-Stage Format`，不会在默认 CI 中隐式改写源码。Windows 的 dotnet format/testhost 需要允许子进程与命名管道通信；受限执行沙箱内的管道拒绝不是源码格式错误。
 
 ## 本地生成完整发行文件
 
@@ -133,7 +136,9 @@ pwsh -File scripts/release/Test-DesktopAot.ps1
 
 ## tag、CI 与公开上传
 
-版本 tag 指向已提交 commit：`v1.2.3` 或 `v1.3.0-preview.1`。CI 自动发布同时要求 tag 指向的提交已经包含在主分支 `origin/master` 的历史中；允许为主分支历史提交发版，不要求它仍是最新 HEAD。先合并到 master，再推送版本 tag；只推送 master 提交不会发布，在未合并分支上推送 tag 会被门禁拒绝，之后合并不会自动重跑该 tag 的发布。
+版本 tag 指向已提交 commit：`v1.2.3` 或 `v1.3.0-preview.1`。CI 自动发布同时要求 tag 指向的提交已经包含在主分支 `origin/master` 的历史中；允许为主分支历史提交发版，不要求它仍是最新 HEAD。支持先合并再推 tag，也支持先推 tag 再合并：未合并 tag 暂不构建，master 更新时自动发现这次新合入历史的版本 tag，包含源分支提交上的 tag。没有新版本 tag 的普通合并不发布。
+
+先 tag 后合并应使用保留源提交身份的 merge/fast-forward；squash/rebase 会产生新提交，原 tag 不会自动移动，这种方式应在最终 master 提交上打 tag。CI 不移动或重建版本 tag。
 
 精确 tag 构建要求工作区干净、tag 指向 HEAD；不会使用最近祖先 tag 给新提交命名。
 
@@ -141,7 +146,7 @@ pwsh -File scripts/release/Test-DesktopAot.ps1
 pwsh -File scripts/release/Release.ps1 -Tag v1.2.3
 ```
 
-Release workflow 在 tag push 后先获取 master 并校验 tag 格式、checkout 身份与提交归属；门禁通过后才运行同一套 CI 和本地发布入口。GitHub 的 branch/tag push 过滤器不能表达两者同时满足，因此主分支归属检查由前置 job 执行。build job 上传已经验证的文件，publish job 下载后上传，不重新编译。普通 PR/master CI 保持原有行为；`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
+Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，按 tag 串行执行完整构建和发布，已公开版本直接跳过，未完成 draft 要求用原产物与 journal 恢复。checkout 固定为发现时的 tag commit，并校验精确 tag 与 master 归属；随后跑完整 CI，再由打包层独立构建带正式版本号的 19 个 NuGet 库项目，不重复构建测试项目。普通测试输出可能被后续构建覆盖，不能直接当作正式版本产物。应用不同 RID/部署图仍分别 restore/publish，包消费者和 ZIP 验证保留。build 上传封存目录，publish 下载后上传，不重新编译；ZIP/nupkg artifact 不再重复压缩。`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
 
 公开上传需要 GitHub 权限和名为 `NUGET_API_KEY` 的 NuGet 发布凭据；可传入 Trusted Publishing 获取的短期 key。当前 workflow 从同名 GitHub secret 读取，首次发布前需配置。在本地也可上传已经验收的精确 tag 索引：
 

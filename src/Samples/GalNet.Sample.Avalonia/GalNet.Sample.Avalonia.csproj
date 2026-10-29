@@ -3,10 +3,11 @@
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == '' And '$(Configuration)' == 'Debug'">true</EnableGameDebugging>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
     <EnableLaunchArguments Condition="'$(EnableLaunchArguments)' == ''">$(EnableGameDebugging)</EnableLaunchArguments>
-    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'WindowsReadyToRun'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'WindowsReadyToRun' And '$(PublishProfile)' != 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
     <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
     <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
     <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'WindowsReadyToRun'">$(MSBuildProjectDirectory)/packages.lock.WindowsReadyToRun.Debugging.json</NuGetLockFilePath>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.Desktop.$(RuntimeIdentifier).Debugging.json</NuGetLockFilePath>
     <CopyOutputSymbolsToPublishDirectory Condition="'$(EnableGameDebugging)' != 'true'">false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
   <PropertyGroup>
@@ -51,7 +52,7 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))" />
   </ItemGroup>
 
   <ItemGroup>

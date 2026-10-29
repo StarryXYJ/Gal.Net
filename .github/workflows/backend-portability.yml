@@ -1,23 +1,19 @@
 name: Backend portability
 
 on:
-  pull_request:
-    paths:
-      - 'src/Shared/**'
-      - 'src/Infrastructure/**'
-      - 'src/Tooling/**'
-      - 'src/Samples/GalNet.Sample.Headless/**'
-      - 'src/Samples/GalNet.Sample.Contracts/**'
-      - 'test/GalNet.Assets.Tests/**'
-      - 'test/GalNet.Media.Audio.Tests/**'
-      - 'Directory.*'
-      - 'global.json'
-      - 'scripts/test-native-aot.ps1'
-      - '.github/workflows/backend-portability.yml'
   workflow_dispatch:
+    inputs:
+      native_aot:
+        description: Include the NativeAOT acceptance matrix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   portable-backends:
@@ -40,7 +36,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.401
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            **/packages.lock*.json
       - name: Build native audio library
         shell: pwsh
         run: |
@@ -71,6 +71,7 @@ jobs:
           if-no-files-found: warn
 
   native-aot:
+    if: github.event_name == 'workflow_dispatch' && inputs.native_aot
     strategy:
       fail-fast: false
       matrix:
@@ -84,7 +85,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.401
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            **/packages.lock*.json
       - name: Publish and execute NativeAOT engine acceptance
         shell: pwsh
         run: ./scripts/test-native-aot.ps1

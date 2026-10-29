@@ -21,10 +21,12 @@ public partial class App : Application
 
     public override void Initialize()
     {
+        GameLog.Logger.Debug("Loading Sample application resources");
 #if BENCHMARK
         using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.Xaml");
 #endif
         AvaloniaXamlLoader.Load(this);
+        GameLog.Logger.Debug("Sample application resources loaded");
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -35,6 +37,7 @@ public partial class App : Application
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var services = new ServiceCollection();
+            GameLog.Logger.Debug("Configuring Sample services");
 #if BENCHMARK
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.RegisterServices"))
 #endif
@@ -44,12 +47,14 @@ public partial class App : Application
             using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Sample.BuildServiceProvider"))
 #endif
             _rootServices = services.BuildServiceProvider();
+            GameLog.Logger.Debug("Preparing Sample navigation");
             _gameScope = _rootServices.CreateAsyncScope();
             var scopedServices = _gameScope.Value.ServiceProvider;
             var localization = scopedServices.GetRequiredService<IPlayerLocalization>();
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = localization.GetString;
 
             scopedServices.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
+            GameLog.Logger.Debug("Creating Sample window");
 
             MainWindow mainWindow;
 #if BENCHMARK
@@ -57,6 +62,7 @@ public partial class App : Application
 #endif
             mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
+            GameLog.Logger.Debug("Sample window prepared");
             scopedServices.GetRequiredService<TitlePageViewModel>().ExitRequested = mainWindow.Close;
             var startupCancellation = new CancellationTokenSource();
             mainWindow.Opened += async (_, _) =>

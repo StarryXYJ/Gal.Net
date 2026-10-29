@@ -6,6 +6,15 @@
     <!-- Preserve portable PDBs and local debugging; omit commit-specific URLs. -->
     <EnableSourceLink>false</EnableSourceLink>
   </PropertyGroup>
+  <!-- The SDK maps the repository root, but leaves profile/RID-specific obj
+       paths in portable PDBs. Those paths also change the DLL's PDB checksum. -->
+  <Target Name="NormalizeContractGeneratedPaths" BeforeTargets="CoreCompile" DependsOnTargets="_SetPathMapFromSourceRoots"
+          Condition="'$(AssemblyName)' == 'GalNet.Project.Contracts' Or '$(MSBuildProjectName)' == 'GalNet.Core' Or '$(MSBuildProjectName)' == 'GalNet.Contracts.Builtins'">
+    <PropertyGroup>
+      <_ContractIntermediateRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)'))</_ContractIntermediateRoot>
+      <PathMap>$(_ContractIntermediateRoot)=/_/generated/$(MSBuildProjectName)/,$(PathMap)</PathMap>
+    </PropertyGroup>
+  </Target>
   <!-- Contract identity is the deployed IL binary, not an R2R-transformed copy. -->
   <ItemGroup Condition="'$(PublishReadyToRun)' == 'true'">
     <PublishReadyToRunExclude Include="GalNet.Core.dll;GalNet.Contracts.Builtins.dll;GalNet.Project.Contracts.dll" />
@@ -16,6 +25,12 @@
   <ItemGroup Condition="'$(PublishReadyToRun)' == 'true' And '$(RuntimeIdentifier)' == 'win-x64'">
     <PublishReadyToRunExclude Include="SkiaSharp.dll" />
   </ItemGroup>
+  <Target Name="ValidateDesktopPublishTarget" BeforeTargets="_GenerateRestoreGraphProjectEntry;PrepareForBuild" Condition="'$(PublishProfile)' == 'Desktop'">
+    <Error Condition="'$(GalNetDesktopPublishTarget)' != 'win-x64' And '$(GalNetDesktopPublishTarget)' != 'linux-x64' And '$(GalNetDesktopPublishTarget)' != 'osx-x64' And '$(GalNetDesktopPublishTarget)' != 'osx-arm64'"
+           Text="Desktop publishing requires a global GalNetDesktopPublishTarget: win-x64, linux-x64, osx-x64 or osx-arm64." />
+    <Error Condition="('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe') And '$(RuntimeIdentifier)' != '$(GalNetDesktopPublishTarget)'"
+           Text="Pass the same application RuntimeIdentifier and global GalNetDesktopPublishTarget for Desktop publishing." />
+  </Target>
   <!-- Generate a normal SDK apphost targeting the packaged managed entry in lib/.
        Ordinary bin/publish apphosts are unaffected unless packaging opts in. -->
   <Target Name="CreatePackageAppHost" AfterTargets="Publish"

@@ -15,8 +15,11 @@ $mapping = Get-Content (Join-Path $repoRoot 'packaging/packages.json') -Raw | Co
 $commit = & git -C $repoRoot rev-parse HEAD
 $buildProperties = @("-p:Version=$Version", '-p:ContinuousIntegrationBuild=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false')
 if (!$SkipBuild) {
-    Invoke-ReleaseCommand 'restore-libraries' 'dotnet' (@('restore', (Join-Path $repoRoot 'GalNet.slnx'), '--locked-mode', '-p:Configuration=Release') + $buildProperties)
-    Invoke-ReleaseCommand 'build-libraries' 'dotnet' (@('build', (Join-Path $repoRoot 'GalNet.slnx'), '-c', 'Release', '--no-restore') + $buildProperties)
+    . (Join-Path $PSScriptRoot '../ci/Common.ps1')
+    $libraryProjects = @($mapping.Values | ForEach-Object { $_.projects } | ForEach-Object { "src/$_/$(Split-Path $_ -Leaf).csproj" })
+    $solution = New-DesktopSolutionFilter -Path (Join-Path $WorkDirectory 'libraries.slnf') -Projects $libraryProjects
+    Invoke-ReleaseCommand 'restore-libraries' 'dotnet' (@('restore', $solution, '--locked-mode', '-p:Configuration=Release') + $buildProperties)
+    Invoke-ReleaseCommand 'build-libraries' 'dotnet' (@('build', $solution, '-c', 'Release', '--no-restore') + $buildProperties)
 }
 
 # All project ownership and dependency mapping is explicit. Each DLL belongs to one package.

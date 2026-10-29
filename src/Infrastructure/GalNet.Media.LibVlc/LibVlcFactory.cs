@@ -78,6 +78,9 @@ public sealed class LibVlcFactory
                 // LibVLC can load plugins long after initialization; keep this value for
                 // the whole process rather than temporarily setting it per player.
                 Environment.SetEnvironmentVariable("VLC_PLUGIN_PATH", Options.PluginDirectory);
+                if (OperatingSystem.IsLinux())
+                    NativeLibrary.SetDllImportResolver(typeof(LibVLC).Assembly, static (name, assembly, searchPath) =>
+                        name == "libvlc" ? NativeLibrary.Load("libvlc.so.5", assembly, searchPath) : 0);
                 LibVLCSharp.Shared.Core.Initialize(Options.NativeLibraryDirectory);
             }
             catch (Exception error)

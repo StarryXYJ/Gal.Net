@@ -8,6 +8,7 @@
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <DefaultContractsOutputRoot Condition="'$(Benchmark)' == 'true'">benchmark/</DefaultContractsOutputRoot>
         <DefaultContractsOutputRoot Condition="'$(PublishProfile)' == 'WindowsReadyToRun' And '$(Benchmark)' != 'true'">publish/WindowsReadyToRun/</DefaultContractsOutputRoot>
+        <DefaultContractsOutputRoot Condition="'$(PublishProfile)' == 'Desktop' And '$(Benchmark)' != 'true'">publish/Desktop/$(RuntimeIdentifier)/</DefaultContractsOutputRoot>
     </PropertyGroup>
 
     <ItemGroup>
@@ -44,7 +45,7 @@
         <PackageReference Include="Serilog" />
         <PackageReference Include="Serilog.Sinks.Console" />
         <PackageReference Include="Serilog.Sinks.Debug" />
-        <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+        <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))" />
     </ItemGroup>
 
     <ItemGroup>
