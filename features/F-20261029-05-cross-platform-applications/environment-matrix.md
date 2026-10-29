@@ -25,6 +25,8 @@ WSL 发行版查询在受限进程内曾返回访问拒绝；通过获准的 WSL
 
 证据目录和精确结果见 execution.md。
 
+WSLg 图形对照：本机默认使用 llvmpipe（软件渲染），进程级 `GALLIUM_DRIVER=d3d12` 可启用 Intel UHD 硬件加速。Sample 实际进程加载 D3D12 图形库并完成启动/退出；blur 性能尚待此模式下测量。用户最新反馈为声音已正常，仅保留 blur 等效果卡顿待查。
+
 ## 内容闭包结论与实施选择
 
 原 GamePackageExporter.ExportAsync 仅把 prepared.Base 写入 galpak，把 prepared.Stories 发布到归档旁的 StoryPatches/<buildId>。所以单独移动归档会漏掉剧情。ExportDirectoryAsync 已写入本体和全部剧情，两个交付物原先不等价。

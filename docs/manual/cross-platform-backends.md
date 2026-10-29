@@ -22,6 +22,21 @@ Graph/settings/I18n 的默认 `InstalledGameContentProvider` 仍读取展开后�
 
 ## 构建原生音频
 
+### 当前 WSLg 候选的手动运行
+
+已生成本地 Linux Developer 候选及其工作区依赖时，在 WSL 中运行：
+
+```bash
+cd /mnt/g/program/GalDotNet
+bash scripts/samples/run-wsl-sample.sh
+# 只检查候选、显示环境和渲染驱动，不启动游戏
+bash scripts/samples/run-wsl-sample.sh --check
+```
+
+该入口默认使用 `out/cross-platform-p3b-current/linux-developer`、工作区解压的 VLC 依赖及原有 `manual-profile`，不是正式 Linux 安装器，也不编译应用。在有 `/dev/dxg` 且调用者未指定 `GALLIUM_DRIVER` 时，仅为子进程选择 `d3d12`；当前 WSL 主机不指定该选项会使用 llvmpipe 软件渲染，显式指定后 `glxinfo -B` 确认 Intel UHD / Accelerated: yes。启动时打印驱动信息；此项说明图形驱动选择，不代替游戏实际帧耗时或 blur 效果验收。调用者可通过 `GALLIUM_DRIVER=llvmpipe` 做软件渲染对照。
+
+自定义候选、依赖或测试 profile 时，分别设置 `GALNET_WSL_SAMPLE_ROOT`、`GALNET_WSL_NATIVE_ROOT`、`GALNET_WSL_PROFILE` 的绝对路径。所有驱动选择仅作用于此次运行，不修改 shell 配置或系统驱动。
+
 桌面 CMake 构建示例（在所需架构的编译器环境执行）：
 
 ```sh

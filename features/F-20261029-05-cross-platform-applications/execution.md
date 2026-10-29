@@ -156,3 +156,13 @@ P3b 启动/字体切片已取得上述证据，P3 整体仍 in-progress。macOS 
 已同步 control spec、Themes README 和回归约束。Windows 0.1.0-dev.8 为此项偏好修订之前的候选，未重写既有封存 ZIP；当前源码的回退偏好变更不应误记为已进入该候选。
 
 普通 Presentation 回归 302/302 通过（`out/cross-platform-p3b-current/results/open-font-fallbacks.trx`），包括中文 regular/bold 的字形和布局检查；Explicit 媒体测试不在该数量中。本次未新增或重新发布 Windows ZIP。
+
+### WSLg 人工反馈与图形驱动对照
+
+用户通过 manual-profile 测试后报告 blur 等效果很卡、其他大致正常，随后明确纠正为声音已经正常。按最新反馈停止音频排查；其他流程仅记录为本次人工观察，不扩写成未逐项执行的正式验收。
+
+- 用户日志 `out/cross-platform-p3b-current/manual-profile/logs/game-20261029.log` 记录会话启动、剧情/选择、存档页导航及正常关闭；原日志没有帧耗时或实际图形驱动信息，不能单凭日志确定 blur 瓶颈。
+- 当前 WSL 默认 `glxinfo -B` 为 llvmpipe、Accelerated: no；进程级 `GALLIUM_DRIVER=d3d12` 对照为 Intel UHD Graphics、Accelerated: yes。默认软件渲染是已确认的环境问题，但不能由此证明 blur 开销全部来自它。
+- 新增 `scripts/samples/run-wsl-sample.sh`，复用现有 Developer 候选、工作区原生依赖和 manual-profile。在存在 `/dev/dxg` 且调用者未设置 GALLIUM_DRIVER 时，为本次子进程选择 d3d12；打印诊断，不修改全局配置。`--check` 不启动游戏；显式 llvmpipe 对照仍被保留。
+- `bash -n`、候选/显示检查和 d3d12/llvmpipe 两种驱动检查通过。独立 profile 的实际 Sample D3D12 启动、会话就绪、确认退出 exit 0 通过，进程 maps 确认加载 libd3d12.so / libd3d12core.so，见 `out/cross-platform-p3b-current/smoke/46625ce92974451c933742fb39b9764e/`。
+- 未测 blur 帧耗时，也未由驱动加载结果推定 SceneRenderPipeline 全部走 GPU。用户使用新入口后的效果流畅性仍待确认；P3 不因此整体 verified。
