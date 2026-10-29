@@ -148,3 +148,11 @@ Sample 候选为 out/cross-platform-p3a-game.zip，SHA-256 6fbb86990dc8a3adc03d7
 - Inter 不含中文字形；本机 CJK 显示、外部调试、视频/Gallery/音频全流程、原生 Linux 桌面与正式媒体闭包仍需独立验收。本次修复不能解释旧设备 Developer Sample 在框架初始化前的具体阻塞。
 
 P3b 启动/字体切片已取得上述证据，P3 整体仍 in-progress。macOS 未验收，CrossPlatform 仍按 P6 集中接入，不维护第二套 Sample。
+
+### 用户修订：显式回退统一优先开放字体
+
+用户提出微软雅黑的许可与通用性顾虑后，GameTypography 不再按平台显式选择微软雅黑或苹方，统一优先 Noto Sans CJK SC、Noto Sans SC、Source Han Sans SC / CN。Sample 默认仍为内置 Inter；没有复制或打包 Windows/macOS 系统字体，也没有新增中文字体文件。系统未命中这些回退时仍可自行选择其他已安装字体，因此不声称任何环境都绝不会显示系统专有字体。
+
+已同步 control spec、Themes README 和回归约束。Windows 0.1.0-dev.8 为此项偏好修订之前的候选，未重写既有封存 ZIP；当前源码的回退偏好变更不应误记为已进入该候选。
+
+普通 Presentation 回归 302/302 通过（`out/cross-platform-p3b-current/results/open-font-fallbacks.trx`），包括中文 regular/bold 的字形和布局检查；Explicit 媒体测试不在该数量中。本次未新增或重新发布 Windows ZIP。

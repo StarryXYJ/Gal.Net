@@ -5,11 +5,8 @@ namespace GalNet.Avalonia.Themes;
 /// <summary>Shared CJK-friendly UI typography for the player themes and their application host.</summary>
 public static class GameTypography
 {
-    private static readonly string[] Families = OperatingSystem.IsMacOS()
-        ? ["PingFang SC", "Noto Sans CJK SC", "Noto Sans SC", "Microsoft YaHei UI", "Microsoft YaHei"]
-        : OperatingSystem.IsWindows()
-            ? ["Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC"]
-            : ["Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", "Microsoft YaHei UI", "PingFang SC"];
+    private static readonly string[] Families =
+        ["Noto Sans CJK SC", "Noto Sans SC", "Source Han Sans SC", "Source Han Sans CN"];
 
     public static FontFamily UiFontFamily { get; } = FontFamily.Default;
 

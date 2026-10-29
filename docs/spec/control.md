@@ -18,7 +18,7 @@
 
 `IGameNavigationService` 只管理一个游戏 Scope 内的页面状态和回退历史。`IPageViewRegistry` 在组合期建立不可变的 ViewModel→View 映射，`IPageViewFactory` 从同一 Scope 解析页面并设置 `DataContext`。页面导航参数通过 `IActivatablePageViewModel<TArgs>` 传递，不注册到 DI。
 
-内置三布局统一使用 Themes 的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根。Windows 优先微软雅黑 UI，macOS 优先苹方简体，其他平台优先 Noto Sans CJK SC 等已安装中文字体。Sample 的 AppBuilder 使用 `CreateFontManagerOptions()` 配置同一中文回退链，并统一所有应用 Window 的字体；显式日志等宽字体保留。未下载或打包字体文件，其他平台实际字体依赖与渲染效果仍需验收；Editor 自身字体不在本次范围。
+内置三布局统一使用 Themes 的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，目标平台实际显示仍需验收。Editor 自身字体不在本次范围。
 
 需要返回行为的页面继承 `BackNavigablePageViewModel`，获得共享 `BackCommand`、受保护的 `Navigation` 和可重写的 `OnBack()`；默认通过导航历史返回。设置、存读档、鉴赏及其详情、关于页已接入；视频详情的 `OnBack()` 先停止播放。标题、加载和剧情页不默认开启返回。页面 XAML 继续绑定 `BackCommand`，无需绑定键盘事件。
 
