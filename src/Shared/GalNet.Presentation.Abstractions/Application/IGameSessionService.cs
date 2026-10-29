@@ -53,5 +53,6 @@ public interface IFirstEmptySlotSession
 /// <summary>Presentation-safe save slot data. The host owns loading, writing and preview bytes.</summary>
 public sealed record GameSaveSlot(int SlotIndex, DateTime Timestamp, string Description, bool IsEmpty, bool IsCorrupt)
 {
+    public byte[]? PreviewImage { get; init; }
     public string DisplayTimestamp => Timestamp == default ? string.Empty : Timestamp.ToString("g", CultureInfo.CurrentCulture);
 }

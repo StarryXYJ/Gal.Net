@@ -57,6 +57,7 @@ public partial class App : Application
 #endif
             mainWindow = scopedServices.GetRequiredService<MainWindow>();
             desktop.MainWindow = mainWindow;
+            scopedServices.GetRequiredService<TitlePageViewModel>().ExitRequested = mainWindow.Close;
             var startupCancellation = new CancellationTokenSource();
             mainWindow.Opened += async (_, _) =>
             {
@@ -107,6 +108,15 @@ public partial class App : Application
                 if (closingInProgress) return;
 
                 closingInProgress = true;
+#if !BENCHMARK
+                var confirmed = SampleApplicationRestarter.IsRestarting ? Ursa.Controls.MessageBoxResult.OK : await Ursa.Controls.MessageBox.ShowAsync(mainWindow,
+                    localization.CultureService["Exit.Message"], localization.CultureService["Exit.Title"], button: Ursa.Controls.MessageBoxButton.OKCancel);
+                if (confirmed != Ursa.Controls.MessageBoxResult.OK)
+                {
+                    closingInProgress = false;
+                    return;
+                }
+#endif
                 var shutdown = System.Diagnostics.Stopwatch.StartNew();
                 GameLog.Logger.Information("Game host shutdown started");
                 startupCancellation.Cancel();

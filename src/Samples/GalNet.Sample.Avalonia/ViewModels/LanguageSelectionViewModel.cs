@@ -44,6 +44,11 @@ public sealed partial class LanguageSelectionViewModel(IPlayerLocalization local
         }
     }
 
+    partial void OnSelectedLanguageChanged(SettingOption? value)
+    {
+        if (value is not null) localization.ApplyCulture(value.Value);
+    }
+
     private bool CanConfirm() => _selection is { Task.IsCompleted: false } && SelectedLanguage is not null;
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]
@@ -53,6 +58,4 @@ public sealed partial class LanguageSelectionViewModel(IPlayerLocalization local
             _selection!.TrySetResult(SelectedLanguage!.Value);
     }
 
-    [RelayCommand]
-    private void Cancel() => _selection?.TrySetResult(null);
 }

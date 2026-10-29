@@ -84,7 +84,9 @@ public sealed class FileSaveService : ISaveService, IDisposable
             var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot };
             var path = GetPath(slot, quick);
             await FileReplacement.WriteTextAsync(path, JsonCodec.Serialize(payload, JsonOptions), ct).ConfigureAwait(false);
-            if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(GetPreviewPath(slot, quick), request.PreviewImage, ct);
+            var previewPath = GetPreviewPath(slot, quick);
+            if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(previewPath, request.PreviewImage, ct);
+            else if (File.Exists(previewPath)) File.Delete(previewPath);
         }
         finally { _gate.Release(); }
     }

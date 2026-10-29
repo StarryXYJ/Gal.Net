@@ -1,4 +1,7 @@
 {
+  "Title.Exit": "Exit",
+  "Exit.Title": "Exit game",
+  "Exit.Message": "Are you sure you want to exit?",
   "Settings.Operation": "Controls",
   "Input.Advance": "Advance",
   "Input.HoldQuick": "Hold to fast-forward",

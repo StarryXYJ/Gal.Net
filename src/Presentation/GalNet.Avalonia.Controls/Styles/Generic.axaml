@@ -68,15 +68,16 @@
           <ControlTemplate>
             <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}" Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
               <Border MinHeight="{DynamicResource GalNet.Theme.SaveMinHeight}" Padding="16" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
-                <Grid RowDefinitions="*,Auto" RowSpacing="12">
-                  <StackPanel Spacing="4" VerticalAlignment="Top">
+                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
+                  <Image Source="{TemplateBinding Preview}" Height="100" Stretch="UniformToFill" />
+                  <StackPanel Grid.Row="1" Spacing="4" VerticalAlignment="Top">
                     <TextBlock FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
                       <Run Text="Slot " />
                       <Run Text="{TemplateBinding SlotIndex}" />
                     </TextBlock>
                     <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" Opacity="0.75" />
                   </StackPanel>
-                  <StackPanel Grid.Row="1" Spacing="2">
+                  <StackPanel Grid.Row="2" Spacing="2">
                     <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Opacity="0.74" />
                     <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" FontSize="12" Opacity="0.56" />
                     <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.Error}" />

@@ -30,8 +30,8 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:GameSaveSlotRowViewModel">
                   <Panel Margin="7">
-                    <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
-                    <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
+                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
+                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
                   </Panel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

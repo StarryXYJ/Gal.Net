@@ -12,6 +12,25 @@ namespace GalNet.IntegrationTests;
 public sealed class SampleSaveSessionTests
 {
     [Test]
+    public async Task SavePreviewIsStoredAndClearedOnOverwriteWithoutPreview()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "galnet-preview-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using var session = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery,
+                maxSlots: 1, cancellationToken: CancellationToken.None);
+            byte[] preview = [1, 2, 3];
+            await session.SaveAsync(0, new GameSnapshot(), preview, CancellationToken.None);
+            var path = (await session.ListSlotsAsync(CancellationToken.None))[0].PreviewImage;
+            Assert.That(path, Is.Not.Null);
+            Assert.That(await File.ReadAllBytesAsync(path!), Is.EqualTo(preview));
+            await session.SaveAsync(0, new GameSnapshot(), CancellationToken.None);
+            Assert.That((await session.ListSlotsAsync(CancellationToken.None))[0].PreviewImage, Is.Null);
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Test]
     public async Task FirstEmptySavesSerializeAndNeverOverwriteOccupiedOrCorruptSlots()
     {
         var directory = Path.Combine(Path.GetTempPath(), "galnet-empty-slot-" + Guid.NewGuid().ToString("N"));

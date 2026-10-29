@@ -1,4 +1,7 @@
 {
+  "Title.Exit": "退出",
+  "Exit.Title": "退出游戏",
+  "Exit.Message": "确定要退出游戏吗？",
   "Settings.Operation": "操作",
   "Input.Advance": "下一步",
   "Input.HoldQuick": "按住快速",

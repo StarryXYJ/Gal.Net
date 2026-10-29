@@ -107,6 +107,8 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
         }
         await _navigation.NavigateAsync<GalleryPageViewModel, IReadOnlyList<GalleryTypeData>>(types, cancellationToken);
     }
+    public Action? ExitRequested { get; set; }
+    [RelayCommand] protected virtual void Exit() => ExitRequested?.Invoke();
     [RelayCommand] protected virtual void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
 
     public virtual void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;

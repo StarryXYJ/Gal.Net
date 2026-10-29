@@ -25,14 +25,18 @@ public sealed class PlayerSession : IDisposable
     public IGameProgressService Progress { get; }
     public IGalleryDataSource GalleryDataSource { get; }
 
-    public async Task SaveAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken)
+    public Task SaveAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken) => SaveAsync(slotIndex, snapshot, null, cancellationToken);
+
+    public async Task SaveAsync(int slotIndex, GameSnapshot snapshot, byte[]? preview, CancellationToken cancellationToken)
     {
         await _writeGate.WaitAsync(cancellationToken);
-        try { await SaveCoreAsync(slotIndex, snapshot, cancellationToken); }
+        try { await SaveCoreAsync(slotIndex, snapshot, preview, cancellationToken); }
         finally { _writeGate.Release(); }
     }
 
-    public async Task<int?> SaveFirstEmptyAsync(GameSnapshot snapshot, CancellationToken cancellationToken)
+    public Task<int?> SaveFirstEmptyAsync(GameSnapshot snapshot, CancellationToken cancellationToken) => SaveFirstEmptyAsync(snapshot, null, cancellationToken);
+
+    public async Task<int?> SaveFirstEmptyAsync(GameSnapshot snapshot, byte[]? preview, CancellationToken cancellationToken)
     {
         await _writeGate.WaitAsync(cancellationToken);
         try
@@ -40,16 +44,16 @@ public sealed class PlayerSession : IDisposable
             var slots = await _saves.ListSlotsAsync(cancellationToken);
             var empty = slots.Where(slot => slot.Timestamp == default && !slot.IsCorrupt).OrderBy(slot => slot.SlotIndex).FirstOrDefault();
             if (empty is null) return null;
-            await SaveCoreAsync(empty.SlotIndex, snapshot, cancellationToken);
+            await SaveCoreAsync(empty.SlotIndex, snapshot, preview, cancellationToken);
             return empty.SlotIndex;
         }
         finally { _writeGate.Release(); }
     }
 
-    private async Task SaveCoreAsync(int slotIndex, GameSnapshot snapshot, CancellationToken cancellationToken)
+    private async Task SaveCoreAsync(int slotIndex, GameSnapshot snapshot, byte[]? preview, CancellationToken cancellationToken)
     {
         await Progress.FlushAsync(cancellationToken);
-        await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot }, cancellationToken);
+        await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot, PreviewImage = preview }, cancellationToken);
     }
 
     public Task<GameSnapshot?> LoadAsync(int slotIndex, CancellationToken cancellationToken) =>

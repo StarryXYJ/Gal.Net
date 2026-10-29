@@ -29,6 +29,7 @@ public partial class GameShell : UserControl, IDisposable
     private bool _hadActiveRun;
     private bool _returningToTitle;
     private bool _disposed;
+    private byte[]? _savePreview;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputRouter? _inputRouter;
     private readonly GalNet.Avalonia.GameView.Input.TouchInputRecognizer? _touchInput;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputSettings? _inputSettings;
@@ -48,6 +49,7 @@ public partial class GameShell : UserControl, IDisposable
         _views = views;
         _screenshots = screenshots;
         _session = session;
+        if (session is ISavePreviewSource previewSource) previewSource.CaptureSavePreview = CaptureSavePreview;
         _navigation = navigation;
         _transitions = transitions;
         _inputSettings = settings.Input;
@@ -78,6 +80,7 @@ public partial class GameShell : UserControl, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        if (_session is ISavePreviewSource previewSource) previewSource.CaptureSavePreview = null;
         _pageBackInput.Dispose();
         _inputRouter?.Dispose();
         _touchInput?.Dispose();
@@ -155,6 +158,8 @@ public partial class GameShell : UserControl, IDisposable
                 return;
             }
 
+            if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is SaveSlotsPageViewModel)
+                _savePreview = TryCaptureScene(page);
             targetContent = contentFactory();
             if (targetContent is Visual targetVisual &&
                 targetVisual.GetVisualParent() is ContentPresenter previousPresenter)
@@ -288,6 +293,14 @@ public partial class GameShell : UserControl, IDisposable
                 _navigation.ResetTo<TitlePageViewModel>();
         }
         finally { _returningToTitle = false; }
+    }
+
+    private byte[]? CaptureSavePreview() => PageHost.Content is GamePage page ? TryCaptureScene(page) : _savePreview;
+
+    private static byte[]? TryCaptureScene(GamePage page)
+    {
+        try { return page.CaptureScenePng(); }
+        catch (Exception error) { Log.Logger.Warning(error, "Unable to capture save preview"); return null; }
     }
 
     private static byte[] CapturePng(Control target)

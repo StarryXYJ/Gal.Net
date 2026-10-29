@@ -171,7 +171,7 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         ["hold.quick"] = [new(PlayerInputDevice.KeyboardMouse, "Control"), new(PlayerInputDevice.Gamepad, "West")],
         ["toggle.quick"] = [new(PlayerInputDevice.KeyboardMouse, "Tab")],
         ["toggle.auto"] = [new(PlayerInputDevice.KeyboardMouse, "A")],
-        ["toggle.ui"] = [new(PlayerInputDevice.KeyboardMouse, "H"), new(PlayerInputDevice.KeyboardMouse, "MouseMiddle"), new(PlayerInputDevice.Gamepad, "North"), new(PlayerInputDevice.Touch, "TwoFingerTap")],
+        ["toggle.ui"] = [new(PlayerInputDevice.KeyboardMouse, "H"), new(PlayerInputDevice.KeyboardMouse, "MouseRight"), new(PlayerInputDevice.Gamepad, "North"), new(PlayerInputDevice.Touch, "TwoFingerTap")],
         ["save.first-empty"] = [new(PlayerInputDevice.KeyboardMouse, "Control+S")],
         ["open.save"] = [new(PlayerInputDevice.KeyboardMouse, "F5")],
         ["open.load"] = [new(PlayerInputDevice.KeyboardMouse, "Control+L")],

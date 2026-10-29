@@ -64,10 +64,16 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
         return Task.CompletedTask;
     }
 
-    public void Dispose() => ((INotifyCollectionChanged)_session.SaveSlots).CollectionChanged -= OnSlotsChanged;
+    public void Dispose()
+    {
+        ((INotifyCollectionChanged)_session.SaveSlots).CollectionChanged -= OnSlotsChanged;
+        foreach (var row in Slots) row.Dispose();
+        Slots.Clear();
+    }
     private void OnSlotsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildRows();
     private void RebuildRows()
     {
+        foreach (var row in Slots) row.Dispose();
         Slots.Clear();
         foreach (var slot in _session.SaveSlots)
         {

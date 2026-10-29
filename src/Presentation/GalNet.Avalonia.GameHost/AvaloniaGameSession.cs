@@ -15,7 +15,7 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Default Avalonia session adapter. Neutral GameSession owns command coordination.</summary>
-public partial class AvaloniaGameSession : ObservableObject, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, IGameGallerySession, IAsyncDisposable
+public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, IGameGallerySession, IAsyncDisposable
 {
     private readonly AvaloniaGameHostOptions _options;
     private readonly GamePageViewModel _gameplay;
@@ -215,24 +215,29 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             });
         }, cancellationToken);
 
+    public Func<byte[]?>? CaptureSavePreview { get; set; }
+
     public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
+        var preview = CaptureSavePreview?.Invoke();
         await _session.WithSnapshotAsync(async (snapshot, token) =>
         {
-            await _saveSession!.SaveAsync(slotIndex, snapshot, token);
+            await _saveSession!.SaveAsync(slotIndex, snapshot, preview, token);
             await RefreshSlotsAsync(token);
             await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slotIndex}.");
             return true;
         }, cancellationToken);
     }
 
-    public Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default) =>
-        _session.WithSnapshotAsync(async (snapshot, token) =>
+    public Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default)
+    {
+        var preview = CaptureSavePreview?.Invoke();
+        return _session.WithSnapshotAsync(async (snapshot, token) =>
         {
             if (!IsPlaying || _saveSession is null)
                 throw new InvalidOperationException("No active game is available to save.");
             await _settings.FlushAsync();
-            var slot = await _saveSession.SaveFirstEmptyAsync(snapshot, token);
+            var slot = await _saveSession.SaveFirstEmptyAsync(snapshot, preview, token);
             if (slot is not null)
             {
                 await RefreshSlotsAsync(token);
@@ -240,6 +245,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             }
             return slot;
         }, cancellationToken);
+    }
 
     public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
@@ -323,6 +329,14 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
     {
         if (_saveSession is null) return;
         var slots = await _saveSession.ListSlotsAsync(cancellationToken);
+        var previews = new Dictionary<int, byte[]>();
+        foreach (var slot in slots)
+        {
+            if (slot.PreviewImage is not { } path) continue;
+            try { previews[slot.SlotIndex] = await File.ReadAllBytesAsync(path, cancellationToken); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
         await OnUiAsync(() =>
         {
             _saveSlots.Clear();
@@ -333,7 +347,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
                     slot.Timestamp,
                     slot.IsCorrupt ? "Corrupt save" : slot.Timestamp == default ? "Empty" : "Saved game",
                     slot.Timestamp == default && !slot.IsCorrupt,
-                    slot.IsCorrupt));
+                    slot.IsCorrupt) { PreviewImage = previews.GetValueOrDefault(slot.SlotIndex) });
             }
             CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
         });
