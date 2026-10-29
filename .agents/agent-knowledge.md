@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [PowerShell 宿主 API 兼容](lessons/L-20261029-03-powershell-runtime-api-compatibility.md)：Windows PowerShell 5.1 使用 .NET Framework；现代 System.IO.Path API 不能假定存在，需在 powershell.exe 与 pwsh 分别验证。
+
 - [窗口装饰与玩家配色](lessons/L-20261029-02-window-decoration-theme-resources.md)：Ursa 2.1 关闭按钮在独立 WindowDrawnDecorations；窗口共享调色板资源，完整 Fluent 样式保留在播放器根。Headless 不生成平台装饰，资源断言不能替代原生截图。
 
 - [持久字段与保存基线](lessons/L-20261029-01-content-baseline-field-completeness.md)：新增字段必须进入手写相等比较；仅改 Group.storyPackage 应 dirty，局部保存其他配置不能抹掉它。

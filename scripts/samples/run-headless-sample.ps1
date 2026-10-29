@@ -20,7 +20,7 @@ $editorProject = Join-Path $repositoryRoot 'src\Editor\GalNet.Editor.Headless\Ga
 
 if (-not $SkipBuild)
 {
-    if ([string]::Equals([System.IO.Path]::TrimEndingDirectorySeparator($Project), $defaultProject, [StringComparison]::OrdinalIgnoreCase))
+    if ([string]::Equals($Project.TrimEnd([char[]]@('\', '/')), $defaultProject, [StringComparison]::OrdinalIgnoreCase))
     {
         $contractsProject = Join-Path $repositoryRoot 'src\Samples\GalNet.Sample.Contracts\GalNet.Sample.Contracts.csproj'
         & (Join-Path $repositoryRoot 'scripts\contracts\build-project-contracts.ps1') -ContractsProject $contractsProject -ProjectDirectory $Project
