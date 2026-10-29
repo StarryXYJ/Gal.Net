@@ -33,7 +33,11 @@ WSLg 图形对照：本机默认使用 llvmpipe（软件渲染），进程级 `G
 
 Windows 11 x64 / .NET 10 自包含、Ubuntu 24.04.3 x64 / WSLg 均验证 SDL 3.4.18 与 Avalonia UI 主线程共存（各 3 次 × 52 项及 exit 0），仅启用 gamepad/joystick/events。Windows 为官方 DLL；Linux 为输入专用本地源构建（HIDAPI/virtual 有、libudev/libusb 无）。两端当前没有真实标准手柄，虚拟输入、焦点/断连和生命周期证据只用于共存结论；macOS/移动与正式适配验收另行追踪。见 execution.md 的 SDL 探针段及 probes/sdl3/README.md。
 
-## 内容闭包结论与实施选择（已实施）
+## SDL3 正式后端增量（2026-10-30）
+
+固定 SDL3-CS 原生包 3.4.18.1 / SDL 3.4.18，采用自有 LibraryImport C ABI。Windows 11 x64 与 Ubuntu 24.04.3 / WSLg x64 均完成正式 GameHost 的 3 次 × 40 项虚拟输入、焦点、所有权与退出检查，另各一次缺少私有 native 的正常降级。正式结果使用 NuGet 完整 native，并非 P0 的输入专用 Linux 编译；package native/清单/许可传递到外部 Desktop/Avalonia 消费者已验证。macOS assets 仅存在于包/来源清单，未运行；当前仍无实际手柄验收。详细证据见 execution.md。
+
+## 内容闭包实施结果
 
 原 GamePackageExporter.ExportAsync 仅把 prepared.Base 写入 galpak，把 prepared.Stories 发布到归档旁的 StoryPatches/<buildId>。所以单独移动归档会漏掉剧情。ExportDirectoryAsync 已写入本体和全部剧情，两个交付物原先不等价。
 

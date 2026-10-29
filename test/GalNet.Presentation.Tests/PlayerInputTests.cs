@@ -14,12 +14,43 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Avalonia.Themes.Common;
 using GalNet.Game.Controls.Forms;
+using GalNet.Presentation.Abstractions.Input;
 
 namespace GeneralTest.Presentation;
 
 [NonParallelizable]
 public sealed class PlayerInputTests
 {
+    [Test]
+    public async Task OpenGamepadPanelTracksBackendAvailabilityAndNativeFaceLabels()
+    {
+        await Ui(() =>
+        {
+            using var settings = Settings();
+            settings.SelectedDevice = PlayerInputDevice.Gamepad;
+            using var panel = new InputBindingsPanel(settings);
+            var root = new Border { Classes = { "galnet-player" }, Child = panel };
+            root.Styles.Add(new ClassicTheme().CreateStyles());
+            var window = new Window { Width = 1000, Height = 900, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var captures = panel.GetVisualDescendants().OfType<InputBindingCapture>().ToArray();
+                Assert.That(captures, Is.Not.Empty);
+                Assert.That(captures.All(capture => !capture.IsEnabled), Is.True);
+                settings.SetGamepadAvailability(true, null);
+                settings.SetGamepadDevice("Nintendo", GamepadLayout.Nintendo,
+                    new(GamepadButtonLabel.B, GamepadButtonLabel.A, GamepadButtonLabel.Y, GamepadButtonLabel.X));
+                Assert.That(captures.Any(capture => capture.IsEnabled && Equals(capture.Content, "B (South)")), Is.True);
+                settings.SetGamepadAvailability(false, "Private SDL missing");
+                Assert.That(captures.All(capture => !capture.IsEnabled), Is.True);
+            }
+            finally { window.Close(); }
+            return Task.CompletedTask;
+        });
+    }
+
     [Test]
     public void HistoryDefaultIsAddedToOlderConfigurationsWithoutStealingAnExistingWheelBinding()
     {

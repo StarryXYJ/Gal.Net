@@ -9,7 +9,7 @@
 
 ## 用户目标与已确认决策
 
-最新增量：源码 `build-compose` 的 Windows/Linux 切片已总结；SDL3 3.4.18 的 Windows/WSLg 共存探针各完成 3 次 × 52 项及正常退出，继续 P5 正式适配/部署。探针使用虚拟设备，不替代真实手柄、macOS 或移动验收；旧 dev.9 应用包与 dev.10 compose CLI 候选未重写。
+最新增量：正式 SDL3 后端已替换 XInput，Windows/WSLg 各完成 3 次 × 40 项 GameHost 原生验证及缺库降级；展示层 313、架构 53、发行合包 33 项通过，四类仓库外 NuGet 消费者验证 native/清单/许可传递。已完成项归入总结，继续桌面发布矩阵与原生 Editor 导出验收；真实手柄、macOS、移动仍未验收，旧 dev.9 应用包与 dev.10 CLI 未重写。
 
 Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供额外支持 Android、iOS 的 Avalonia 跨平台模板。普通剧情开发者能够在没有 .NET SDK 或原生编译工具的环境中导出内容，使用预编译运行包完成游戏发行。修改应用源码的开发者可指定工程路径和内容包，通过独立工具构建、合并并打包。
 

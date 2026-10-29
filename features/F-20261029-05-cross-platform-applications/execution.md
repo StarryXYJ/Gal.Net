@@ -277,3 +277,32 @@ P4 Linux compose 子范围通过，P4 整体仍 in-progress。下一段可推进
 保留两次失败：首次 Windows 在 Opened 同步完成所有检查后直接 Shutdown，使 Avalonia lifetime StartCore 重入空引用（windows-before-refinement.log）；修正为 Opened 先让出启动调用栈，并修正外层异常必须返回非零。Linux 首次独立探针未注册字体，启动布局时找不到默认 Inter（linux-final/）；按已有字体 lesson 显式打包并注册开源 Inter，最终两端均重建复核。没有修改已修好的正式 Sample 字体策略。
 
 准备脚本在 Windows sandbox 临时目录结束时曾遇 ACL 拒绝；Windows 工作目录改放显式输出的父目录并验证生成路径，Linux 仍用独立 /tmp。原始失败临时目录及自有下载/发布副本在阶段清理时移除，原有手测安装、profile、旧候选和用户 iOS lock 改动保留。P0 Windows/WSLg SDL 子范围完成，P0 整体与 P5 仍 in-progress；接下来替换正式输入适配。
+
+## 2026-10-30：P5 正式 SDL 输入及交付切片
+
+新增 GalNet.Input.Sdl3，使用源生成窄 C ABI（显式 cdecl、SDL bool 一字节），原生库固定为 SDL3-CS.Windows/Linux/MacOS 3.4.18.1，实际 SDL 3.4.18；仅采用 runtime assets，排除上游桌面无关的 mobile main/static framework targets。原生清单记录包来源提交和各 RID SHA256，随两份 zlib 许可交付。中立 snapshot/interface 位于 Presentation.Abstractions，输入信息不进入 Core 剧情状态。
+
+GameHost 替换 XInput，绑定窗口时在 UI 线程初始化并以 32ms timer 更新，失活立即 Cancel，解绑/关闭只释放自有引用。多个 scope 共用输入租约；检测已有外部 input owner 或不同 SDL main thread 时可诊断拒绝，不接管外部子系统。只启用 gamepad/隐式 joystick/events，不创建 SDL 窗口。仅加载应用私有 native，缺库/版本/初始化失败使手柄不可用而不阻塞键鼠。
+
+GameView 维持首个连接直至断开，统一按钮/轴、0.5/0.35 摇杆阈值和 0.5/0.4 扳机迟滞，取消不生成释放提交，激活/重连须先回中立。按实际 face labels 显示按钮名称及物理位置，持久化仍为位置代码；已打开设置面板随可用性和布局更新。既有导航连发/动作路由复用 Cancel。
+
+证据根：out/cross-platform-validation/20261030-sdl3/。
+
+| 检查 | 结果/证据 |
+| --- | --- |
+| 正式 Windows 原生后端/定时器 | windows-owned/：3 次 × 40 项，exit 0；实际窗口焦点、按住返回防误触发、hotplug、新 ID、标准按钮/轴、多 scope、错误线程、外部 input owner 和 events 引用保留、输入队列与无关 user event 检查 |
+| 正式 Linux / WSLg | linux-owned/：相同 3 次 × 40 项，exit 0；使用 NuGet 私有 SDL 的完整构建与自包含 .NET，含空格 ext4 路径；运行副本自动清理 |
+| 私有 native 缺失 | 上述两端 run-3.json：实际移走入口库，UI 正常启动/退出 0，手柄不可用且原因明确；未从系统 SDL 回退 |
+| 资产/许可 | verify-host.py 核对已发布 SDL SHA256 与随包 native-runtime.json 一致，两份许可存在；当前四类 SDK/包链均未引入 SDL 托管主循环 |
+| 共享展示/输入 | presentation-full.trx 313/313；input-ui-fixed.trx 47/47，包括设备选择、失焦/断连与重新武装、死区、按钮提示及动态面板 |
+| 架构 | architecture.trx 53/53；Input.Sdl3 只依赖中立 Presentation.Abstractions，Core/Runtime 不接触 SDL |
+| 发行合包 | distribution-notices.trx 33/33；源码准备把 ThirdParty 移至 docs，tar/compose 保留通知，不混入 lib/ThirdParty |
+| NuGet 真实交付 | nuget/package-validation.json：五个验证用本地候选完成实际构建/封装；四类仓库外消费者 restore/build/run 成功；Desktop/Avalonia native 及清单/两份许可传递并匹配哈希。日志、候选哈希保留于 nuget/，候选包未发布 |
+| 发布图 | Player/Developer 的普通、WindowsReadyToRun、Desktop/linux-x64 锁文件及新增 SDL 工程锁图；Linux 既有 dev.6 项目版本元数据保留，未夹带无关锁文件变更 |
+| 脚本检查 | Linux 包保护在 WSL 文件系统 8/8；Windows 上相同用例不保留 POSIX 执行位，保留首次失败 log，不削弱断言。PowerShell AST 与 diff 检查通过 |
+
+保留的失败/修正：正式 Windows 首次发现关闭普通 SDL 输入事件后队列仍残留（host-windows-first.json）；改为独占 input 的租约仅清理 0x600–0x6ff，保留其他 SDL 事件，不调用全局 SDL_Quit。见 L-20261030-01。动态面板首次测试未挂主题模板导致找不到 capture 控件（input-final.trx）；按正式主题挂载后 47 项通过。NuGet 首次尝试复用 WorkDirectory 被既有保护拒绝，未覆盖原候选；改用新目录封装已完成构建的最终 DLL，再通过全部外部消费者。
+
+清理自有 NuGet 候选、两轮封装目录、仓库外消费者隔离缓存约 2.00 GiB，保留构建/封装/消费者日志和候选哈希，见 nuget/cleanup.json；正式探针发布副本与包检查缓存按 stage-cleanup.json 清理。旧 dev.9/dev.10、本体手测安装、manual-profile 及用户 iOS lock 未触碰，项目正常 bin/obj 缓存保留。
+
+此切片证明实现与 Windows/WSLg 自动化交付。真实手柄、原生 Linux 桌面、macOS、移动、完整应用发行矩阵及 GUI 核心流程仍待验收；P5 整体 in-progress。完成项已从计划归并到总结，继续推进后续可独立实施项。

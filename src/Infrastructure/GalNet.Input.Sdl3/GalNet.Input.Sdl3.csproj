@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
+    <!-- Runtime assets only. Desktop integration owns initialization; do not import
+         upstream mobile main-loop/static-framework targets into Avalonia hosts. -->
+    <PackageReference Include="SDL3-CS.Windows" ExcludeAssets="build;buildTransitive" GeneratePathProperty="true" />
+    <PackageReference Include="SDL3-CS.Linux" ExcludeAssets="build;buildTransitive" />
+    <PackageReference Include="SDL3-CS.MacOS" ExcludeAssets="build;buildTransitive" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="native-runtime.json" Link="ThirdParty/SDL3/native-runtime.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(PkgSDL3-CS_Windows)/LICENSE" Link="ThirdParty/SDL3/SDL3-CS-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(PkgSDL3-CS_Windows)/licenses/SDL/LICENSE.txt" Link="ThirdParty/SDL3/SDL-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

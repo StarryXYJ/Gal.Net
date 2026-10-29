@@ -78,7 +78,13 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 设置项保持无逐行外框的布局。`InputBindingCapture` 使用 Button 样式键及 `player-input-binding` 类，将当前键值（如 Control）呈现为可点击的输入框：独立 1px 描边、主题底色与圆角、悬停文字/描边变色和键盘焦点提示；修改仅作用绑定控件，不给整行配置项加卡片。设置模板不再创建重复的可用性 Tooltip，避免空说明也弹出空白提示；不可用原因和错误仍以内联文字展示。不改变 SchemaForm 工厂、可用性或提交队列。
 
-`PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 接入默认对白历史覆盖层，无回调时历史动作禁用；默认键鼠绑定为 WheelUp，旧偏好仅在缺少该动作且没有手势冲突时补入，显式清空保持无绑定。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
+`PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。桌面 GameHost 使用 `GalNet.Input.Sdl3` 的固定版本 SDL3 后端，替换 XInput；中立 `StandardGamepadSnapshot` 位于 Presentation.Abstractions，包含本次连接身份、布局/按钮标签、标准按钮与归一化轴，不进入剧情状态。三主题共享面板行为，面板跟随后端可用性与设备标签更新；持久化仍使用 South/East 等物理位置代码，显示实际 A/B/X/Y、Cross/Circle 等标签及位置，不改变确认布局偏好。
+
+`GamepadInputSession` 选择首个有效连接并保持到断连，不混合多设备。摇杆方向的按下/释放阈值分别为 0.5/0.35，扳机为 0.5/0.4，SDL 的 Y 正方向为向下。输入在窗口失活、解绑和断连时通过 Cancel 清空，避免把中断当成松开后提交动作；激活、重新连接或更换设备必须先观察到中立状态才重新接收按键。导航连发仍由 `PlayerInputRouter` 处理并随 Cancel 停止。
+
+原生初始化、更新和释放在 Avalonia UI 线程；同线程多个 scope 共享输入租约，只使用 gamepad 及其隐式 joystick/events 子系统，不创建 SDL 窗口或接管渲染。数据源独占 SDL 输入及 0x600–0x6ff 事件范围，保留其他 SDL 事件；已有外部 input owner 时返回不可用，须由定制宿主显式协调。最后租约只退出自有子系统，不调用全局 SDL_Quit。私有 native 缺失、版本不匹配或初始化失败写入诊断并禁用手柄，键鼠继续可用；移动初始化尚未接入。Windows/WSLg 的虚拟设备自动化不等于真实手柄或 macOS 验收，部署与验证边界见发行手册。
+
+`PlayerInputSettings.OpenHistoryAsync` 接入默认对白历史覆盖层，无回调时历史动作禁用；默认键鼠绑定为 WheelUp，旧偏好仅在缺少该动作且没有手势冲突时补入，显式清空保持无绑定。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
 
 默认宿主以 `DialogueHistoryJournal` 保存当前路线已完整显示的 ADV/NVL 文本，保留实际语言的姓名、富文本、进入前已读状态及可选语音引用；Quick/CatchUp 记录实际经过文本，调试重建不追加。新游戏清空，存档/读档恢复对应前缀；历史正文只在实际保存时进入 `GameSnapshot.Attachments[host.dialogue.history]`，状态表只编码计数游标。当前句按稳定边界重新执行，避免重复记录。默认三主题承载 GamePage.History（PART_History），列表虚拟化，每次打开定位末尾；正文行纯显示，不提供悬停、选择、焦点或点击行为，独立语音按钮可重播。打开取消自动/快速并屏蔽剧情输入，Escape/返回按钮关闭，关闭保持手动。
 

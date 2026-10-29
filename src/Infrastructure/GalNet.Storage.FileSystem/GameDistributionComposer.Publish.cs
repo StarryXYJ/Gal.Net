@@ -44,6 +44,8 @@ public static partial class GameDistributionComposer
             var root = Path.Combine(stage, "application");
             await CopyTreeAsync(source, Path.Combine(root, "lib"), cancellationToken);
             Directory.CreateDirectory(Path.Combine(root, "docs"));
+            var notices = Path.Combine(root, "lib/ThirdParty");
+            if (Directory.Exists(notices)) Directory.Move(notices, Path.Combine(root, "docs/ThirdParty"));
             foreach (var name in new[] { "I18n", "ResourcePatches", "StoryPatches" }) Directory.CreateDirectory(Path.Combine(root, "pak", name));
             var entry = "lib/" + options.EntryPoint;
             var modes = new Dictionary<string, UnixFileMode>(StringComparer.OrdinalIgnoreCase) { [entry] = DirectoryMode755 };

@@ -28,10 +28,18 @@
 
 固定 SDL 3.4.18 及官方归档 SHA256，独立 Avalonia 自包含探针使用源生成窄绑定。Windows 官方 x64 DLL 与 WSL 输入专用源构建均完成 3 次 × 52 项检查、坏 native 哈希拒绝 exit 1 和正常退出 0；初始化/事件泵在 UI 主线程，仅 gamepad 及隐式 joystick/events，未启用 SDL video/audio。虚拟设备按键/轴、释放、断连、重新初始化与真实 Avalonia 焦点切换通过。源码/构建临时目录与运行副本自动清理，保留 native/许可/精简证据。
 
-入口：[探针说明](probes/sdl3/README.md)；证据：`out/cross-platform-validation/20261029-sdl3/`。这是共存可行性结果，正式适配仍待 P5 替换，真实设备、macOS、移动与 AOT 不在本切片验收内。
+入口：[探针说明](probes/sdl3/README.md)；证据：`out/cross-platform-validation/20261029-sdl3/`。这是共存可行性结果，后续正式适配见下一段；真实设备、macOS、移动与 AOT 不在此探针验收内。
+
+## P5 — 正式 SDL 手柄适配与部署（Windows/WSLg 自动化切片）
+
+新增独立 `GalNet.Input.Sdl3`，使用自有源生成窄 C ABI 和固定 3.4.18.1 原生 NuGet（SDL 3.4.18），替换 XInput。中立快照归 Presentation.Abstractions；GameView 处理稳定设备选择、死区/迟滞、失焦或断连取消、回到中立再武装及实际按钮标签。GameHost 在 UI 主线程初始化、32ms 更新和释放，共享自有 SDL input 租约；缺库/版本/外部所有权冲突可诊断，键鼠不依赖 SDL。
+
+最终 Windows/WSLg 各 3 次 × 40 项正式后端/定时器检查与 exit 0，另各 1 次缺库降级通过；包括真实焦点切换、热插拔、按住时断连、错误线程、共享租约、保留外部 events 引用与无关事件。完整 Presentation 313/313、相关输入 47/47、架构 53/53、发行合包 33/33 通过。五个本地 NuGet 候选完成实际构建，四类仓库外消费者编译运行，SDL native/清单及两份许可均传递到 Desktop/Avalonia 消费者；源码合包与维护者封装将通知放入 docs/ThirdParty/SDL3。
+
+证据：`out/cross-platform-validation/20261030-sdl3/`；[正式探针入口](probes/sdl3-host/README.md)、[当前输入规范](../../docs/spec/control.md)、[部署说明](../../docs/manual/release-packaging.md)。Player/Developer 普通、Windows R2R 与 Linux Desktop 锁图已更新；本次 NuGet 是验证用本地候选，旧 dev.9 应用包、dev.10 CLI 和用户手测安装未更新。真实手柄、macOS、原生 Linux 桌面、最终应用发行矩阵与移动初始化仍待验收，P5 整体保持 in-progress。
 
 ## 仍须保留的边界（继续追踪）
 
-P1 原生 Editor UI 两种导出、P0 移动风险探针、完整 Linux 媒体/Gallery/调试及原生桌面、公开再分发许可和对应源码可用性、Linux 宿主 SDK/定制工程矩阵、macOS/签名、SDL、跨平台模板与移动真机均未因此完成；具体待办在剩余计划中。
+P1 原生 Editor UI 两种导出、P0 移动风险探针、完整 Linux 媒体/Gallery/调试及原生桌面、公开再分发许可和对应源码可用性、Linux 宿主 SDK/定制工程矩阵、macOS/签名、实际手柄与最终桌面发行矩阵、跨平台模板和移动真机均未因此完成；具体待办在剩余计划中。
 
 实施约定继续有效：不考虑旧格式兼容；P6 前只维护现有 Sample 和公共库，桌面稳定后再集中接入 CrossPlatform；macOS 环境缺失不阻挡独立的 Windows/Linux 切片。每个可验证阶段完成后提交相关代码、测试和文档，将计划中已完成的步骤归并为本总结，保留未验收项及证据。

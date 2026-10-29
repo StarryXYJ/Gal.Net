@@ -196,7 +196,7 @@ pwsh -File scripts/release/Test-DesktopAot.ps1
 pwsh -File scripts/release/Release.ps1 -Tag v1.2.3
 ```
 
-Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，按 tag 串行执行完整构建和发布，已公开版本直接跳过，未完成 draft 要求用原产物与 journal 恢复。checkout 固定为发现时的 tag commit，并校验精确 tag 与 master 归属；随后跑完整 CI，再由打包层独立构建带正式版本号的 19 个 NuGet 库项目，不重复构建测试项目。普通测试输出可能被后续构建覆盖，不能直接当作正式版本产物。应用不同 RID/部署图仍分别 restore/publish，包消费者和 ZIP 验证保留。build 上传封存目录，publish 下载后上传，不重新编译；ZIP/nupkg artifact 不再重复压缩。`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
+Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，按 tag 串行执行完整构建和发布，已公开版本直接跳过，未完成 draft 要求用原产物与 journal 恢复。checkout 固定为发现时的 tag commit，并校验精确 tag 与 master 归属；随后跑完整 CI，再由打包层独立构建包清单中带正式版本号的 NuGet 库项目，不重复构建测试项目。普通测试输出可能被后续构建覆盖，不能直接当作正式版本产物。应用不同 RID/部署图仍分别 restore/publish，包消费者和 ZIP 验证保留。build 上传封存目录，publish 下载后上传，不重新编译；ZIP/nupkg artifact 不再重复压缩。`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
 
 公开上传需要 GitHub 权限和名为 `NUGET_API_KEY` 的 NuGet 发布凭据；可传入 Trusted Publishing 获取的短期 key。当前 workflow 从同名 GitHub secret 读取，首次发布前需配置。在本地也可上传已经验收的精确 tag 索引：
 
@@ -209,3 +209,13 @@ Push 先检查索引、全部文件哈希、版本和消费者验收状态；Git
 ## 维护者本地应用入口
 
 `Publish.ps1 -Package Editor/Sample/SampleIntegrated/All -Version 1.2.3` 用于维护者本地应用构建，不再从 Editor 内容导出窗口调用。可选 `-Deployment FrameworkDependent` 生成精简版，名称追加 `-framework-dependent`；默认 `SelfContained`。`-Galpak` 使用完整 v4 归档。完整 NuGet/应用组合与索引流程使用 Release.ps1，默认同时生成两种部署。直接运行 Publish.ps1 不会产生可供 Push.ps1 使用的封存索引。`Test-Release.ps1 -Deployments SelfContained` 可单独验收完整版，默认验收两种部署。
+
+### SDL3 桌面输入部署
+
+`GalNet.Input.Sdl3` 使用自己的窄源生成 C ABI 绑定，原生资产由固定 `SDL3-CS.Windows/Linux/MacOS` 3.4.18.1 包提供（SDL 3.4.18），不引用其托管主循环。依赖锁定内容哈希；`ThirdParty/SDL3/native-runtime.json` 记录 native 版本、包来源/提交和各 RID 原生 SHA256。该清单是资产来源记录，不能用所列 RID 推断已经完成平台或物理设备验收。
+
+普通 SDK 输出将私有库放在运行目录或 `runtimes/<rid>/native`；数据源只搜索这两个应用私有位置，不回退到系统 SDL。维护者 Windows/Linux 封装及源码 `build-compose` 将第三方清单和两份许可移动至 `docs/ThirdParty/SDL3/`；对应库仍在 lib。GalNet.Desktop/Avalonia 聚合包通过传递 native 依赖和 buildTransitive notice 内容保留同样信息，分发时应一起交付。
+
+GameHost 绑定窗口时才初始化 SDL，解绑/关闭释放自有租约。设备输入只启用 gamepad/joystick/events，不创建 SDL 游戏窗口。缺库、版本错误或外部 input owner 冲突会记录原因并使手柄不可用，键鼠仍可用。定制宿主应在 UI/main 线程创建、更新、释放 `IStandardGamepadSource`，并将快照交给 GameView 的 `GamepadInputSession`；其他 SDL 输入消费者需要显式协调所有权，不能同时独立消费同一输入事件范围。
+
+Windows/WSLg 已验证正式适配的虚拟设备、焦点、断连、生命周期及缺库降级。物理标准手柄、原生 Linux 桌面、macOS 和移动初始化继续保留未验收；不会以包内存在 dylib 或虚拟设备成功代替这些验收。

@@ -161,7 +161,7 @@ function Set-PackageLayout([string]$PackageRoot) {
     New-Item -ItemType Directory -Force -Path $libraryRoot, $documentsRoot | Out-Null
     foreach ($item in Get-ChildItem -LiteralPath $PackageRoot -Force) {
         if ($item.Name -in @('lib', 'docs', 'pak', 'Skills', 'Tools', 'GalNet.Editor.exe', 'GalNet.Editor.Headless.exe', 'GalNet.Sample.Avalonia.exe')) { continue }
-        $destination = Join-Path $(if ($item.Name -in @('README.txt', 'README.md', 'LICENSE')) { $documentsRoot } else { $libraryRoot }) $item.Name
+        $destination = Join-Path $(if ($item.Name -in @('README.txt', 'README.md', 'LICENSE', 'ThirdParty')) { $documentsRoot } else { $libraryRoot }) $item.Name
         if (!$item.FullName.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase) -or
             ![IO.Path]::GetFullPath($destination).StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) {
             throw 'Refusing to move files outside the application payload.'

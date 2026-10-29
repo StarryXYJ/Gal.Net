@@ -53,6 +53,8 @@ def merge_publish(source, package, kind):
             shutil.copyfile(path, target)
         elif path.name == "Skills":
             copy_tree(path, package / "Skills")
+        elif path.name == "ThirdParty":
+            copy_tree(path, package / "docs/ThirdParty")
         elif path.is_dir():
             copy_tree(path, package / "lib" / path.name)
         else:

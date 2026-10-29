@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Presentation.Abstractions.Input;
 
 namespace GalNet.Avalonia.GameView.Input;
 
@@ -29,7 +30,39 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
     public PlayerInputDevice LastDevice { get; set; }
     public PlayerInputDevice? SelectedDevice { get; set; }
     public bool EastConfirms => _configuration.EastConfirms;
-    public bool GamepadSupported { get; set; }
+    private bool _gamepadSupported;
+    public bool GamepadSupported
+    {
+        get => _gamepadSupported;
+        set { if (SetProperty(ref _gamepadSupported, value)) Changed?.Invoke(); }
+    }
+    public string? GamepadUnavailableReason { get; private set; }
+    public string? GamepadDeviceName { get; private set; }
+    public GamepadLayout GamepadLayout { get; private set; }
+    public GamepadFaceLabels GamepadLabels { get; private set; } = GamepadFaceLabels.Unknown;
+    public void SetGamepadAvailability(bool available, string? reason)
+    {
+        GamepadUnavailableReason = reason;
+        GamepadSupported = available;
+    }
+    public void SetGamepadDevice(string? name, GamepadLayout layout, GamepadFaceLabels labels)
+    {
+        if (GamepadDeviceName == name && GamepadLayout == layout && GamepadLabels == labels) return;
+        GamepadDeviceName = name;
+        GamepadLayout = layout;
+        GamepadLabels = labels;
+        Changed?.Invoke();
+    }
+    public string FormatGamepadGesture(string gesture) => string.Join('+', gesture.Split('+').Select(code =>
+    {
+        var label = code switch
+        {
+            "South" => GamepadLabels.South, "East" => GamepadLabels.East,
+            "West" => GamepadLabels.West, "North" => GamepadLabels.North,
+            _ => GamepadButtonLabel.Unknown
+        };
+        return label == GamepadButtonLabel.Unknown ? code : $"{label} ({code})";
+    }));
     public bool TouchSupported { get; set; } = true;
     public bool IsCapturing { get; set; }
     public bool IsPreviewingChoice { get; set; }

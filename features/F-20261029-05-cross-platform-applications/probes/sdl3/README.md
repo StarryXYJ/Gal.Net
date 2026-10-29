@@ -1,6 +1,6 @@
 # SDL3 / Avalonia 共存探针
 
-这是 P0 的隔离探针，尚未替换正式 GameHost 的 XInput。固定 SDL **3.4.18**，窄绑定使用源生成 `LibraryImport`；只覆盖 Windows/Linux x64，不声称已验证 AOT、macOS 或真实手柄。
+这是 P0 的隔离共存探针；后续正式后端及 GameHost 定时器验证见 [sdl3-host](../sdl3-host/README.md)。固定 SDL **3.4.18**，窄绑定使用源生成 `LibraryImport`；只覆盖 Windows/Linux x64，不声称已验证 AOT、macOS 或真实手柄。
 
 `native-sources.json` 的 SHA256 对照官方 GitHub release asset digest；下载使用 SDL 官方镜像。准备脚本校验归档，保存原生文件 SHA256、来源、构建选项及 SDL zlib 许可。Linux 在独立临时目录构建输入专用库，自动清理源码/构建目录，不安装系统包。当前 WSL 环境的 HIDAPI/虚拟设备启用，libudev/libusb 未启用，不能据此推断完整物理设备兼容性。
 

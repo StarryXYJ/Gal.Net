@@ -23,6 +23,7 @@
     <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/GalNet.Input.Sdl3/GalNet.Input.Sdl3.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.Audio/GalNet.Media.Audio.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />

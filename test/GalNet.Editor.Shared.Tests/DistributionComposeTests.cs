@@ -392,6 +392,8 @@ public sealed class DistributionComposeTests
         File.Copy(Path.Combine(Runtime, "lib/player"), Path.Combine(published, "Player"));
         File.Copy(Path.Combine(Runtime, "lib/player"), Path.Combine(published, "libcoreclr.so"));
         File.WriteAllText(Path.Combine(published, "System.Net.Sockets.dll"), "Managed PE, not ELF");
+        Directory.CreateDirectory(Path.Combine(published, "ThirdParty/SDL3"));
+        File.WriteAllText(Path.Combine(published, "ThirdParty/SDL3/SDL-LICENSE.txt"), "fixture SDL license");
         var media = Path.Combine(_root, "media");
         foreach (var name in new[] { "libvlc.so.5", "libvlccore.so.9", "vlc/plugins/codec/libavcodec_plugin.so" })
         {
@@ -406,6 +408,15 @@ public sealed class DistributionComposeTests
         var output = Path.Combine(_root, "game.tar.gz");
         await GameDistributionComposer.ComposeAsync(runtime, Content, output);
         Assert.That(File.Exists(output), Is.True);
+        using (var stream = File.OpenRead(output))
+        using (var gzip = new System.IO.Compression.GZipStream(stream, System.IO.Compression.CompressionMode.Decompress))
+        using (var reader = new System.Formats.Tar.TarReader(gzip))
+        {
+            var entries = new List<string>();
+            while (reader.GetNextEntry() is { } entry) entries.Add(entry.Name);
+            Assert.That(entries.Any(name => name.EndsWith("/docs/ThirdParty/SDL3/SDL-LICENSE.txt", StringComparison.Ordinal)), Is.True);
+            Assert.That(entries.Any(name => name.Contains("/lib/ThirdParty/", StringComparison.Ordinal)), Is.False);
+        }
         Assert.That(Directory.GetDirectories(_root, ".prepare-runtime-*"), Is.Empty);
     }
 }
