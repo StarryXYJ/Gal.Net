@@ -54,6 +54,7 @@
     <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Auto, Auto}"
                   IsChecked="{Binding IsAutoMode, Mode=OneWay}" Command="{Binding ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto" />
     <Button Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Skip, Skip}" Command="{Binding RequestSkipCommand}" />
+    <Button Classes="player-link" Margin="4" Content="{text:PlayerText History.Title, History}" Command="{Binding OpenHistoryCommand}" IsVisible="{Binding HasHistory}" />
     <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
     <Button Classes="player-link" Margin="4" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
     <Button Classes="player-link" Margin="4" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />

@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Contracts.Builtins;
 
@@ -9,11 +10,11 @@ namespace GalNet.Contracts.Builtins;
 public partial class VariantsShowOptions
 {
     [Common, Field(0, Required = true, EditorId = ValueEditorIds.Text)] public string HandleId { get; set; } = "";
-    [Common, Field(1, Required = true, EditorId = "entry.variantsasset")] public string AssetId { get; set; } = "";
+    [Common, Field(1, Required = true, EditorId = "entry.variantsasset", ResourceTypeId = "image-variants")] public string AssetId { get; set; } = "";
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Selection { get; set; }
-    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
-    [Field(5, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
+    [Field(5, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Slider, Step = .01)] public float Opacity { get; set; } = 1;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? DisplayMode { get; set; } = LayerDisplayMode.Native;
 }
@@ -48,10 +49,10 @@ public static class VariantsArgumentValidation
 
     public static LayerTransform ReadTransform(JsonElement value)
     {
-        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, AllowDuplicateProperties = false };
+        var options = BuiltinJson.CreateOptions(new() { PropertyNameCaseInsensitive = true, AllowDuplicateProperties = false });
         var transform = value.ValueKind == JsonValueKind.String
-            ? JsonSerializer.Deserialize<LayerTransform>(value.GetString()!, options)
-            : value.Deserialize<LayerTransform>(options);
+            ? JsonCodec.Deserialize<LayerTransform>(value.GetString()!, options)
+            : JsonCodec.Deserialize<LayerTransform>(value, options);
         if (transform is null || !float.IsFinite(transform.X) || !float.IsFinite(transform.Y) || !float.IsFinite(transform.RotationDegrees)
             || !float.IsFinite(transform.ScaleX) || !float.IsFinite(transform.ScaleY) || transform.ScaleX < .001f || transform.ScaleY < .001f)
             throw new InvalidDataException("Variant transform requires finite values and positive scale.");

@@ -42,7 +42,7 @@ public static class EditorDocumentCloner
         GroupEntries = source.GroupEntries.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Select(CloneEntry).ToList()),
-        Settings = CloneSettings(source.Settings),
+        Configuration = source.Configuration.Clone(),
         Files = source.Files.ToDictionary(pair => pair.Key, pair => new EditorFileDocument { Id = pair.Value.Id, Path = pair.Value.Path, Exists = pair.Value.Exists, ManagedContent = pair.Value.ManagedContent, Data = pair.Value.Data.ToArray() })
     };
 
@@ -65,6 +65,7 @@ public static class EditorDocumentCloner
         X = source.X,
         Y = source.Y,
         File = source.File,
+        StoryPackage = source.StoryPackage,
         BranchType = source.BranchType,
         Options = source.Options?.Select(option => new EditorGraphBranchOptionDto
         {
@@ -96,27 +97,6 @@ public static class EditorDocumentCloner
         Parameters = source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone())
     };
 
-    private static GalNet.Core.Settings.ProjectSettings CloneSettings(GalNet.Core.Settings.ProjectSettings source) => new()
-    {
-        TargetLocale = new GalNet.Core.I18n.I18nLocale(source.TargetLocale.Code),
-        AvailableLocales = source.AvailableLocales.Select(locale => new GalNet.Core.I18n.I18nLocale(locale.Code)).ToList(),
-        SaveSlotCount = source.SaveSlotCount,
-        SfxChannelCount = source.SfxChannelCount,
-        DefaultWidth = source.DefaultWidth,
-        DefaultHeight = source.DefaultHeight,
-        PlayerVariables = source.PlayerVariables.Select(variable => variable.Clone()).ToList(),
-        SaveVariables = source.SaveVariables.Select(variable => variable.Clone()).ToList(),
-        AudioTracks = source.AudioTracks.Select(track => new GalNet.Core.Audio.AudioTrackDefinition
-        {
-            Id = track.Id,
-            Name = track.Name,
-            Bus = track.Bus,
-            DefaultGain = track.DefaultGain,
-            MaxVoices = track.MaxVoices,
-            MaxQueuedItems = track.MaxQueuedItems,
-            OverflowPolicy = track.OverflowPolicy,
-            QueueOverflowPolicy = track.QueueOverflowPolicy
-        }).ToList()
-    };
+
 
 }

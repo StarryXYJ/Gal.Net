@@ -1,0 +1,1 @@
+`tone.ogg` is a GalNet-generated 440 Hz sine wave (2 seconds, mono), encoded with LibVLC's Vorbis encoder solely for decoder regression tests. It contains no recorded or third-party audio. The tests copy it to a Unicode filename and verify the new backend's decoding and duration query.

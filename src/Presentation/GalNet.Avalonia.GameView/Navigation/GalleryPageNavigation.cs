@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Avalonia.GameView.Navigation;

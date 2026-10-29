@@ -1,5 +1,5 @@
 using GalNet.Core.Primitives;
-using GalNet.Runtime.Audio;
+using GalNet.Primitives.Builtins.Audio;
 
 namespace GalNet.Primitives.Builtins;
 
@@ -11,6 +11,8 @@ public sealed class AudioPlaybackPrimitiveInstance(
     CancellationToken cancellationToken) : PrimitiveInstance(batchId)
 {
     private AudioPlaybackTicket? _ticket;
+    /// <summary>The original logical playback, when this invocation actually started audio.</summary>
+    public AudioPlaybackTicket? Ticket => _ticket;
     public override bool IsBlocking => false;
     public override bool IsSkippable => autoBlocking;
 

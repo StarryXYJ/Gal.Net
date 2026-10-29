@@ -1,15 +1,20 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Assets;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
+using GalNet.Editor.Shared.Commands;
 
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Builds editable project content into the compiled directory layout consumed by Runtime.</summary>
-public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceTypeCatalog? resourceTypes = null)
+public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceTypeCatalog? resourceTypes = null,
+    ProjectConfigurationSchema? configurations = null)
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
     {
@@ -25,6 +30,22 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         string? outputRoot = null,
         CancellationToken cancellationToken = default)
     {
+        var (build, _) = await BuildPreparedAsync(projectRoot, outputRoot, (stage, token) =>
+        {
+            token.ThrowIfCancellationRequested();
+            var diagnostics = ImageVariantsValidation.Validate(stage, resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
+            if (diagnostics.Any(item => item.Severity == "error"))
+                throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
+            return Task.FromResult(true);
+        }, cancellationToken).ConfigureAwait(false);
+        return build;
+    }
+
+    /// <summary>Prepares and validates assets from the private stage before publication; prepared values must own their bytes.</summary>
+    internal async Task<(ProjectContentBuildResult Build, T Prepared)> BuildPreparedAsync<T>(
+        string projectRoot, string? outputRoot, Func<string, CancellationToken, Task<T>> prepare,
+        CancellationToken cancellationToken)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectRoot);
         var sourceRoot = Path.GetFullPath(projectRoot);
         if (!Directory.Exists(sourceRoot))
@@ -33,9 +54,9 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         var targetRoot = Path.GetFullPath(outputRoot ?? Path.Combine(sourceRoot, "Output"));
         ValidateOutputPath(sourceRoot, targetRoot);
         cancellationToken.ThrowIfCancellationRequested();
+        if (configurations is not null) configurations.Validate(DirectProjectPersistence.LoadSettings(sourceRoot));
         var validation = new ProjectValidationService(sourceRoot).Validate("graph");
         var diagnostics = validation.Diagnostics.ToList();
-        diagnostics.AddRange(ImageVariantsValidation.Validate(sourceRoot, resourceTypes ?? BuiltinResourceTypes.CreateCatalog()));
         diagnostics.AddRange(LocalizationValidation.ValidateDisk(sourceRoot, _entryCatalog));
         _ = new ProjectRawReader(sourceRoot).Files(null, diagnostics);
         if (!validation.Success || diagnostics.Any(item => item.Code == "file.linkSkipped" || item.Severity == "error"))
@@ -48,7 +69,8 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         try
         {
             Directory.CreateDirectory(stageRoot);
-            var compiledGroups = await BuildStageAsync(sourceRoot, stageRoot, cancellationToken).ConfigureAwait(false);
+            var result = await BuildStageAsync(sourceRoot, stageRoot, cancellationToken).ConfigureAwait(false);
+            var prepared = await prepare(stageRoot, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
             Directory.CreateDirectory(Path.GetDirectoryName(targetRoot)!);
@@ -79,7 +101,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
                 backupRoot = null;
             }
 
-            return new ProjectContentBuildResult(targetRoot, compiledGroups) { Diagnostics = diagnostics.ToArray() };
+            return (result with { OutputPath = targetRoot, Diagnostics = diagnostics.ToArray() }, prepared);
         }
         finally
         {
@@ -90,7 +112,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         }
     }
 
-    private async Task<int> BuildStageAsync(string sourceRoot, string stageRoot, CancellationToken cancellationToken)
+    private async Task<ProjectContentBuildResult> BuildStageAsync(string sourceRoot, string stageRoot, CancellationToken cancellationToken)
     {
         var sourceGraphRoot = Path.Combine(sourceRoot, "Graph");
         var sourceGraphPath = Path.Combine(sourceGraphRoot, "graph.json");
@@ -113,19 +135,30 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         var targetGroupsRoot = Path.Combine(targetGraphRoot, "groups");
         Directory.CreateDirectory(targetGroupsRoot);
 
+        var mappings = new List<ProjectCompiledSourceEntry>();
+        var authors = new Dictionary<string, List<EditorEntryData>>(StringComparer.Ordinal);
         foreach (var group in groups)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var rawPath = sources[group.Id];
             var diagnostics = new List<GalNet.Editor.Abstraction.Commands.ToolDiagnostic>();
-            var raw = new ProjectValidationService(sourceRoot).ValidateGroup(DisplayPath(sourceRoot, rawPath), diagnostics, _entryCatalog)
+            var raw = new ProjectValidationService(sourceRoot).ValidateGroup(DisplayPath(sourceRoot, rawPath), diagnostics, out var compilation, _entryCatalog)
                 ?? throw new InvalidDataException(string.Join("; ", diagnostics.Select(item => $"{item.File}{item.JsonPointer}: {item.Message}")));
-            var compiled = GalgroupCompiler.Compile(raw, _entryCatalog).Document;
+            var compiled = compilation!.Document;
+            var offset = 0;
+            foreach (var entry in raw.Entries)
+            {
+                var primitives = compilation.SourceMap[entry.Id];
+                mappings.Add(new(group.Id, entry.Id, offset, offset + primitives.Count, Array.AsReadOnly(primitives.ToArray())));
+                offset += primitives.Count;
+            }
+            authors.Add(group.Id, raw.Entries.Select(entry => new EditorEntryData
+            { StableId = entry.Id, Type = entry.Type, Condition = entry.Condition, Parameters = entry.Parameters }).ToList());
             var targetPath = Path.Combine(targetGroupsRoot, $"{group.Id}.galgroup");
             await File.WriteAllTextAsync(targetPath, JsonSerializer.Serialize(compiled, JsonOptions), cancellationToken).ConfigureAwait(false);
         }
 
-        return groups.Length;
+        return new(stageRoot, groups.Length) { SourceEntries = mappings.AsReadOnly(), AuthorSignature = ProjectAuthorIdentity.Compute(graph, authors) };
     }
 
     private static Dictionary<string, string> ResolveGroupSources(string graphRoot, IEnumerable<EditorGraphNodeDto> groups)
@@ -195,26 +228,16 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
 
     internal static void ValidateOutputPath(string sourceRoot, string targetRoot)
     {
-        if (string.Equals(sourceRoot, targetRoot, StringComparison.OrdinalIgnoreCase) || IsSameOrChild(sourceRoot, targetRoot))
+        if (IsSameOrChild(sourceRoot, targetRoot))
             throw new InvalidDataException("Build output must not be the project directory or one of its ancestors.");
 
         foreach (var protectedDirectory in new[] { "Graph", "Assets", "I18n", ".galnet", "Temp", "Contracts", ".git" })
             if (IsSameOrChild(targetRoot, Path.Combine(sourceRoot, protectedDirectory)))
                 throw new InvalidDataException($"Build output must not be inside project '{protectedDirectory}/'.");
-        var current = Path.GetPathRoot(targetRoot)!;
-        foreach (var component in targetRoot[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
-        {
-            current = Path.Combine(current, component);
-            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Build/export output must not traverse filesystem links.");
-        }
+        FileSystemPaths.RequireNoLinks(targetRoot, "Build/export output must not traverse filesystem links.");
     }
 
-    private static bool IsSameOrChild(string candidate, string parent)
-    {
-        var relative = Path.GetRelativePath(parent, candidate);
-        return relative.Length == 0 || (!Path.IsPathRooted(relative) && !relative.Equals("..", StringComparison.Ordinal) && !relative.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal));
-    }
+    private static bool IsSameOrChild(string candidate, string parent) => FileSystemPaths.IsSameOrChild(candidate, parent);
 
     private static string DisplayPath(string basePath, string path) => Path.GetRelativePath(basePath, path).Replace('\\', '/');
 }
@@ -222,4 +245,8 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
 public sealed record ProjectContentBuildResult(string OutputPath, int CompiledGroupCount)
 {
     public IReadOnlyList<GalNet.Editor.Abstraction.Commands.ToolDiagnostic> Diagnostics { get; init; } = [];
+    [JsonIgnore] public IReadOnlyList<ProjectCompiledSourceEntry> SourceEntries { get; init; } = [];
+    [JsonIgnore] public string AuthorSignature { get; init; } = "";
 }
+
+public sealed record ProjectCompiledSourceEntry(string GroupId, string EntryId, int Start, int End, IReadOnlyList<string> PrimitiveIds);

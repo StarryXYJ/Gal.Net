@@ -1,10 +1,10 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
-using GalNet.Core.Settings;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -29,15 +29,14 @@ public class GameEnginePrimitiveDispatchTests
     {
         var video = new SegmentedVideoPresenter();
         var markers = 0;
-        var settings = new SettingsContainer();
-        settings.Set(new GameSettings { QuickAdvanceIntervalMilliseconds = 0, AutoAdvanceIntervalMilliseconds = 0 });
+        var settings = new PlaybackOptions { QuickAdvanceIntervalMilliseconds = 0, AutoAdvanceIntervalMilliseconds = 0 };
         using var view = new GameRegistration().AddBuiltins(videoPresenter: video)
             .RegisterSchema(new DefaultEntryModule("test", [new DefaultPrimitiveEntryBase("test.mark", DynamicParameterTable.Empty)]))
             .RegisterInstruction("test.mark", context => new ImmediatePrimitiveInstance(() => Interlocked.Increment(ref markers), batchId: context.BatchId))
             .BuildView();
         await using var engine = new GameEngine(GraphWithGroup(
             Primitive("video.play", new { asset = "clip", skipPoints = VideoSkipPoints }),
-            Primitive("test.mark")), view, settings: settings);
+            Primitive("test.mark")), view, playbackOptions: settings);
         await engine.AdvanceAsync();
         for (var index = 0; index < clicks; index++) await engine.AdvanceAsync();
         Assert.That(video.Advances, Is.EqualTo(clicks));
@@ -73,7 +72,7 @@ public class GameEnginePrimitiveDispatchTests
         snapshot.States["test.layers"] = engine.Runtime.State.Capture()["test.layers"];
         await engine.AdvanceAsync();
 
-        engine.RestoreFrom(snapshot);
+        await engine.RestoreFromAsync(snapshot);
         oldContext!.Runtime.State.Table<Layer>().Clear();
         snapshot.States.Clear();
         var returned = engine.LastStableSnapshot;
@@ -100,7 +99,7 @@ public class GameEnginePrimitiveDispatchTests
         using var engine = new GameEngine(GraphWithGroup(Primitive("test.wait")), view);
         await engine.AdvanceAsync();
 
-        Assert.Throws<InvalidDataException>(() => engine.RestoreFrom(new GalNet.Core.Runtime.GameSnapshot { Version = -1 }));
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(new GalNet.Core.Runtime.GameSnapshot { Version = -1 }));
         Assert.That(context!.ScopeCancellation.IsCancellationRequested, Is.False);
     }
     [Test]
@@ -404,7 +403,7 @@ public class GameEnginePrimitiveDispatchTests
         Assert.That(engine.EntryIndex, Is.Zero);
     }
 
-    private static GraphModel GraphWithGroup(params PrimitiveEntry[] entries)
+    private static GraphModel GraphWithGroup(params GalNet.Core.Entry.Entry[] entries)
     {
         var group = new Group { Id = "main" };
         group.Entries.AddRange(entries);
@@ -427,7 +426,7 @@ public class GameEnginePrimitiveDispatchTests
             .RegisterSchema(new DefaultEntryModule("test", entries.Select(entry => new DefaultPrimitiveEntryBase(entry.Type, DynamicParameterTable.Empty))))
             .RegisterImplementation(new PrimitiveModule(registry =>
             {
-                registry.State<Layer>("test.layers", layer => layer.Id);
+                registry.State<Layer>("test.layers", layer => layer.Id, keySpace: GalNet.Primitives.Builtins.BuiltinScene.KeySpace);
                 foreach (var entry in entries) registry.Register(entry.Type, entry.Factory);
             }))
             .BuildView();

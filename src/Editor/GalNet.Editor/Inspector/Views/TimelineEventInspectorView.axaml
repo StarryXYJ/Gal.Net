@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:forms="using:GalNet.Game.Controls.Forms"
+ xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.TimelineEventInspectorView" x:DataType="vm:TimelineEventInspectorViewModel">
+ <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/></UserControl.Styles>
+ <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="10" Spacing="8">
+  <TextBlock Text="{Binding Label}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+  <forms:DtoEditorHost Name="TimelineEventForm" Item="{Binding Draft.Item}" Registry="{Binding FieldEditors}"/>
+  <StackPanel Orientation="Horizontal" Spacing="8">
+   <Button Name="ApplyTimelineEvent" Content="{loc:Localize Timeline.Event.Apply}" Command="{Binding ApplyCommand}"/>
+   <Button Name="CancelTimelineEvent" Content="{loc:Localize Timeline.Event.Cancel}" Command="{Binding CancelCommand}"/>
+  </StackPanel>
+ </StackPanel></ScrollViewer>
+</UserControl>

@@ -23,6 +23,7 @@ public sealed class SettingCategory
     public string NameKey { get; }
     public object Label { get; }
     public IReadOnlyList<SettingItem> Items { get; }
+    public IReadOnlyList<SettingItem> DisplayItems => Items.Where(item => !Items.Any(parent => ReferenceEquals(parent.InlineToggle, item))).ToArray();
 }
 
 public abstract class SettingItem : ObservableObject
@@ -42,6 +43,7 @@ public abstract class SettingItem : ObservableObject
     public string NameKey { get; }
     public object Label { get; }
     public string? DescriptionKey { get; init; }
+    public BoolSetting? InlineToggle { get; init; }
     public bool IsFullWidth { get; init; }
     public int EditorColumn => IsFullWidth ? 0 : 1;
     public int EditorColumnSpan => IsFullWidth ? 2 : 1;

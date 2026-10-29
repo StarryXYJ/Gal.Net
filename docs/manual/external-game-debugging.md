@@ -1,10 +1,16 @@
 # 对接外部游戏调试
 
+Editor 的旧内嵌 Preview 已移除，游戏测试统一使用本页的外部进程调试链路。
+
 调试由游戏开发者显式启用。`GalNet.Runtime` 只提供 Engine 的受控调试端口；可选 `GalNet.Debugging` 提供 loopback TCP、会话和默认 Engine 适配。游戏、Engine 和玩家数据仍由宿主拥有。
 
 ## Editor 操作
 
-1. 在“项目设置”的调试启动配置中设置可执行文件、附加参数（每行一个）及可选工作目录，点击保存本地配置；也可以首次使用“测试 → 启动应用”时选文件。配置保存在项目 `.galnet/editor/debug-launch.json`。
+新建项目时，可以在契约目录上方选择游戏 App EXE。契约框为空时自动定位配套契约；创建项目只复制契约及其托管依赖，并自动保存所选 App 为调试可执行文件。手动填写的契约目录会保留。找不到或找到多份契约时需手动指定，不会静默改用默认契约。
+
+仓库中 Debug 构建 Sample 后，可直接选择 `src/Samples/GalNet.Sample.Avalonia/bin/Debug/net10.0/GalNet.Sample.Avalonia.exe`，无需先运行契约导出脚本。普通构建读取 EXE 同级 DLL，当前发行包读取同级 `lib/`。联调发行包使用 Developer 构建；选择 App 不会自动为玩家包启用调试。之后重建若改变契约字节，仍需同步项目 `Contracts/` 并重新打开项目。
+
+1. 在“项目设置”的启动配置分类中设置可执行文件、附加参数（每行一个）及可选工作目录；路径右侧的按钮可选择文件或目录，修改自动保存。也可以首次使用“测试 → 启动应用”时选文件。配置保存在项目 `.galnet/editor/debug-launch.json`。
 2. 启动前保存并正式校验/编译工程，产物位于 `Output/Debug`。Editor 先监听，再向 App 传入该目录、`--profile <项目/.galnet/debug-profile>` 和调试邀请参数。该 profile 与游戏原有玩家目录分离。
 3. App 连接后，若注册了开始回调，可点“开始游戏”；否则在 App 中自行开始。标题页连接和游戏运行绑定是两件事。
 4. 打开“游戏调试”面板，分别查看 Player/Save 当前实例变量。修改输入框后点击“应用”，刷新不会覆盖草稿。原值已改变时应用会拒绝；使用重置按钮取当前值后再编辑。变量提交不产生作者 Undo 或工程 dirty。
@@ -13,13 +19,15 @@
 
 “当前 Group 末尾”在出边前停止。与游戏根断开的 Group 可以显式选“以初始场景从此处测试”，缺少前置对象时仍会报告实际错误。
 
-调试面板顶部使用分组图标工具栏，悬停可查看操作名称，灰显表示当前不可用；窄 Dock 会按组换行。启动配置默认折叠。保存、构建、作者映射和启动阶段会显示在状态栏；构建与作者映射在后台执行，避免大项目校验占住 Editor UI。变量按“当前值／修改为”显示，勾选图标应用草稿，回转箭头取游戏当前值重置草稿；值冲突会显示文字提示。连接指示、运行状态和错误位于底部，较长错误可滚动并复制。
+调试面板顶部使用分组图标工具栏，悬停可查看操作名称，灰显表示当前不可用；窄 Dock 会按组换行。启动配置默认折叠。保存、构建、作者映射和启动阶段会显示在状态栏；构建与作者映射在后台执行，避免大项目校验占住 Editor UI。映射直接来自这次正式编译的结果，随构建内容一起返回；构建期间若作者内容改变，旧映射不会被认作当前作者版本。变量按“当前值／修改为”显示，勾选图标应用草稿，回转箭头取游戏当前值重置草稿；值冲突会显示文字提示。连接指示、运行状态和错误位于底部，较长错误可滚动并复制。
 
 关闭调试 Dock 保留连接和草稿；关闭项目会断开。停止只停止当前运行，App 可以再次开始。默认 Engine 适配在断线后取消旧请求、清除断点并解除暂停，App 继续由玩家控制。断开不会终止外部进程。
 
 “等待应用”用于 IDE 自行启动：面板显示构建目录、隔离 profile 和 `--debug-port`、`--debug-token`、`--debug-session`、`--debug-project`、`--debug-contract` 参数。邀请只针对本次监听。
 
 ## 游戏接入
+
+Sample 必须以 `EnableGameDebugging=true` 构建才能接入（Debug 配置默认开启，Release 默认关闭），`EnableLaunchArguments` 默认随之开启。发布给玩家的 Sample 不包含调试协议、工具和启动参数；Release 联调可显式传入 `-p:EnableGameDebugging=true`，或使用发行脚本的 `-SampleFlavor Developer` 生成带符号的开发包。详见[调试构建与玩家发行](customize-avalonia-sample.md#调试构建与玩家发行)。
 
 引用 `GalNet.Debugging`，在项目组合根创建服务。开始回调可省略，开始/停止回调中所需的 UI 调度由宿主负责。
 
@@ -43,7 +51,7 @@ using var binding = host.AttachRun(adapter);
 
 上例白名单仅为接口示例，应列出实际支持的指令。Scene 表示模块支持 CatchUp 场景重建；Ignore 表示调试重放时跳过副作用；未声明的类型默认拒绝定位。不能把任意插件一律标为 Scene。参数和资源校验仍执行，不因忽略流程条件而放宽。
 
-需要呈现恢复的 view 必须提供 `ICatchUpPresentation` 或 `GameDebugOptions.SynchronizePresentation`。回调不得重新等待 Engine 推进门。默认 Avalonia 宿主提供恢复协调，只需通过 `AvaloniaGameHostOptions.AttachDebugRun` 的可选中立回调绑定；其程序集不引用调试通信组件。Sample 的 `SampleExternalDebug` 展示完整接入，包括对白、场景指令、变量/Gallery/截图副作用策略。
+需要呈现恢复的 view 必须提供 `ICatchUpPresentation` 或 `GameDebugOptions.SynchronizePresentation`。回调不得重新等待 Engine 推进门。默认 Avalonia 宿主提供恢复协调，只需通过 `AvaloniaGameHostOptions.AttachRun` 的可选中立回调绑定；其程序集不引用调试通信组件。Sample 的 `SampleExternalDebug` 展示完整接入，包括对白、场景指令、变量/Gallery/截图副作用策略。
 
 自定义运行可以直接实现 `IDebugGameRun`，按 `Info.Capabilities` 报告可用方法；可覆写 `OnDisconnectedAsync` 定义断线行为。它不要求实现 IGameRun 或持有 Editor 文档。
 
@@ -59,9 +67,9 @@ Player 修改先同步当前 Runtime 与玩家变量服务，默认 Avalonia 宿
 
 CLI/Editor/App 应使用同一份项目契约构建产物，包括默认只含内置条目的工程；选择 Sample 时需先部署 Sample 对应的 Contracts。运行内容来自构建目录，不提供资源热更新；作者内容编辑后旧源码映射失效，需要重新启动测试。
 
-在仓库根目录运行 `./scripts/export-sample-contracts.ps1`（可选 `-Configuration Release`），会先构建 Avalonia Sample，再将配套契约及依赖 DLL 导出到根目录 `output/Contracts`。该输出目录已被 Git 忽略。关闭 Editor 项目，将导出的 DLL 复制到项目 `Contracts` 目录，重新打开项目，并使用脚本打印的对应 App 路径启动测试。
+在仓库根目录运行 `./scripts/contracts/export-sample-contracts.ps1`（可选 `-Configuration Release`），会先构建 Avalonia Sample，再将配套契约及依赖 DLL 导出到根目录 `out/Contracts`。该输出目录已被 Git 忽略。关闭 Editor 项目，将导出的 DLL 复制到项目 `Contracts` 目录，重新打开项目，并使用脚本打印的对应 App 路径启动测试。
 
-仓库对项目契约及其 Core/Builtins 编译引用禁用提交相关的 InformationalVersion 后缀和 SourceLink，以免仅提交无关文件就改变 DLL 身份；PDB 和本地调试仍保留，App 自身仍带提交信息。可用 `./scripts/test-contract-reproducibility.ps1` 对两个 SourceRevisionId 做真实 Rebuild 检查。首次迁移此构建规则需重导出并部署一次旧契约；源码、引用 API、生成器、SDK、路径或编译配置变化仍可能改变严格二进制身份。仓库外自定义契约及依赖也需自行保证构建稳定，不能只依靠相同程序集版本号。
+仓库对项目契约及其 Core/Builtins 编译引用禁用提交相关的 InformationalVersion 后缀和 SourceLink，以免仅提交无关文件就改变 DLL 身份；PDB 和本地调试仍保留，App 自身仍带提交信息。可用 `./scripts/contracts/test-contract-reproducibility.ps1` 对两个 SourceRevisionId 做真实 Rebuild 检查。首次迁移此构建规则需重导出并部署一次旧契约；源码、引用 API、生成器、SDK、路径或编译配置变化仍可能改变严格二进制身份。仓库外自定义契约及依赖也需自行保证构建稳定，不能只依靠相同程序集版本号。
 
 Editor 启动的 App 在 30 秒内未连接时，调试面板会报告连接超时；Editor 不会因此终止 App。调试请求 60 秒无响应时，面板会结束等待并提示操作可能仍在运行；先检查运行状态再重试。状态/检查轮询的单次请求上限为 10 秒。
 

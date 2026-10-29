@@ -3,8 +3,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Sample.Avalonia.Debug;
-using GalNet.Sample.Avalonia.Services;
 using GalNet.Sample.Avalonia.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
@@ -13,36 +11,55 @@ namespace GalNet.Sample.Avalonia.Views;
 
 public partial class MainWindow : UrsaWindow
 {
-    private readonly IServiceProvider _services;
-    private readonly AvaloniaPlayerSettingsService _settings;
+    private readonly IAvaloniaPlayerSettings _settings;
     private bool _bindingsDetached;
-    private readonly SampleDebugLogStore? _debugLogStore;
-    private readonly SampleDebugViewModel? _debugViewModel;
     private readonly LanguageSelectionViewModel _languageSelectionViewModel;
-    private DebugLogWindow? _debugLogWindow;
+    private TaskCompletionSource<bool>? _exitConfirmation;
+    private IInputElement? _exitPreviousFocus;
 
     public MainWindow(GameShell shell, IServiceProvider services)
     {
-        _services = services;
-        _debugLogStore = services.GetService<SampleDebugLogStore>();
-        _debugViewModel = services.GetService<SampleDebugViewModel>();
         _languageSelectionViewModel = services.GetRequiredService<LanguageSelectionViewModel>();
         InitializeComponent();
-        _settings = services.GetRequiredService<AvaloniaPlayerSettingsService>();
+        _settings = services.GetRequiredService<IAvaloniaPlayerSettings>();
         _settings.BindWindow(this);
+        Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
         PlayerRoot.Styles.Add(SampleCustomization.PlayerTheme.CreateStyles());
         LanguageSelection.DataContext = _languageSelectionViewModel;
         GameCanvas.GameContent = shell;
-        DebugMenu.IsVisible = false;
-        DebugMenu.DataContext = _debugViewModel;
-        if (_debugViewModel is not null)
-        {
-            _debugViewModel.LogRequested += OnLogRequested;
-            _debugViewModel.ConfirmationRequested += ConfirmAsync;
-            _debugViewModel.NotificationRequested += NotifyAsync;
-        }
-        AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
+        InitializeDebug(services);
         Closed += OnClosed;
+        AddHandler(KeyDownEvent, OnExitKeyDown, RoutingStrategies.Tunnel);
+    }
+
+    public Task<bool> ConfirmExitAsync()
+    {
+        if (_exitConfirmation is not null) return _exitConfirmation.Task;
+        _exitConfirmation = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        _exitPreviousFocus = FocusManager?.GetFocusedElement();
+        PlayerContent.IsEnabled = false;
+        ExitConfirmation.IsVisible = true;
+        CancelExitButton.Focus();
+        return _exitConfirmation.Task;
+    }
+
+    private void OnCancelExit(object? sender, RoutedEventArgs e) => CompleteExitConfirmation(false);
+    private void OnConfirmExit(object? sender, RoutedEventArgs e) => CompleteExitConfirmation(true);
+    private void OnExitKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (_exitConfirmation is null || e.Key != Key.Escape) return;
+        e.Handled = true;
+        CompleteExitConfirmation(false);
+    }
+    private void CompleteExitConfirmation(bool confirmed)
+    {
+        var completion = _exitConfirmation;
+        _exitConfirmation = null;
+        ExitConfirmation.IsVisible = false;
+        PlayerContent.IsEnabled = true;
+        _exitPreviousFocus?.Focus();
+        _exitPreviousFocus = null;
+        completion?.TrySetResult(confirmed);
     }
 
     public async Task<string?> SelectLanguageAsync(string preferred, CancellationToken cancellationToken)
@@ -58,58 +75,19 @@ public partial class MainWindow : UrsaWindow
         StartupStatus.IsVisible = error is not null;
         if (error is not null) StartupStatus.Text = error;
         GameCanvas.IsVisible = error is null;
-        DebugMenu.IsVisible = error is null && _debugLogStore is not null && _debugViewModel is not null;
-    }
-
-    private void OnKeyDown(object? sender, KeyEventArgs e)
-    {
-        if (_debugLogStore is null || e.Key != Key.L || e.KeyModifiers != KeyModifiers.None)
-            return;
-
-        e.Handled = true;
-        _debugViewModel?.ShowLogCommand.Execute(null);
-    }
-
-    private void OnLogRequested() => _ = ShowDebugLogAsync();
-
-    private async Task<bool> ConfirmAsync(SampleDebugPrompt prompt) =>
-        await MessageBox.ShowAsync(this, prompt.Message, prompt.Title, button: MessageBoxButton.OKCancel) == MessageBoxResult.OK;
-
-    private Task<MessageBoxResult> NotifyAsync(SampleDebugNotification notification) =>
-        MessageBox.ShowAsync(this, notification.Message, notification.Title, button: MessageBoxButton.OK);
-
-    private Task ShowDebugLogAsync()
-    {
-        if (_debugLogStore is null)
-            return Task.CompletedTask;
-
-        if (_debugLogWindow is { IsVisible: true })
-        {
-            _debugLogWindow.Activate();
-            return Task.CompletedTask;
-        }
-
-        var window = _services.GetRequiredService<DebugLogWindow>();
-        _debugLogWindow = window;
-        window.Closed += (_, _) =>
-        {
-            if (ReferenceEquals(_debugLogWindow, window))
-                _debugLogWindow = null;
-        };
-        window.Show(this);
-        return Task.CompletedTask;
+        CompleteDebugStartup(error);
     }
 
     private void OnClosed(object? sender, EventArgs e)
     {
+        CompleteExitConfirmation(false);
         DetachHostBindings();
-        if (_debugViewModel is null)
-            return;
-
-        _debugViewModel.LogRequested -= OnLogRequested;
-        _debugViewModel.ConfirmationRequested -= ConfirmAsync;
-        _debugViewModel.NotificationRequested -= NotifyAsync;
+        DetachDebugBindings();
     }
+
+    partial void InitializeDebug(IServiceProvider services);
+    partial void CompleteDebugStartup(string? error);
+    partial void DetachDebugBindings();
 
     internal void DetachHostBindings()
     {

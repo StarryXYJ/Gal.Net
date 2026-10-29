@@ -1,18 +1,18 @@
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ShowLayer(IGameRuntime runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true,
+    public static void ShowLayer(IGameContext runtime, ILayerPresenter? presenter, LayerRenderRequest request, bool notify = true,
         LayerVariantsState? variants = null)
     {
         runtime.State.Update(() =>
         {
-            runtime.SceneInstances.Remove<Layer>(request.HandleId, out _);
-            runtime.SceneInstances.GetOrAdd(request.HandleId, id => new Layer
+            runtime.Scene().Remove<Layer>(request.HandleId, out _);
+            runtime.Scene().GetOrAdd(request.HandleId, id => new Layer
             {
                 Id = id,
                 AssetId = request.AssetId,
@@ -30,15 +30,15 @@ internal static partial class BuiltinRuntimeActions
             presenter?.ShowLayer(request);
     }
 
-    public static void HideLayer(IGameRuntime runtime, ILayerPresenter? presenter, string handleId, bool notify = true)
+    public static void HideLayer(IGameContext runtime, ILayerPresenter? presenter, string handleId, bool notify = true)
     {
-        runtime.SceneInstances.Remove<Layer>(handleId, out _);
+        runtime.Scene().Remove<Layer>(handleId, out _);
         if (notify)
             presenter?.HideLayer(handleId);
     }
 
     public static void MoveLayer(
-        IGameRuntime runtime,
+        IGameContext runtime,
         ILayerPresenter? presenter,
         string handleId,
         LayerTransform transform,
@@ -48,7 +48,7 @@ internal static partial class BuiltinRuntimeActions
     {
         runtime.State.Update(() =>
         {
-            if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+            if (runtime.Scene().TryGet<Layer>(handleId, out var layer))
             {
                 layer.Transform = transform.Clone();
                 layer.Z = z;
@@ -58,11 +58,11 @@ internal static partial class BuiltinRuntimeActions
             presenter?.MoveLayer(handleId, transform, z, durationSeconds);
     }
 
-    public static void ReplaceLayer(IGameRuntime runtime, ILayerPresenter? presenter, string handleId, string assetId, bool notify = true)
+    public static void ReplaceLayer(IGameContext runtime, ILayerPresenter? presenter, string handleId, string assetId, bool notify = true)
     {
         runtime.State.Update(() =>
         {
-            if (runtime.SceneInstances.TryGet<Layer>(handleId, out var layer))
+            if (runtime.Scene().TryGet<Layer>(handleId, out var layer))
             {
                 runtime.State.Table<Layer>().Set(new Layer
                 {

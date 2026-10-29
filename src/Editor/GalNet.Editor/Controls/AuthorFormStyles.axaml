@@ -12,6 +12,11 @@
             <Setter Property="RevertText" Value="{loc:Localize Form.Revert}" />
         </Style>
         <Style Selector="Expander.structured-field">
+            <Setter Property="forms:StructuredFieldEditor.TitleText" Value="{loc:Localize Label, FallbackPath=Field.Id}" />
+            <Setter Property="forms:StructuredFieldEditor.KeyText" Value="{loc:Localize Form.MapKey}" />
+            <Setter Property="forms:StructuredFieldEditor.DuplicateKeyText" Value="{loc:Localize Form.MapKeyDuplicate}" />
+            <Setter Property="forms:StructuredFieldEditor.ChildIndent" Value="12" />
+            <Setter Property="forms:StructuredFieldEditor.ItemSpacing" Value="6" />
             <Setter Property="forms:StructuredFieldEditor.ExpandByDefault" Value="True" />
             <Setter Property="forms:StructuredFieldEditor.ObjectText" Value="{loc:Localize Form.Object}" />
             <Setter Property="forms:StructuredFieldEditor.ListText" Value="{loc:Localize Form.List}" />

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
@@ -105,7 +106,7 @@ public class GroupEndCatchUpTests
         graph.Nodes.Add(new Group { Id = "next", Entries = { Entry("test.text", "next") } });
         graph.Edges.Add(new Edge("main", 0, "next"));
         await using var engine = new GameEngine(graph, view);
-        engine.RestoreFrom(engine.CreateSaveData());
+        await engine.RestoreFromAsync(engine.CreateSaveData());
         await engine.SkipToGroupEndAsync();
         Assert.That(engine.CurrentNodeId, Is.EqualTo("main"));
         Assert.That(engine.EntryIndex, Is.Zero);
@@ -238,7 +239,7 @@ public class GroupEndCatchUpTests
         public TaskCompletionSource EndEntered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource EndReleased { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public Task BeginCatchUpAsync(CancellationToken cancellationToken) => Task.CompletedTask;
-        public Task EndCatchUpAsync(IGameRuntime runtime, CancellationToken cancellationToken)
+        public Task EndCatchUpAsync(IGameContext runtime, CancellationToken cancellationToken)
         {
             EndEntered.TrySetResult();
             return EndReleased.Task.WaitAsync(cancellationToken);

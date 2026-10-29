@@ -1,5 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Changes;
@@ -128,15 +130,14 @@ public sealed partial class ProjectFileOperation : IDisposable
                 var expected = current.Keys.Where(path => ProjectFilePaths.Within(path, root)).ToHashSet(ProjectFilePaths.Comparer);
                 if (!actual.SetEquals(expected)) throw ProjectFilePaths.Error("changed", root);
             }
-            ValidateVariants(current, desired, currentDirectories, desiredDirectories);
             var files = new ProjectFilePlan();
             foreach (var pair in current.Where(pair => !_managed.Contains(pair.Key))) files.ExpectedHashes[pair.Key] = pair.Value.Hash;
             foreach (var path in desired.Keys.Where(path => !current.Keys.Contains(path, ProjectFilePaths.Comparer))) files.ExpectedHashes[path] = null;
             if (_caseOnly)
             {
                 foreach (var (from, to) in _moves) files.CaseRenames.Add(forward ? new(from, to) : new(to, from));
-                foreach (var pair in desired.Where(pair => pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
-                    || !current.TryGetValue(pair.Key, out var old) || old.Hash != pair.Value.Hash)) files.Writes[pair.Key] = File.ReadAllBytes(pair.Value.Backup);
+                foreach (var pair in desired.Where(pair => !_managed.Contains(pair.Key) && (pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
+                    || !current.TryGetValue(pair.Key, out var old) || old.Hash != pair.Value.Hash))) files.Writes[pair.Key] = File.ReadAllBytes(pair.Value.Backup);
             }
             else
             {
@@ -149,7 +150,15 @@ public sealed partial class ProjectFileOperation : IDisposable
             {
                 removedWorking = CaptureRemoved(working); removedSaved = CaptureRemoved(saved);
             }
-            return new FileChange(this, forward, files, removedWorking ?? _removedWorking, removedSaved ?? _removedSaved);
+            var change = new FileChange(this, forward, files, removedWorking ?? _removedWorking, removedSaved ?? _removedSaved);
+            if (current.Keys.Concat(desired.Keys).Any(path => path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)))
+                foreach (var (document, version) in new[] { (working, AuthorDocumentVersion.Working), (saved, AuthorDocumentVersion.Saved) })
+                {
+                    var next = Clone(document);
+                    change.Apply(next, version);
+                    ValidateVariants(current, desired, currentDirectories, desiredDirectories, next);
+                }
+            return change;
         });
         if (removedWorking is not null) { _removedWorking = removedWorking; _removedSaved = removedSaved; _removedBytes = JsonSerializer.SerializeToUtf8Bytes(new[] { removedWorking, removedSaved }).LongLength; }
     }
@@ -285,12 +294,12 @@ public sealed partial class ProjectFileOperation : IDisposable
                 foreach (var parameter in entry.Parameters)
                 {
                     var schema = _catalog.Definitions.FirstOrDefault(item => item.Type == entry.Type);
-                    var editor = schema?.DynamicParameters?.GetValueOrDefault(parameter.Key)?.Editor?.EditorId;
+                    var editor = schema?.DynamicParameters.GetValueOrDefault(parameter.Key)?.Editor?.EditorId;
                     foreach (var text in Strings(parameter.Value))
                         if (values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))) references.Add(new("group/" + pair.Key + "/entry/" + entry.StableId, parameter.Key, values.Contains(text) && editor?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true));
                 }
         }
-        if (Strings(JsonSerializer.SerializeToElement(document.Settings)).Any(text => values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))))
+        if (Strings(JsonSerializer.SerializeToElement(document.Configuration)).Any(text => values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))))
             references.Add(new("settings.json", "custom", false));
         foreach (var file in document.Files.Values.Where(file => file.Exists && file.ManagedContent && !_roots.Any(root => ProjectFilePaths.Within(file.Path, root))))
         {
@@ -327,26 +336,27 @@ public sealed partial class ProjectFileOperation : IDisposable
         }
         else
         {
-            var type = _types.TryGetByExtension(Path.GetExtension(destination), out var registration) ? registration : _types.Get("data");
+            var type = _types.TryGetByExtension(Path.GetExtension(destination), out var registration) ? registration : _types.Get(_types.DefaultTypeId ?? throw new InvalidDataException("No default resource type was selected."));
             meta = (AssetMeta)Activator.CreateInstance(type.MetaDtoType)!; meta.TypeId = type.TypeId; meta.Id = Guid.NewGuid().ToString("N");
         }
         if (newId) meta.Id = Guid.NewGuid().ToString("N");
-        if (newId && meta.Gallery is { Count: > 0 })
+        var annotations = meta.ReadGallery();
+        if (newId && annotations.Count > 0)
         {
             if (_galleryIds is null)
             {
                 _galleryIds = [];
                 if (Directory.Exists(_reader.Resolve("Assets")))
                     foreach (var path in Enumerate(_reader.Resolve("Assets")).Files.Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-                        foreach (var item in _codec.Deserialize(File.ReadAllText(path), _reader.Relative(path)[7..^5]).Gallery ?? []) _galleryIds.Add(item.Id);
+                        foreach (var item in _codec.Deserialize(File.ReadAllText(path), _reader.Relative(path)[7..^5]).ReadGallery()) _galleryIds.Add(item.Id);
             }
-            meta.Gallery = meta.Gallery.Select(item =>
+            meta.SetGallery(annotations.Select(item =>
             {
                 if (item.Id <= 0) throw ProjectFilePaths.Error("galleryId", destination);
                 if (_galleryIds.Add(item.Id)) return item;
                 var id = 1; while (_galleryIds.Contains(id)) id = checked(id + 1);
                 _galleryIds.Add(id); return item with { Id = id };
-            }).ToList();
+            }));
         }
         meta.Path = destination[7..];
         if (_request.Action == ProjectFileAction.Metadata) { if (meta is SpriteAssetMeta sprite && _request.Filter is not null) sprite.Filter = _request.Filter; if (_request.Compression is not null) meta.Compress = _request.Compression; }
@@ -400,6 +410,7 @@ public sealed partial class ProjectFileOperation : IDisposable
             var removed = version == AuthorDocumentVersion.Working ? Working : Saved;
             foreach (var file in document.Files.Values)
             {
+                if (Owner.Action == ProjectFileAction.Move && file.Exists && file.ManagedContent) Owner.RebaseVariantBuffer(file, Forward);
                 if (Owner.Action == ProjectFileAction.Move) file.Path = Owner.Map(file.Path, Forward);
                 if (Owner.Action == ProjectFileAction.Delete && Owner._roots.Any(root => ProjectFilePaths.Within(file.Path, root)))
                 {

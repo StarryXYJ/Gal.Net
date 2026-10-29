@@ -2,12 +2,14 @@ using DynamicLocalization.Core;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Assets.Variants;
+using GalNet.Avalonia.GameHost;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
+using GalNet.Core.Execution;
 using GalNet.Core.Graph;
-using GalNet.Core.Settings;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using GalNet.Presentation.Abstractions.View;
@@ -20,6 +22,32 @@ namespace GeneralTest.Runtime;
 
 public class GameTestCaseTests
 {
+    [Test]
+    public async Task Default_visual_programs_and_mask_image_survive_export_into_the_resource_package()
+    {
+        var project = Path.Combine(FindRepositoryDirectory(), "GameTestCase");
+        var output = Path.Combine(Path.GetTempPath(), "galnet-visual-export-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var types = BuiltinResourceTypes.CreateCatalog();
+            var exported = await GamePackageExporter.ExportDirectoryAsync("visuals", "Visuals", project, output, types,
+                BuiltinGalleryTypes.CreateCatalog(types), new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), DefaultProjectConfiguration.Schema);
+            Assert.That(exported.Success, Is.True, exported.Error);
+            var content = await new InstalledGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
+            using var assets = new AssetManager([new PakFileProvider(Path.Combine(output, "Assets/Paks/000-base.pak"), "assets", types)]);
+            var programs = content.Configuration.ReadDefaultOptions().DefaultVisualPrograms;
+            Assert.That(programs, Has.Count.EqualTo(8));
+            foreach (var id in programs.Values)
+            {
+                var file = await assets.GetFileAsync(id);
+                Assert.That(file, Is.Not.Null);
+                Assert.That(file!.TypeId, Is.EqualTo("effect-program"));
+            }
+            Assert.That((await assets.GetFileAsync("a1000000000000000000000000000003"))?.TypeId, Is.EqualTo("sprite"));
+        }
+        finally { if (Directory.Exists(output)) Directory.Delete(output, true); }
+    }
+
     [Test]
     public void AuthoringSamplePassesDocumentValidation()
     {
@@ -42,7 +70,7 @@ public class GameTestCaseTests
             var types = BuiltinResourceTypes.CreateCatalog();
             var content = await new ProjectGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             var cultures = new CultureService();
-            using var localization = new SampleLocalizationService(cultures);
+            using var localization = new AvaloniaPlayerLocalization(cultures);
             localization.AttachGame(content);
             localization.ApplyCulture(culture);
             var presenter = new SmokeTextPresenter(route);
@@ -50,10 +78,9 @@ public class GameTestCaseTests
             assets.RegisterImageVariantsDecoder();
             var variants = await assets.LoadImageVariantsCatalogAsync();
             await using var view = new GameRegistration().AddBuiltins(presenter, gallery: content.Gallery,
-                nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants).BuildView();
-            var settings = new SettingsContainer();
-            settings.Set(content.Settings);
-            await using var engine = new GameEngine(content.Graph, view, localization, settings, choicePresenter: presenter);
+                nvlPresenter: presenter, characters: content.Localization.Characters, imageVariants: variants,
+                audioConfiguration: new GalNet.Contracts.Builtins.Audio.AudioConfiguration(content.Configuration.ReadDefaultOptions().AudioTracks, content.Configuration.ReadDefaultOptions().AudioBuses)).BuildView();
+            await using var engine = new GameEngine(content.Graph, view, localization, choicePresenter: presenter);
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
             await engine.AdvanceAsync(timeout.Token);
             while (engine.State == GameEngineState.Running)
@@ -99,7 +126,7 @@ public class GameTestCaseTests
                 Assert.That(groups.Single(group => group.Id == "intro").Entries.OfType<PrimitiveEntry>(),
                     Has.One.Matches<PrimitiveEntry>(entry =>
                         entry.Type == "gallery.unlock" && entry.Arguments.GetProperty("id").GetInt32() == 100));
-                Assert.That(content.Gallery.GetItems("cg"), Has.One.Matches<GalNet.Core.Gallery.GalleryItem>(item =>
+                Assert.That(content.Gallery.GetItems("cg"), Has.One.Matches<GalNet.Contracts.Builtins.Gallery.GalleryItem>(item =>
                     item.Id == 100 && item.ResourceId == "a1000000000000000000000000000001"));
             });
         }

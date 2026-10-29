@@ -1,6 +1,6 @@
 using System.Diagnostics;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
-using GalNet.Core.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;
@@ -63,6 +63,8 @@ public static class SkiaShaderEffectProgramLoader
 
         foreach (var parameter in descriptor.Parameters)
         {
+            if (parameter.Uniform == "layerZ")
+                diagnostics.Add("Shader uniform 'layerZ' is reserved for the current render layer Z and cannot be an author parameter.");
             var exists = parameter.Kind == ShaderEffectParameterKind.Texture
                 ? children.Contains(parameter.Uniform)
                 : uniforms.Contains(parameter.Uniform);

@@ -9,5 +9,22 @@
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <DefineConstants Condition="'$(Benchmark)' == 'true'">$(DefineConstants);BENCHMARK</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Benchmark)' == 'true'">
+    <!-- Keep restore graphs and binaries separate from ordinary builds. -->
+    <BaseIntermediateOutputPath>obj/benchmark/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/benchmark/</BaseOutputPath>
+    <NuGetLockFilePath>$(MSBuildProjectDirectory)/obj/benchmark/packages.lock.json</NuGetLockFilePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(PublishProfile)' == 'WindowsReadyToRun' And '$(Benchmark)' != 'true'">
+    <!-- Keep the RID publish graph separate from ordinary development locks, but track it for locked CI restores. -->
+    <BaseIntermediateOutputPath>obj/publish/WindowsReadyToRun/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/publish/WindowsReadyToRun/</BaseOutputPath>
+    <NuGetLockFilePath>$(MSBuildProjectDirectory)/packages.lock.WindowsReadyToRun.json</NuGetLockFilePath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <!-- Both output trees are generated, regardless of the active build mode. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)/obj/**;$(MSBuildProjectDirectory)/bin/**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>

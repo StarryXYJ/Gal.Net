@@ -5,10 +5,16 @@ namespace GalNet.Core.Parameters;
 /// <summary>Immutable field metadata; consumers own values, labels and commit behavior.</summary>
 public sealed class FieldDescriptor
 {
+    // Preserve the constructor signature used by already compiled project contracts.
+    public FieldDescriptor(string id, ValueDescriptor value, bool isRequired,
+        JsonElement? defaultValue, EditorHints? editor, string? labelKey,
+        string? descriptionKey, FieldValueSemantic semantic)
+        : this(id, value, isRequired, defaultValue, editor, labelKey, descriptionKey, semantic, null) { }
+
     public FieldDescriptor(string id, ValueDescriptor value, bool isRequired = false,
         JsonElement? defaultValue = null, EditorHints? editor = null,
         string? labelKey = null, string? descriptionKey = null,
-        FieldValueSemantic semantic = FieldValueSemantic.None)
+        FieldValueSemantic semantic = FieldValueSemantic.None, string? resourceTypeId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(id);
         ArgumentNullException.ThrowIfNull(value);
@@ -24,6 +30,9 @@ public sealed class FieldDescriptor
         LabelKey = labelKey;
         DescriptionKey = descriptionKey;
         Semantic = semantic;
+        if (resourceTypeId is not null && value.ValueType != typeof(string))
+            throw new ArgumentException("Resource references require a string field.", nameof(resourceTypeId));
+        ResourceTypeId = resourceTypeId;
     }
 
     public string Id { get; }
@@ -34,4 +43,11 @@ public sealed class FieldDescriptor
     public string? LabelKey { get; }
     public string? DescriptionKey { get; }
     public FieldValueSemantic Semantic { get; }
+    public string? ResourceTypeId { get; }
+    public string? MemberName { get; private init; }
+    public string? JsonPropertyName { get; private init; }
+
+    public FieldDescriptor WithMember(string memberName, string? jsonPropertyName = null) =>
+        new(Id, Value, IsRequired, DefaultValue, Editor, LabelKey, DescriptionKey, Semantic, ResourceTypeId)
+        { MemberName = memberName, JsonPropertyName = jsonPropertyName };
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -37,7 +38,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineDockOpensOnDemandFollowsActiveEntryAndNumericEditsRoundTripThroughHistoryAndDisk()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -55,6 +56,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var page = TimelineDockables(layout).Select(item => item.Context).OfType<GroupEditorPanelViewModel>().Single();
             var session = project.Services.GetRequiredService<TimelineEditSession>();
             var timelineView = (TimelinePanelView)project.Services.GetRequiredService<GalNet.Editor.Services.Interfaces.IEditorViewFactory>().CreateViewForViewModel(dock.Context!)!;
+            timelineView.Resources.MergedDictionaries.Add(new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Themes/EditorButtons.axaml") });
             var groupView = new EntryListEditorControl { DataContext = page };
             var container = new Grid { RowDefinitions = new RowDefinitions("*,*") }; container.Children.Add(groupView); container.Children.Add(timelineView); Grid.SetRow(timelineView, 1);
             var window = new Window { Content = container, Width = 1250, Height = 950 }; window.Show(); TimelinePump(window);
@@ -63,13 +65,42 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
                 Assert.That(session.StatusKey, Is.EqualTo("Timeline.SelectEntry")); page.SelectedEntry = entry; TimelinePump(window);
                 Assert.That(session.Rows, Has.Count.EqualTo(1)); Assert.That(history.CanUndo, Is.False);
+                var objectsSection = timelineView.FindControl<Grid>("TimelineObjectsSection")!;
+                var eventsSection = timelineView.FindControl<Grid>("TimelineEventsSection")!;
+                Assert.That(objectsSection.Bounds.Bottom, Is.LessThanOrEqualTo(eventsSection.Bounds.Top));
+                Assert.That(objectsSection.Bounds.Height, Is.EqualTo(eventsSection.Bounds.Height).Within(1));
+                var splitter = timelineView.FindControl<GridSplitter>("TimelineSectionsSplitter")!;
+                var originalObjectsHeight = objectsSection.Bounds.Height;
+                var originalEventsHeight = eventsSection.Bounds.Height;
+                var splitterPoint = splitter.TranslatePoint(new Point(splitter.Bounds.Width / 2, splitter.Bounds.Height / 2), window)!.Value;
+                window.MouseDown(splitterPoint, MouseButton.Left); window.MouseMove(splitterPoint + new Vector(0, 24)); window.MouseUp(splitterPoint + new Vector(0, 24), MouseButton.Left); TimelinePump(window);
+                Assert.That(objectsSection.Bounds.Height, Is.EqualTo(originalObjectsHeight + 24).Within(1));
+                Assert.That(eventsSection.Bounds.Height, Is.EqualTo(originalEventsHeight - 24).Within(1));
+                Assert.That(history.CanUndo, Is.False, "Changing the panel split is not an author edit.");
+                Assert.That(timelineView.GetVisualDescendants().OfType<Button>().Any(button => button.Content is string text && new[] { session.SceneText["Uiux.Timeline.Playhead"], session.SceneText["Timeline.ReplaceCollisions"], session.SceneText["Timeline.CancelMove"] }.Contains(text)), Is.False);
+
+                Assert.That(timelineView.FindControl<NumericUpDown>("TimelineFrame"), Is.Null);
+                Assert.That(timelineView.FindControl<TextBlock>("TimelineStatus")!.IsEffectivelyVisible, Is.False);
+                var zoom = timelineView.FindControl<Slider>("TimelineZoom")!;
+                var currentFrame = timelineView.FindControl<TextBlock>("TimelineCurrentFrame")!;
+                Assert.That(currentFrame.TranslatePoint(default, timelineView)!.Value.X + currentFrame.Bounds.Width, Is.LessThan(zoom.TranslatePoint(default, timelineView)!.Value.X));
+                Assert.That(zoom.TranslatePoint(default, timelineView)!.Value.X + zoom.Bounds.Width, Is.EqualTo(timelineView.Bounds.Width - 8).Within(1));
+                var durationInput = timelineView.FindControl<NumericUpDown>("TimelineDurationDraft")!;
+                var fpsInput = timelineView.FindControl<NumericUpDown>("TimelineFpsDraft")!;
+                Assert.That(durationInput.TranslatePoint(default, timelineView)!.Value.Y, Is.EqualTo(fpsInput.TranslatePoint(default, timelineView)!.Value.Y).Within(1));
+                foreach (var name in new[] { "TimelinePreviousKey", "TimelineNextKey", "TimelineAddKey", "TimelineDeleteKeys", "AddTimelineObject" })
+                {
+                    var button = timelineView.FindControl<Button>(name)!;
+                    Assert.That(button.Content, Is.TypeOf<PathIcon>());
+                    Assert.That(button.Background, Is.EqualTo(Avalonia.Media.Brushes.Transparent));
+                }
                 var input = timelineView.GetVisualDescendants().OfType<NumericUpDown>().Single(control => control.Name == "TimelineValue");
                 Assert.That(input.GetVisualDescendants().OfType<TextBox>().Any(), Is.True, "The actual themed numeric editor must be mounted.");
                 Assert.That(input.Value, Is.EqualTo(2)); Assert.That(timelineView.GetVisualDescendants().OfType<TextBlock>().Any(block => block.Text?.Contains("hidden-target", StringComparison.Ordinal) == true), Is.False);
                 input.Value = 3; TimelinePump(window); PressGroupKey(input, Key.Enter); TimelinePump(window);
                 var root = entry.Source.Parameters["timeline"]; var key = root.GetProperty("Tracks")[0].GetProperty("Keys")[0];
                 Assert.That(key.GetProperty("Value").GetSingle(), Is.EqualTo(3)); Assert.That(key.GetProperty("OutTangent").GetSingle(), Is.EqualTo(.4f)); Assert.That(key.GetProperty("future")[1].ValueKind, Is.EqualTo(JsonValueKind.Null));
-                var old = session.Rows.Single(); session.Frame = 5; TimelinePump(window); old.DraftValue = 99; Assert.That(old.Commit(), Is.False);
+                var old = session.Rows.Single(); session.Frame = 5; TimelinePump(window); Assert.That(currentFrame.Text, Is.EqualTo(session.SceneText.Format("Timeline.CurrentFrame", 5))); old.DraftValue = 99; Assert.That(old.Commit(), Is.False);
                 input = timelineView.GetVisualDescendants().OfType<NumericUpDown>().Single(control => control.Name == "TimelineValue"); Assert.That(input.Value, Is.EqualTo(6.25m));
                 input.Value = 6.4m; input.Value = 6.5m; TimelinePump(window); PressGroupKey(input, Key.Enter); TimelinePump(window);
                 var keys = entry.Source.Parameters["timeline"].GetProperty("Tracks")[0].GetProperty("Keys");
@@ -92,7 +123,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 foreach (var locale in new[] { "en-US", "ja-JP", "ko-KR", "zh-CN" })
                 {
                     localization.ApplyLocale(locale); TimelinePump(window);
-                    Assert.That(timelineView.FindControl<TextBlock>("TimelineStatus")!.Text, Is.EqualTo(localization["Timeline.Editing"]));
+                    Assert.That(timelineView.FindControl<TextBlock>("TimelineStatus")!.IsEffectivelyVisible, Is.False);
+                    Assert.That(currentFrame.Text, Is.EqualTo(localization.Format("Timeline.CurrentFrame", session.Frame)));
                     Assert.That(session.Rows.Single().ObjectLabel, Is.EqualTo(localization.Format("Timeline.Object", 1)));
                     Assert.That(session.Rows.Single(), Is.SameAs(localDraft)); Assert.That(localDraft.DraftValue, Is.EqualTo(12));
                 }
@@ -114,7 +146,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineSelectionOwnersMissingInvalidAndDeletedEntriesNeverReviveOldRows()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -146,7 +178,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase("\"invalid\"", "Timeline.Invalid")]
     public async Task TimelineSelectionNeverNormalizesOrRewritesIncompleteOrInvalidAuthorJson(string json, string status)
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

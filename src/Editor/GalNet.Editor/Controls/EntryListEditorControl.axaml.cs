@@ -93,14 +93,16 @@ public partial class EntryListEditorControl : ReorderableListControl
         (DataContext as GroupEditorPanelViewModel)?.CancelInsertion();
         if (_quickInsert) ItemsListBox.Focus(); _quickInsert = false;
     }
+    private void OnAppendTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
+    { if (DataContext is GroupEditorPanelViewModel vm) vm.InsertChosenType(args.Type, null); ScrollSelectionIntoView(); }
     private void OnInsertTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
     {
-        if (DataContext is GroupEditorPanelViewModel vm) vm.InsertType(args.Type, _insertAnchor);
+        if (DataContext is GroupEditorPanelViewModel vm) { if (_quickInsert) vm.InsertType(args.Type, _insertAnchor); else vm.InsertChosenType(args.Type, _insertAnchor); }
         ScrollSelectionIntoView();
     }
-    private void OnEntryTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
+    private async void OnEntryTypeConfirmed(object? sender, EntryTypeConfirmedEventArgs args)
     {
-        if (sender is Control { DataContext: EntryEditorItemViewModel entry } && DataContext is GroupEditorPanelViewModel vm) vm.ChangeType(entry, args.Type);
+        if (sender is Control { DataContext: EntryEditorItemViewModel entry }) await RunEntryAction(vm => vm.ChangeTypeAsync(entry, args.Type));
     }
 
     private async void OnListKeyDown(object? sender, KeyEventArgs e)
@@ -121,11 +123,12 @@ public partial class EntryListEditorControl : ReorderableListControl
         if (e.Key == Key.Delete && e.KeyModifiers == KeyModifiers.None)
         {
             e.Handled = true;
-            await RunEntryAction(vm => { vm.DeleteSelection(); return Task.CompletedTask; });
+            await RunEntryAction(vm => vm.DeleteSelectionAsync());
             return;
         }
         if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None)
         {
+            viewModel.CancelPendingMove();
             viewModel.SetSelection([]); e.Handled = true; return;
         }
 
@@ -145,13 +148,15 @@ public partial class EntryListEditorControl : ReorderableListControl
 
     public Task CopySelectionAsync(bool cut = false) => RunEntryAction(async vm =>
     {
-        var ids = vm.SelectedEntries.Select(entry => entry.StableId).ToArray();
-        var text = vm.CopySelection();
+        var offer = cut ? vm.PrepareCutSelection() : null;
+        var text = cut ? offer?.Text ?? "" : vm.CopySelection();
         if (text.Length == 0) return;
         await WriteClipboardAsync(text);
-        // A failed clipboard write must never remove the originals. A late completion
-        // after the page/project closes must not modify a replacement project.
-        if (cut && !vm.IsDisposed && ReferenceEquals(DataContext, vm)) vm.DeleteCopiedEntries(ids, text);
+        if (!vm.IsDisposed && ReferenceEquals(DataContext, vm))
+        {
+            if (offer is not null) vm.BeginCut(offer);
+            else vm.CancelPendingMove();
+        }
     });
 
     public Task PasteSelectionAsync() => RunEntryAction(async vm =>
@@ -207,7 +212,7 @@ public partial class EntryListEditorControl : ReorderableListControl
         Add("Entry.Menu.Cut", "Ctrl+X", () => CopySelectionAsync(cut: true), selected);
         Add("Entry.Menu.Paste", "Ctrl+V", PasteSelectionAsync);
         Add("Entry.Menu.Duplicate", "Ctrl+D", () => RunEntryAction(model => model.DuplicateSelectionAsync()), selected);
-        Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => { model.DeleteSelection(); return Task.CompletedTask; }), selected);
+        Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => model.DeleteSelectionAsync()), selected);
         menu.Items.Add(new Separator());
         Add("Entry.Menu.SelectAll", "Ctrl+A", () => { ItemsListBox.SelectAll(); return Task.CompletedTask; });
         menu.ShowAt((Control?)row ?? ItemsListBox); args.Handled = true;

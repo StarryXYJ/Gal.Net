@@ -3,7 +3,6 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Core.Variable;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
@@ -14,6 +13,23 @@ namespace GeneralTest.Runtime;
 
 public class DebugSessionTests
 {
+    [Test]
+    public async Task PackagedContentDebugSeekStampsInternalBaselinesButRejectsUnstampedExternalSaves()
+    {
+        var graph = GraphOf(Entry("test.text", "first"), Entry("test.text", "second"));
+        graph.ContentBuildId = "packaged-build";
+        graph.InstalledStoryPackages = ["extra"];
+        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        await using var engine = new GameEngine(graph, Runtime(), view);
+        using var debug = engine.AttachDebugging(Options());
+        await engine.AdvanceAsync();
+        await debug.SeekAsync(debug.Generation, new("main", 1, []));
+        await debug.SeekAsync(debug.Generation, new("main", 0, []));
+        await debug.SeekAsync(debug.Generation, new("main", 1, [], InitialScene: true));
+        Assert.That(engine.EntryIndex, Is.EqualTo(1));
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(engine.Runtime.CreateSnapshot()));
+    }
+
     [Test]
     public async Task CompressingTheCurrentUnreadTextForDebugSeekDoesNotMarkItRead()
     {
@@ -42,9 +58,9 @@ public class DebugSessionTests
         await using var engine = new GameEngine(GraphOf(Entry("test.scene", "transition"), Entry("test.text", "target")), Runtime(), view);
         using var debug = engine.AttachDebugging(Options());
         await engine.AdvanceAsync();
-        Assert.That(engine.Runtime.State.Table<Layer>().Get("scene").AssetId, Is.EqualTo("initial"));
+        Assert.That(engine.Runtime.State.Table<DebugState>().Get("scene").Value, Is.EqualTo("initial"));
         await debug.SeekAsync(debug.Generation, new("main", 1, []));
-        Assert.That(engine.Runtime.State.Table<Layer>().Get("scene").AssetId, Is.EqualTo("compressed"));
+        Assert.That(engine.Runtime.State.Table<DebugState>().Get("scene").Value, Is.EqualTo("compressed"));
     }
     [TestCase(0, 0)]
     [TestCase(256, 1)]
@@ -69,8 +85,8 @@ public class DebugSessionTests
         graph.Nodes.Add(new Group { Id = "second", Entries = Enumerable.Range(0, 200).Select(index => (Entry)Entry("test.scene", "local" + index)).Append(Entry("test.text", "second")).ToList() });
         graph.Edges.Add(new("main", 0, "second"));
         using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
-            .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<Layer>()
-                .Set(new Layer { Id = "scene", AssetId = context.Entry.StableId }))).BuildView();
+            .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<DebugState>()
+                .Set(new DebugState { Id = "scene", Value = context.Entry.StableId }))).BuildView();
         await using var engine = new GameEngine(graph, Runtime(), view);
         using var debug = engine.AttachDebugging(new() { Instructions = Options().Instructions, MaxEntranceGroups = 1 });
         await engine.AdvanceAsync(); await engine.AdvanceAsync();
@@ -79,17 +95,17 @@ public class DebugSessionTests
         var local = await debug.InspectAsync();
         Assert.That(local.Replay!.EntranceCacheHit, Is.True);
         Assert.That(local.Replay.Instructions, Is.EqualTo(150));
-        var result = engine.Runtime.State.Table<Layer>().Get("scene").AssetId;
+        var result = engine.Runtime.State.Table<DebugState>().Get("scene").Value;
         var expectedStates = JsonSerializer.Serialize(engine.Runtime.CreateSnapshot().States);
         await debug.SeekAsync(debug.Generation, new("second", 150, [new("main", 0, "second")]));
         var root = await debug.InspectAsync();
         Assert.That(root.Replay!.EntranceCacheHit, Is.False);
         Assert.That(root.Replay.Instructions, Is.EqualTo(2151));
-        Assert.That(engine.Runtime.State.Table<Layer>().Get("scene").AssetId, Is.EqualTo(result));
+        Assert.That(engine.Runtime.State.Table<DebugState>().Get("scene").Value, Is.EqualTo(result));
         Assert.That(JsonSerializer.Serialize(engine.Runtime.CreateSnapshot().States), Is.EqualTo(expectedStates));
         Assert.That(root.Cache!.PayloadBytes, Is.LessThanOrEqualTo(root.Cache.BudgetBytes));
         TestContext.Out.WriteLine($"entrance={local.Replay.Milliseconds:F2}ms/{local.Replay.Instructions} primitives; root={root.Replay.Milliseconds:F2}ms/{root.Replay.Instructions} primitives; payload={root.Cache.PayloadBytes} bytes");
-        engine.RestoreFrom(engine.Runtime.CreateSnapshot());
+        await engine.RestoreFromAsync(engine.Runtime.CreateSnapshot());
         Assert.That((await debug.InspectAsync()).Cache!.PayloadBytes, Is.Zero);
     }
 
@@ -139,21 +155,21 @@ public class DebugSessionTests
         graph.Nodes.Add(new Group { Id = "isolated", Entries = { Entry("test.text", "isolated-line") } });
         graph.Edges.Add(new("main", 0, "second"));
         using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
-            .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<Layer>()
-                .Set(new Layer { Id = "forced", AssetId = "replay" }))).BuildView();
+            .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<DebugState>()
+                .Set(new DebugState { Id = "forced", Value = "replay" }))).BuildView();
         await using var engine = new GameEngine(graph, Runtime(), view);
         using var debug = engine.AttachDebugging(Options());
         await engine.AdvanceAsync(); await engine.AdvanceAsync();
         Assert.That(engine.CurrentNodeId, Is.EqualTo("second"));
         await debug.SeekAsync(debug.Generation, new("main", 0, []));
         await debug.SeekAsync(debug.Generation, new("second", 0, [new("main", 0, "second")]));
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("forced", out _), Is.True);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("forced", out _), Is.True);
         await debug.ResumeAsync(debug.Generation);
         await debug.SeekAsync(debug.Generation, new("second", 0, []));
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("forced", out _), Is.False);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("forced", out _), Is.False);
         await debug.SeekAsync(debug.Generation, new("isolated", 0, [], InitialScene: true));
         Assert.That(engine.CurrentNodeId, Is.EqualTo("isolated"));
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("forced", out _), Is.False);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("forced", out _), Is.False);
     }
 
     [TestCase(false)]
@@ -169,7 +185,7 @@ public class DebugSessionTests
         await engine.AdvanceAsync();
         var operation = debug.SeekAsync(debug.Generation, new("main", 2, []));
         await blocker.Entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
-        if (restore) engine.RestoreFrom(initial);
+        if (restore) await engine.RestoreFromAsync(initial);
         else await engine.StopAsync().WaitAsync(TimeSpan.FromSeconds(2));
         Assert.CatchAsync<OperationCanceledException>(async () => await operation.WaitAsync(TimeSpan.FromSeconds(2)));
         Assert.That(engine.State, Is.EqualTo(restore ? GameEngineState.Ready : GameEngineState.Stopped));
@@ -185,21 +201,21 @@ public class DebugSessionTests
         var graph = GraphOf(Entry("test.text", "first"), Entry("test.scene", "object"), Entry("test.text", "last"));
         using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
             .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() =>
-                context.Runtime.State.Table<Layer>().Set(new Layer { Id = "late", AssetId = "after" }))).BuildView();
+                context.Runtime.State.Table<DebugState>().Set(new DebugState { Id = "late", Value = "after" }))).BuildView();
         await using var engine = new GameEngine(graph, Runtime(), view);
         using var debug = engine.AttachDebugging(Options());
         engine.Runtime.SetVariable("save.counter", 7);
         await engine.AdvanceAsync();
         await engine.AdvanceAsync();
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("late", out _), Is.True);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("late", out _), Is.True);
         await debug.SeekAsync(debug.Generation, new("main", 0, []));
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("late", out _), Is.False);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("late", out _), Is.False);
         Assert.That(engine.Runtime.GetVariable("counter")!.AsInt(), Is.EqualTo(7));
         var generation = debug.Generation;
         await debug.SeekAsync(generation, new("main", 2, []));
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("late", out _), Is.True);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("late", out _), Is.True);
         await debug.SeekAsync(debug.Generation, new("main", 0, []));
-        Assert.That(engine.Runtime.State.Table<Layer>().TryGet("late", out _), Is.False);
+        Assert.That(engine.Runtime.State.Table<DebugState>().TryGet("late", out _), Is.False);
         Assert.That((await debug.InspectAsync()).CachedGroups, Is.EqualTo(new[] { "main" }));
         Assert.ThrowsAsync<InvalidOperationException>(async () => await debug.ResumeAsync(generation));
     }
@@ -211,7 +227,7 @@ public class DebugSessionTests
         graph.Edges.Add(new Edge("main", 0, "main"));
         using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
             .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() =>
-                context.Runtime.State.Table<Layer>().Set(new Layer { Id = "existing", AssetId = "second-entrance" }))).BuildView();
+                context.Runtime.State.Table<DebugState>().Set(new DebugState { Id = "existing", Value = "second-entrance" }))).BuildView();
         await using var engine = new GameEngine(graph, Runtime(), view);
         using var debug = engine.AttachDebugging(Options());
         await engine.AdvanceAsync();
@@ -219,7 +235,7 @@ public class DebugSessionTests
         await engine.AdvanceAsync();
         Assert.That(engine.EntryIndex, Is.EqualTo(1));
         await debug.SeekAsync(debug.Generation, new("main", 0, []));
-        Assert.That(engine.Runtime.State.Table<Layer>().Get("existing").AssetId, Is.EqualTo("second-entrance"));
+        Assert.That(engine.Runtime.State.Table<DebugState>().Get("existing").Value, Is.EqualTo("second-entrance"));
         Assert.That((await debug.InspectAsync()).CachedGroups, Has.Length.EqualTo(1));
     }
 
@@ -227,7 +243,12 @@ public class DebugSessionTests
     public async Task ExplicitRouteIgnoresConditionsAndChoiceWithoutWritingVariables()
     {
         var graph = GraphOf(Entry("test.text", "first"), Entry("test.scene", "conditional", "false"), Entry("test.write", "write"));
-        graph.Nodes.Add(new Branch { Id = "choice", BranchType = BranchType.Choice });
+        graph.Nodes.Add(new Branch
+        {
+            Id = "choice",
+            BranchType = BranchType.Choice,
+            Options = Enumerable.Range(0, 8).Select(index => new BranchOption { Text = $"choice {index}", Condition = "false" }).ToList()
+        });
         graph.Nodes.Add(new Group { Id = "target", Entries = { Entry("test.text", "target") } });
         graph.Edges.AddRange([new Edge("main", 0, "choice"), new Edge("choice", 7, "target")]);
         using var view = Registration().RegisterInstruction("test.text", _ => new TextWait())
@@ -235,7 +256,7 @@ public class DebugSessionTests
             .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() =>
             {
                 context.Runtime.SetVariable("save.value", 88);
-                context.Runtime.State.Table<Layer>().Set(new Layer { Id = "bg", AssetId = "forced" });
+                context.Runtime.State.Table<DebugState>().Set(new DebugState { Id = "bg", Value = "forced" });
             })).BuildView();
         await using var engine = new GameEngine(graph, Runtime(), view);
         engine.Runtime.SetVariable("save.value", 3);
@@ -244,7 +265,7 @@ public class DebugSessionTests
         await debug.SeekAsync(debug.Generation, new("target", 0, [new("main", 0, "choice"), new("choice", 7, "target")]));
         Assert.That(engine.CurrentNodeId, Is.EqualTo("target"));
         Assert.That(engine.EntryIndex, Is.Zero);
-        Assert.That(engine.Runtime.State.Table<Layer>().Get("bg").AssetId, Is.EqualTo("forced"));
+        Assert.That(engine.Runtime.State.Table<DebugState>().Get("bg").Value, Is.EqualTo("forced"));
         Assert.That(engine.Runtime.GetVariable("value")!.AsInt(), Is.EqualTo(3));
         Assert.That((await debug.InspectAsync()).Paused, Is.True);
     }
@@ -297,14 +318,16 @@ public class DebugSessionTests
         Assert.ThrowsAsync<InvalidOperationException>(async () => await debug.SetVariableAsync(before.Generation, variable, "10"));
         var current = (await debug.InspectAsync()).Variables.Single();
         Assert.ThrowsAsync<FormatException>(async () => await debug.SetVariableAsync(before.Generation, current, "not-an-int"));
-        engine.RestoreFrom(engine.Runtime.CreateSnapshot());
+        await engine.RestoreFromAsync(engine.Runtime.CreateSnapshot());
         Assert.ThrowsAsync<InvalidOperationException>(async () => await debug.SetVariableAsync(before.Generation, current, "11"));
     }
+
+    public sealed class DebugState { public string Id { get; init; } = ""; public string Value { get; set; } = ""; }
 
     private static GameRuntime Runtime()
     {
         var builder = new StateCatalogBuilder();
-        builder.Register<Layer>("layers", layer => layer.Id);
+        builder.Register<DebugState>("layers", layer => layer.Id);
         return new(null, rootNodeId: "main", stateCatalog: builder.Build());
     }
     private static GameDebugOptions Options() => new()
@@ -343,15 +366,15 @@ public class DebugSessionTests
         public override bool IsSkippable => false;
         protected override void OnDispatch() => Entered.TrySetResult();
     }
-    private sealed class CompressingWait(IGameRuntime runtime) : PrimitiveInstance
+    private sealed class CompressingWait(IGameContext runtime) : PrimitiveInstance
     {
         public override bool IsBlocking => true;
         public override bool IsSkippable => false;
-        protected override void OnDispatch() => runtime.State.Table<Layer>().Set(new Layer { Id = "scene", AssetId = "initial" });
+        protected override void OnDispatch() => runtime.State.Table<DebugState>().Set(new DebugState { Id = "scene", Value = "initial" });
         protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode)
         {
             if (mode != PrimitiveInvocationMode.CatchUp) return;
-            runtime.State.Table<Layer>().Set(new Layer { Id = "scene", AssetId = "compressed" });
+            runtime.State.Table<DebugState>().Set(new DebugState { Id = "scene", Value = "compressed" });
             TryComplete();
         }
     }

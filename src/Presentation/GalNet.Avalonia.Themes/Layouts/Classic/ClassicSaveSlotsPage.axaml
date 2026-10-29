@@ -13,7 +13,7 @@
       <Grid RowDefinitions="Auto,Auto,*">
         <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
           <StackPanel Spacing="3">
-            <TextBlock Text="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <text:PlayerTextBlock Key="{Binding HeadingKey}" Fallback="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             <TextBlock Text="{text:PlayerText SaveSlots.Choose, 'Choose a slot'}" Opacity="0.64" />
           </StackPanel>
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
@@ -30,8 +30,8 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vm:GameSaveSlotRowViewModel">
                   <Panel Margin="7">
-                    <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
-                    <controls:SaveSlotCard SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
+                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
+                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
                   </Panel>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>

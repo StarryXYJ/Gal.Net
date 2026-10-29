@@ -1,4 +1,6 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
@@ -76,7 +78,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(moved.Id, Is.EqualTo(imported.Id));
         Assert.That(moved.Path, Is.EqualTo("renamed/picture.png"));
         Assert.That(moved.ExtensionData!["custom"].GetProperty("x").GetInt32(), Is.EqualTo(17));
-        Assert.That(moved.Gallery, Has.Count.EqualTo(1));
+        Assert.That(moved.ReadGallery(), Has.Count.EqualTo(1));
         Assert.That(Directory.Exists(Path.Combine(project.RootPath, "Assets/renamed/empty")), Is.True);
         await history.UndoAsync();
         Assert.That(Directory.Exists(Path.Combine(project.RootPath, "Assets/folder/empty")), Is.True);

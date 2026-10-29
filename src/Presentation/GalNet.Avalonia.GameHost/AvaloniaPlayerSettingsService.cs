@@ -1,11 +1,11 @@
 using Avalonia.Threading;
 using DynamicLocalization.Core;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Input;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.GameHost;
@@ -15,7 +15,7 @@ using GalNet.Runtime.Variables;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Applies preferences and persists them through the session's player variables.</summary>
-public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDisposable
+public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSettings, IDisposable
 {
     public const string LocaleVariable = PlayerPreferences.LocaleVariable;
     public const string TextSpeedVariable = PlayerPreferences.TextSpeedVariable;
@@ -36,7 +36,14 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
     private long _liveSaveRevision;
     private readonly List<Action<IReadOnlyDictionary<string, GalNet.Core.Variable.Variable>>> _restoreValues = [];
     public GameSettings RuntimeSettings { get; private set; } = new();
-    public event Action<GameSettings>? SettingsChanged;
+    public GalNet.Core.Execution.PlaybackOptions PlaybackOptions => RuntimeSettings.ToPlaybackOptions();
+    public GalNet.Contracts.Builtins.Audio.AudioMixOptions AudioMix => RuntimeSettings.ToAudioMixOptions();
+    public double TextSpeed => RuntimeSettings.TextSpeed;
+    public event Action? SettingsChanged;
+
+    Task IAvaloniaPlayerSettings.AttachAsync(PlayerVariableService variables,
+        GalNet.Contracts.Builtins.Audio.AudioConfiguration audio, bool showTracks, CancellationToken cancellationToken) =>
+        AttachAsync(variables, new GameSettings(), audio, showTracks, cancellationToken);
     public PlayerInputSettings Input { get; } = new();
     private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
     private readonly AvaloniaGamepadInput _gamepadInput;
@@ -47,6 +54,7 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
         _localization = localization;
         _gameplay = gameplay;
         gameplay.Input = Input;
+        Input.OpenHistoryAsync = () => { gameplay.OpenHistoryCommand.Execute(null); return Task.CompletedTask; };
         _gamepadInput = new AvaloniaGamepadInput(Input);
         _inputSetting = new CustomSetting<PlayerInputConfiguration>("inputBindings", "Settings.Operation", PlayerInputSettings.Defaults(),
             () => Input.Configuration, (value, _) =>
@@ -84,13 +92,29 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
                 await _displayMode.TrySetValueAsync(_display.Mode == PlayerDisplayMode.Window
                     ? PlayerDisplayMode.BorderlessFullscreen : PlayerDisplayMode.Window);
         };
-        Categories = Array.AsReadOnly(new[]
+        var masterMute = Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value);
+        var readColorEnabled = Boolean("enableReadTextColor", "Settings.EnableReadTextColor", false,
+            () => RuntimeSettings.EnableReadTextColor, value => { RuntimeSettings.EnableReadTextColor = value; ApplyReadTextColor(); });
+        const string readColorVariable = "player.galnet.settings.readTextColor";
+        var readColor = new CustomSetting<string>("readTextColor", "Settings.ReadTextColor", "#A8B8C8",
+            () => RuntimeSettings.ReadTextColor,
+            (value, token) => ApplyRuntimeSettingAsync(readColorVariable, () => { RuntimeSettings.ReadTextColor = value; ApplyReadTextColor(); }, value, token),
+            context => ReadTextColorEditor.Create(context.Setting, readColorEnabled, _localization), _localization.GetString("Settings.ReadTextColor"))
+        { InlineToggle = readColorEnabled, Validator = value => global::Avalonia.Media.Color.TryParse(value, out _) ? null : "Settings.InvalidColor" };
+        _restoreValues.Add(stored =>
+        {
+            RuntimeSettings.ReadTextColor = stored.TryGetValue(readColorVariable, out var color) && color.Type == VariableType.String &&
+                global::Avalonia.Media.Color.TryParse(color.AsString(), out _) ? color.AsString() : "#A8B8C8";
+            ApplyReadTextColor();
+        });
+        _categories = new System.Collections.ObjectModel.ObservableCollection<SettingCategory>(new[]
         {
             new SettingCategory("game", "Settings.Game",
             [
                 _language,
                 Number("textSpeed", "Settings.TextSpeed", 30, 120, 1, () => RuntimeSettings.TextSpeed,
                     value => { RuntimeSettings.TextSpeed = (float)value; gameplay.TextSpeed = value; }, NumericEditorKind.Slider),
+                readColor, readColorEnabled,
                 Boolean("quickReadOnly", "Settings.QuickReadOnly", true, () => RuntimeSettings.QuickReadOnly, value => RuntimeSettings.QuickReadOnly = value),
                 Milliseconds("quickInterval", "Settings.QuickInterval", 50, 5000, 10, () => RuntimeSettings.QuickAdvanceIntervalMilliseconds, value => RuntimeSettings.QuickAdvanceIntervalMilliseconds = value),
                 Milliseconds("autoInterval", "Settings.AutoInterval", 2000, 30000, 100, () => RuntimeSettings.AutoAdvanceIntervalMilliseconds, value => RuntimeSettings.AutoAdvanceIntervalMilliseconds = value)
@@ -99,23 +123,19 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
             new SettingCategory("graphics", "Settings.Graphics", [_displayMode, _windowSize], localization.GetString("Settings.Graphics")),
             new SettingCategory("audio", "Settings.Audio",
             [
-                Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value),
-                Number("bgmVolume", "Settings.BgmVolume", 1, 1, .01, () => RuntimeSettings.BgmVolume, value => RuntimeSettings.BgmVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("bgmMuted", "Settings.BgmMuted", false, () => RuntimeSettings.BgmMuted, value => RuntimeSettings.BgmMuted = value),
-                Number("sfxVolume", "Settings.SfxVolume", 1, 1, .01, () => RuntimeSettings.SfxVolume, value => RuntimeSettings.SfxVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("sfxMuted", "Settings.SfxMuted", false, () => RuntimeSettings.SfxMuted, value => RuntimeSettings.SfxMuted = value),
-                Number("voiceVolume", "Settings.VoiceVolume", 1, 1, .01, () => RuntimeSettings.VoiceVolume, value => RuntimeSettings.VoiceVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("voiceMuted", "Settings.VoiceMuted", false, () => RuntimeSettings.VoiceMuted, value => RuntimeSettings.VoiceMuted = value)
+                Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider, livePreview: true, inlineToggle: masterMute),
+                masterMute
             ], localization.GetString("Settings.Audio"))
         });
         _coordinator = new SettingsCoordinator { SaveAsync = token => _variables?.FlushPlayerVariablesAsync(token) ?? Task.CompletedTask };
         _coordinator.Attach(Categories);
+        _baseAudioItems = Categories.Last().Items;
+        _audioRestoreStart = _restoreValues.Count;
         localization.CultureService.CultureChanged += OnCultureChanged;
         _display.Changed += OnDisplayChanged;
     }
 
-    public IReadOnlyList<SettingCategory> Categories { get; }
+    public IReadOnlyList<SettingCategory> Categories => _categories;
     public EditorRegistry Editors { get; }
     public Task FlushAsync() => AvaloniaUiDispatcher.Instance.InvokeAsync(FlushOnUiAsync);
 
@@ -162,14 +182,18 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
         _coordinator.RefreshAvailability();
     }
 
-    public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings, CancellationToken cancellationToken = default)
+    public async Task AttachAsync(PlayerVariableService variables, GameSettings runtimeSettings,
+        GalNet.Contracts.Builtins.Audio.AudioConfiguration? audioConfiguration = null, bool showTrackControls = false,
+        CancellationToken cancellationToken = default)
     {
+        await FlushAsync();
         _variables = variables;
         _preferences = new PlayerPreferences(variables);
         RuntimeSettings = runtimeSettings;
         _restoring = true;
         try
         {
+            ConfigureAudio(audioConfiguration ?? GalNet.Contracts.Builtins.Audio.AudioConfiguration.Empty, showTrackControls);
             var stored = variables.GetSnapshot(VariableScope.Player);
             Input.Restore(stored.TryGetValue("player.galnet.input.bindings", out var bindings) && bindings.Type == VariableType.String ? bindings.AsString() : null);
             var languages = Languages();
@@ -188,7 +212,7 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
     }
 
     private DoubleSetting Number(string id, string key, double defaultValue, double maximum, double step,
-        Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown, bool livePreview = false)
+        Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown, bool livePreview = false, BoolSetting? inlineToggle = null)
     {
         var variable = "player.galnet.settings." + id;
         _restoreValues.Add(_ => write(_preferences!.Number(variable, defaultValue, maximum)));
@@ -196,6 +220,7 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), (float)value, token), _localization.GetString(key))
         {
             EditorKind = editor,
+            InlineToggle = inlineToggle,
             LivePreview = livePreview ? value => PreviewRuntimeSetting(variable, () => write(value), (float)value) : null
         };
     }
@@ -223,7 +248,7 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
         _audioPreviewTimer.Stop();
         if (!_audioPreviewPending) return;
         _audioPreviewPending = false;
-        try { SettingsChanged?.Invoke(RuntimeSettings); }
+        try { SettingsChanged?.Invoke(); }
         catch (Exception exception) { GameLog.Logger.Error(exception, "Live audio settings preview failed"); }
     }
 
@@ -262,11 +287,15 @@ public sealed class AvaloniaPlayerSettingsService : IPlayerSettingsService, IDis
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), value, token), _localization.GetString(key));
     }
 
+    private void ApplyReadTextColor() => _gameplay.ReadTextBrush = RuntimeSettings.EnableReadTextColor &&
+        global::Avalonia.Media.Color.TryParse(RuntimeSettings.ReadTextColor, out var color)
+            ? new global::Avalonia.Media.SolidColorBrush(color) : null;
+
     private async Task ApplyRuntimeSettingAsync(string variable, Action apply, object storedValue, CancellationToken cancellationToken)
     {
         apply();
-        SettingsChanged?.Invoke(RuntimeSettings);
-        await _gameplay.RefreshPlaybackSettingsAsync(cancellationToken);
+        SettingsChanged?.Invoke();
+        await _gameplay.UpdatePlaybackOptionsAsync(RuntimeSettings.ToPlaybackOptions(), cancellationToken);
         Store(variable, storedValue);
     }
 

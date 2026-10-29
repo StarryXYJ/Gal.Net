@@ -1,6 +1,6 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Documents;
 
 namespace GalNet.Editor.Shared.Services;

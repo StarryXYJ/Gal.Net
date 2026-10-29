@@ -8,7 +8,8 @@
    <Grid Margin="64" ColumnDefinitions="*,380" ColumnSpacing="64">
     <StackPanel VerticalAlignment="Center" Spacing="24">
       <Border Width="56" Height="4" Background="{DynamicResource GalNet.Brush.Primary}" HorizontalAlignment="Left" />
-      <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="SemiBold" TextWrapping="Wrap" />
+      <TextBlock Text="{Binding GameTitle}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                 FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="SemiBold" TextWrapping="Wrap" />
       <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" />
     </StackPanel>
     <Border Grid.Column="1" BorderBrush="{DynamicResource GalNet.Brush.Divider}" BorderThickness="1,0,0,0" Padding="32,0,0,0">

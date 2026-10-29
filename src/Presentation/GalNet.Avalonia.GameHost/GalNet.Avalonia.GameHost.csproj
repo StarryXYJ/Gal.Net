@@ -3,7 +3,9 @@
   <ItemGroup>
     <ProjectReference Include="../../Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
+    <ProjectReference Include="../../Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <PackageReference Include="DynamicLocalization.Core" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" />
     <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
@@ -14,4 +16,5 @@
     <ProjectReference Include="../../Shared/GalNet.Core/GalNet.Core.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
 </Project>

@@ -6,6 +6,20 @@ namespace GalNet.GameHost.Tests;
 public sealed class GameSessionTests
 {
     [Test]
+    public async Task InvalidReplacementSaveDoesNotStopOrReleaseCurrentRun()
+    {
+        var run = new Run { FailValidate = true };
+        var creations = 0;
+        await using var session = new GameSession(_ => { creations++; return Task.FromResult<IGameRun>(run); });
+        await session.PrepareAsync(null);
+        Assert.ThrowsAsync<InvalidDataException>(() => session.PrepareAsync(new GameSnapshot()));
+        Assert.That(run.Calls, Is.EqualTo(new[] { "prepare", "validate" }));
+        Assert.That(creations, Is.EqualTo(1));
+        await session.BeginPreparedAsync();
+        Assert.That(run.Calls.Last(), Is.EqualTo("start"));
+    }
+
+    [Test]
     public async Task ReplacementWaitsForSnapshotWriteBeforeStoppingOldRun()
     {
         var runs = new List<Run>();
@@ -59,6 +73,12 @@ public sealed class GameSessionTests
         public List<string> Calls { get; } = [];
         public bool FailPrepare { get; init; }
         public bool FailStop { get; init; }
+        public bool FailValidate { get; init; }
+        public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken)
+        {
+            Calls.Add("validate");
+            return FailValidate ? Task.FromException(new InvalidDataException("bad save")) : Task.CompletedTask;
+        }
         public Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
         {
             Calls.Add("prepare");

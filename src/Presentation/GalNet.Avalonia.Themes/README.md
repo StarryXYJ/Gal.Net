@@ -119,3 +119,5 @@ GameThemeTests 覆盖九种组合的页面加载、Skia headless 渲染、配色
 三套布局分别提供 ScreenshotDialog 派生 View，共享基类在 GameView；主题只维护布局。XAML 加载后调用 InitializeDialog，需提供具名控件 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺少控件会明确报错。宿主可注册 `views.Register<ScreenshotDialogViewModel, MyScreenshotDialog>()` 覆盖单个对话框。
 
 对话框每次通过 DI 构造独立实例，并由截图服务释放；普通页面保持 Scoped。通用玩家样式与工具栏位于 Common，GameView 的 Page 目录仅保留 GameShell 导航宿主、GamePage 行为控件和 ScreenshotDialog 行为基类。
+
+宿主可通过 `GameScreenshotRequest.CapturePreviewPngAsync` 提供小图预览，正式保存仍使用 `CapturePngAsync`；不提供新回调的宿主保持原路径。GameShell 预览上限为 720×405，同一弹窗分别缓存包含界面/仅场景两种结果，正式导出保持原分辨率。自定义场景捕获应同时缩小场景效果中间纹理，而非仅在最终 Image 上缩放。完整契约见 [control.md](../../../docs/spec/control.md#截图对话框契约)。

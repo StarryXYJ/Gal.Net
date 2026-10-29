@@ -1,7 +1,7 @@
 using System;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Scene;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
@@ -18,7 +18,6 @@ namespace GalNet.Editor.Dock;
 public static class EditorDockPanelIds
 {
     public const string NodeGraph = "NodeGraph";
-    public const string GamePreview = "GamePreview";
     public const string Assets = "Assets";
     public const string Log = "Log";
     public const string GroupEditor = "GroupEditor";
@@ -27,6 +26,7 @@ public static class EditorDockPanelIds
     public const string Variables = "Variables";
     public const string Characters = "Characters";
     public const string Localization = "Localization";
+    public const string ResourceOverrides = "ResourceOverrides";
     public const string Timeline = "Timeline";
     public const string ExternalDebug = "ExternalDebug";
     public const string Problems = "Problems";
@@ -45,12 +45,17 @@ public static class BuiltInDockContributions
         registry.RegisterDockPanel(new DelegateDockPanelContribution<GameLocalizationPanelViewModel>(
             EditorDockPanelIds.Localization, "Dock.Panel.Localization", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<GameLocalizationPanelViewModel>(), typeof(GameLocalizationPanelView), null));
+        registry.RegisterDockPanel(new DelegateDockPanelContribution<ResourceOverridesPanelViewModel>(
+            EditorDockPanelIds.ResourceOverrides, "Packaging.Panel", DockPanelPlacement.MainDocument, true, true, true, false, true,
+            sp => sp.GetRequiredService<ResourceOverridesPanelViewModel>(), typeof(ResourceOverridesPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<CharactersPanelViewModel>(
             EditorDockPanelIds.Characters, "Dock.Panel.Characters", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<CharactersPanelViewModel>(), typeof(CharactersPanelView), null));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<TimelinePanelViewModel>(
             EditorDockPanelIds.Timeline, "Dock.Panel.Timeline", DockPanelPlacement.BottomDocument, true, true, true, false, true,
-            sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView), null));
+            sp => sp.GetRequiredService<TimelinePanelViewModel>(), typeof(TimelinePanelView),
+            new DelegateInspectorContribution<TimelinePanelViewModel, TimelineEventInspectorViewModel>(
+                (sp, page) => new TimelineEventInspectorViewModel(page), typeof(TimelineEventInspectorView))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<VariablesPanelViewModel>(
             EditorDockPanelIds.Variables, "Dock.Panel.Variables", DockPanelPlacement.MainDocument, true, true, true, false, true,
             sp => { var vm = sp.GetRequiredService<VariablesPanelViewModel>(); vm.Navigation = sp.GetService<AuthorNavigationService>(); return vm; }, typeof(VariablesPanelView), null));
@@ -81,7 +86,8 @@ public static class BuiltInDockContributions
                 sp.GetRequiredService<EntrySelectionContext>(),
                 sp.GetRequiredService<GalNet.Game.Controls.Forms.EditorRegistry>()),
             typeof(GroupEditorPanelView), new DelegateInspectorContribution<GroupEditorPanelViewModel, EntryInspectorViewModel>(
-                (sp, page) => new EntryInspectorViewModel(page, sp.GetService<AuthorNavigationService>()), typeof(EntryInspectorView))));
+                (sp, page) => new EntryInspectorViewModel(page, sp.GetService<AuthorNavigationService>(),
+                    sp.GetRequiredService<ProjectSceneTargets>(), sp.GetRequiredService<IAssetManager>()), typeof(EntryInspectorView))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<FileDocumentPanelViewModel, string>(
             EditorDockPanelIds.FileEditor, "Files.Document", DockPanelPlacement.MainDocument, false, true, true, false, false,
             (sp, id) => new FileDocumentPanelViewModel(sp.GetRequiredService<ProjectTextFiles>().Get(id)), typeof(FileDocumentPanelView), null));

@@ -9,16 +9,16 @@ using Avalonia;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
 using GalNet.Editor.Abstraction.Documents;
+using GalNet.Editor.Abstraction.Schemas;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Services;
 using GalNet.Game.Controls.Forms;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Models.Graph;
 
@@ -54,6 +54,18 @@ public partial class GraphNode : ObservableObject
     private double _y;
 
     private string _name = "";
+    private string _storyPackage = "";
+    public Action<string>? StoryPackageRequested { get; set; }
+    public string StoryPackage
+    {
+        get => _storyPackage;
+        set
+        {
+            if (_storyPackage == value) return;
+            if (StoryPackageRequested is { } update) { update(value); return; }
+            if (SetProperty(ref _storyPackage, value)) Source.StoryPackage = value.Length == 0 ? null : value;
+        }
+    }
     public Action<string>? RenameRequested { get; set; }
     public string Name
     {
@@ -99,6 +111,7 @@ public partial class GraphNode : ObservableObject
     public void RefreshAuthorValues()
     {
         SetProperty(ref _name, Source.Name, nameof(Name));
+        SetProperty(ref _storyPackage, Source.StoryPackage ?? "", nameof(StoryPackage));
         X = Source.X;
         Y = Source.Y;
         RefreshBranchItems();
@@ -158,6 +171,7 @@ public partial class GraphNode : ObservableObject
         Source = source;
         NodeKind = nodeKind;
         _name = source.Name;
+        _storyPackage = source.StoryPackage ?? "";
         _x = source.X;
         _y = source.Y;
 
@@ -357,6 +371,15 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private string? _groupId;
     private SceneTargetCatalog? _scenes;
     private int _schemaGeneration;
+    internal Guid DraftIncarnation { get; private set; } = Guid.NewGuid();
+    internal Func<EntryEditorItemViewModel> DraftOwnerFactory()
+    {
+        var source = Source; var catalog = _authorCatalog; var authoring = _authoring; var group = _groupId;
+        var incarnation = DraftIncarnation; var parameters = _formParameters;
+        // Capture only neutral author data and project services, never this projection or its forms.
+        return () => new EntryEditorItemViewModel(source, catalog!) { _authoring = authoring, _groupId = group, DraftIncarnation = incarnation, _formParameters = parameters };
+    }
+    internal void RefreshSummary() { OnPropertyChanged(nameof(Summary)); ParameterForm?.Refresh(); _detailForm?.Refresh(); _effectInlineForm?.Refresh(); }
     internal void BindAuthoring(string groupId, EntryFieldAuthoringService authoring, SceneTargetCatalog? scenes) { _groupId = groupId; _authoring = authoring; _scenes = scenes; }
     internal IReadOnlyList<FieldEditorOption>? SceneOptions(string field) => _scenes?.FieldOptions(_groupId!, StableId, Type, field);
     internal bool IsSceneOutput(string field) => SceneFieldSemantics.IsOutput(Type, field);
@@ -364,17 +387,20 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     internal bool IsCurrent => !_disposed && (_authoring is null || _authoring.IsCurrent(_groupId!, Source));
     internal void RefreshAuthorReferences(IEntryCatalog catalog)
     {
+        SetProperty(ref _id, Source.Id, nameof(Id));
         var values = Source.GetParameterText(catalog);
         var parametersChanged = !_parameters.OrderBy(pair => pair.Key).SequenceEqual(values.OrderBy(pair => pair.Key));
         _parameters = values;
-        if (_type != Source.Type) InvalidateParameterFields();
+        if (_type != Source.Type) InvalidateAuthorBindings();
         SetProperty(ref _type, Source.Type, nameof(Type));
+        OnPropertyChanged(nameof(IsEffectApply));
         SetProperty(ref _condition, Source.Condition, nameof(Condition));
         if (parametersChanged) OnPropertyChanged(nameof(Parameters));
         OnPropertyChanged(nameof(HasUnknownParameters));
         foreach (var field in ParameterFields) field.RefreshValue(Parameters.GetValueOrDefault(field.Id, field.Definition.DefaultValue));
         ParameterForm?.Refresh();
         _detailForm?.Refresh();
+        _effectInlineForm?.Refresh();
         OnPropertyChanged(nameof(DetailForm));
         OnPropertyChanged(nameof(Summary));
         OnPropertyChanged(nameof(HasCondition));
@@ -392,12 +418,12 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         set
         {
             if (Type == value) return;
-            if (_authoring is not null) ChangeAuthorType(value, _authorCatalog!.Create(value).Values);
+            if (_authoring is not null) ChangeAuthorType(value, EditorEntryData.CreateParameters(_authorCatalog!, value));
             else { Source.Type = value; SetProperty(ref _type, value); }
         }
     }
-    internal void ChangeAuthorType(string type, IReadOnlyDictionary<string, string> parameters) =>
-        _authoring!.SetType(_groupId!, Source, type, EditorEntryData.ParseParameters(_authorCatalog!, type, parameters));
+    internal void ChangeAuthorType(string type, IReadOnlyDictionary<string, JsonElement> parameters) =>
+        _authoring!.SetType(_groupId!, Source, type, parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal));
     public string Condition
     {
         get => Source.Condition;
@@ -432,11 +458,16 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private DynamicParameterTable? _formParameters;
     [ObservableProperty] private EntryParameterFormBinding? _parameterForm;
     private EntryParameterFormBinding? _detailForm;
+    private EntryParameterFormBinding? _effectInlineForm;
     public EntryParameterFormBinding? DetailForm => ParameterForm ?? _detailForm;
-    public string Summary => EditSession?.Summary(this) ?? string.Join(" · ", Source.Parameters.Where(pair => pair.Key is "content" or "speaker" or "asset" or "assetId" or "target" or "expression" or "handleId")
-        .Select(pair => pair.Value.ValueKind == JsonValueKind.String ? pair.Value.GetString() : pair.Value.GetRawText()).Where(value => !string.IsNullOrEmpty(value))).Replace('\n', ' ');
+    public EntryParameterFormBinding? EffectInlineForm => _effectInlineForm;
+    public bool IsEffectApply => Type == BuiltinEntryIds.ApplyEffect;
+    public string Summary => EditSession?.Summary(this) ?? FormatSummary();
+    internal string FormatSummary(Func<string, string?>? text = null) => EntrySummaryFormatter.Build(Source, text, _scenes, _groupId);
     public bool HasCondition => !string.IsNullOrWhiteSpace(Condition);
     [ObservableProperty] private int _problemCount;
+    [ObservableProperty] private bool _hasProblemErrors;
+    [ObservableProperty] private bool _isPendingMove;
     public bool HasProblems => ProblemCount > 0;
     partial void OnProblemCountChanged(int value) => OnPropertyChanged(nameof(HasProblems));
     public bool HasParameterForm => ParameterForm is not null;
@@ -445,7 +476,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
 
     public ObservableCollection<EntryParameterEditorItemViewModel> ParameterFields { get; } = [];
     public bool IsUnknownType => _authorCatalog is not null && !_authorCatalog.TryGet(Type, out _);
-    public bool HasUnknownParameters => _authorCatalog is not null && _authorCatalog.TryGet(Type, out var schema) && Source.Parameters.Keys.Any(key => !schema.Parameters.ContainsKey(key));
+    public bool HasUnknownParameters => _authorCatalog is not null && _authorCatalog.TryGet(Type, out var schema) && Source.Parameters.Keys.Any(key => !schema.DynamicParameters.ContainsKey(key));
     /// <summary>Builds the editor projection from the Core registry, the single schema source.</summary>
     public void ConfigureParameterFields(IEntryCatalog catalog, IReadOnlyList<string> speakers, IReadOnlyList<string> variableNames, IEffectCatalog? effectCatalog = null)
     {
@@ -455,6 +486,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         ParameterForm?.Dispose();
         ParameterForm = null;
         _detailForm?.Dispose(); _detailForm = null;
+        _effectInlineForm?.Dispose(); _effectInlineForm = null;
         _formParameters = null;
         _effectCatalog = effectCatalog;
         _schemaGeneration++;
@@ -462,14 +494,17 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsUnknownType));
         OnPropertyChanged(nameof(HasUnknownParameters));
         if (!catalog.TryGet(Type, out var schema)) { UpdateEffectHints(); return; }
-        var parameters = schema.DynamicParameters ?? EntrySchema.DynamicParameters(schema.Parameters, schema.Defaults, schema.Options);
+        var parameters = schema.DynamicParameters;
         _detailForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
+        if (IsEffectApply && parameters.Fields.FirstOrDefault(field => field.Id == "program") is { } program)
+            _effectInlineForm = new EntryParameterFormBinding(this, [program], schema.FieldDataType);
         OnPropertyChanged(nameof(DetailForm));
+        OnPropertyChanged(nameof(EffectInlineForm));
 
         if (schema.FieldDataType is not null)
         {
             _formParameters = parameters;
-            if (!schema.Parameters.Any(pair => UsesDedicatedEditor(parameters[pair.Key].Field, pair.Value)))
+            if (!parameters.Values.Any(parameter => UsesDedicatedEditor(parameter.Field, EntrySchema.GetEditorType(parameter))))
             {
                 ParameterForm = new EntryParameterFormBinding(this, parameters.Fields, schema.FieldDataType);
                 UpdateEffectHints();
@@ -477,12 +512,15 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
             }
         }
 
-        foreach (var (id, type) in schema.Parameters)
+        foreach (var parameter in parameters.Values)
         {
-            var defaultValue = schema.Defaults.GetValueOrDefault(id, "");
+            var id = parameter.Name;
+            var type = EntrySchema.GetEditorType(parameter);
+            var defaultValue = parameter.DefaultValue is { } fallback ? ValueCodec.ToEditorText(parameter.Value, fallback) : "";
             var options = (Type == BuiltinEntryIds.ApplyEffect && id == "id" && effectCatalog is not null
                     ? effectCatalog.Definitions.Select(definition => definition.Id).ToArray()
-                    : schema.Options.GetValueOrDefault(id, []))
+                    : parameter.TryGetConstraint("enum", out var choices) ? choices.EnumerateArray().Select(value => ValueCodec.ToEditorText(parameter.Value, value)).ToArray()
+                        : parameter.ValueType == typeof(bool) ? new[] { "true", "false" } : [])
                 .Select(value => new EntrySelectOption(value, $"Entry.Option.{(value.Length == 0 ? "None" : value)}"))
                 .ToArray();
             var source = parameters[id].Field;
@@ -495,14 +533,21 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         UpdateEffectHints();
     }
 
+    internal void InvalidateAuthorBindings()
+    {
+        DraftIncarnation = Guid.NewGuid();
+        InvalidateParameterFields();
+    }
     internal void InvalidateParameterFields()
     {
         _detailForm?.Dispose(); _detailForm = null;
+        _effectInlineForm?.Dispose(); _effectInlineForm = null;
         _schemaGeneration++;
         ParameterForm?.Dispose();
         ParameterForm = null;
         ParameterFields.Clear();
         OnPropertyChanged(nameof(DetailForm));
+        OnPropertyChanged(nameof(EffectInlineForm));
     }
 
     private static bool UsesDedicatedEditor(FieldDescriptor field, EntryParameterType type) =>
@@ -533,7 +578,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
     private void SetParameter(string id, string value)
     {
         var updated = Source.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
-        var field = _authorCatalog!.Get(Type).DynamicParameters![id].Field;
+        var field = _authorCatalog!.Get(Type).DynamicParameters[id].Field;
         if (value.Length == 0 && (!field.IsRequired || field.DefaultValue is not null) &&
             field.Editor?.EditorId is "entry.imageasset" or "entry.audioasset" or "entry.videoasset" or "entry.effectprogramasset") updated.Remove(id);
         else updated[id] = ValueCodec.ParseEditorText(field.Value, value);
@@ -600,6 +645,7 @@ public partial class EntryEditorItemViewModel : ObservableObject, IDisposable
         if (_disposed) return;
         _disposed = true;
         _detailForm?.Dispose();
+        _effectInlineForm?.Dispose();
         ParameterForm?.Dispose();
         ParameterFields.Clear();
         GC.SuppressFinalize(this);

@@ -11,3 +11,7 @@
 
 *.ico binary
 *.png binary
+
+# Preserve the checksum of pinned upstream source bytes on Windows checkouts.
+src/Infrastructure/GalNet.Media.Miniaudio/native/miniaudio.h -text
+src/Infrastructure/GalNet.Media.Miniaudio/native/stb_vorbis.c -text

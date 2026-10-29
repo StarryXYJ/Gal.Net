@@ -1,8 +1,9 @@
 using System.Text.Json;
 using GalNet.Assets.Provider;
 using GalNet.Assets.Variants;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
-using GalNet.Core.Variants;
 
 namespace GalNet.Assets.Tests;
 
@@ -44,7 +45,7 @@ public sealed class ImageVariantsPipelineTests
         using (var archive = await provider.OpenArchiveAsync("assets"))
         {
             var file = archive.GetAsset("atlas")!;
-            Assert.That(file.Metadata, Is.TypeOf<ImageVariantsAssetMeta>());
+            Assert.That(file.Metadata, Is.TypeOf<DependentAssetMeta>());
             Assert.That(file.Path, Is.EqualTo("alice.variants"));
             localBytes = file.ReadAllBytes();
             Assert.That(System.Text.Encoding.UTF8.GetString(localBytes), Does.Not.Contain("folder"));
@@ -160,6 +161,7 @@ public sealed class ImageVariantsPipelineTests
     [Test]
     public void Runtime_decoder_rejects_author_payload_and_malformed_compiled_facts()
     {
+        Assert.That(() => ImageVariantsCodec.Decode("""{"kind":"image-variants","version":1,"default":"idle_coat","dimensions":[{"key":"d1"}],"variants":[{"key":"idle_coat","assetId":"sprite"}]}"""u8.ToArray()), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => ImageVariantsCodec.Decode("""{"folder":"alice","default":"weap"}"""u8.ToArray()), Throws.Exception);
         Assert.That(() => ImageVariantsCodec.Decode("""{"kind":"image-variants","version":99,"default":"weap","dimensions":[],"variants":[]}"""u8.ToArray()), Throws.TypeOf<InvalidDataException>());
         Assert.That(() => ImageVariantsCodec.Decode("""{"kind":"image-variants","version":1,"default":"weap","dimensions":[{"key":"d1"}],"variants":[{"key":"weap","assetId":""}]}"""u8.ToArray()), Throws.TypeOf<InvalidDataException>());
@@ -170,8 +172,7 @@ public sealed class ImageVariantsPipelineTests
     {
         Fixture();
         var link = Path.Combine(Assets, "linked");
-        try { Directory.CreateSymbolicLink(link, Path.Combine(Assets, "alice")); }
-        catch (Exception exception) when (exception is UnauthorizedAccessException or IOException) { Assert.Ignore("Symbolic links unavailable: " + exception.Message); }
+        DirectoryLinks.Create(link, Path.Combine(Assets, "alice"));
         try
         {
             using var provider = new LocalFileProvider(Assets, Types);
@@ -207,18 +208,26 @@ public sealed class ImageVariantsPipelineTests
         byte[] payload;
         using (var provider = new LocalFileProvider(Assets, Types))
         using (var archive = await provider.OpenArchiveAsync("assets")) payload = archive.GetAsset("atlas")!.ReadAllBytes();
-        var meta = new ImageVariantsAssetMeta { Id = "atlas", Path = "alice.variants", TypeId = "image-variants" };
+        var meta = new DependentAssetMeta
+        {
+            Id = "atlas",
+            Path = "alice.variants",
+            TypeId = "image-variants",
+            DependenciesComplete = true,
+            Dependencies = ImageVariantsCodec.Decode(payload).Variants
+                .Select(variant => new AssetDependency(variant.AssetId, "sprite")).ToList()
+        };
         var files = new List<IGameFile> { new GameFile(meta.Id, meta.Path, meta.TypeId, meta, payload) };
         foreach (var key in new[] { "idle_coat", "idle_skirt", "smile_coat", "smile_skirt", "weap" })
         {
             if (key == "weap" && !wrongType) continue;
-            AssetMeta sprite = key == "weap" ? new AudioAssetMeta() : new SpriteAssetMeta();
+            AssetMeta sprite = key == "weap" ? new AssetMeta() : new SpriteAssetMeta();
             sprite.Id = "sprite-" + key;
             sprite.TypeId = key == "weap" ? "audio" : "sprite";
             sprite.Path = "alice/" + key + ".png";
             files.Add(new GameFile(sprite.Id, sprite.Path, sprite.TypeId, sprite, [1]));
         }
-        File.WriteAllBytes(Path.Combine(_root, "assets.pak"), PakBuilder.Build("assets", files));
+        File.WriteAllBytes(Path.Combine(_root, "assets.pak"), PakBuilder.Build("assets", files, Types));
         using var manager = new AssetManager([new PakFileProvider(_root, Types)]);
         manager.RegisterImageVariantsDecoder();
         Assert.ThrowsAsync<InvalidDataException>(() => manager.LoadImageVariantsCatalogAsync());

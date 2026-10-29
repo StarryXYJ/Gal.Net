@@ -2,92 +2,63 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:services="using:GalNet.Editor.Services"
+             xmlns:forms="using:GalNet.Game.Controls.Forms"
              x:Class="GalNet.Editor.Views.ProjectSettingsPanelView"
              x:DataType="vm:ProjectSettingsPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
+    <UserControl.Styles><StyleInclude Source="/Controls/AuthorFormStyles.axaml" /></UserControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
-        <TextBlock Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
+        <TextBlock Name="ProjectSettingsTitle" Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
                    FontSize="16" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
-        <ScrollViewer Grid.Row="1">
+        <TabControl Grid.Row="1" TabStripPlacement="Left">
+          <TabItem Header="{loc:Localize Settings.Project.Title}">
+        <ScrollViewer Name="SettingsForm" LostFocus="OnSettingsFocusLost">
             <StackPanel Spacing="8">
                 <TextBlock Text="{loc:Localize Settings.Project.Name}" />
                 <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
-                <TextBlock Text="{loc:Localize Settings.Project.DefaultResolution}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12" />
-                <ComboBox ItemsSource="{Binding ResolutionPresets}"
-                          Text="{Binding Resolution}"
-                          IsEditable="True"
-                          Foreground="{DynamicResource SemiColorText0}" />
-
-                <TextBlock Text="{loc:Localize Settings.Project.SaveSlotCount}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <NumericUpDown Value="{Binding SaveSlotCount}"
-                               Minimum="1" Maximum="999" Increment="1"
-                               Foreground="{DynamicResource SemiColorText0}" />
-
-                <TextBlock Text="{loc:Localize Settings.Project.SfxChannelCount}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <NumericUpDown Value="{Binding SfxChannelCount}"
-                               Minimum="1" Maximum="16" Increment="1"
-                               Foreground="{DynamicResource SemiColorText0}" />
-
-                <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
-                    <TextBlock Text="{loc:Localize Settings.Project.AudioTracks}" Foreground="{DynamicResource SemiColorText2}" FontSize="12" />
-                    <Button Grid.Column="1" Content="{loc:Localize Settings.Project.AddTrack}" Command="{Binding AddAudioTrackCommand}" />
-                </Grid>
-                <ItemsControl ItemsSource="{Binding AudioTracks}">
+                <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}" />
+                <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}" />
+                <ItemsControl ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:AudioTrackEditorItem">
-                            <Grid ColumnDefinitions="*,*,110,80,70,70,Auto" ColumnSpacing="6" Margin="0,2">
-                                <TextBox Grid.Column="0" Text="{Binding Id}" PlaceholderText="{loc:Localize Settings.Project.TrackId}" />
-                                <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="{loc:Localize Settings.Project.TrackName}" />
-                                <TextBox Grid.Column="2" Text="{Binding Bus}" PlaceholderText="bgm / sfx / vocal" />
-                                <NumericUpDown Grid.Column="3" Value="{Binding DefaultGain}" ToolTip.Tip="{loc:Localize Settings.Project.Gain}" AutomationProperties.Name="{loc:Localize Settings.Project.Gain}" Minimum="0" Maximum="1" Increment="0.05" />
-                                <NumericUpDown Grid.Column="4" Value="{Binding MaxVoices}" ToolTip.Tip="{loc:Localize Settings.Project.Voices}" AutomationProperties.Name="{loc:Localize Settings.Project.Voices}" Minimum="1" Maximum="32" Increment="1" />
-                                <NumericUpDown Grid.Column="5" Value="{Binding MaxQueuedItems}" ToolTip.Tip="{loc:Localize Settings.Project.Queue}" AutomationProperties.Name="{loc:Localize Settings.Project.Queue}" Minimum="0" Maximum="256" Increment="1" />
-                                <Button Grid.Column="6" Content="×" Command="{Binding RemoveCommand}" ToolTip.Tip="{loc:Localize Settings.Project.RemoveTrack}" AutomationProperties.Name="{loc:Localize Settings.Project.RemoveTrack}" />
-                            </Grid>
+                        <DataTemplate x:DataType="services:ConfigurationSectionEditor">
+                            <Expander Header="{Binding Id}" IsExpanded="True" HorizontalAlignment="Stretch">
+                                <forms:DtoEditorHost Item="{Binding Item}" Registry="{Binding Registry}" />
+                            </Expander>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-
-                <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}"
-                         Foreground="{DynamicResource SemiColorText0}"
-                         PlaceholderText="zh-CN" />
-                <Expander Header="{loc:Localize Debug.Configuration}">
-                    <StackPanel Spacing="6">
-                        <TextBox Text="{Binding DebugExecutable}" PlaceholderText="{loc:Localize Debug.Executable}"/>
-                        <TextBox Text="{Binding DebugArguments}" PlaceholderText="{loc:Localize Debug.Arguments}" AcceptsReturn="True" MinHeight="50"/>
-                        <TextBox Text="{Binding DebugWorkingDirectory}" PlaceholderText="{loc:Localize Debug.WorkingDirectory}"/>
-                        <Button Content="{loc:Localize Debug.SaveConfiguration}" Command="{Binding SaveDebugConfigurationCommand}"/>
-                        <TextBlock Text="{Binding DebugConfigurationMessage}" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Expander>
             </StackPanel>
         </ScrollViewer>
+          </TabItem>
+          <TabItem Header="{loc:Localize Debug.Configuration}">
+              <ScrollViewer>
+                <StackPanel Margin="12" Spacing="6">
+                <TextBlock Text="{loc:Localize Debug.Configuration}" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                    <StackPanel Spacing="6">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                            <TextBox Text="{Binding DebugExecutable}" PlaceholderText="{loc:Localize Debug.Executable}"/>
+                            <Button Grid.Column="1" Content="…" Command="{Binding BrowseDebugExecutableCommand}" ToolTip.Tip="{loc:Localize Debug.Executable}"/>
+                        </Grid>
+                        <TextBox Text="{Binding DebugArguments}" PlaceholderText="{loc:Localize Debug.Arguments}" AcceptsReturn="True" MinHeight="50"/>
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                            <TextBox Text="{Binding DebugWorkingDirectory}" PlaceholderText="{loc:Localize Debug.WorkingDirectory}"/>
+                            <Button Grid.Column="1" Content="…" Command="{Binding BrowseDebugWorkingDirectoryCommand}" ToolTip.Tip="{loc:Localize Debug.WorkingDirectory}"/>
+                        </Grid>
+                        <TextBlock Text="{Binding DebugConfigurationMessage}" TextWrapping="Wrap"/>
+                    </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+          </TabItem>
+        </TabControl>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*,Auto" Margin="0,12,0,0">
+        <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
                        Foreground="{DynamicResource SemiColorText2}"
                        VerticalAlignment="Center" />
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                <Button Content="{loc:Localize Settings.Project.Cancel}" Command="{Binding CancelDraftCommand}" />
-                <Button Name="ApplySettingsButton"
-                        Content="{loc:Localize Settings.Project.Apply}"
-                        Command="{Binding SaveSettingsCommand}" />
-            </StackPanel>
         </Grid>
     </Grid>
 </UserControl>

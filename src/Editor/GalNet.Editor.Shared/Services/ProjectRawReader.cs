@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Assets;
 using GalNet.Editor.Abstraction.Commands;
 
 namespace GalNet.Editor.Shared.Services;
@@ -14,9 +15,7 @@ public sealed class ProjectRawReader
     {
         Root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(projectDirectory));
         if (!Directory.Exists(Root)) throw new DirectoryNotFoundException($"Project directory not found: '{Root}'.");
-        for (var directory = new DirectoryInfo(Root); directory is not null; directory = directory.Parent)
-            if (directory.Exists && (directory.Attributes & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Project root must not traverse a directory link.");
+        FileSystemPaths.RequireNoLinks(Root, "Project root must not traverse a directory link.");
     }
 
     public string Root { get; }

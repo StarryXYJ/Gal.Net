@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models;
@@ -60,8 +61,13 @@ public sealed class AssetCatalogService : IAssetCatalogService
         await _refreshGate.WaitAsync(cancellationToken);
         try
         {
-            var root = RootOrNull(); if (root is null) return;
-            while (_projects.Current?.Services.GetService(typeof(IProjectContentSession)) is IProjectContentSession { IsPublishing: true }) await Task.Delay(25, cancellationToken);
+            var project = _projects.Current; if (project is null) return;
+            IProjectContentSession? content;
+            try { content = project.Services.GetService(typeof(IProjectContentSession)) as IProjectContentSession; }
+            catch (ObjectDisposedException) { return; }
+            while (ReferenceEquals(_projects.Current, project) && (content is { IsPublishing: true } || Shared.Services.ExternalProjectSnapshotReader.HasPendingTransaction(project.RootPath)))
+                await Task.Delay(25, cancellationToken);
+            if (!ReferenceEquals(_projects.Current, project)) return;
             Changed?.Invoke();
         }
         finally { _refreshGate.Release(); }
@@ -110,7 +116,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
         try
         {
             var metaPath = file + ".meta";
-            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath)) : null;
+            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath), Relative(file)) : null;
         }
         catch { return null; }
     }

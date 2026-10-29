@@ -6,4 +6,22 @@
     <!-- Preserve portable PDBs and local debugging; omit commit-specific URLs. -->
     <EnableSourceLink>false</EnableSourceLink>
   </PropertyGroup>
+  <!-- Contract identity is the deployed IL binary, not an R2R-transformed copy. -->
+  <ItemGroup Condition="'$(PublishReadyToRun)' == 'true'">
+    <PublishReadyToRunExclude Include="GalNet.Core.dll;GalNet.Contracts.Builtins.dll;GalNet.Project.Contracts.dll" />
+  </ItemGroup>
+  <!-- Generate a normal SDK apphost targeting the packaged managed entry in lib/.
+       Ordinary bin/publish apphosts are unaffected unless packaging opts in. -->
+  <Target Name="CreatePackageAppHost" AfterTargets="Publish"
+          DependsOnTargets="_GetAppHostPaths;_GetAppHostCreationConfiguration"
+          Condition="'$(PackageAppHostDestinationPath)' != '' And '$(_IsExecutable)' == 'true'">
+    <Error Condition="'$(AppHostSourcePath)' == '' Or !Exists('$(AppHostSourcePath)')" Text="Packaging requires an SDK apphost template." />
+    <CreateAppHost AppHostSourcePath="$(AppHostSourcePath)"
+                   AppHostDestinationPath="$(PackageAppHostDestinationPath)"
+                   AppBinaryName="lib/$(AssemblyName)$(TargetExt)"
+                   IntermediateAssembly="@(IntermediateAssembly->'%(FullPath)')"
+                   WindowsGraphicalUserInterface="$(_UseWindowsGraphicalUserInterface)"
+                   EnableMacOSCodeSign="$(_EnableMacOSCodeSign)"
+                   DisableCetCompat="$(_DisableCetCompat)" />
+  </Target>
 </Project>

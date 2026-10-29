@@ -1,3 +1,9 @@
 {
+  "group.ending.entry.visual-intro.content": "接下来展示默认视觉库：可编辑的项目 shader，以及编译为时间线的演出预设。",
+  "group.ending.entry.visual-grade.content": "Bloom、暗角和暖色调色可以叠加，也可以分别停止。",
+  "group.ending.entry.visual-depth.content": "按图层 Z 景深：Z=10 的人物清晰，Z=0 的背景模糊。",
+  "group.ending.entry.visual-focus.content": "焦点移到 Z=0 后，背景变清晰，人物变模糊。",
+  "group.ending.entry.visual-impact.content": "依次展示跳跃、点头、角色震动、动态径向与定向集中线，最后组合冲击；临时叠加图层会自动清理。",
+  "group.ending.entry.visual-transitions.content": "依次展示柔边擦除、两遍模糊交叉淡化和图片遮罩溶解；此例用普通项目图片的亮度作为遮罩。",
   "group.ending.entry.line.content": "运行时冒烟测试完成。"
 }

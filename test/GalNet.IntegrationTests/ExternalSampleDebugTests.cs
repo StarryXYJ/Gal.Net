@@ -91,22 +91,26 @@ public sealed class ExternalSampleDebugTests
                 var locale = new Variable { Name = PlayerPreferences.LocaleVariable }; locale.SetValue("zh-CN");
                 await store.SaveAsync(new Dictionary<string, Variable> { [count.Name] = count, [locale.Name] = locale });
             }
-            var contract = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
+            var appHost = TestContext.Parameters.Get("SampleAppHost", "");
+            var contractPath = string.IsNullOrEmpty(appHost) ? typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location
+                : Path.Combine(Path.GetDirectoryName(appHost)!, "lib", "GalNet.Project.Contracts.dll");
+            var contract = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(contractPath)));
             using var listener = new DebugListener(new("sample-test", DebugContentIdentity.Compute(content), contract));
             var invitation = listener.Invitation;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
             var accept = listener.AcceptAsync(timeout.Token);
             var assembly = typeof(GalNet.Sample.Avalonia.App).Assembly.Location;
-            var start = new ProcessStartInfo("dotnet")
+            var start = new ProcessStartInfo(string.IsNullOrEmpty(appHost) ? "dotnet" : appHost)
             {
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 WindowStyle = ProcessWindowStyle.Hidden,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                WorkingDirectory = Path.GetDirectoryName(assembly)!
+                WorkingDirectory = Path.GetDirectoryName(string.IsNullOrEmpty(appHost) ? assembly : appHost)!
             };
-            foreach (var arg in new[] { assembly, content, "--profile", profile, "--debug-port", invitation.Port.ToString(CultureInfo.InvariantCulture),
+            if (string.IsNullOrEmpty(appHost)) start.ArgumentList.Add(assembly);
+            foreach (var arg in new[] { content, "--profile", profile, "--debug-port", invitation.Port.ToString(CultureInfo.InvariantCulture),
                 "--debug-token", invitation.Token, "--debug-session", invitation.SessionId, "--debug-project", invitation.Identity.ProjectId,
                 "--debug-contract", invitation.Identity.ContractFingerprint! }) start.ArgumentList.Add(arg);
             app = Process.Start(start)!;
@@ -159,11 +163,15 @@ public sealed class ExternalSampleDebugTests
                 catch (Exception error) when (error is OperationCanceledException or IOException) { }
             });
             await Task.Delay(300, timeout.Token);
-            app.CloseMainWindow();
+            app.Refresh();
+            NativeSampleWindow.Close(app);
             try { await app.WaitForExitAsync(timeout.Token).WaitAsync(TimeSpan.FromSeconds(5)); }
             catch (TimeoutException)
             {
-                TestContext.Out.WriteLine(await File.ReadAllTextAsync(Directory.GetFiles(Path.Combine(profile, "logs"), "game-*.log").Single()));
+                await using var log = new FileStream(Directory.GetFiles(Path.Combine(profile, "logs"), "game-*.log").Single(),
+                    FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                using var reader = new StreamReader(log);
+                TestContext.Out.WriteLine(await reader.ReadToEndAsync());
                 throw;
             }
             finally { await pollingCancellation.CancelAsync(); await polling; }

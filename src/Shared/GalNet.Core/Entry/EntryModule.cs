@@ -25,38 +25,8 @@ public abstract class EntryBase
 
     internal abstract EntryDefinition CreateDefinition();
 
-    protected EntryDefinition BuildDefinition(
-        Func<Entry> factory,
-        EntryKind kind)
-    {
-        var editorParameters = new Dictionary<string, EntryParameterType>(StringComparer.Ordinal);
-        var defaults = new Dictionary<string, string>(StringComparer.Ordinal);
-        var options = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
-        foreach (var parameter in Parameters.Values)
-        {
-            editorParameters.Add(parameter.Name, EntrySchema.GetEditorType(parameter));
-            if (parameter.DefaultValue is { } defaultValue)
-            {
-                var text = ValueCodec.ToEditorText(parameter.Value, defaultValue);
-                if (JsonElement.DeepEquals(defaultValue, ValueCodec.ParseEditorText(parameter.Value, text))) defaults.Add(parameter.Name, text);
-            }
-            if (parameter.TryGetConstraint("options", out var values) && values.ValueKind == JsonValueKind.Array)
-                options.Add(parameter.Name, values.EnumerateArray().Select(value => value.GetString() ?? "").ToArray());
-            else if (parameter.ValueType == typeof(bool))
-                options.Add(parameter.Name, ["true", "false"]);
-        }
-
-        return new EntryDefinition(
-            Name,
-            Category,
-            factory,
-            editorParameters,
-            defaults,
-            options,
-            kind,
-            Parameters)
-        { IsReading = IsReading, FieldDataType = FieldDataType };
-    }
+    protected EntryDefinition BuildDefinition(Func<Entry> factory, EntryKind kind) =>
+        new(Name, Category, factory, kind, Parameters) { IsReading = IsReading, FieldDataType = FieldDataType };
 
     private static string GetDefaultCategory(string name)
     {
@@ -142,15 +112,11 @@ public sealed class DefaultCompositeEntryBase : CompositeEntryBase
     private sealed class DtoCompositeEntry<T>(string name, DynamicParameterTable parameters,
         Func<EntryCompileContext, T, IReadOnlyList<PrimitiveEntry>> compile) : CompositeEntry where T : IFieldDto, new()
     {
-        private JsonElement? _sourceArguments;
         public override string Type => name;
-        internal override void SetSourceArguments(JsonElement arguments) => _sourceArguments = arguments.Clone();
         public override IReadOnlyList<PrimitiveEntry> Compile(EntryCompileContext context)
         {
-            var source = _sourceArguments ?? JsonSerializer.SerializeToElement(Values.ToDictionary(pair => pair.Key,
-                pair => ValueCodec.FromEditorText(parameters[pair.Key].Value, pair.Value), StringComparer.Ordinal));
-            var normalized = PrimitiveArgumentHelper.Normalize(parameters, source);
-            return compile(context, ValueCodec.DeserializeFields<T>(parameters.Fields, normalized));
+            var (_, options) = PrimitiveArgumentHelper.NormalizeFields<T>(parameters, Arguments);
+            return compile(context, options);
         }
     }
 }

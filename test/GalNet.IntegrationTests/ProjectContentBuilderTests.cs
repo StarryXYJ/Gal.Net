@@ -1,8 +1,9 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
 using GalNet.Core.Graph;
 using GalNet.Editor.Shared.Services;
 using GalNet.Storage.FileSystem;
@@ -20,6 +21,23 @@ public sealed class ProjectContentBuilderTests
     public void TearDown()
     {
         if (Directory.Exists(_root)) Directory.Delete(_root, recursive: true);
+    }
+
+    [Test]
+    public async Task BuildReturnsTheSourceMapOfItsActualCompiledFiles()
+    {
+        await WriteProjectAsync("groups/source.rawgalgroup", "opening");
+        var output = Path.Combine(_root, "Output", "Debug");
+        var result = await new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).BuildAsync(_root, output);
+        using var compiled = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(output, "Graph", "groups", "opening.galgroup")));
+        var ids = compiled.RootElement.GetProperty("entries").EnumerateArray().Select(entry => entry.GetProperty("id").GetString()).ToArray();
+        Assert.That(result.SourceEntries.SelectMany(entry => entry.PrimitiveIds), Is.EqualTo(ids));
+        Assert.That(result.SourceEntries.First().Start, Is.Zero);
+        Assert.That(result.SourceEntries.Last().End, Is.EqualTo(ids.Length));
+        var signature = result.AuthorSignature;
+        await File.WriteAllTextAsync(Path.Combine(_root, "Graph", "groups", "source.rawgalgroup"), "changed after build");
+        Assert.That(result.AuthorSignature, Is.EqualTo(signature));
+        Assert.That(result.AuthorSignature, Has.Length.EqualTo(64));
     }
 
     [Test]

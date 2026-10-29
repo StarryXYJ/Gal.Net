@@ -1,5 +1,79 @@
 # GalNet Agent Knowledge
 
+- [模态背景静态标题](lessons/L-20261029-10-disabled-title-foreground.md)：禁用背景容器会改变标题继承的前景画刷；静态标题显式绑定 TextPrimary，弹窗验证须挂载真实主页并检查 Color/Opacity，不能只截空背景。
+
+- 2026-10-29 CI 发布门禁：release.yml 的 validate-source 在 tag push 后先 fetch master，Test-ReleaseRef.ps1 校验规范版本 tag、checkout HEAD 和 origin/master 祖先归属；build 依赖门禁，publish 只允许 tag push 且 build 成功。主分支普通 push 只跑 CI，手动运行只生成候选。Test-ReleaseGuards.ps1 的 17 项用例覆盖真实临时 Git 图和模拟七 ZIP 上传；Push 在创建 draft 前检查七 ZIP。见 docs/manual/release-packaging.md。
+
+- 2026-10-29 内置文档封装：新 galpak v3 固定 pak/game.pak 入口，含 content v3、installation 索引、settings、Gallery、characters、layout 六文档；localization.pak 每文化一个平铺文本条目。使用独立 document GPAK catalog，不加入资源覆盖。新安装 I18n/<culture> 仅外置覆盖；作者与 content v2 旧安装仍用 I18n/External。导出/安装保留 I18n、ResourcePatches、StoryPatches/<buildId> 空目录，ZIP 显式保存；兼容 v1/v2 galpak 和 content v2 读取。只读 CLI game inspect 供脚本读取 packed/legacy 描述；Sample profile 身份从 game.pak 读取 projectId。见 docs/spec/file-formats.md、docs/spec/i18n.md、features/F-20261029-02-packed-game-documents。
+- [损坏内容与启动探测](lessons/L-20261029-08-invalid-data-startup-fallback.md)：InvalidDataException 不派生 IOException；profile 身份探测显式回退，正式内容加载仍报错。
+
+- [自包含平台程序集](lessons/L-20261029-07-self-contained-platform-assemblies.md)：自包含 lib 混放 framework 与业务 DLL；契约依赖收集按 runtimepack deps 识别平台归属，不能按 corelib 同目录排除 Core/Builtins。
+
+- 2026-10-29 桌面发行布局：应用根只留入口 EXE 和目录；SDK apphost 直接指向 lib/<app>.dll，运行时与原生依赖都在 lib，清单/说明/许可在 docs。Sample 默认加载同级 pak，用户 profile 按内容 projectId 的摘要定位；玩家关闭普通参数，EnableLaunchArguments 默认跟随 EnableGameDebugging，开发发行加 -SampleFlavor Developer。galpak 统一 pak/ 外层、内部路径相对内容根；安装显式目标不追加第二层 pak。见 docs/manual/release-packaging.md、docs/spec/file-formats.md 与 features/F-20261029-01-desktop-package-layout。
+- [原生退出确认](lessons/L-20261029-06-native-exit-confirmation.md)：WM_CLOSE 只打开确认遮罩；测试须在自有 HWND 确认退出，再验证零退出码和落盘，不能用强杀替代。
+
+- [预览效果像素边界](lessons/L-20261029-04-bounded-scene-capture.md)：外层缩图不限制 CPU 效果纹理；逻辑尺寸与像素尺寸分开，正式截图仍保持完整分辨率。
+- [存档缩略图通知](lessons/L-20261029-05-save-thumbnail-notifications.md)：整表一次 Reset，保存单槽 Replace，其他行与 Bitmap 复用；异步 I/O 不会消除重复解码卡顿。
+
+- [PowerShell 宿主 API 兼容](lessons/L-20261029-03-powershell-runtime-api-compatibility.md)：Windows PowerShell 5.1 使用 .NET Framework；现代 System.IO.Path API 不能假定存在，需在 powershell.exe 与 pwsh 分别验证。
+
+- [窗口装饰与玩家配色](lessons/L-20261029-02-window-decoration-theme-resources.md)：Ursa 2.1 关闭按钮在独立 WindowDrawnDecorations；窗口共享调色板资源，完整 Fluent 样式保留在播放器根。Headless 不生成平台装饰，资源断言不能替代原生截图。
+
+- [持久字段与保存基线](lessons/L-20261029-01-content-baseline-field-completeness.md)：新增字段必须进入手写相等比较；仅改 Group.storyPackage 应 dirty，局部保存其他配置不能抹掉它。
+
+- 2026-10-28 内容打包：项目唯一 Graph，graph/group 为保留 ID 资源；GPAK v3、content v2、save v5。本体闭包先行，各剧情包只减本体；默认 128 MiB 未压缩软阈值（用户后续调大），整片缓冲不保证内存上限。资源矩阵定义在 settings 的 galnet.resourceOverrides，矩阵修改经项目事务即时持久化且撤销/重做落盘，独立导出不 Save All，运行 priority/hash 降序显式映射、会话冻结。图集旧档按覆盖来源重新解析选择意图。文本/人物整体在本体，存档保守要求准备时全部剧情包；Gallery 补丁延期。见 docs/manual/content-packaging.md、features/F-20261028-01-content-packaging/summary.md。
+
+- [可选参数与二进制 API](lessons/L-20261028-04-optional-parameter-binary-api.md)：新增可选参数仍改变 CLR 签名；公开契约保留旧签名转发，并用旧 consumer 装载当前 Core 验证。
+
+- [内部快照内容身份](lessons/L-20261028-03-internal-snapshot-content-identity.md)：新增存档身份须覆盖调试 replay、缓存和精简工厂；用非空构建身份验证，不放宽外部恢复门禁。
+
+- [PAK 索引与 payload 验证](lessons/L-20261028-02-pak-index-payload-verification.md)：MetadataIndex 不校验普通 payload；独立覆盖包准备需逐项验证，当前文件 hash 排序不能代替已知校验和。
+
+- [原生发布载荷](lessons/L-20261028-01-native-publish-payload.md)：RID/托管符号开关不能保证 native NuGet 内容自动裁掉多余架构与 PDB；在 manifest 前过滤最终应用载荷，并验收所需 x64 native 文件仍在。
+
+- 本地 CI 入口为 `scripts/ci/Invoke-CI.ps1`（默认 All，可 Coverage），Actions 调用同一脚本；SDK 精确固定为 global.json 版本。`scripts/release/Release.ps1` 生成并验收 5 个聚合 NuGet 与 Windows x64 R2R 的 Editor、纯/整合 Sample、Contracts 四 ZIP；包归属见 packaging/packages.json，操作见 docs/manual/release-packaging.md。桌面 Sample AOT 尚未通过严格链接，不能从 Headless 自检推导支持；F-20261027-04 的 summary 保留未完成项。
+
+- [Solution fixture 配置](lessons/L-20261027-11-solution-fixture-configuration.md)：solution 外引用工程可能回到 Debug，测试却读取 Release；契约 fixture 已加入 GalNet.slnx，验证构建日志和实际输出配置。
+- [源生成 init 默认值](lessons/L-20261027-12-generated-init-defaults.md)：音轨/Bus 精简 JSON 会丢失 init 属性初始化值；显式 JsonConstructor 可选参数保留容量/增益默认值，不放宽校验或改成可变 DTO。
+
+- [开放 shader 参数](lessons/L-20261027-10-open-shader-parameters.md)：已知 shader 的额外参数是合法、不解释的 JSON，保留且不 warning；声明字段仍校验，未知 shader 与封闭契约仍诊断。
+
+- [属性逻辑路径与 wire 边界](lessons/L-20261027-06-property-wire-boundaries.md)：JSON Pointer 不能穿过 JSON 字符串；引用识别、比较、复制与回写须同时迁移类型化路径。JsonArray 递归修改返回原节点时不能再次挂载该实例。
+
+- [数值模板与作者草稿](lessons/L-20261027-05-numeric-template-drafts.md)：NumericUpDown 的模板/Value 初始化不能成为作者输入；借用主题时由字段上下文拥有原始文字与提交，TextBox.PropertyChanged 同步捕获，验证挂载无草稿及输入后立即 Enter。
+
+- 2026-10-27 Group Problems 按作者历史/相关依赖自动检查内存工作版，代次阻止旧结果发布，合法待提交不计条目错误。Editor numeric 默认保留文字的上下框，显式 numericupdown/numerictext 与 slider+精确输入；long/ulong/decimal 保留文本。前导小数点仅在类型化数字编辑入口规范化，JSON 源码仍严格。规范见 docs/spec/editor-groups.md、control.md；证据见 features/F-20261023-01-editor-uiux/follow-up-group-diagnostics-numeric-20261027.md。
+
+- 2026-10-27 音频创作：类型 ComboBox/目录参数表单，apply 隐藏自动身份，stop/update 选择剧情位置之前的直接挂载实例；显式 all 与参数 patch 更新已实现。复用 Scene 作者语义、Graph/前缀分析和项目查询，AudioEffect 域按 scope/target/instance 限定，AudioEffects/AudioComplete/AudioRevision 独立于视觉候选。见 docs/spec/editor-scene-targets.md、docs/manual/audio-mixing.md、features/F-20261027-01-audio-mixer/authoring-summary.md；既有 Timeline Flyout 测试保留。
+
+- [构建完成后再启动 no-build 测试](lessons/L-20261027-04-build-before-no-build-tests.md)：session_id 表示仍在运行；同一输出根的构建/测试重叠会锁定 DLL 并可能验证旧产物，必须确认 build exit_code=0 后再启动测试。
+
+- [Timeline 停止与事件收尾](lessons/L-20261027-03-timeline-stop-event-cleanup.md)：完成轨道不等于执行末帧事件；停止需等待完整收尾，循环初始化/迭代/结束清理分别处理，初始化期间的停止也必须生效。
+
+- 2026-10-27 音频 PCM：实例拥有 gain/淡入淡出/结束处理，Track 管理顺序/随机和循环队列，Bus 实际汇总后执行共享效果。Media.Audio 为跨平台混音/DSP，Media.Miniaudio 为 Windows x64 设备/解码；LibVLC 仅保留视频/Gallery。默认项目 section v2（audioBuses/busId），音频状态 tracks/seffects v2、channels v1；SEffect scope/targetId 与真实滤波/混响见 docs/manual/audio-mixing.md。实现和验收限制见 features/F-20261027-01-audio-mixer/summary.md。
+
+- [分数延迟环绕边界](lessons/L-20261027-02-fractional-audio-delay-wrap.md)：float 负分数位置加长度后可能舍入到长度本身；使用 double 并复核上边界，默认参数与非默认参数均验证。
+
+- 2026-10-27 默认视觉库：模板部署为项目 shader 资产，defaultVisualPrograms 仅用于创作填充；预设保存显式 program/blurProgram GUID 并编译为 timeline.play。CPU/GPU 层链注入当前 layerZ，texture 参数租约归效果实例。project visuals install 显式补入且不覆盖已有绑定/占用路径。见 docs/manual/default-visuals.md 和 features/F-20261026-03-default-visual-library；[采样像素与视觉 QA](lessons/L-20261027-01-shader-sampling-visual-qa.md)。
+
+- 2026-10-26 Sample 扩展边界：默认会话通过 IAvaloniaPlayerSettings/IPlayerStartup 消费项目偏好；默认页面 VM 可扩展、DI 使用 TryAdd。AttachPlayer/AttachRun 接入项目借用绑定并优先异步释放。外部剧情变量走 Engine.SetVariablesAsync/UpdateVariablesAsync，同步提交显式 scope 值并合入稳定快照；业务模块自行定义复杂状态恢复。AvaloniaPlayerLocalization 归 Avalonia.GameHost，中立 JSON 查询归 GameHost，Sample 不再共享 GameLocalizationProvider 源文件。见 features/F-20261026-02-sample-extensibility 与 docs/manual/customize-avalonia-sample.md。
+
+- [Ready 与宿主活动状态](lessons/L-20261026-06-ready-is-not-session-end.md)：Ready 是恢复/Seek 的中间准备状态，默认宿主保留已有 IsPlaying，不应触发返回标题。
+
+- [原生 Sample 窗口与显式用例验证](lessons/L-20261026-05-native-sample-window-validation.md)：Process.MainWindowHandle 可能选择无标题 native helper；仅对自有 PID 的明确 Sample 窗口发 Close，并核对显式测试实际执行数。
+
+- [配置 schema 与 JSON 字段身份](lessons/L-20261026-04-configuration-json-casing.md)：精确 ID 校验后须同样按大小写精确解码 DTO，避免未知大小写字段覆盖已验证值；原始未知字段继续保留。
+
+- [查询事实与写入上下文](lessons/L-20261026-03-query-result-and-write-context.md)：候选结果版本不能代替写入方身份/基线版本；异步准备按局部作者依赖与资源代次续租，相关变化再撤销不能复活旧选择。
+
+- [作者代次与视图生命周期](lessons/L-20261026-02-author-incarnation-view-lifetime.md)：作者删除/换类型使旧绑定失效；页面关闭只释放表单，不推进作者 incarnation，项目草稿须跨页面继续共享并可保存。
+
+- [基线对照恢复与增量时间戳](lessons/L-20261026-01-baseline-restore-timestamps.md)：恢复源码备份可能保留早于基线 DLL 的时间戳，候选验证需独立输出、Rebuild 或显式失效增量构建，并核对源字节。
+
+- [空本地化引用边界一致性](lessons/L-20261025-10-empty-localization-references.md)：作者索引、启动加载和运行解析都将空引用按空文本处理；空对象/数组不触发 opaque，非空未知结构仍保留诊断。
+
+- [资源结构与缓冲重基](lessons/L-20261025-01-variant-buffer-structural-rebase.md)：ManagedContent 的写盘内容来自项目文档 Data；移动时内部 folder 要分别重基工作版和保存版，Undo/Redo 保留之后保存的其他配置。
+
 - [必填字符串与 schema 默认值](lessons/L-20261024-01-required-string-defaults.md)：Required 字段有默认值仍会被 Normalize 补齐；要求显式提供且空串合法时不声明 schema 默认，并显式 AllowNull=false。DTO 构造函数赋值不导出为 schema 默认。
 
 - [契约与 Git 构建元数据](lessons/L-20261023-02-contract-git-metadata.md)：SDK 的 InformationalVersion 可包含 commit；严格 DLL 哈希需要稳定非功能元数据，并用不同 SourceRevisionId 重建比较验证。
@@ -38,7 +112,7 @@
 
 ## 项目事实（已从仓库文档确认）
 
-- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频后端在 Media.LibVlc；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md。
+- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频混音/DSP 在 Media.Audio，Windows 适配在 Media.Miniaudio；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md。
 
 - 解决方案入口是 `GalNet.slnx`。
 - `docs/spec/` 描述已经实现的稳定事实；`docs/manual/` 描述二次开发路径；`features/` 保留实现过程和历史。
@@ -46,16 +120,21 @@
 - Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 14 个组件模块，包含 custom.invoke 的固定双字符串 schema。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime.md、docs/spec/entry-types.md 和 docs/manual/。
 - 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
 - Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/spec/runtime.md 和 docs/spec/architecture.md。
-- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Settings 包含项目设置，项目/安装加载器与两个 Sample 已接通自定义音频轨道配置。
+- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Configuration 保存版本化 section 文档；默认作者模型位于可选 Contracts.Builtins，项目/安装加载器通过 GameContentLoadOptions 接收 schema 与文化代码投影。
 - 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
 - 持久条目先在 `GameState.Update` 中修改唯一数据记录，再通知展示层；模块通过 PrimitiveRegistry.State/Restore/ValidateState 声明状态、恢复依赖和校验，宿主使用展示抽象 StateRestoreSession 统一恢复、等待和逆序清理。旧 SceneState/Active* 镜像与 Builtins 中央 replay 已删除。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
 - 新增 feature 的长期实现意图记录在其自身 feature 目录；只有已验证的稳定事实才合并到 docs/spec/。
 
 - 玩家变量桥接实现为 Runtime.Variables.PlayerVariableService，存储通过 IPlayerVariableStore 注入；Variable.Clone 保留 Uid，VariableValue 不可变，可共享。Runtime loader/SaveManager 不执行文件 I/O。见 docs/spec/architecture.md。
-- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；DynamicLocalization/JSON 适配留在 Sample 的 GameLocalizationProvider。见 docs/spec/i18n.md。
+- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；中立 JSON 文本源归 GameHost.Content，DynamicLocalization 适配归 Avalonia.GameHost.AvaloniaPlayerLocalization。见 docs/spec/i18n.md。
 - Assets 的 AssetFileMaterializer 经 IAssetManager acquire 字节实体化媒体；Core 的 AssetFileLease 持有文件租约。Sample 将同一实例供音频/视频/Gallery 使用，最后租约释放才删除文件。见 docs/spec/assets.md。
 - 已读进度 MarkRead 只写 Runtime ReadProgressIndex；文件实现默认 2 秒批量提交，失败保留 dirty revision 并重试。Engine StopAsync、Sample 存档和进度对象销毁均等待 flush，失败向调用者传播；后台失败可读 LastPersistenceError。见 docs/spec/runtime.md。
+
+- 核心重构当前边界：Runtime 仅引用 Core；场景/音频/Gallery/差分图片契约与纯算法归 Contracts.Builtins，音频执行与按 GameState 根隔离的场景管理归 Primitives.Builtins。Core 的 keySpace 身份索引按状态注册选择，不认识场景类型。GameContent/加载配置与 Gallery 玩家组合归 GameHost。见 docs/spec/architecture.md。
+- 项目模型与运行输入：ProjectConfiguration 提供版本化 section/普通 DTO，Editor 通用表单、命令、历史、保存、导出和安装使用项目 schema，未知 JSON 保留。宿主通过 SelectProjectOptions 显式投影，Engine 只消费 PlaybackOptions，音频只消费 AudioConfiguration/AudioMixOptions，文本直接接收速度。变量声明只保存在作者 Graph。见 docs/manual/new-presentation-layer.md。
+- AudioConfiguration/AudioMixOptions 位于 Contracts.Builtins.Audio，允许任意 Bus/Track 及空/未路由 Track；混音为 master/bus/track，快进保留由显式 PreserveDuringCatchUp 控制。Sample/模板显式选择三 Bus 示例，默认模块不注入固定轨道。
+- EntryDefinition.DynamicParameters 是唯一参数源，Parameters/Defaults/Options 副本及旧 ABI 适配已删除；具体编辑器投影位于 Editor.Abstraction.Schemas，Effect/SEffect 基础约束共用 ValueValidation，领域 stage/scope 继续分别拥有。
 
 ## 文档分层
 
@@ -267,3 +346,40 @@
 - [外部调试子进程监控生命周期](lessons/L-20261024-03-external-debug-child-monitor-lifetime.md)：断开调试不能等待未终止的外部进程退出；Editor 存活时仍需排空重定向输出并隔离旧会话事件。candidate，待运行复现。
 - [异步构建的同步前缀](lessons/L-20261024-04-sync-build-work-ui-thread.md)：Task API 首个 await 前的验证、扫描与编译仍会阻塞调用线程；先在 UI 线程捕获安全快照，再后台运行纯构建工作。candidate，待大项目运行复现。
 - [动画帧颜色与主题](lessons/L-20261024-05-animated-brush-measurement.md)：中间帧比较须纳入 Brush.Opacity，并显式使用实际 ThemeVariant；只看 Color 或默认资源会误报跳色。
+
+- [Benchmark 条件引用与还原图](lessons/L-20261025-02-benchmark-restore-graph.md)：Benchmark 使用独立 bin/benchmark、obj/benchmark 和锁文件；切换条件依赖后不能跳过 restore，以实际运行验证 deps。
+
+- [Avalonia benchmark 退出码](lessons/L-20261025-03-avalonia-benchmark-exitcode.md)：窗口生命周期可覆盖提前设置的 Environment.ExitCode；宿主返回后的 finally 重申失败，脚本同时验证退出码与 Ready。
+- CPU 启动事件：Benchmark=true 启用独立 GalNet.Diagnostics 与方法内 #if BENCHMARK 埋点，普通宿主无诊断依赖；scripts/benchmark-startup.ps1 自动采集 Editor/Sample，契约和用法见 docs/spec/cpu-benchmark.md、docs/manual/cpu-benchmark.md。
+
+- [角色姓名文本与身份](lessons/L-20261025-04-character-name-key-identity.md)：DisplayNameKey 允许共享，角色草稿按 ID 与姓名文本组合区分；仅始终唯一的姓名文本可辅助跟随改名，提交仍检查原基线。
+- 2026-10-25 Editor 面板：变量以项目级 VariablePanelState 保存作用域选择与 UID 草稿，角色用 CharacterPanelState 隔离共享姓名身份；视图和 transient VM 正常释放，Save All 仍只保存两者已应用声明。本地化筛选保留单元格身份，冻结上下文保持单套虚拟化行；见 features/F-20261023-01-editor-uiux/phase-ui-20261025.md。
+
+- [启动固定快照交错对照](lessons/L-20261025-05-paired-startup-baselines.md)：机器缓存/负载可使同一 exe 跨轮大幅漂移；固定 SHA256、AB/BA 配对和同一 ready 口径，不用单次 smoke 宣称收益。
+- Editor 启动在 MainWindow 构造完成时准备欢迎页；Loaded 不再重置导航。20 对交错实验确认小幅收益，主题与 Acrylic 探测均回退；见 features/F-20261025-01-cpu-startup-benchmark/experiments.md。
+
+- [ReadyToRun 与契约身份](lessons/L-20261025-06-r2r-contract-identity.md)：发布转换必须排除严格契约闭包并验证原始字节。Editor/Sample 的 WindowsReadyToRun 配置隔离 bin/obj/lock；仅发布程序获得预编译收益，见 docs/manual/ready-to-run.md。
+- 启动调用栈：scripts/profile-startup.ps1 显式打开 Benchmark 的 GalNet-CPU EventPipe 镜像，scripts/analyze-startup-trace.cs 对齐 JIT/采样；采样只做诊断，收益仍用无采样固定快照交错比较。
+
+- [TraceEvent 事件保留](lessons/L-20261025-07-traceevent-retained-events.md)：迭代器复用事件对象；立即提取字段，或 Clone 后再保留。原生启动诊断使用 scripts/profile-startup-native.ps1 和 analyze-startup-native.cs，拒绝已有 WPR 会话和丢事件 trace，见 docs/manual/cpu-benchmark.md。
+
+- Editor 正常 Main 在 Avalonia 初始化前启动两个 Task.Run：设置读取与本地化数据准备；完成后交给 UI/DI，文化/主题/控件仍在 UI 线程，设计器保留同步回退。20 对复核改善约 4.1%；WGL 探测未达收益门槛，默认 ANGLE 保持，见 features/F-20261025-01-cpu-startup-benchmark/parallel-native.md。
+
+- 2026-10-25 本地化资源表实测修订：正文/摘要左上对齐；输入本地保留，失焦/Ctrl+Enter/Save All 提交，不逐字刷新项目。表头与正文明确靠左，隐藏语言使表格窄于视口仍对齐。语言移除保留翻译文件且可撤销，列宽与可见性保留在项目会话；见 features/F-20261023-01-editor-uiux/follow-up-localization-20261025.md。
+
+- [变窄表格的表头左边界](lessons/L-20261025-08-localization-header-alignment.md)：显式宽度的表头与正文都指定 Left；真实布局覆盖内容从宽于视口变成窄于视口。
+
+- [同步捕获待提交输入](lessons/L-20261025-09-textchanging-local-input.md)：Avalonia TextChanged 在渲染后异步触发；TextChanging 同步更新本地输入，作者提交仍只在失焦/明确保存边界进行。
+
+- [静态引用不完整警告](lessons/L-20261025-11-static-reference-warning.md)：References 正常带 references.partial warning；消费方按 error/实际引用拒绝，并保留 ReferencesComplete=false，不能用诊断总数判失败。
+- 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/external-project-authoring.md。
+
+- 2026-10-26 引擎核心重构已完整验收：P0–P6、R1–R8 verified，1789 项普通与 10 项原生测试通过；完整构建/locked restore/格式通过。当前架构事实见前述及 docs/spec，分阶段提交与原始失败证据见 features/F-20261026-01-engine-core-simplification/summary.md。性能专项按用户要求延期。
+
+- [原生音频 UTF-8 ABI](lessons/L-20261027-06-native-audio-utf8-abi.md)：Windows miniaudio 窄字符 fopen 使用 ANSI；统一 UTF-8 ABI 后内部转宽字符，托管/原生同步升级。跨平台构建与 AOT 限制见 docs/manual/cross-platform-backends.md。
+
+- [完整 MSVC 工具集选择](lessons/L-20261027-07-complete-msvc-toolsets.md)：按目标架构检查编译器、头文件和 CRT，再显式选择并存工具集；Windows ARM64 原生库已用 14.44 交叉编译并核对 PE/ABI，x64 保持 14.51。
+- [NativeAOT 与编译工具隔离](lessons/L-20261027-08-aot-build-tool-isolation.md)：标准 PublishAot 不能污染 netstandard 源生成器，restore 图和开发锁需隔离；复用 Headless Sample 自检，见 docs/manual/native-aot.md。
+- [源生成 extension data](lessons/L-20261027-09-sourcegen-extension-data.md)：GalleryAnnotation 的 init 字典触发构造绑定限制，改用 set 并验证未知字段往返。
+
+- 2026-10-29 默认播放器对白历史/重播/已读颜色：历史正文只在实际保存时进入 GameSnapshot.Attachments，host.dialogue.history 状态只保留计数；同 Group、同 rawId 的相邻 audio.play 与文本按本次执行关联，重播使用独立后端 voice，任何有效继续均停止。阅读前导不能成为半句稳定快照，见 [阅读前导快照边界](lessons/L-20261029-09-reading-preamble-checkpoints.md)、docs/spec/control.md、runtime.md 和 features/F-20261029-03-dialogue-history。

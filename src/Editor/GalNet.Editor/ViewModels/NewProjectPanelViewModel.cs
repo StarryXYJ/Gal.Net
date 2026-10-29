@@ -4,10 +4,11 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Core.Settings;
+using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
+using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.ViewModels;
 
@@ -39,6 +40,21 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
     [ObservableProperty]
     private string _contractsDirectory = "";
 
+    [ObservableProperty]
+    private string _applicationPath = "";
+
+    partial void OnApplicationPathChanged(string value)
+    {
+        _error = null;
+        Message = "";
+        if (string.IsNullOrWhiteSpace(value) || !string.IsNullOrWhiteSpace(ContractsDirectory)) return;
+        try { ContractsDirectory = ProjectContractSource.FindForApplication(value); }
+        catch (Exception error)
+        {
+            _error = error;
+            Message = EditorText.Error(error).Render(_localization);
+        }
+    }
 
     private readonly IEditorLocalizationService _localization;
     private Exception? _error;
@@ -85,10 +101,22 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
             var projectPath = Path.Combine(ProjectRoot, ProjectName);
             if (!TryParseResolution(Resolution, out var width, out var height))
                 throw new EditorOperationException("project.resolutionInvalid", "Resolution must be in the form width×height.");
+            var application = string.IsNullOrWhiteSpace(ApplicationPath) ? null : ProjectContractSource.RequireApplication(ApplicationPath);
+            var useDefaultContracts = application is null && string.IsNullOrWhiteSpace(ContractsDirectory);
             var contracts = string.IsNullOrWhiteSpace(ContractsDirectory)
-                ? Path.Combine(AppContext.BaseDirectory, "DefaultContracts")
-                : ContractsDirectory;
-            await _projectService.CreateAsync(projectPath, ProjectName, new ProjectSettings { DefaultWidth = width, DefaultHeight = height }, contracts);
+                ? application is null ? Path.Combine(AppContext.BaseDirectory, "DefaultContracts") : ProjectContractSource.FindForApplication(application)
+                : ContractsDirectory.Trim();
+            using var prepared = useDefaultContracts ? null : await Task.Run(() => ProjectContractSource.Prepare(contracts));
+            var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
+            var project = await _projectService.CreateAsync(projectPath, ProjectName, new DefaultProjectOptions
+            {
+                DefaultWidth = width,
+                DefaultHeight = height,
+                AudioBuses = audio.Buses.ToList(),
+                AudioTracks = audio.Tracks.ToList()
+            }.ToConfiguration(), prepared?.DirectoryPath ?? contracts);
+            if (application is not null)
+                ExternalGameDebugClient.SaveSettings(project.RootPath, new(application, []));
             _navigation.NavigateTo(_editorPageFactory.CreateEditorPage());
         }
         catch (Exception ex)
@@ -103,10 +131,22 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
     }
 
     [RelayCommand]
+    private async Task BrowseApplicationAsync()
+    {
+        var selected = await _dialogs.OpenFilePickerAsync(_localization["NewProject.BrowseApplication"], false);
+        if (selected.Count > 0) ApplicationPath = selected[0];
+    }
+
+    [RelayCommand]
     private async Task BrowseContractsAsync()
     {
         var directory = await _dialogs.OpenFolderPickerAsync(_localization["NewProject.BrowseContracts"]);
-        if (directory is not null) ContractsDirectory = directory;
+        if (directory is not null)
+        {
+            ContractsDirectory = directory;
+            _error = null;
+            Message = "";
+        }
     }
 
     [RelayCommand]

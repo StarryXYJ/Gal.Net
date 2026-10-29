@@ -1,6 +1,8 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Core.Variable;
@@ -15,10 +17,11 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
 {
     private readonly string GraphFile = graphFile.Replace('\\', '/');
     private readonly ProjectRawReader _reader = new(projectDirectory);
+    private readonly GalNet.Editor.Shared.Visuals.VisualPresetResourceValidator _visuals = new(projectDirectory);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public ToolResult Validate(string scope = "project", GroupSelector? selector = null, bool structureOnly = false,
-        IEntryCatalog? catalog = null, string? contractSha256 = null)
+        IEntryCatalog? catalog = null, string? contractSha256 = null, ProjectConfigurationSchema? configurations = null)
     {
         if (scope is not ("project" or "graph" or "group")) throw new ArgumentException("Unknown validation scope.");
         _ = _reader.Resolve(GraphFile);
@@ -66,9 +69,19 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         {
             if (!structureOnly && scope != "graph" && catalog is null)
             {
-                try { context = ProjectSchemaContext.Load(_reader.Root); catalog = context.Catalog; contractSha256 = context.Fingerprint; }
+                try { context = ProjectSchemaContext.Load(_reader.Root); catalog = context.Catalog; contractSha256 = context.Fingerprint; configurations = context.Configurations; }
                 catch (Exception exception) when (exception is IOException or InvalidDataException or UnauthorizedAccessException)
                 { Error(diagnostics, "contract.load", exception.Message, "Contracts/" + ProjectSchemaContext.AssemblyFileName, ""); }
+            }
+            if (scope == "project")
+            {
+                try
+                {
+                    var configuration = DirectProjectPersistence.LoadSettings(_reader.Root);
+                    if (!structureOnly) configurations?.Validate(configuration);
+                }
+                catch (Exception error) when (error is IOException or JsonException or InvalidDataException or ArgumentException)
+                { Error(diagnostics, "configuration.invalid", error.Message, "settings.json", ""); }
             }
             foreach (var file in groups.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal))
             {
@@ -91,7 +104,9 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         if (scope == "project") checks.AddRange(["settings-json", "metadata-guid-and-adjacent-file", "image-variants"]);
         if (!structureOnly) checks.Add("condition-syntax");
         if (!structureOnly && scope != "graph" && catalog is not null) checks.AddRange(["entry-parameters-and-contract-validator", "composite-compilation"]);
-        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads", "settings-semantics" };
+        var skipped = new List<string> { "runtime-expression-evaluation", "custom-code-references", "asset-payloads" };
+        if (scope == "project" && !structureOnly && configurations is not null) checks.Add("configuration-schema");
+        else skipped.Add("configuration-schema");
         if (!structureOnly && scope == "project" && catalog is not null) checks.Add("localization-semantics");
         else skipped.Add("localization-semantics");
         if (structureOnly) skipped.AddRange(["condition-syntax", "entry-contracts", "graph-source-references"]);
@@ -103,13 +118,35 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
 
     /// <summary>Checks a selected source and returns a DTO only after its raw structure is accepted.</summary>
     public GroupDocument? ValidateGroup(string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)
+        => ValidateGroup(file, diagnostics, out _, catalog, structureOnly);
+
+    internal GroupDocument? ValidateGroup(string file, IList<ToolDiagnostic> diagnostics, out CompiledGroupResult? compilation,
+        IEntryCatalog? catalog = null, bool structureOnly = false)
     {
+        compilation = null;
         var content = _reader.Read(file, diagnostics);
-        return content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, catalog, structureOnly);
+        var document = content is null ? null : ValidateGroupDocument(content.Value, file, diagnostics, out compilation, catalog, structureOnly);
+        if (document is null || structureOnly || catalog is null) return document;
+        foreach (var entry in document.Entries)
+        {
+            try { _visuals.Validate(entry.Type, entry.Parameters); }
+            catch (Exception error) when (error is IOException or InvalidDataException or JsonException or ArgumentException or InvalidOperationException)
+            {
+                Error(diagnostics, "visual.programInvalid", error.Message, file, "/entries/" + document.Entries.IndexOf(entry) + "/parameters", entry.Id);
+                compilation = null;
+                return null;
+            }
+        }
+        return document;
     }
 
     public static GroupDocument? ValidateGroupDocument(JsonElement raw, string file, IList<ToolDiagnostic> diagnostics, IEntryCatalog? catalog = null, bool structureOnly = false)
+        => ValidateGroupDocument(raw, file, diagnostics, out _, catalog, structureOnly);
+
+    private static GroupDocument? ValidateGroupDocument(JsonElement raw, string file, IList<ToolDiagnostic> diagnostics,
+        out CompiledGroupResult? compilation, IEntryCatalog? catalog, bool structureOnly)
     {
+        compilation = null;
         var start = diagnostics.Count;
         if (!Shape(raw, file, "", diagnostics, ["version", "kind", "entries"])) return null;
         DuplicateProperties(raw, file, "", diagnostics);
@@ -131,20 +168,17 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             var type = ProjectRawReader.Text(entry, "type");
             if (type is null || !catalog.TryGet(type, out var definition))
             { Error(diagnostics, "entry.typeUnknown", $"Entry '{type}' is not declared by the project contract.", file, pointer + "/type", ProjectRawReader.Text(entry, "id")); continue; }
-            try
-            {
-                if (definition.DynamicParameters is null) throw new InvalidDataException($"Entry '{type}' has no parameter contract.");
-                _ = PrimitiveArgumentHelper.Normalize(definition.DynamicParameters, parameters);
-            }
-            catch (Exception exception)
-            { Error(diagnostics, "entry.parametersInvalid", exception.Message, file, pointer + "/parameters", ProjectRawReader.Text(entry, "id")); }
         }
         if (diagnostics.Skip(start).Any(item => item.Severity == "error")) return null;
         var document = JsonSerializer.Deserialize<GroupDocument>(raw, JsonOptions)!;
         if (!structureOnly && catalog is not null)
-            foreach (var (entry, index) in document.Entries.Select((entry, index) => (entry, index)))
-                try { _ = GalgroupCompiler.Compile(new GroupDocument { Entries = [entry] }, catalog); }
-                catch (Exception exception) { Error(diagnostics, "entry.compileInvalid", exception.Message, file, $"/entries/{index}", entry.Id); }
+        {
+            var analysis = GalgroupCompiler.Analyze(document, catalog);
+            compilation = analysis.Compilation;
+            foreach (var issue in analysis.Issues)
+                Error(diagnostics, issue.IsParameterError ? "entry.parametersInvalid" : "entry.compileInvalid", issue.Message, file,
+                    $"/entries/{issue.SourceIndex}" + (issue.IsParameterError ? "/parameters" : ""), document.Entries[issue.SourceIndex].Id);
+        }
         return diagnostics.Skip(start).Any(item => item.Severity == "error") ? null : document;
     }
 
@@ -167,10 +201,10 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         for (var i = 0; i < nodes.Count; i++)
         {
             var node = nodes[i]; var pointer = $"/nodes/{i}";
-            if (!Shape(node, GraphFile, pointer, diagnostics, ["id", "type", "name", "x", "y", "file", "branchType", "options", "conditions"])) continue;
+            if (!Shape(node, GraphFile, pointer, diagnostics, ["id", "type", "name", "x", "y", "file", "storyPackage", "branchType", "options", "conditions"])) continue;
             Identity(node, "id", nodeIds, GraphFile, pointer, diagnostics);
             String(node, "name", GraphFile, pointer, diagnostics, required: true);
-            foreach (var key in new[] { "file", "branchType" })
+            foreach (var key in new[] { "file", "storyPackage", "branchType" })
                 if (node.TryGetProperty(key, out var optional) && optional.ValueKind != JsonValueKind.Null)
                     String(node, key, GraphFile, pointer, diagnostics);
             foreach (var key in new[] { "x", "y" })
@@ -257,8 +291,6 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         foreach (var (edge, index) in document.Edges.Select((edge, index) => (edge, index)))
         {
             if (!occupied.Add((edge.FromNodeId, edge.FromOutlet))) Error(diagnostics, "graph.outletDuplicate", "An outlet can have only one outgoing edge.", GraphFile, $"/edges/{index}", edge.Id);
-            if (edge.FromNodeId == edge.ToNodeId) Error(diagnostics, "graph.edge.selfConnection", "A node cannot connect to itself.", GraphFile, $"/edges/{index}", edge.Id);
-            if (document.Nodes.Any(node => node.Id == edge.ToNodeId && node.Type == "Entry")) Error(diagnostics, "graph.edge.entryInput", "Entry nodes cannot have incoming edges.", GraphFile, $"/edges/{index}", edge.Id);
         }
         foreach (var diagnostic in EditorDocumentValidator.Validate(new EditorProjectDocument { Graph = document }).Diagnostics)
         {

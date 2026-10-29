@@ -44,6 +44,13 @@ public sealed class ToolOperationCatalog
                  new("--search", "string", "Search operation ID, command path and description.")],
                 requiresProject: false),
             Route("project.info", "project info", "Shows raw project settings, graph and Group counts without modifying files.", Project()),
+            Route("project.apply", "project apply", "Validates and publishes a manifest of native author files and resources in one transaction. Every target requires its prior SHA-256 (or null for a new file); source paths are relative to the manifest directory.",
+                Project(new CliParameter("manifest-file", "string", "Version 1 JSON apply manifest; see documentInputSchema.", true, true),
+                    new("--dry-run", "boolean", "Validate the final project and report the batch without changing project files.", Default: false)),
+                readOnly: false, requiresContract: true, dryRun: true, batchMode: "Native author files, resources and sidecars in one transaction.") with
+                { DocumentInputSchema = ManifestSchema() },
+            Route("project.visuals.install", "project visuals install", "Adds missing default shader assets and project bindings atomically. Existing bindings are preserved; occupied asset paths are rejected without overwrite.",
+                Project(new CliParameter("--dry-run", "boolean", "Validate and report missing visuals without writing the project.", Default: false)), readOnly: false, requiresContract: true, dryRun: true),
             Route("project.create", "project create", "Creates an empty author project, optionally deploying a validated contract directory. Without a contract, semantic operations remain unavailable.",
                 Project(new CliParameter("--name", "string", "Project display name."), new("--contracts", "string", "Built contract directory containing GalNet.Project.Contracts.dll and managed dependencies."),
                     new("--dry-run", "boolean", "Validate inputs and report files without creating directories or files.", Default: false)), readOnly: false, requiresProject: false, dryRun: true),
@@ -90,6 +97,15 @@ public sealed class ToolOperationCatalog
                 readOnly: false, requiresContract: true),
             Route("project.export", "export", "Exports a project to a galpak package.", Project(new CliParameter("--output", "string", "Output directory (default: project/Output).")),
                 readOnly: false, requiresContract: true),
+            Route("project.export-directory", "project export-directory", "Builds and exports a project directly to the expanded installed-content layout without an intermediate .galpak.",
+                Project(new CliParameter("--output", "string", "New output directory for expanded game content.", true)),
+                readOnly: false, requiresContract: true),
+            Route("galpak.install", "galpak install", "Verifies a .galpak and expands it directly into a new output directory.",
+                [new CliParameter("package-file", "string", "Input .galpak archive.", true, true),
+                 new("--output", "string", "New output directory for installed content.", true)],
+                readOnly: false, requiresProject: false),
+            Route("game.inspect", "game inspect", "Reads the packed or legacy installed content identity and package descriptors.",
+                [new CliParameter("content-directory", "string", "Installed content root (for example app/pak).", true, true)], requiresProject: false),
             Route("execute", "execute", "Executes JSON typed document operations or one asset file operation.",
                 Project(new CliParameter("command-file", "string", "JSON file path, or '-' to read stdin.", true, true)),
                 readOnly: false, requiresContract: true, dryRun: true, batchMode: "Document operations only; one file operation per invocation. File dry-run is unsupported.")
@@ -141,8 +157,13 @@ public sealed class ToolOperationCatalog
         Type? dataType = operation.OperationId switch
         {
             "project.create" => typeof(ProjectCreateReport),
+            "project.visuals.install" => typeof(GalNet.Editor.Shared.Visuals.DefaultVisualInstallReport),
+            "project.apply" => typeof(ProjectApplyReport),
             "project.build" => typeof(ProjectBuildReport),
             "project.export" => typeof(ProjectExportReport),
+            "project.export-directory" => typeof(ProjectExportDirectoryReport),
+            "galpak.install" => typeof(GalpakInstallReport),
+            "game.inspect" => typeof(GalNet.Core.Serialization.GameContentManifest),
             "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),
             "files" => typeof(QueryPage<ProjectFileItem>),
             "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),
@@ -179,6 +200,14 @@ public sealed class ToolOperationCatalog
         file ? "Single file operation; cannot mix with document operations." : "Document-only batch; dryRun is set on the enclosing JSON payload.",
         [$"execute <project> <file containing commandId='{definition.Id}'>"], ExitCodes,
         file ? "file-operation" : "document-operation");
+    }
+
+    private static JsonElement ManifestSchema()
+    {
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver(), UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
+        var schema = options.GetJsonSchemaAsNode(typeof(ProjectApplyManifest));
+        schema["properties"]!["version"]!["const"] = 1;
+        return JsonSerializer.SerializeToElement(schema);
     }
 
     public static ToolOperationDefinition Route(string id, string path, string description, IReadOnlyList<CliParameter> parameters,

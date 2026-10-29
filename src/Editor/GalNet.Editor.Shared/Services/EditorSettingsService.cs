@@ -1,8 +1,8 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using Serilog;
 
 namespace GalNet.Editor.Shared.Services;

@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using Avalonia.Media;
 using GalNet.Avalonia.GameView.Presentation;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Rendering.Scene;
 using SkiaSharp;
 
@@ -69,6 +69,29 @@ public sealed class SceneLayerHostTests
 
         Assert.That(host.RenderPlan.Items, Has.Count.EqualTo(1));
         Assert.That(item.DisplayMode, Is.EqualTo(displayMode));
+    }
+
+    [Test]
+    public void Bounded_snapshot_preserves_native_texture_coordinates_and_bounds_effect_work()
+    {
+        var source = new SKBitmap(80, 40);
+        source.Erase(SKColors.Gold);
+        using var texture = new SceneTexture(new DrawingImage(), source);
+        var layer = new SceneLayerItem { HandleId = "native", Texture = texture, DisplayMode = LayerDisplayMode.Native, X = 100, Y = -40 };
+        var plan = SceneRenderPlan.Create([new SceneRenderEntry(layer, 0)]);
+        var sizes = new List<SKSizeI>();
+        var effect = new SceneEffectInstance("identity", new TestEffectFactory("identity", (canvas, bitmap, _) =>
+        {
+            sizes.Add(new SKSizeI(bitmap.Width, bitmap.Height));
+            canvas.DrawBitmap(bitmap, 0, 0);
+        }), "", 0, "{}");
+        using var full = SceneRenderPipeline.Render(plan, [effect], null, new Avalonia.Size(640, 360));
+        using var small = SceneRenderPipeline.Render(plan, [effect], null, new Avalonia.Size(640, 360), new Avalonia.PixelSize(160, 90));
+        Assert.That(sizes, Is.EqualTo(new[] { new SKSizeI(640, 360), new SKSizeI(160, 90) }));
+        foreach (var (x, y) in new[] { (105, 35), (80, 45), (90, 35), (120, 35), (105, 25), (105, 45) })
+            Assert.That(small.GetPixel(x, y), Is.EqualTo(full.GetPixel(x * 4, y * 4)), $"pixel {x},{y}");
+        Assert.That(small.GetPixel(105, 35), Is.EqualTo(SKColors.Gold));
+        Assert.That(small.GetPixel(90, 35), Is.EqualTo(SKColors.Black));
     }
 
     [Test]

@@ -1,13 +1,14 @@
 using System.Text;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +17,43 @@ namespace GeneralTest.Editor;
 
 public sealed class LocalizationReferenceIndexTests
 {
+    [Test]
+    public void MultipleReferencesInsideAnEncodedArrayHaveDistinctLocationsAndRewriteTheirOwnLeaves()
+    {
+        var descriptor = new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.ForType(typeof(List<NestedRole>), allowsJsonString: true));
+        var fields = new DynamicParameterTable([new(new FieldDescriptor("items", descriptor))]);
+        var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("custom", [new DefaultPrimitiveEntryBase("custom.roles", fields)])]);
+        var entry = Entry("id", "custom.roles", new { items = """[{"Speaker":"one","extra":9007199254740993},{"Speaker":"two"}]""" });
+        var index = new LocalizationReferenceIndex(new() { GroupEntries = new() { ["g"] = [entry] } }, catalog, []);
+        Assert.That(index.References, Has.Count.EqualTo(2));
+        Assert.That(index.References.Select(reference => reference.JsonPointer).Distinct(), Is.EqualTo(new[] { "/items" }));
+        Assert.That(index.References.Select(reference => reference.LocationKey).Distinct().Count(), Is.EqualTo(2));
+        var result = JsonSerializer.SerializeToElement(entry.Parameters);
+        foreach (var reference in index.References) result = reference.Rewrite(result, "new-" + reference.Key);
+        using var array = JsonDocument.Parse(result.GetProperty("items").GetString()!);
+        Assert.That(array.RootElement[0].GetProperty("Speaker").GetString(), Is.EqualTo("new-one"));
+        Assert.That(array.RootElement[1].GetProperty("Speaker").GetString(), Is.EqualTo("new-two"));
+        Assert.That(array.RootElement[0].GetProperty("extra").GetInt64(), Is.EqualTo(9007199254740993));
+    }
+
+    [Test]
+    public void KnownTransformAndFlipbookSchemasCoverAuthoredValuesAndRetainUnknownExtensions()
+    {
+        var entry = Entry("layer", "layer.show", new { transform = new { X = 12f, ScaleY = 1.2f }, flipbook = new { columns = 2, rows = 2, frameCount = 4 } });
+        var document = new EditorProjectDocument { GroupEntries = new() { ["g"] = [entry] } };
+        var original = JsonSerializer.Serialize(document);
+        var index = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.That(index.Complete, Is.True); Assert.That(index.Issues, Is.Empty);
+        Assert.That(JsonSerializer.Serialize(document), Is.EqualTo(original));
+        entry.Parameters["transform"] = JsonSerializer.SerializeToElement("""{"X":2,"extension":{"caption":"unknown"}}""");
+        var unknown = new LocalizationReferenceIndex(document, Builtins(), []).Issues.Single();
+        Assert.That(unknown.Code, Is.EqualTo("field.unknown")); Assert.That(unknown.EntryId, Is.EqualTo("layer"));
+        Assert.That(unknown.JsonPointer, Is.EqualTo("/transform"), "An outer JSON Pointer cannot address inside a string.");
+        Assert.That(unknown.Path!.ToLogicalPointer(), Is.EqualTo("/transform/extension"));
+        entry.Parameters["transform"] = JsonSerializer.SerializeToElement(new { X = "bad" });
+        Assert.That(new LocalizationReferenceIndex(document, Builtins(), []).Issues.Single().Code, Is.EqualTo("value.type"));
+    }
+
     private static TargetProfileEntryCatalog Builtins() => new(BuiltinSchemas.CreateAllModules());
     private static EditorEntryData Entry(string id, string type, object parameters) => new()
     { StableId = id, Type = type, Parameters = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(JsonSerializer.Serialize(parameters))! };
@@ -157,6 +195,38 @@ public sealed class LocalizationReferenceIndexTests
         Assert.That(index.References[0].JsonPointer, Is.EqualTo("/items/0/caption~1~0"));
     }
 
+    [TestCase("null")]
+    [TestCase("\"\"")]
+    [TestCase("\"   \"")]
+    [TestCase("{}")]
+    [TestCase("[]")]
+    public void EmptyValuesDoNotBlockCharacterReferenceAnalysis(string json)
+    {
+        var empty = JsonSerializer.Deserialize<JsonElement>(json);
+        var layer = Entry("layer", "layer.show", new { });
+        layer.Parameters["transform"] = empty;
+        layer.Parameters["extension"] = empty;
+        var dialogue = Entry("line", "dialogue.text", new { speaker = " \t", content = " \n" });
+        var unknown = Entry("unknown", "custom.unknown", new { });
+        unknown.Parameters["extension"] = empty;
+        var document = new EditorProjectDocument { GroupEntries = new() { ["opening"] = [layer, dialogue, unknown] } };
+        var index = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.Multiple(() =>
+        {
+            Assert.That(index.Complete, Is.True);
+            Assert.That(index.Issues, Is.Empty);
+            Assert.That(index.References, Is.Empty);
+            Assert.That(layer.Parameters["transform"].GetRawText(), Is.EqualTo(empty.GetRawText()));
+        });
+
+        layer.Parameters["transform"] = JsonSerializer.SerializeToElement(new { x = 1 });
+        var nonempty = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.That(nonempty.Complete, Is.True, "A known nonempty Transform is traversable.");
+        layer.Parameters["transform"] = JsonSerializer.SerializeToElement(new { extension = new { hidden = "key" } });
+        var extension = new LocalizationReferenceIndex(document, Builtins(), []);
+        Assert.That(extension.IncompleteIssues.Single().Code, Is.EqualTo("field.unknown"));
+    }
+
     [Test]
     public void RecursiveDtosStopAtDepthBudgetAndRetainDiagnostics()
     {
@@ -236,7 +306,7 @@ public sealed class LocalizationReferenceIndexTests
             var repository = new EditorDocumentRepository(catalog);
             var settings = DirectProjectPersistence.LoadSettings(root);
             var documents = new EditorDocumentService();
-            documents.Load(repository.Load(root, "Localization", settings));
+            documents.Load(repository.Load(root));
             await using var project = new GalProject("id", "Localization", root, settings, new(), new EmptyScope());
             using var session = new ProjectContentSession(documents, repository);
             session.Open(project);
@@ -258,7 +328,7 @@ public sealed class LocalizationReferenceIndexTests
             documents.Unload();
             Assert.That(query.Get(), Is.Null);
             Assert.That(query.Revision, Is.GreaterThan(beforeUnload));
-            documents.Load(repository.Load(root, "Localization", settings));
+            documents.Load(repository.Load(root));
             Assert.That(query.Get(), Is.Not.Null);
             var revision = query.Revision;
             query.Dispose();
@@ -273,7 +343,7 @@ public sealed class LocalizationReferenceIndexTests
         public GalProject? Current => project;
         public event Action<GalProject?>? CurrentChanged { add { } remove { } }
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
-        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
+        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectConfiguration settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => throw new NotSupportedException();
         public Task SaveAsync() => throw new NotSupportedException();
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];

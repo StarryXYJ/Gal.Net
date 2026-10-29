@@ -1,7 +1,7 @@
 using GalNet.Core.Entry;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services.Interfaces;
@@ -127,7 +127,7 @@ public sealed class ProjectSchemaLifecycleTests
         foreach (var file in Directory.GetFiles(Path.Combine(directory.FullName, "test", "Fixtures", fixture, "bin", configuration, "net10.0")))
             File.Copy(file, Path.Combine(contracts, Path.GetFileName(file)));
         Directory.CreateDirectory(Path.Combine(project, "Graph"));
-        File.WriteAllText(Path.Combine(project, "settings.json"), "{}");
+        File.WriteAllText(Path.Combine(project, "settings.json"), """{"version":1,"sections":{}}""");
         File.WriteAllText(Path.Combine(project, "Graph/graph.json"),
             """{"version":2,"name":"Fixture","rootNodeId":"entry","nodes":[{"id":"entry","type":"Entry","name":"Entry","x":0,"y":0}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
         return project;

@@ -12,7 +12,6 @@ public static class GalgroupLoader
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
     };
 
     public static void LoadIntoGroupFromContent(Group group, string content)
@@ -22,7 +21,7 @@ public static class GalgroupLoader
         CompiledGroupDocument document;
         try
         {
-            document = JsonSerializer.Deserialize<CompiledGroupDocument>(content, JsonOptions)
+            document = JsonCodec.Deserialize<CompiledGroupDocument>(content, JsonOptions)
                 ?? throw new InvalidDataException("The .galgroup document is empty.");
         }
         catch (JsonException exception)

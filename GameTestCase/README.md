@@ -1,5 +1,7 @@
 # Compiled-content runtime and presentation smoke test
 
+Both routes now finish with the default visual library showcase in `Graph/groups/ending.rawgalgroup`: bloom, vignette, grading, Z-based rack focus, character motion, synchronized shake, animated radial/directional speed lines, impact, wipe, blur and image-mask transitions. The editable default shaders live in `Assets/Effects/Default/`; see [the visual authoring manual](../docs/manual/default-visuals.md).
+
 This Raw-authoring game exercises the compiled runtime slice:
 
 The game includes English (`en-US`, its configured default) and Simplified Chinese
@@ -72,7 +74,7 @@ in `variants.show`; each image still has its own sprite ID. See
 From the repository root, validate and rebuild with the current project contracts:
 
 ```powershell
-./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+./scripts/contracts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- build ./GameTestCase
 ```
@@ -107,6 +109,17 @@ intro group executes `gallery.unlock(100)`, making that item viewable after the 
 
 Build and run from the repository root:
 
+The Sample launch scripts build and deploy Sample.Contracts before compiling this
+fixture, including on a fresh checkout:
+
+```powershell
+./scripts/samples/run-avalonia-sample.ps1
+./scripts/samples/run-headless-sample.ps1
+```
+
+`-SkipBuild` skips both contract deployment and content compilation. For direct
+CLI use, deploy the contracts as shown above before running:
+
 ```text
 dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
@@ -122,7 +135,7 @@ Native decode tests are opt-in: set `GALNET_VIDEO_ASSETS` to the absolute `GameT
 本目录是当前格式的作者内容，entry 集合由独立 Sample.Contracts 项目声明。先从仓库根构建并部署工具契约，再使用 CLI 或打开 Editor：
 
 ```powershell
-./scripts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+./scripts/contracts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- schema list ./GameTestCase
 dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
 ```
@@ -137,3 +150,5 @@ Contracts/ 是本机构建产物，不提交 DLL；游戏 Sample 正常引用同
 intro 在 gain 效果启用后新增暂停 BGM 的对白检查点。运行到提示时新建存档，然后读档：背景/立绘与 gain 轨道效果应恢复，BGM 保持暂停；推进执行 audio.resume 后从头播放，并保留该效果直到后续 stop 指令。使用新存档验证，旧格式文件不做迁移。
 
 自动回归 `ModularSaveRestoreTests` 直接编译该实际作者文件中的图层/音频条目，通过 FileSaveService 写入全新槽位，再由 Engine 和注册式恢复会话读回；后端使用可观察的测试 host。实际 LibVLC 声音效果仍需按上面的原生媒体方式人工检查。
+
+Audio uses project section v2 (`audioBuses` / `busId`). The intro combines real track low/high-pass filters with bus `seffect.reverb`; effect entries use `scope` / `targetId`. The default Windows x64 host uses miniaudio; videos remain on LibVLC.

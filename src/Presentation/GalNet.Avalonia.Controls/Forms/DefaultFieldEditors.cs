@@ -56,7 +56,7 @@ public static class DefaultFieldEditors
     {
         Require(context, typeof(bool));
         if (context.EffectiveValue is { } json && ValueValidation.Validate(context.Field.Value, json) is not null) return CreateJson(context);
-        var control = new CheckBox { IsThreeState = context.Field.Value.AllowNull };
+        var control = new CheckBox { IsThreeState = context.Field.Value.AllowNull, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center, VerticalContentAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
         return Bind(control, context,
             () => control.IsChecked = (bool?)context.ReadValue(),
             change =>
@@ -95,7 +95,7 @@ public static class DefaultFieldEditors
         var maximum = max.GetDouble();
         var type = Nullable.GetUnderlyingType(value.ValueType) ?? value.ValueType;
         var integer = type != typeof(float) && type != typeof(double);
-        if (!double.IsFinite(minimum) || !double.IsFinite(maximum) ||
+        if (!double.IsFinite(minimum) || !double.IsFinite(maximum) || minimum > maximum ||
             integer && (minimum < -9007199254740991d || maximum > 9007199254740991d))
             throw new NotSupportedException("Slider bounds cannot be represented exactly; use the numeric text editor.");
         var step = context.Field.Editor?.Step ?? (integer ? 1 : .01);
@@ -127,7 +127,7 @@ public static class DefaultFieldEditors
         if (!types.Contains(type)) throw new NotSupportedException($"Editor does not support '{type.Name}'.");
     }
 
-    private static FieldEditorLease Bind(Control control, FieldEditorContext context, Action update,
+    internal static FieldEditorLease Bind(Control control, FieldEditorContext context, Action update,
         Action<AvaloniaPropertyChangedEventArgs> edit, bool commitText = false)
     {
         var syncing = false;

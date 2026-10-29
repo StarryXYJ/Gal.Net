@@ -25,7 +25,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task EntryFieldsUseProjectOrderAcrossMountedPagesAndSurvivePageCloseAndReopen()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -49,7 +49,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(text.Source.Condition, Is.EqualTo("true"));
                 var form = view2.GetVisualDescendants().OfType<SchemaForm>().Single(item => item.Schema?.Any(field => field.Id == "duration") == true);
                 var field = form.Contexts.Single(context => context.Field.Id == "duration");
-                ((TextBox)form.Editors.Single(editor => editor.Context == field).Control).Text = "4.25"; Dispatcher.UIThread.RunJobs();
+                NumericControlTestSupport.Input(form.Editors.Single(editor => editor.Context == field).Control).Text = "4.25"; Dispatcher.UIThread.RunJobs();
                 Assert.That(await field.CommitTextAsync(), Is.True); Assert.That(wait.Source.Parameters["duration"].GetSingle(), Is.EqualTo(4.25f));
                 var content = view1.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "GameTextInput");
                 content.Text = "Written through the author intent"; Dispatcher.UIThread.RunJobs();
@@ -108,7 +108,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(JsonElement.DeepEquals(original, JsonSerializer.SerializeToElement(source.Parameters)), Is.True);
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null, "Undoing a type change must not revive an old field lease.");
         field = (IFieldBinding)entry.ParameterFields.Single(item => item.Id == "count");
-        var batch = new GroupEntryAuthoringService(store, documents, catalog, histories); histories.Clear(); batch.Delete("group", [entry.StableId]);
+        var batch = new GroupEntryAuthoringService(documents, catalog, histories); histories.Clear(); batch.Delete("group", [entry.StableId]);
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null);
         await histories.Content.UndoAsync(); entry.ConfigureParameterFields(catalog, [], []);
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null, "Undoing removal must not revive the old control lease.");
@@ -117,26 +117,24 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [TestCase(false), TestCase(true)]
-    public void EntryFieldNotificationsCompensateBeforeHistoryMoves(bool persistent)
+    public void EntryNotificationFailuresDoNotRollbackCommittedContent(bool persistent)
     {
         using var histories = new EditorHistories(); var documents = new EditorDocumentService();
         var source = new EditorEntryData { StableId = "line", Type = "custom.unknown" };
         documents.Load(new() { Document = new() { Nodes = [new() { Id = "group", Type = "Group", File = "groups/group.rawgalgroup" }] }, GroupEntries = { ["group"] = [source] } });
-        var authoring = new EntryFieldAuthoringService(documents, histories); var fail = true;
-        void Fail(string _) { if (persistent || fail) { fail = false; throw new IOException("entry observer"); } }
-        authoring.Changed += Fail;
-        try
-        {
-            if (persistent) Assert.Throws<HistoryRepairRequiredException>(() => authoring.SetCondition("group", source, "true"));
-            else Assert.Throws<IOException>(() => authoring.SetCondition("group", source, "true"));
-            Assert.That(source.Condition, Is.Empty); Assert.That(histories.Content.CanUndo, Is.False); Assert.That(histories.Content.RepairRequired, Is.EqualTo(persistent));
-        }
-        finally { authoring.Changed -= Fail; }
-        if (!persistent)
-        {
-            authoring.SetCondition("group", source, "true"); source.Condition = "outside";
-            Assert.Throws<EditorOperationException>(() => histories.Content.Undo());
-            Assert.That(histories.Content.CanUndo, Is.True); Assert.That(source.Condition, Is.EqualTo("outside"));
-        }
+        var authoring = new EntryFieldAuthoringService(documents, histories); var fail = true; var notified = 0;
+        void Fail(GalNet.Editor.Abstraction.Changes.AuthorChangeSet _) { if (persistent || fail) { fail = false; throw new IOException("entry observer"); } }
+        histories.Content.AuthorChanges.Committed += Fail;
+        histories.Content.AuthorChanges.Committed += _ => notified++;
+        authoring.SetCondition("group", source, "true");
+        Assert.That(source.Condition, Is.EqualTo("true")); Assert.That(histories.Content.CanUndo, Is.True);
+        Assert.That(histories.Content.AuthorChanges.LastNotificationError, Is.TypeOf<IOException>());
+        Assert.That(histories.Content.RepairRequired, Is.False); Assert.That(notified, Is.EqualTo(1));
+        histories.Content.Undo(); Assert.That(source.Condition, Is.Empty); Assert.That(notified, Is.EqualTo(2));
+        histories.Content.Redo(); Assert.That(source.Condition, Is.EqualTo("true"));
+        source.Condition = "outside";
+        Assert.Throws<EditorOperationException>(() => histories.Content.Undo());
+        Assert.That(histories.Content.CanUndo, Is.True); Assert.That(source.Condition, Is.EqualTo("outside"));
+        Assert.That(notified, Is.EqualTo(3), "Failed writes do not publish or advance the committed version.");
     }
 }

@@ -1,364 +1,213 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Threading.Tasks;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
+using GalNet.Game.Controls.Forms;
 using Microsoft.Extensions.DependencyInjection;
-using Serilog;
 
 namespace GalNet.Editor.ViewModels;
 
 public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposable, IUndoRedoTarget
 {
-    public IReadOnlyList<string> ResolutionPresets { get; } = NewProjectPanelViewModel.ResolutionPresets;
-    public IReadOnlyList<string> AudioBuses { get; } = [GalNet.Core.Audio.AudioBuses.Bgm, GalNet.Core.Audio.AudioBuses.Sfx, GalNet.Core.Audio.AudioBuses.Vocal];
-    public ObservableCollection<AudioTrackEditorItem> AudioTracks { get; } = [];
-    private readonly IProjectService _projectService;
+    private readonly IProjectService _projects;
     private readonly EditorHistories _histories;
-    private bool _isLoading;
-    private bool _hasDraft;
-    private readonly IDisposable _draftRegistration;
     private readonly IProjectContentSession _session;
+    private readonly IDisposable _registration;
+    private readonly SemaphoreSlim _commitGate = new(1, 1);
+    private GalProject? _project;
+    private string _originalName = "";
+    private bool _loading, _disposed;
+    private Exception? _validationError;
+    public ObservableCollection<ConfigurationSectionEditor> Sections { get; } = [];
+    public EditorRegistry FieldEditors { get; }
     public IUndoRedoHistory UndoRedoHistory => _histories.Content;
-
     public IEditorLocalizationService L { get; }
     public event Action? DraftReset;
-
-    [ObservableProperty]
-    private int _defaultWidth = 1920;
-
-    [ObservableProperty]
-    private int _defaultHeight = 1080;
-
-    [ObservableProperty]
-    private int _saveSlotCount = 60;
-
-    [ObservableProperty]
-    private int _sfxChannelCount = 4;
-
-    [ObservableProperty]
-    private string _targetLocale = "zh-CN";
-
-    [ObservableProperty]
-    private string _isDirtyText = "";
-
-    [ObservableProperty]
-    private string _resolution = "1920×1080";
-
-    [ObservableProperty]
-    private string _projectName = "";
+    [ObservableProperty] private string _projectName = "";
+    [ObservableProperty] private string _isDirtyText = "";
     [ObservableProperty] private string _debugExecutable = "";
     [ObservableProperty] private string _debugArguments = "";
     [ObservableProperty] private string _debugWorkingDirectory = "";
     [ObservableProperty] private string _debugConfigurationMessage = "";
+    [ObservableProperty] private string _targetLocale = "";
 
+    partial void OnDebugExecutableChanged(string value) => SaveDebugAutomatically();
+    partial void OnDebugArgumentsChanged(string value) => SaveDebugAutomatically();
+    partial void OnDebugWorkingDirectoryChanged(string value) => SaveDebugAutomatically();
+    private void SaveDebugAutomatically() { if (!_loading && IsCurrent) SaveDebugConfiguration(); }
+
+    [RelayCommand]
+    private async Task BrowseDebugExecutableAsync()
+    {
+        if (_projects.Current?.Services.GetService<IFileDialogService>() is not { } dialogs) return;
+        var paths = await dialogs.OpenFilePickerAsync(L["Debug.Executable"], false);
+        if (paths.Count > 0 && IsCurrent) DebugExecutable = paths[0];
+    }
+
+    [RelayCommand]
+    private async Task BrowseDebugWorkingDirectoryAsync()
+    {
+        if (_projects.Current?.Services.GetService<IFileDialogService>() is not { } dialogs) return;
+        var path = await dialogs.OpenFolderPickerAsync(L["Debug.WorkingDirectory"]);
+        if (path is not null && IsCurrent) DebugWorkingDirectory = path;
+    }
+
+    public ProjectSettingsPanelViewModel(IProjectService projects, EditorHistories histories,
+        IEditorLocalizationService localization, IProjectContentSession session, EditorRegistry fieldEditors)
+    {
+        _projects = projects; _histories = histories; _session = session; L = localization; FieldEditors = fieldEditors;
+        _registration = session.RegisterDraft(() => HasDraft, CommitDraftAsync, LoadFromProject);
+        projects.CurrentChanged += OnProjectChanged;
+        histories.Content.Changed += OnHistoryChanged;
+        session.ExternalReloaded += LoadFromProject;
+        L.PropertyChanged += OnLocalizationChanged;
+        LoadFromProject();
+    }
+
+    private bool IsCurrent => !_disposed && _project is not null && ReferenceEquals(_project, _projects.Current);
+    private bool HasDraft => IsCurrent && (ProjectName != _originalName || Sections.Any(section => section.HasChanges));
+    partial void OnProjectNameChanged(string value) => RefreshDirty();
+    private void RefreshDirty()
+    {
+        if (_loading || _disposed) return;
+        UpdateStatus();
+        _session.Refresh();
+    }
+    private void UpdateStatus() => IsDirtyText = _validationError is { } error
+        ? L.Format("Settings.Project.ApplyFailed", EditorText.Error(error).Render(L))
+        : HasDraft || _histories.Content.IsDirty ? L["Settings.Project.Unsaved"] : "";
+    private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
+    { if (args.PropertyName == "Item[]") UpdateStatus(); }
+    private void OnProjectChanged(GalProject? _) => LoadFromProject();
+    private void OnHistoryChanged() { if (!_histories.Content.IsBusy && !HasDraft) LoadFromProject(); }
+    private void LoadFromProject()
+    {
+        if (_disposed) return;
+        _loading = true;
+        _validationError = null;
+        foreach (var section in Sections) section.Dispose();
+        Sections.Clear();
+        _project = _projects.Current;
+        _originalName = _project?.Name ?? ""; ProjectName = _originalName;
+        TargetLocale = "";
+        DebugExecutable = DebugArguments = DebugWorkingDirectory = DebugConfigurationMessage = "";
+        if (_project is { } project)
+        {
+            if (project.Configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id))
+            {
+                try { TargetLocale = project.Configuration.ReadDefaultOptions().TargetLocale.Code; }
+                catch (Exception error) when (error is System.IO.InvalidDataException or JsonException or ArgumentException) { }
+            }
+            foreach (var section in project.Configurations.Sections)
+                Sections.Add(new(section, project.Configuration, FieldEditors, () => IsCurrent, RefreshDirty,
+                    field => section.Id != DefaultProjectConfiguration.Section.Id || field.Id is not ("targetLocale" or "availableLocales")));
+            try
+            {
+                if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
+                {
+                    DebugExecutable = launch.Executable; DebugArguments = string.Join(Environment.NewLine, launch.Arguments ?? []);
+                    DebugWorkingDirectory = launch.WorkingDirectory ?? "";
+                }
+            }
+            catch (Exception error) when (error is System.IO.IOException or JsonException or UnauthorizedAccessException)
+            { DebugConfigurationMessage = error.Message; }
+        }
+        _loading = false; RefreshDirty(); DraftReset?.Invoke();
+    }
+
+    [RelayCommand]
+    private async Task SaveSettingsAsync()
+    {
+        try { await CommitDraftAsync(); }
+        catch (Exception error) { _validationError = error; UpdateStatus(); }
+    }
+    public async Task CommitDraftAsync()
+    {
+        await _commitGate.WaitAsync();
+        try { await CommitDraftCoreAsync(); }
+        finally { _commitGate.Release(); }
+    }
+    private async Task CommitDraftCoreAsync()
+    {
+        if (!HasDraft) return;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(ProjectName)) throw new EditorOperationException("project.nameRequired", "Project name is required.");
+            var project = _project!;
+            foreach (var section in Sections) await section.FlushAsync();
+            if (!IsCurrent) throw new EditorOperationException("settings.obsolete", "The project was closed.");
+            var next = project.Configuration.Clone();
+            foreach (var section in Sections) section.Apply(next);
+            var graph = project.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
+            var rename = ProjectName.Trim() != _originalName;
+            if (rename && graph.Name != _originalName) throw new EditorOperationException("settings.changed", "Project name changed. Cancel the draft and retry.");
+            var changes = Sections.Where(section => section.HasChanges).Select(section => section.Id).Distinct()
+                .Select(id => new SectionChange(id, project.Configuration.Sections.GetValueOrDefault(id), next.Sections.GetValueOrDefault(id))).ToArray();
+            if (rename || changes.Length != 0)
+                await _histories.Content.ExecuteAsync(new SettingsEdit(project.Configuration, graph, graph.Name,
+                    rename ? ProjectName.Trim() : graph.Name, changes));
+            LoadFromProject();
+        }
+        catch (Exception error)
+        {
+            _validationError = error; UpdateStatus();
+            throw;
+        }
+    }
+    [RelayCommand] private void CancelDraft() => LoadFromProject();
     [RelayCommand]
     private void SaveDebugConfiguration()
     {
+        if (!IsCurrent) return;
         try
         {
-            if (_projectService.Current is not { } project) return;
-            ExternalGameDebugClient.SaveSettings(project.RootPath, new(DebugExecutable.Trim(),
+            ExternalGameDebugClient.SaveSettings(_project!.RootPath, new(DebugExecutable.Trim(),
                 DebugArguments.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries),
                 string.IsNullOrWhiteSpace(DebugWorkingDirectory) ? null : DebugWorkingDirectory.Trim()));
             DebugConfigurationMessage = "";
         }
         catch (Exception error) { DebugConfigurationMessage = error.Message; }
     }
-
-    public ProjectSettingsPanelViewModel(
-        IProjectService projectService,
-        EditorHistories histories,
-        IEditorLocalizationService localization,
-        IProjectContentSession session)
-    {
-        _projectService = projectService;
-        _histories = histories;
-        _session = session;
-        _draftRegistration = session.RegisterDraft(() => HasDraftChanges, CommitDraftAsync);
-        L = localization;
-        L.PropertyChanged += OnLocalizationChanged;
-
-        _projectService.CurrentChanged += OnProjectChanged;
-        _histories.Content.Changed += OnHistoryChanged;
-        LoadFromProject();
-    }
-
     public void Dispose()
     {
-        _projectService.CurrentChanged -= OnProjectChanged;
-        _draftRegistration.Dispose();
-        _histories.Content.Changed -= OnHistoryChanged;
+        if (_disposed) return; _disposed = true;
+        _registration.Dispose(); _projects.CurrentChanged -= OnProjectChanged;
+        _histories.Content.Changed -= OnHistoryChanged; _session.ExternalReloaded -= LoadFromProject;
         L.PropertyChanged -= OnLocalizationChanged;
-        foreach (var track in AudioTracks) { track.Changed -= TriggerAutoSave; track.RemoveRequested = null; }
+        foreach (var section in Sections) section.Dispose();
+        Sections.Clear(); _project = null;
         GC.SuppressFinalize(this);
     }
 
-    private void LoadFromProject()
+    private sealed record SectionChange(string Id, ProjectSectionData? Before, ProjectSectionData? After);
+    private sealed record SettingsEdit(ProjectConfiguration Configuration, EditorGraphDocument Graph,
+        string BeforeName, string AfterName, SectionChange[] Changes) : IUndoableEdit
     {
-        if (_projectService.Current is not { } project) return;
-        var settings = project.Settings;
-
-        _isLoading = true;
-        ProjectName = project.Name;
-        try
-        {
-            if (ExternalGameDebugClient.LoadSettings(project.RootPath) is { } launch)
-            {
-                DebugExecutable = launch.Executable;
-                DebugArguments = string.Join(Environment.NewLine, launch.Arguments ?? []);
-                DebugWorkingDirectory = launch.WorkingDirectory ?? "";
-            }
-        }
-        catch (Exception error) when (error is System.IO.IOException or System.Text.Json.JsonException or UnauthorizedAccessException) { DebugConfigurationMessage = error.Message; }
-        DefaultWidth = settings.DefaultWidth;
-        DefaultHeight = settings.DefaultHeight;
-        Resolution = $"{DefaultWidth}×{DefaultHeight}";
-        SaveSlotCount = settings.SaveSlotCount;
-        SfxChannelCount = settings.SfxChannelCount;
-        TargetLocale = settings.TargetLocale.Code;
-        foreach (var track in AudioTracks) track.Changed -= TriggerAutoSave;
-        AudioTracks.Clear();
-        foreach (var track in settings.AudioTracks)
-        {
-            var item = AttachTrack(AudioTrackEditorItem.From(track));
-            AudioTracks.Add(item);
-        }
-        _isLoading = false;
-        _hasDraft = false;
-        _validationError = null;
-        UpdateDirtyText();
-        DraftReset?.Invoke();
-    }
-
-    private Exception? _validationError;
-    private void UpdateDirtyText()
-    {
-        IsDirtyText = _validationError is { } error ? L.Format("Settings.Project.ApplyFailed", EditorText.Error(error).Render(L))
-            : _histories.Content.IsDirty ? L["Settings.Project.Unsaved"] : "";
-    }
-
-    [RelayCommand]
-    private async Task SaveSettingsAsync()
-    {
-        try
-        {
-            if (_projectService.Current is not { } project) return;
-            if (string.IsNullOrWhiteSpace(ProjectName)) throw new EditorOperationException("project.nameRequired", "Project name is required.");
-            string locale;
-            try { locale = new Core.I18n.I18nLocale(TargetLocale).Code; }
-            catch (Exception failure) when (failure is ArgumentException or FormatException)
-            { throw new EditorOperationException("settings.localeInvalid", failure.Message, TargetLocale); }
-            if (locale != project.Settings.TargetLocale.Code)
-                throw new EditorOperationException("i18n.development", L["I18n.UsePanel"]);
-            var before = SettingsSnapshot.From(project.Name, project.Settings);
-            var after = new SettingsSnapshot(ProjectName.Trim(), DefaultWidth, DefaultHeight, SaveSlotCount, SfxChannelCount, locale, AudioTracks.Select(item => item.ToDefinition()).ToArray());
-            ValidateTracks(after.AudioTracks);
-            if (before.Matches(after)) { LoadFromProject(); return; }
-            if (!NewProjectPanelViewModel.TryParseResolution($"{DefaultWidth}×{DefaultHeight}", out _, out _) || SaveSlotCount <= 0 || SfxChannelCount <= 0)
-                throw new EditorOperationException("settings.invalid", "Invalid project dimensions or channel/slot count.");
-            var graph = project.Services.GetRequiredService<IEditorDocumentService>().CurrentDocument;
-            await _histories.Content.ExecuteAsync(new SettingsEdit(project.Settings, graph, before, after));
-            LoadFromProject();
-            UpdateDirtyText();
-            Log.Information("Project settings updated");
-        }
-        catch (Exception ex)
-        {
-            _validationError = ex;
-            UpdateDirtyText();
-            Log.Error(ex, "Failed to save project settings");
-        }
-    }
-
-    partial void OnDefaultWidthChanged(int value) => TriggerAutoSave();
-    partial void OnProjectNameChanged(string value) => TriggerAutoSave();
-    partial void OnDefaultHeightChanged(int value) => TriggerAutoSave();
-    partial void OnResolutionChanged(string value)
-    {
-        if (_isLoading || !NewProjectPanelViewModel.TryParseResolution(value, out var width, out var height)) return;
-        _isLoading = true; DefaultWidth = width; DefaultHeight = height; _isLoading = false; TriggerAutoSave();
-    }
-    partial void OnSaveSlotCountChanged(int value) => TriggerAutoSave();
-    partial void OnSfxChannelCountChanged(int value) => TriggerAutoSave();
-    partial void OnTargetLocaleChanged(string value) => TriggerAutoSave();
-
-    [RelayCommand]
-    private void AddAudioTrack()
-    {
-        var item = new AudioTrackEditorItem
-        {
-            Id = $"track_{AudioTracks.Count + 1}",
-            Name = "New track",
-            Bus = GalNet.Core.Audio.AudioBuses.Sfx,
-            DefaultGain = 1,
-            MaxVoices = 1,
-            MaxQueuedItems = 0
-        };
-        AudioTracks.Add(AttachTrack(item));
-        TriggerAutoSave();
-    }
-
-    [RelayCommand]
-    private void RemoveAudioTrack(AudioTrackEditorItem? item)
-    {
-        if (item is null || !AudioTracks.Remove(item)) return;
-        item.Changed -= TriggerAutoSave;
-        TriggerAutoSave();
-    }
-
-    private AudioTrackEditorItem AttachTrack(AudioTrackEditorItem item)
-    {
-        item.Changed += TriggerAutoSave;
-        item.RemoveRequested = RemoveAudioTrack;
-        return item;
-    }
-
-    private static void ValidateTracks(IReadOnlyList<AudioTrackDefinition> tracks)
-    {
-        if (tracks.Count == 0) throw new EditorOperationException("settings.tracksRequired", "At least one audio track is required.");
-        if (tracks.Any(track => string.IsNullOrWhiteSpace(track.Id)) || tracks.Select(track => track.Id).Distinct(StringComparer.Ordinal).Count() != tracks.Count)
-            throw new EditorOperationException("settings.trackIds", "Audio track IDs must be non-empty and unique.");
-        if (tracks.Any(track => !GalNet.Core.Audio.AudioBuses.IsValid(track.Bus) || !float.IsFinite(track.DefaultGain) || track.DefaultGain < 0 || track.DefaultGain > 1 || track.MaxVoices <= 0 || track.MaxQueuedItems < 0))
-            throw new EditorOperationException("settings.trackInvalid", "Audio track configuration contains an invalid bus, gain, or voice limit.");
-    }
-
-    private void TriggerAutoSave()
-    {
-        if (_isLoading || _projectService.Current is null)
-            return;
-        _hasDraft = true;
-        if (HasDraftChanges) IsDirtyText = L["Settings.Project.Unsaved"];
-        else UpdateDirtyText();
-        _session.Refresh();
-    }
-
-    private void OnProjectChanged(Abstraction.Project.GalProject? _) => LoadFromProject();
-
-    private void OnHistoryChanged()
-    {
-        if (!_histories.Content.IsBusy && !HasDraftChanges) LoadFromProject();
-    }
-
-    private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
-    {
-        if (args.PropertyName == "Item[]") UpdateDirtyText();
-    }
-
-    [RelayCommand]
-    private void CancelDraft() { LoadFromProject(); _session.Refresh(); }
-
-    public async Task CommitDraftAsync()
-    {
-        if (!HasDraftChanges) return;
-        await SaveSettingsAsync();
-        if (_hasDraft) throw _validationError ?? new EditorOperationException("settings.invalid", "Invalid settings draft.");
-    }
-
-    private bool HasDraftChanges => _hasDraft && _projectService.Current is { } project &&
-        !SettingsSnapshot.From(project.Name, project.Settings).Matches(new((ProjectName ?? "").Trim(), DefaultWidth, DefaultHeight, SaveSlotCount,
-            SfxChannelCount, TargetLocale, AudioTracks.Select(item => item.ToDefinition()).ToArray()));
-
-    private sealed record SettingsEdit(Core.Settings.ProjectSettings Settings, EditorGraphDocument Graph, SettingsSnapshot Before, SettingsSnapshot After) : IUndoableEdit
-    {
-        public long RetainedBytes => System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(Before).LongLength + System.Text.Json.JsonSerializer.SerializeToUtf8Bytes(After).LongLength;
         public string Description => "Change project name and settings";
-        public void Undo() => Apply(After, Before);
-        public void Redo() => Apply(Before, After);
-        private void Apply(SettingsSnapshot expected, SettingsSnapshot value)
+        public long RetainedBytes => JsonSerializer.SerializeToUtf8Bytes(Changes).LongLength + (BeforeName.Length + AfterName.Length) * 2L;
+        public void Undo() => Apply(false);
+        public void Redo() => Apply(true);
+        private void Apply(bool forward)
         {
-            if (!SettingsSnapshot.From(Graph.Name, Settings).Matches(expected))
-                throw new EditorOperationException("settings.changed", "Project settings changed before this edit. Review the current values and retry.");
-            value.Apply(Settings);
-            Graph.Name = value.Name;
+            if (BeforeName != AfterName && Graph.Name != (forward ? BeforeName : AfterName) ||
+                Changes.Any(change => !ConfigurationSectionEditor.Equal(Configuration.Sections.GetValueOrDefault(change.Id), forward ? change.Before : change.After)))
+                throw new EditorOperationException("settings.changed", "Project settings changed. Review the current values and retry.");
+            var next = Configuration.Clone();
+            foreach (var change in Changes)
+            {
+                if ((forward ? change.After : change.Before) is { } value) next.SetRaw(change.Id, value);
+                else next.Remove(change.Id);
+            }
+            Configuration.ReplaceFrom(next);
+            if (BeforeName != AfterName) Graph.Name = forward ? AfterName : BeforeName;
         }
     }
-
-    private sealed record SettingsSnapshot(string Name, int Width, int Height, int SaveSlots, int SfxChannels, string Locale, IReadOnlyList<AudioTrackDefinition> AudioTracks)
-    {
-        public static SettingsSnapshot From(string name, Core.Settings.ProjectSettings settings) =>
-            new(name, settings.DefaultWidth, settings.DefaultHeight, settings.SaveSlotCount, settings.SfxChannelCount, settings.TargetLocale.Code, settings.AudioTracks.Select(CopyTrack).ToArray());
-        public bool Matches(SettingsSnapshot other) =>
-            Name == other.Name && Width == other.Width && Height == other.Height && SaveSlots == other.SaveSlots && SfxChannels == other.SfxChannels && Locale == other.Locale &&
-            AudioTracks.Count == other.AudioTracks.Count && AudioTracks.Zip(other.AudioTracks).All(pair => Same(pair.First, pair.Second));
-        public void Apply(Core.Settings.ProjectSettings settings)
-        {
-            var locale = new Core.I18n.I18nLocale(Locale);
-            var tracks = AudioTracks.Select(CopyTrack).ToList();
-            settings.DefaultWidth = Width; settings.DefaultHeight = Height; settings.SaveSlotCount = SaveSlots;
-            settings.SfxChannelCount = SfxChannels; settings.TargetLocale = locale;
-            settings.AudioTracks = tracks;
-        }
-
-        private static bool Same(AudioTrackDefinition left, AudioTrackDefinition right) =>
-            left.Id == right.Id && left.Name == right.Name && left.Bus == right.Bus && left.DefaultGain == right.DefaultGain &&
-            left.MaxVoices == right.MaxVoices && left.MaxQueuedItems == right.MaxQueuedItems &&
-            left.OverflowPolicy == right.OverflowPolicy && left.QueueOverflowPolicy == right.QueueOverflowPolicy;
-        private static AudioTrackDefinition CopyTrack(AudioTrackDefinition track) => new()
-        {
-            Id = track.Id,
-            Name = track.Name,
-            Bus = track.Bus,
-            DefaultGain = track.DefaultGain,
-            MaxVoices = track.MaxVoices,
-            MaxQueuedItems = track.MaxQueuedItems,
-            OverflowPolicy = track.OverflowPolicy,
-            QueueOverflowPolicy = track.QueueOverflowPolicy
-        };
-    }
-}
-
-public sealed partial class AudioTrackEditorItem : ObservableObject
-{
-    public event Action? Changed;
-    public Action<AudioTrackEditorItem>? RemoveRequested { get; set; }
-    [ObservableProperty] private string _id = "";
-    [ObservableProperty] private string _name = "";
-    [ObservableProperty] private string _bus = AudioBuses.Sfx;
-    [ObservableProperty] private double _defaultGain = 1;
-    [ObservableProperty] private int _maxVoices = 1;
-    [ObservableProperty] private int _maxQueuedItems;
-    [ObservableProperty] private AudioOverflowPolicy _overflowPolicy;
-    [ObservableProperty] private AudioQueueOverflowPolicy _queueOverflowPolicy;
-
-    public static AudioTrackEditorItem From(AudioTrackDefinition track) => new()
-    {
-        Id = track.Id,
-        Name = track.Name,
-        Bus = track.Bus,
-        DefaultGain = track.DefaultGain,
-        MaxVoices = track.MaxVoices,
-        MaxQueuedItems = track.MaxQueuedItems,
-        OverflowPolicy = track.OverflowPolicy,
-        QueueOverflowPolicy = track.QueueOverflowPolicy
-    };
-    public AudioTrackDefinition ToDefinition() => new()
-    {
-        Id = Id,
-        Name = Name,
-        Bus = Bus,
-        DefaultGain = (float)DefaultGain,
-        MaxVoices = MaxVoices,
-        MaxQueuedItems = MaxQueuedItems,
-        OverflowPolicy = OverflowPolicy,
-        QueueOverflowPolicy = QueueOverflowPolicy
-    };
-
-    [RelayCommand]
-    private void Remove() => RemoveRequested?.Invoke(this);
-
-    partial void OnIdChanged(string value) => Changed?.Invoke();
-    partial void OnNameChanged(string value) => Changed?.Invoke();
-    partial void OnBusChanged(string value) => Changed?.Invoke();
-    partial void OnDefaultGainChanged(double value) => Changed?.Invoke();
-    partial void OnMaxVoicesChanged(int value) => Changed?.Invoke();
-    partial void OnMaxQueuedItemsChanged(int value) => Changed?.Invoke();
 }

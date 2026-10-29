@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Assets.Provider;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 
 namespace GalNet.Assets.Tests;
@@ -12,8 +13,8 @@ public sealed class AssetPipelineTests
         var meta = new SpriteAssetMeta { Id = "opening", TypeId = "sprite", Path = "cg/opening.png", Filter = "nearest" };
         var original = new GameFile(meta.Id, meta.Path, meta.TypeId, meta, "png"u8.ToArray());
 
-        var pak = Archive.Serialize("assets", [original]);
-        using var archive = Archive.Deserialize("assets", pak);
+        var pak = Archive.Serialize("assets", [original], BuiltinResourceTypes.CreateCatalog());
+        using var archive = Archive.Deserialize("assets", pak, BuiltinResourceTypes.CreateCatalog());
         var loaded = archive.GetAsset("opening");
 
         Assert.That(loaded, Is.Not.Null);
@@ -34,7 +35,7 @@ public sealed class AssetPipelineTests
             await File.WriteAllBytesAsync(resourcePath, "png"u8.ToArray());
             var meta = new SpriteAssetMeta { Id = "opening", TypeId = "sprite", Path = "cg/opening.png", Filter = "bilinear" };
             await File.WriteAllTextAsync(resourcePath + ".meta", JsonSerializer.Serialize(meta));
-            using var provider = new LocalFileProvider(root);
+            using var provider = new LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog());
             using var archive = await provider.OpenArchiveAsync("assets");
 
             var file = archive.GetAsset("opening");
@@ -58,7 +59,7 @@ public sealed class AssetPipelineTests
             var resourcePath = Path.Combine(root, "cg", "opening.png");
             await File.WriteAllBytesAsync(resourcePath, "png"u8.ToArray());
             await File.WriteAllTextAsync(resourcePath + ".meta", """{ "id": "opening", "futureField": true }""");
-            using var provider = new LocalFileProvider(root);
+            using var provider = new LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog());
             using var archive = await provider.OpenArchiveAsync("assets");
 
             var file = archive.GetAsset("opening");
@@ -81,7 +82,7 @@ public sealed class AssetPipelineTests
         {
             await File.WriteAllBytesAsync(Path.Combine(root, "broken.png"), "png"u8.ToArray());
             await File.WriteAllTextAsync(Path.Combine(root, "broken.png.meta"), "{ invalid json");
-            using var provider = new LocalFileProvider(root);
+            using var provider = new LocalFileProvider(root, BuiltinResourceTypes.CreateCatalog());
 
             var exception = Assert.ThrowsAsync<InvalidDataException>(() => provider.OpenArchiveAsync("assets"));
             Assert.That(exception!.Message, Does.Contain("broken.png.meta"));
@@ -96,7 +97,7 @@ public sealed class AssetPipelineTests
     public async Task Decoder_dispatches_by_resource_type_and_target_type()
     {
         var sprite = new GameFile("sprite", "a.png", "sprite", new SpriteAssetMeta { Id = "sprite", TypeId = "sprite", Path = "a.png" }, "sprite"u8.ToArray());
-        var audio = new GameFile("audio", "a.ogg", "audio", new AudioAssetMeta { Id = "audio", TypeId = "audio", Path = "a.ogg" }, "audio"u8.ToArray());
+        var audio = new GameFile("audio", "a.ogg", "audio", new AssetMeta { Id = "audio", TypeId = "audio", Path = "a.ogg" }, "audio"u8.ToArray());
         using var manager = new AssetManager([new InlineProvider(sprite, audio)]);
         manager.RegisterDecoder<Decoded>("sprite", new ConstantDecoder("image"));
         manager.RegisterDecoder<Decoded>("audio", new ConstantDecoder("sound"));

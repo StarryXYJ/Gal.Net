@@ -21,7 +21,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineEventQueryPickerKeepsPositionAndPropertyCreationUsesFrameZeroBaseline()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -42,6 +42,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     new { frame = 15, type = BuiltinEntryIds.ShowLayer, editorId = "creator", parameters = new { handleId = "future-object", assetId = "future.png" } }
                 }
             });
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             var localization = scope.GetRequiredService<IEditorLocalizationService>(); var query = scope.GetRequiredService<ProjectSceneTargets>();
@@ -51,6 +52,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 var button = view.FindControl<Button>("AddTimelineObject")!; TimelineClick(window, button);
+                await PumpCharacterUi(() => FlyoutBase.GetAttachedFlyout(button) is Flyout { Content: SceneTargetPicker });
                 var flyout = (Flyout)FlyoutBase.GetAttachedFlyout(button)!; var picker = (SceneTargetPicker)flyout.Content!;
                 var draft = session.ObjectEdit!; var future = draft.Snapshot.Choices.Single(choice => choice.Target.IsFuture);
                 Assert.That(future.Item.Badge, Is.EqualTo(localization.Format("Scene.FutureAt", 15)));

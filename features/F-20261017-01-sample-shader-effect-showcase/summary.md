@@ -15,7 +15,7 @@
 ## Validation
 
 - `dotnet build src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj --no-restore -m:1 -v:minimal -p:UseSharedCompilation=false`: succeeded, zero errors; existing analyzer warnings remain.
-- `scripts/build-project-contracts.ps1` for `GameTestCase`: succeeded, zero errors. NuGet vulnerability data lookup emitted `NU1900` because the package source was unavailable in the sandbox.
+- `scripts/contracts/build-project-contracts.ps1` for `GameTestCase`: succeeded, zero errors. NuGet vulnerability data lookup emitted `NU1900` because the package source was unavailable in the sandbox.
 - Headless CLI `project.build` for `GameTestCase`: succeeded, four compiled groups, no diagnostics. The temporary generated output was removed afterward.
 - No tests were added or run. Shader compilation and rendering are validated through Skia RuntimeEffect CPU previews; the full Avalonia host was not launched.
 

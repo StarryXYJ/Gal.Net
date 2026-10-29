@@ -26,7 +26,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(BuiltinEntryIds.ColorFadeTransition, "fromLayerHandleId")]
     public async Task TransitionUsesRealScenePickerHidesInternalOutputsAndPublishesStableTerminalLocator(string type, string input)
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

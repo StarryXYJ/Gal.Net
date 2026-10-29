@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Parameters;
 
@@ -13,7 +14,7 @@ public static class ValueValidation
             return new("value.finite", "Value must be finite.");
         try
         {
-            return Validate(descriptor, JsonSerializer.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions));
+            return Validate(descriptor, JsonCodec.SerializeToElement(value, descriptor.ValueType, descriptor.JsonOptions));
         }
         catch (Exception exception) when (exception is JsonException or ArgumentException)
         {
@@ -38,7 +39,7 @@ public static class ValueValidation
         if (value.ValueKind == JsonValueKind.Null)
             return descriptor.ValueType == typeof(JsonElement) ? value.Clone() : null;
         object? result;
-        try { result = JsonSerializer.Deserialize(value, descriptor.ValueType, descriptor.JsonOptions); }
+        try { result = JsonCodec.Deserialize(value, descriptor.ValueType, descriptor.JsonOptions); }
         catch (JsonException exception)
         {
             issue = new("value.type", $"Value is not compatible with '{descriptor.ValueType.Name}'.", exception.Path);
@@ -54,8 +55,7 @@ public static class ValueValidation
             issue = new("value.length", "Value is outside its supported length.");
         else if (value.ValueKind == JsonValueKind.Array && OutsideLength(descriptor, "minItems", "maxItems", value.GetArrayLength()))
             issue = new("value.items", "Array is outside its supported length.");
-        else if (descriptor.TryGetConstraint("enum", out var choices) && !choices.EnumerateArray().Any(choice => JsonElement.DeepEquals(choice, value)) ||
-            descriptor.TryGetConstraint("options", out var options) && !options.EnumerateArray().Any(option => JsonElement.DeepEquals(ValueCodec.ParseEditorText(descriptor, option.GetString()!), value)))
+        else if (descriptor.TryGetConstraint("enum", out var choices) && !choices.EnumerateArray().Any(choice => JsonElement.DeepEquals(choice, value)))
             issue = new("value.option", "Value has an unsupported value.");
         return result;
     }

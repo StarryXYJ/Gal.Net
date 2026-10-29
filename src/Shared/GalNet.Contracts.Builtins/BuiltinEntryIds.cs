@@ -3,6 +3,7 @@ namespace GalNet.Contracts.Builtins;
 /// <summary>Stable wire identities for the explicitly registered built-in entries.</summary>
 public static class BuiltinEntryIds
 {
+    public const string UpdateAudioSEffect = "audio.seffect.update";
     public const string Animate = "animation.animate";
     public const string PlayTimeline = "timeline.play";
     public const string StopAnimation = "animation.stop";
@@ -30,6 +31,7 @@ public static class BuiltinEntryIds
     public const string ClearAudio = "audio.clear";
     public const string EnqueueAudio = "audio.enqueue";
     public const string ApplyAudioSEffect = "audio.seffect.apply";
+    public const string SetAudioLevel = "audio.mix.set";
     public const string StopAudioSEffect = "audio.seffect.stop";
     public const string PlayVideo = "video.play";
     public const string StopVideo = "video.stop";
@@ -46,6 +48,12 @@ public static class BuiltinEntryIds
     public const string BlackFadeTransition = "transition.fadeBlack";
     public const string WhiteFadeTransition = "transition.fadeWhite";
     public const string ColorFadeTransition = "transition.fadeColor";
+    public const string RevealTransition = "transition.reveal";
+    public const string BlurTransition = "transition.blur";
+    public const string MotionPreset = "preset.motion";
+    public const string ShakePreset = "preset.shake";
+    public const string SpeedLinesPreset = "preset.speedLines";
+    public const string ImpactPreset = "preset.impact";
     public const string TextVoice = "dialogue.textVoice";
     public const string AppendVoiceNvl = "nvl.appendVoice";
 }

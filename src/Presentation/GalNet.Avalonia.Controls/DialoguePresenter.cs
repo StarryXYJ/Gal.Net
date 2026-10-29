@@ -6,6 +6,14 @@ namespace GalNet.Game.Controls;
 /// <summary>Templatable ADV dialogue surface with a named typewriter part.</summary>
 public class DialoguePresenter : TemplatedControl
 {
+    public static readonly StyledProperty<bool> CanReplayVoiceProperty = AvaloniaProperty.Register<DialoguePresenter, bool>(nameof(CanReplayVoice));
+    public static readonly StyledProperty<System.Windows.Input.ICommand?> ReplayVoiceCommandProperty = AvaloniaProperty.Register<DialoguePresenter, System.Windows.Input.ICommand?>(nameof(ReplayVoiceCommand));
+    public static readonly StyledProperty<string> ReplayIconProperty = AvaloniaProperty.Register<DialoguePresenter, string>(nameof(ReplayIcon), "🔊");
+    public static readonly StyledProperty<string> ReplayLabelProperty = AvaloniaProperty.Register<DialoguePresenter, string>(nameof(ReplayLabel), "Replay voice");
+    public bool CanReplayVoice { get => GetValue(CanReplayVoiceProperty); set => SetValue(CanReplayVoiceProperty, value); }
+    public System.Windows.Input.ICommand? ReplayVoiceCommand { get => GetValue(ReplayVoiceCommandProperty); set => SetValue(ReplayVoiceCommandProperty, value); }
+    public string ReplayIcon { get => GetValue(ReplayIconProperty); set => SetValue(ReplayIconProperty, value); }
+    public string ReplayLabel { get => GetValue(ReplayLabelProperty); set => SetValue(ReplayLabelProperty, value); }
     public static readonly StyledProperty<string?> SpeakerProperty =
         AvaloniaProperty.Register<DialoguePresenter, string?>(nameof(Speaker));
 

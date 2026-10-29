@@ -37,14 +37,29 @@ public interface IPreparedGameSessionService
     Task BeginPreparedGameAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Optional chapter/route startup parameters, applied only when creating a new game.</summary>
+public interface IParameterizedGameSessionService : IPreparedGameSessionService
+{
+    Task StartNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default);
+    Task PrepareNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Optional safe save action; null means every normal slot is occupied.</summary>
 public interface IFirstEmptySlotSession
 {
     Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Optional save-name editing, available even when no story is running.</summary>
+public interface ISaveSlotNamingSession
+{
+    bool CanRenameSlots { get; }
+    Task<string> RenameSlotAsync(int slotIndex, string name, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Presentation-safe save slot data. The host owns loading, writing and preview bytes.</summary>
 public sealed record GameSaveSlot(int SlotIndex, DateTime Timestamp, string Description, bool IsEmpty, bool IsCorrupt)
 {
+    public byte[]? PreviewImage { get; init; }
     public string DisplayTimestamp => Timestamp == default ? string.Empty : Timestamp.ToString("g", CultureInfo.CurrentCulture);
 }

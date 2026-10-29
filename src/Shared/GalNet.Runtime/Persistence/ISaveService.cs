@@ -35,3 +35,15 @@ public interface ISaveService
     Task<bool> HasQuickSaveAsync(CancellationToken ct = default);
     Task DeleteQuickSaveAsync(CancellationToken ct = default);
 }
+
+/// <summary>Optional metadata editing that preserves the saved snapshot, timestamp and preview.</summary>
+public interface ISaveSlotNamingService
+{
+    Task RenameAsync(int slot, string name, CancellationToken ct = default);
+}
+
+/// <summary>Optional direct slot lookup for stores that can avoid scanning every save.</summary>
+public interface ISaveSlotInfoSource
+{
+    Task<SaveSlotInfo> GetSlotInfoAsync(int slot, CancellationToken ct = default);
+}

@@ -7,14 +7,15 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Scene;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Controls;
 using GalNet.Editor.History;
 using GalNet.Editor.Services;
+using GalNet.Editor.Shared.Services;
 using GalNet.Game.Controls.Forms;
 
 namespace GalNet.Editor.ViewModels;
@@ -60,7 +61,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         try { ErrorText = _localization is null ? _errorMessage.Key ?? "" : _errorMessage.Render(_localization); }
         finally { _renderingError = false; }
     }
-    private void OnLocaleChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") RenderError(); }
+    private void OnLocaleChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]") { RenderError(); OnPropertyChanged(nameof(MoveStatus)); } }
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
     public IReadOnlyList<GalNet.Core.Variable.ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public IAssetManager AssetManager { get; }
@@ -115,15 +116,35 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public bool IsDisposed => _disposed;
     public void PublishSelection() { if (!_disposed) _selection.Select(_selectionOwner, GroupId, SelectedEntry?.StableId); }
     public string CopySelection() => _authoring.Copy(GroupId, SelectedEntries.Select(entry => entry.StableId));
+    public EntryCutOffer? PrepareCutSelection() => _authoring.PrepareCut(GroupId, SelectedEntries.Select(entry => entry.StableId));
+    public void BeginCut(EntryCutOffer offer) { if (!_disposed) { _authoring.CancelPendingMove(); _authoring.BeginCut(offer); } }
+    public bool HasPendingMove => _authoring.HasPendingMove;
+    private bool _copiedMove;
+    public string MoveStatus => HasPendingMove ? _localization?["Entry.MovePending"] ?? "" : _copiedMove ? _localization?["Entry.MoveFallback"] ?? "" : "";
+    [RelayCommand] public void CancelPendingMove() { _authoring.CancelPendingMove(); _copiedMove = false; OnPropertyChanged(nameof(MoveStatus)); }
+    private void PendingMoveChanged()
+    {
+        foreach (var entry in _entries) entry.IsPendingMove = _authoring.IsPendingMove(GroupId, entry.StableId);
+        OnPropertyChanged(nameof(HasPendingMove)); OnPropertyChanged(nameof(MoveStatus));
+    }
     public void DeleteEntries(IEnumerable<string> ids) { if (!_disposed) _authoring.Delete(GroupId, ids); }
     public void DeleteSelection() => DeleteEntries(SelectedEntries.Select(entry => entry.StableId).ToArray());
-    public void DeleteCopiedEntries(string[] ids, string text)
+    private Task CommitAsync(PreparedEntryEdit? edit)
+    {
+        if (!_disposed) edit?.Commit();
+        return Task.CompletedTask;
+    }
+    public Task DeleteEntriesAsync(IEnumerable<string> ids) => _disposed ? Task.CompletedTask : CommitAsync(_authoring.PrepareDelete(GroupId, ids));
+    public Task DeleteSelectionAsync() => DeleteEntriesAsync(SelectedEntries.Select(entry => entry.StableId).ToArray());
+    public async Task PasteAsync(string text, string? anchor)
     {
         if (_disposed) return;
-        if (_authoring.Copy(GroupId, ids) != text) throw new EditorOperationException("entry.cutChanged", "The source entries changed while writing the clipboard. They were not removed.");
-        DeleteEntries(ids);
+        var pasted = await _authoring.PasteAsync(GroupId, text, anchor);
+        if (_disposed) return;
+        _copiedMove = _authoring.LastPasteCopiedMove;
+        if (pasted.Count > 0) SetSelection(_entries.Where(entry => pasted.Contains(entry.StableId)));
+        OnPropertyChanged(nameof(MoveStatus));
     }
-    public async Task PasteAsync(string text, string? anchor) { if (!_disposed) { var pasted = await _authoring.PasteAsync(GroupId, text, anchor); if (!_disposed) SetSelection(pasted); } }
     public async Task DuplicateSelectionAsync()
     {
         var text = CopySelection();
@@ -139,6 +160,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         GroupId = groupId;
         _entries = GroupNode.Entries;
         _authoring = authoring;
+        _authoring.PendingMoveChanged += PendingMoveChanged;
         _projects = projects;
         _effects = effects;
         _catalog = catalog;
@@ -151,7 +173,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         EntryTypes = catalog.Definitions.Select(definition => new EntryTypeOption(definition.Type, definition.Category, $"Entry.Type.{definition.Type}")).ToArray();
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         _entries.CollectionChanged += OnEntriesChanged;
-        foreach (var entry in _entries) Attach(entry);
+        foreach (var entry in _entries) Attach(entry, isNew: false);
     }
 
     [RelayCommand]
@@ -174,6 +196,13 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
 
     private int BatchCount => (int)Math.Clamp(BatchAddCount, 1, 1000);
+    public void InsertChosenType(string type, string? anchorId)
+    {
+        if (_disposed || !EntryTypes.Any(item => item.Value == type)) return;
+        var index = anchorId is null ? GroupNode.Entries.Count : GroupNode.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
+        if (anchorId is not null && index == 0) { ErrorText = EditorLocalizationService.Current?["Entry.AnchorMissing"] ?? "The insertion target was removed."; return; }
+        InsertionType = type; InsertEntries(index, BatchCount);
+    }
     public void InsertType(string type, string? anchorId)
     {
         if (_disposed) return;
@@ -186,7 +215,14 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
     public void ChangeType(EntryEditorItemViewModel entry, string type)
     {
-        if (!_disposed && EntryTypes.Any(item => item.Value == type)) Workspace.ChangeEntryType(GroupNode, entry, type, _catalog.Create(type).Values);
+        if (!_disposed && EntryTypes.Any(item => item.Value == type)) Workspace.ChangeEntryType(GroupNode, entry, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.CreateParameters(_catalog, type));
+    }
+    public Task ChangeTypeAsync(EntryEditorItemViewModel entry, string type)
+    {
+        if (_disposed || entry.Type == type || !GroupNode.Entries.Contains(entry) || !EntryTypes.Any(item => item.Value == type)) return Task.CompletedTask;
+        var fields = _projects.Current?.Services.GetService(typeof(EntryFieldAuthoringService)) as EntryFieldAuthoringService;
+        if (fields is null) throw new InvalidOperationException("Entry authoring is unavailable.");
+        return CommitAsync(fields.PrepareType(GroupId, entry.Source, type, GalNet.Editor.Abstraction.Documents.EditorEntryData.CreateParameters(_catalog, type)));
     }
     private void InsertEntries(int index, int count, string? anchorId = null)
     {
@@ -199,12 +235,12 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     }
 
     [RelayCommand]
-    private void RemoveEntry(EntryEditorItemViewModel? entry)
+    private async Task RemoveEntryAsync(EntryEditorItemViewModel? entry)
     {
         if (entry is null)
             return;
 
-        try { _authoring.Delete(GroupId, [entry.StableId]); }
+        try { await DeleteEntriesAsync([entry.StableId]); }
         catch (Exception error) { ReportError(error); }
     }
 
@@ -255,15 +291,17 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         OnPropertyChanged(nameof(VisibleEntries));
         if (e.Action == NotifyCollectionChangedAction.Move) return;
         foreach (var entry in _attached.Where(entry => !_entries.Contains(entry)).ToArray()) { entry.PropertyChanged -= OnEntryPropertyChanged; _attached.Remove(entry); }
-        foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry);
+        foreach (var entry in _entries.Where(entry => !_attached.Contains(entry)).ToArray()) Attach(entry, isNew: true);
         foreach (var entry in SelectedEntries.Where(entry => !_entries.Contains(entry)).ToArray()) SelectedEntries.Remove(entry);
         UpdateActiveSelection(null);
     }
 
-    private void Attach(EntryEditorItemViewModel entry)
+    private void Attach(EntryEditorItemViewModel entry, bool isNew)
     {
         if (!_attached.Add(entry)) return;
-        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, true);
+        entry.IsPendingMove = _authoring.IsPendingMove(GroupId, entry.StableId);
+        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, !isNew || Workspace.ExpandNewEntries);
+        _expanded[entry.StableId] = entry.IsParametersExpanded;
         entry.PropertyChanged += OnEntryPropertyChanged;
         Configure(entry);
     }
@@ -273,6 +311,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
         if (sender is not EntryEditorItemViewModel entry) return;
         if (e.PropertyName == nameof(EntryEditorItemViewModel.IsParametersExpanded)) _expanded[entry.StableId] = entry.IsParametersExpanded;
         if (e.PropertyName == nameof(EntryEditorItemViewModel.Type)) Configure(entry);
+        if (e.PropertyName is nameof(EntryEditorItemViewModel.Type) or nameof(EntryEditorItemViewModel.Summary) or nameof(EntryEditorItemViewModel.Condition) or nameof(EntryEditorItemViewModel.Id)) OnPropertyChanged(nameof(VisibleEntries));
     }
 
     private void Configure(EntryEditorItemViewModel entry) => entry.ConfigureParameterFields(
@@ -285,6 +324,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (_disposed) return;
         _disposed = true;
+        _authoring.PendingMoveChanged -= PendingMoveChanged;
         _selection.Clear(_selectionOwner);
         if (_localization is not null) _localization.PropertyChanged -= OnLocaleChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;

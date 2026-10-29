@@ -4,6 +4,28 @@
     <Button ToolTip.Tip="{loc:Localize Graph.Branch.Add}" AutomationProperties.Name="{loc:Localize Graph.Branch.Add}" HorizontalAlignment="Left" Command="{Binding AddCommand, ElementName=Root}">
       <TextBlock Text="{loc:Localize Graph.Branch.Add}" />
     </Button>
-    <ListBox x:Name="ItemsListBox" Grid.Row="1" ItemsSource="{Binding ItemsSource, ElementName=Root}" Background="Transparent"><ListBox.ItemTemplate><DataTemplate x:DataType="models:BranchOptionEditorItemViewModel"><Border Margin="0,4" Padding="8" Background="{DynamicResource SemiColorBackground1}" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="1" CornerRadius="6"><Grid ColumnDefinitions="Auto,*,*,Auto" ColumnSpacing="6"><Border Padding="6,0" VerticalAlignment="Center" Background="Transparent" Cursor="SizeAll" PointerPressed="OnDragHandlePressed"><TextBlock Text="::" /></Border><controls:GameTextBox Grid.Column="1" Binding="{Binding TextBinding}" Authoring="{Binding GameTexts}" AutomationProperties.Name="{loc:Localize Graph.Branch.Text}" /><controls:ConditionEditorControl ToolTip.Tip="{loc:Localize Graph.Branch.Condition}" AutomationProperties.Name="{loc:Localize Graph.Branch.Condition}" Grid.Column="2" Text="{Binding Condition}" Suggestions="{Binding ConditionSuggestions, ElementName=Root}" ValidationVariables="{Binding ValidationVariables, ElementName=Root}" /><Button Grid.Column="3" ToolTip.Tip="{loc:Localize Graph.Branch.Remove}" AutomationProperties.Name="{loc:Localize Graph.Branch.Remove}" Command="{Binding RemoveCommand, ElementName=Root}" CommandParameter="{Binding}"><TextBlock Text="×" /></Button></Grid></Border></DataTemplate></ListBox.ItemTemplate></ListBox>
+    <ListBox x:Name="ItemsListBox" Grid.Row="1" ItemsSource="{Binding ItemsSource, ElementName=Root}"
+             Background="Transparent">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="models:BranchOptionEditorItemViewModel">
+          <Border Margin="0,4" Padding="8" Background="{DynamicResource SemiColorBackground1}" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="1" CornerRadius="6">
+            <Grid ColumnDefinitions="Auto,*,*,Auto" ColumnSpacing="6">
+              <Border Padding="6,0" Height="32" VerticalAlignment="Center" Background="Transparent" Cursor="SizeAll" PointerPressed="OnDragHandlePressed">
+                <TextBlock Text="::" />
+              </Border>
+              <controls:GameTextBox Grid.Column="1" Binding="{Binding TextBinding}" Authoring="{Binding GameTexts}"
+                                   VerticalAlignment="Top" AutomationProperties.Name="{loc:Localize Graph.Branch.Text}" />
+              <controls:ConditionEditorControl ToolTip.Tip="{loc:Localize Graph.Branch.Condition}" AutomationProperties.Name="{loc:Localize Graph.Branch.Condition}" Grid.Column="2"
+                                               VerticalAlignment="Top"
+                                               Text="{Binding Condition}" Suggestions="{Binding ConditionSuggestions, ElementName=Root}"
+                                               ValidationVariables="{Binding ValidationVariables, ElementName=Root}" />
+              <Button Grid.Column="3" Height="32" VerticalAlignment="Top" ToolTip.Tip="{loc:Localize Graph.Branch.Remove}" AutomationProperties.Name="{loc:Localize Graph.Branch.Remove}" Command="{Binding RemoveCommand, ElementName=Root}" CommandParameter="{Binding}">
+                <TextBlock Text="×" />
+              </Button>
+            </Grid>
+          </Border>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
   </Grid>
 </controls:ReorderableListControl>

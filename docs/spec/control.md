@@ -66,6 +66,8 @@ GamePageViewModel 的自定义 View 必须继承 GamePage；DI 中的 GamePage �
 
 主题把 ScreenshotDialogViewModel 映射到 ScreenshotDialog 派生 View。XAML 加载后调用受保护的 InitializeDialog，布局必须提供 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺失控件明确报错。基类管理选择目录、预览更新、保存、取消和 Bitmap 释放；服务通过 DI 创建独立实例，并加载当前主题样式。宿主可在 configureViews 中覆盖截图 View，构造参数可注入宿主服务。
 
+`GameScreenshotRequest.CapturePreviewPngAsync` 是可选的预览回调，未提供时复用原 `CapturePngAsync`；正式保存始终调用后者。GameShell 的预览按原比例限制到 720×405，不放大；“包含对话框和操作栏”两种状态在当前弹窗内分别缓存，失败可重试。正式导出保持原逻辑分辨率，PNG 编码在后台完成。`SceneLayerHost.CaptureControl` 和有尺寸上限的 `CapturePng` 同时限制场景中间纹理与 CPU 效果处理像素，图层位置和原生图片尺寸仍使用原逻辑坐标；剧情截图入口的无参捕获保持原行为。
+
 ### Gallery 页面
 
 Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映射到页面 ViewModel 和 View。`Add<TViewModel, TView>` 注册新类型，`Replace<TViewModel, TView>` 显式覆盖既有类型；多个 type ID 可以映射到同一页面。该注册同时写入普通 ViewModel→View registry 和 DI，构建后不可修改。
@@ -76,13 +78,33 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 设置项保持无逐行外框的布局。`InputBindingCapture` 使用 Button 样式键及 `player-input-binding` 类，将当前键值（如 Control）呈现为可点击的输入框：独立 1px 描边、主题底色与圆角、悬停文字/描边变色和键盘焦点提示；修改仅作用绑定控件，不给整行配置项加卡片。设置模板不再创建重复的可用性 Tooltip，避免空说明也弹出空白提示；不可用原因和错误仍以内联文字展示。不改变 SchemaForm 工厂、可用性或提交队列。
 
-`PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 是未来对白历史页的可选入口，无回调时历史动作禁用。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
+`PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 接入默认对白历史覆盖层，无回调时历史动作禁用；默认键鼠绑定为 WheelUp，旧偏好仅在缺少该动作且没有手势冲突时补入，显式清空保持无绑定。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
+
+默认宿主以 `DialogueHistoryJournal` 保存当前路线已完整显示的 ADV/NVL 文本，保留实际语言的姓名、富文本、进入前已读状态及可选语音引用；Quick/CatchUp 记录实际经过文本，调试重建不追加。新游戏清空，存档/读档恢复对应前缀；历史正文只在实际保存时进入 `GameSnapshot.Attachments[host.dialogue.history]`，状态表只编码计数游标。当前句按稳定边界重新执行，避免重复记录。默认三主题承载 GamePage.History（PART_History），列表虚拟化，每次打开定位末尾；正文行纯显示，不提供悬停、选择、焦点或点击行为，独立语音按钮可重播。打开取消自动/快速并屏蔽剧情输入，Escape/返回按钮关闭，关闭保持手动。
+
+尚未包含历史模块的当前格式旧存档由宿主补入空历史表，从读档后开始记录；无法补回此前没有保存的正文。已存在游标的存档必须具备长度一致的历史正文；其他模块状态校验保持严格。
+
+语音关联使用同 Group、同 raw entry 的紧邻编译原语身份（rawId#n 与 rawId#(n+1)），仅消费该次实际执行的 audio.play；条件跳过清除候选，不跨源或跨执行借用旧语音。对白原语音结束后显示重播按钮；历史行直接使用保存的资源/音轨/增益。`DialogueVoiceReplay` 以独立临时 voice 借用当前后端和轨道混音，不进入剧情音频队列；新的重播替换旧重播，补全文字、推进、选择、开启自动/快速/跳过、关闭历史、读档或结束运行均停止。迟到的音频事件按 voice ID/generation 隔离。
+
+已读正文配色默认关闭，启用后显示颜色选择器，初始 #A8B8C8，经玩家设置队列保存。每次进入文本前捕获 WasRead，首次显示完成不跳色。`ReadTextStyle` 只替换 typewriter 默认色 runs，显式富文本颜色、粗体、斜体和姓名样式保留；修改设置不重启打字，ADV 与每段 NVL 分别保留进入时状态。
 
 `PlayerInputRouter` 组合设备输入与手柄导航；`KeyboardMouseShortcutListener` 是可独立挂载/释放的非视觉监听模块，通过委托查询接收条件、提交动作和释放按住状态。它随播放器根控件 attach/detach 订阅所在 TopLevel 的键盘事件，鼠标事件仅订阅根控件；不要求游戏区域持有焦点，也不抢占焦点。文本、选择、范围编辑器和壳外宿主控件不触发游戏快捷键，工具栏按钮保留 Enter/Space 原生激活及鼠标交互，其余游戏快捷键仍可用。`GameActionDispatcher` 通过现有游戏 VM/会话命令执行设备无关动作，非运行游戏页、绑定捕获、选择和跳过确认期间不分发游戏动作。键鼠、手柄和触屏共用执行器；重置、失焦、窗口失活或卸载会释放键鼠按住状态并取消延迟触发。
 
 `SettingsPageViewModel` 通过 `IPlayerSettingsService.Categories` 获取只读分类及类型化设置项，通过 `Editors` 借用该宿主的字段工厂注册表，分类使用局部 TabControl，不创建导航子页面。数值/滑块、Bool、String、Choice 使用 SchemaForm 的共享默认工厂；Action 与自定义编辑器保留专属行为。Step 仅改变操作步长，不参与校验；动态可见性、可用性和原因 key 驱动界面更新。应用/保存由 SettingsCoordinator 串行协调，保存失败可重试而不重复应用。共享页面不读取配置文件。
 
 内置主题的 `Common.SettingsCategories.Editors` 接收宿主 EditorRegistry；普通设置通过 `SettingItem<T>` 的 IFieldBinding 调用原有 apply/save 队列，类型化选项使用 ValueCodec 编码，标签与值分开。主题提供单字段表单模板与统一设置行的标签、说明、单位、可用性及错误；工厂注册或替换由宿主组合。旧 EditorTemplates/SettingEditor 和数值/选项 UI 转换代理已移除。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
+
+设置页的 Checkbox 左对齐。音频音量项通过 `SettingItem.InlineToggle` 引用同分类中的静音 BoolSetting；`DisplayItems` 仅负责合并显示，原 `Items`、设置 ID、可用性及 SettingsCoordinator 写入队列保持完整。静音按钮与实际滑块编辑器同行，以喇叭/斜杠喇叭区分状态，保留键盘焦点和无障碍名称。
+
+设置和首次语言选择的 ComboBox 沿用 Fluent 模板，默认、悬停、焦点、按下、禁用和弹出列表状态显式映射到玩家配色；弹出列表使用 Surface 底色、Selection 选中底色和 TextPrimary 文字，不依赖系统主题提供文字对比。
+
+三套布局共用单外框 `SaveSlotCard`：预览铺满卡片，底部半透明信息区只显示名称和时间；悬停或内部焦点高亮整卡。有效存档的名称支持直接编辑，Enter/失焦提交、Escape 放弃。宿主通过可选 `ISaveSlotNamingSession` 接入；空槽、坏档和不支持改名的宿主保持只读。文件存档沿用原 `Description` 字段保存名称，`ISaveSlotNamingService` 只修改此字段，时间、预览和剧情快照保持原值。默认 PlayerSession 覆盖槽位时保留名称；改名不改变“继续游戏”按时间选择最近存档的顺序。
+
+GameShell 新生成的存档预览上限为 480×270；旧图按 480 宽度解码展示。默认会话整表刷新只发送一次集合 Reset，普通保存只替换目标槽位，其他行与已解码预览继续复用。`ISaveSlotInfoSource` 是存储的可选单槽元数据查询能力，PlayerSession 对未实现该接口的存储回退整表查询；文件存储实现直接查询并在后台序列化保存数据。
+
+Sample 的窗口装饰颜色从玩家调色板映射到 CaptionButton/TitleBar 资源，不依赖系统明暗主题推断。退出确认在玩家根控件内显示主题弹窗，默认聚焦取消，Escape 取消并恢复先前焦点；显示时禁用背景内容及其输入，确认后沿用原会话停止和资源释放链。三主题主页的静态标题显式使用 TextPrimary，避免继承内容容器的半透明禁用前景色；其视觉变暗仅由遮罩产生。
+
+最小化、最大化按钮悬停/按下使用中性灰色叠层；关闭按钮悬停红色、按下深红色，并使用白色图标。
 
 共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
 
@@ -94,7 +116,7 @@ Sample 在会话初始化后将设置接入 Player 变量存储，恢复语言�
 
 游戏工具栏的快速/自动模式互斥且允许均关闭，再次点击已选模式可取消。两模式未选中时保持透明，仅选中时显示主题色背景；其他工具栏按钮平时透明，悬浮使用淡色背景，按下加深。左键取消旧模式后，模式按钮按点击前状态决定开启/关闭，并从权威播放状态刷新选中绑定；工具栏操作不同时推进剧情。
 
-Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细分接口（文本、NVL、交互、图层、转场、音频、视频、效果）。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IGameView`。`NullGameView` 供测试和无界面宿主使用。
+Runtime 通过 `GalNet.Core.Execution` 中的 IPrimitiveDispatcher、Choice 与快进/播放控制协议接入宿主，不引用呈现程序集。`GalNet.Presentation.Abstractions` 提供文本、NVL、图层、转场、视频、效果等具体领域 presenter 协议及执行注册/恢复组合。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IPrimitiveDispatcher`。`NullGameView` 供测试和无界面宿主使用。
 
 各 presenter 共享 `IAvaloniaUiDispatcher`，但分别拥有自己的等待、动画和粒子生命周期。`AvaloniaGamePresenters` 通过宿主提供的 `IGamePageLayerFactory` 解析图层图像，因而共享页面不会自行推断资源路径。玩家推进从 `GamePageViewModel.AdvanceRequested` 直接连接宿主，不经过 dialogue presenter 或 presenter 集合转发。动画逐帧更新由呈现实现完成；Runtime 只维护可存档的场景状态和动画结束后的稳定属性。
 
@@ -109,6 +131,8 @@ Runtime 只依赖 `GalNet.Presentation.Abstractions` 中的 `IGameView` 与细�
 EditorRegistry 以开放 EditorId 映射到工厂，提供 Register/Replace/RegisterDefault/Resolve。显式 ID 精确匹配；省略 ID 时按合法选项、注册的值类型及 enum/生成 DTO/列表/JSON 默认规则选择。重复注册明确报错；未知 ID 或工厂以 NotSupportedException 声明不支持时，SchemaForm 保留 editor.fallback 诊断并为该字段提供明确 JSON 回退。其他工厂异常仍按创建失败清理，不伪装为成功。默认集合由宿主调用 CreateDefault 创建；主题可贡献样式或工厂注册方法，由宿主显式组合，不拥有 registry/设置服务的生命周期。
 
 默认 Text/Numeric 使用 TextBox 保存草稿，Enter/失焦时只提交有编辑的文本；JSON 使用带标识的多行 TextBox，Ctrl+Enter/失焦提交，按原始 JSON 表达字符串引号，Escape 恢复未提交草稿；Numeric 不经过 double/decimal 控件值转换，以保留大整数和未完成输入。Toggle/Choice/Slider 提交选定值，复用 Core 的 codec/校验和项目 JSON 配置。Slider 需要有限 min/max、正步长；decimal、不安全整数精度/CLR 范围或非整数整数滑块配置明确诊断。Step 仅决定滑块交互，不限制业务合法值。合法选项与标签分开；binding 的动态选项更新不会重建表单。
+
+另有显式 `numericupdown` 与 `numerictext` 工厂；前者复用 NumericUpDown 主题的输入/上下按钮，保留原始文字并由 FieldEditorContext 提交，不以控件 Value 回写，避免模板初始化、舍入或钳制制造草稿。long/ulong/decimal 使用无损文本，超出可调整范围或非法步长可回退文本并返回工厂 Diagnostic。Editor 将默认 `numeric` 替换为此路径，并将 `slider` 替换为滑块加精确输入，其他宿主的默认 numeric/slider 行为保留。Registry.FormatIssue 允许宿主提供字段诊断文字；原始 ValueIssue 的代码与消息仍保留。浮点编辑文本的 `.3`/`-.3` 由 ValueCodec 规范化，JSON 源码不放宽；未完成数值前缀在输入时可中性展示，提交仍拒绝。
 
 宿主可通过 `EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true)` 选择非字符串空文本恢复缺省的策略；必填无默认值仍拒绝，JSON 源码不套用此策略。FieldEditorContext.Registry 是借用的只读引用，自定义组合编辑器创建子 Context 时可以传递同一 registry，使输入策略和工厂组合一致。FieldEditorRow 提供可响应宽度的标签、编辑区、诊断和单重置布局；FieldEditorActions.Simplified 选择单重置行为，默认共享表单和 Sample 仍保留原动作集。
 
@@ -138,9 +162,13 @@ Context 的生命周期包装取消旧提交、保留动态选项和 IFieldPrevi
 
 内置设置主题的普通设置改用 SettingItem.EditorItem/DtoEditorHost，继续提供原单字段 SchemaForm 的皮肤与设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 组合结束后冻结 registry。Editor 的 Dock 创建 Group 面板时传入项目 registry；目前依赖旧资源/表达式等专属字段的 Entry 继续走原路径。P6b 补充普通嵌套结构表单；所有专属字段迁移、手势合并协议、状态查询与 timeline/曲线仍未包含。
 
-StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。支持有生成静态 Schema 的 DTO，以及一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交合并当前 JSON，仅替换编辑成员，保留未知成员。自定义 converter、无 schema 的对象、字典、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
+StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。通过 Core 的 ValueDocument / ValueStructureResolver 统一读取 DTO、显式描述的 JSON 对象、一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T> 以及 Dictionary/IDictionary/IReadOnlyDictionary<string,T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；公共结构解析器根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交使用公共属性 patch，仅替换编辑成员，保留未知成员。没有结构适配的对象级 converter、未知对象、不支持的键类型、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
+
+通用对象使用单一可折叠 Header，字段行不重复显示相同标签；集合 Header 带数量，简单元素不额外显示 element 标签。字典为键/值行，键支持空串、数字及转义字符；新增、删除与改键是明确的结构操作，重复改键拒绝且保留当前输入。无效键名候选保留于当前控件，不作为跨视图的值草稿归档。ChildIndent、ItemSpacing 由宿主样式设置，统一缩进和组间距，不逐层插空白行。Transform/Flipbook 保留专用布局，子字段定义、读写和校验复用公共属性层；其他专用工厂覆盖顺序不变。
 
 列表结构变化取消当前版本令牌，旧索引绑定和延迟提交失效；普通元素值编辑保留其余行控件。共享控件不实现保存或撤销，依旧提交一个根字段 JSON 值，由宿主负责原子修改及历史。FieldEditorActions 提供显式默认值、缺省、null 和草稿恢复，CanOmit/CanSetNull/HasDefault 决定入口，宿主用 StyledProperty 翻译提示；仅打开表单不写默认值。
+
+PropertyFieldBinding 和通用结构子绑定转发 HostContext、可见性、宿主 Reset 策略及相对根字段的 PropertySegments；DTO scope 同样转发路径。列表序号和字典键通过 IsLabelLiteral 标记为字面标签，避免被当作本地化 key，同时普通字段 Header 保持本地化与字段名回退。导航优先匹配完整路径，避免同名深层字段误选。元数据解析器由控件/分析调用方持有和释放，不以全局静态缓存保留项目契约类型。
 
 ## 宿主接入约束
 
@@ -172,3 +200,12 @@ StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样
 `IFieldBinding.Draft` 可选返回宿主拥有的 `FieldDraftState`。控件上下文同步输入和诊断，挂载结束只解除订阅；宿主决定草稿的保存、冲突和生命周期。ScopedBinding 转发该状态，结构化对象/列表和 Transform 子编辑器通过子路径取得独立草稿。输入法组合保护随控件租约登记，项目保存不能越过组合输入。没有宿主草稿的设置/游戏表单沿用控件本地生命周期。
 
 需要来源版本保护的宿主在内容变化时调用 `FieldDraftState.CheckSource()`；一旦观察到冲突，即使源值随后恢复相同内容也保留冲突，直到明确清除草稿。
+
+
+## 默认宿主扩展边界
+
+默认页面服务以 TryAdd 注册。项目可替换接口实现，或将 TitlePageViewModel、SettingsPageViewModel、GamePageViewModel、GameShellViewModel 的 DI 别名映射到自己的派生类型，并注册该实际类型的 View。标题命令支持重载；标题/Shell VM 的 Dispose 可扩展。默认 GamePage 的四个呈现部件约束继续有效。
+
+默认 Avalonia 会话依赖 IAvaloniaPlayerSettings 与 IPlayerStartup，不要求项目使用默认 GameSettings DTO 或自动字段 UI。设置接口只暴露模块输入及接入/保存/窗口生命周期，SettingsChanged 更新当前运行；IPlayerSettingsService 可供默认页面使用，手写页面可直接绑定项目模型。
+
+AvaloniaGameHostOptions.AttachPlayer 借用已准备的玩家服务和 profile；AttachRun 借用每次 Prepare 后的 Engine。绑定由宿主按运行→玩家→资源的依赖顺序释放，同时实现 IAsyncDisposable 时优先异步排空。业务活动、覆盖层和自定义保存语义归项目服务/模块，不属于默认页面注册协议。

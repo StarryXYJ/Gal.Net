@@ -3,6 +3,13 @@ namespace GalNet.Core.Parameters;
 [AttributeUsage(AttributeTargets.Class)]
 public sealed class GenerateFieldSchemaAttribute : Attribute;
 
+/// <summary>The assembly's source-generated JSON context used by generated field contracts.</summary>
+[AttributeUsage(AttributeTargets.Assembly)]
+public sealed class FieldSchemaJsonContextAttribute(Type contextType) : Attribute
+{
+    public Type ContextType { get; } = contextType;
+}
+
 /// <summary>Display this field in an author's compact, common-fields view.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class CommonAttribute : Attribute;
@@ -25,6 +32,7 @@ public sealed class FieldAttribute(int order) : Attribute
     public bool Required { get; set; }
     public bool AllowNull { get; set; }
     public string? EditorId { get; set; }
+    public string? ResourceTypeId { get; set; }
     public double Step { get; set; } = double.NaN;
     public string? Format { get; set; }
     public string? UnitKey { get; set; }
@@ -36,6 +44,10 @@ public sealed class FieldAttribute(int order) : Attribute
     public string? ValueFormat { get; set; }
     public string? DefaultJson { get; set; }
     public string[]? Choices { get; set; }
+    public Type? StructureType { get; set; }
+    public bool StructureAllowsJsonString { get; set; }
+    public bool StructureIgnoresCase { get; set; }
+    public bool StructureUsesFieldIds { get; set; }
 }
 
 /// <summary>Generated member access is platform independent. Notification and submission remain host concerns.</summary>

@@ -1,13 +1,15 @@
 using System.Text.Json;
 using GalNet.Core.Runtime;
+using GalNet.Core.Serialization;
 using GalNet.Runtime.Persistence;
 
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>File-backed slot and quick-save store.</summary>
-public sealed class FileSaveService : ISaveService, IDisposable
+public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, ISaveSlotInfoSource, IDisposable
 {
     private const int FormatVersion = GameSnapshot.CurrentFormatVersion;
+    private static readonly JsonSerializerOptions JsonOptions = JsonMetadata.CreateOptions(resolver: StorageJsonContext.Default);
     private readonly string _root;
     private readonly SemaphoreSlim _gate = new(1, 1);
 
@@ -27,6 +29,33 @@ public sealed class FileSaveService : ISaveService, IDisposable
     }
 
     public Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default) => WriteAsync(slot, false, request, ct);
+
+    public Task<SaveSlotInfo> GetSlotInfoAsync(int slot, CancellationToken ct = default)
+    {
+        if (slot < 0 || slot >= MaxSlots) throw new ArgumentOutOfRangeException(nameof(slot));
+        ct.ThrowIfCancellationRequested();
+        return GetInfoAsync(slot, false, ct);
+    }
+
+    public async Task RenameAsync(int slot, string name, CancellationToken ct = default)
+    {
+        if (slot < 0 || slot >= MaxSlots) throw new ArgumentOutOfRangeException(nameof(slot));
+        ArgumentNullException.ThrowIfNull(name);
+        var normalized = name.Trim();
+        if (normalized.Length > 120 || normalized.Any(char.IsControl))
+            throw new ArgumentException("Save names must contain at most 120 characters and no control characters.", nameof(name));
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var path = GetPath(slot, false);
+            var stored = JsonCodec.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct), JsonOptions);
+            if (stored?.Version != FormatVersion || stored.Snapshot is null)
+                throw new InvalidDataException("Only valid saves can be renamed.");
+            stored.Description = normalized.Length == 0 ? null : normalized;
+            await FileReplacement.WriteTextAsync(path, JsonCodec.Serialize(stored, JsonOptions), ct).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
 
     public async Task<GameSnapshot?> LoadAsync(int slot, CancellationToken ct = default)
     {
@@ -79,13 +108,13 @@ public sealed class FileSaveService : ISaveService, IDisposable
         await _gate.WaitAsync(ct);
         try
         {
-            Directory.CreateDirectory(_root);
             var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot };
             var path = GetPath(slot, quick);
-            var temp = path + ".tmp";
-            await File.WriteAllTextAsync(temp, JsonSerializer.Serialize(payload), ct);
-            File.Move(temp, path, true);
-            if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(GetPreviewPath(slot, quick), request.PreviewImage, ct);
+            var json = await Task.Run(() => JsonCodec.Serialize(payload, JsonOptions), ct).ConfigureAwait(false);
+            await FileReplacement.WriteTextAsync(path, json, ct).ConfigureAwait(false);
+            var previewPath = GetPreviewPath(slot, quick);
+            if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(previewPath, request.PreviewImage, ct);
+            else if (File.Exists(previewPath)) File.Delete(previewPath);
         }
         finally { _gate.Release(); }
     }
@@ -96,8 +125,8 @@ public sealed class FileSaveService : ISaveService, IDisposable
         if (!File.Exists(path)) return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick };
         try
         {
-            var json = await File.ReadAllTextAsync(path, ct);
-            var stored = JsonSerializer.Deserialize<StoredSave>(json);
+            var json = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
+            var stored = JsonCodec.Deserialize<StoredSave>(json, JsonOptions);
             if (stored?.Version != FormatVersion || stored.Snapshot is null) throw new InvalidDataException();
             var preview = GetPreviewPath(slot, quick);
             return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, Timestamp = stored.Timestamp.LocalDateTime, Description = stored.Description, PreviewImage = File.Exists(preview) ? preview : null };
@@ -111,7 +140,7 @@ public sealed class FileSaveService : ISaveService, IDisposable
         if (!File.Exists(path)) return null;
         try
         {
-            var stored = JsonSerializer.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct));
+            var stored = JsonCodec.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct), JsonOptions);
             return stored?.Version == FormatVersion ? stored.Snapshot : null;
         }
         catch (OperationCanceledException) { throw; }
@@ -133,7 +162,7 @@ public sealed class FileSaveService : ISaveService, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private sealed class StoredSave
+    internal sealed class StoredSave
     {
         public int Version { get; set; }
         public DateTimeOffset Timestamp { get; set; }

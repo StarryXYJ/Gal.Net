@@ -10,7 +10,7 @@
 
 ## 实现
 
-- `scripts/export-sample-contracts.ps1` 构建 Debug/Release Avalonia Sample，验证实际 App 和契约产物哈希相同，将契约及依赖 DLL 导出至根 `output/Contracts`，打印对应 App 路径；`/output/` 加入 Git 忽略。
+- `scripts/contracts/export-sample-contracts.ps1` 构建 Debug/Release Avalonia Sample，验证实际 App 和契约产物哈希相同，将契约及依赖 DLL 导出至根 `output/Contracts`，打印对应 App 路径；`/output/` 加入 Git 忽略。
 - Editor 在项目会话内持有自己启动的进程监控；持续排空 stderr，只保留最近 8192 字符。连接前任何退出、连接后非零退出均通知现有调试面板 Error 与 Editor 日志；启动本身抛错也进入面板及日志。
 - 断开时取消等待/读取并释放进程句柄，不杀 App；会话取消和代次检查防止旧进程污染新会话。
 - Sample 顶层捕获日志初始化前的参数/契约错误，向 stderr 输出异常，以退出码 1 结束；运行期 fatal 同样保留非零退出码。

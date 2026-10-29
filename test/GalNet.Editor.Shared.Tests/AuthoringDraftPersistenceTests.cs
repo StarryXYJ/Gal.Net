@@ -20,7 +20,7 @@ public sealed class AuthoringDraftPersistenceTests
     {
         _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-drafts-" + Guid.NewGuid())).FullName;
         _catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
-        Put("Graph/graph.json", Graph); Put("settings.json", "{}");
+        Put("Graph/graph.json", Graph); Put("settings.json", """{"version":1,"sections":{}}""");
         Put(Source, """{"version":2,"kind":"Raw","entries":[]}""");
     }
     [TearDown] public void TearDown() => Directory.Delete(_root, true);
@@ -40,14 +40,14 @@ public sealed class AuthoringDraftPersistenceTests
         Put(Source, JsonSerializer.Serialize(new GroupDocument { Entries = [entry] }));
         var original = JsonSerializer.SerializeToElement(entry.Parameters);
         var repository = new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring);
-        var loaded = repository.Load(_root, "Draft", new());
+        var loaded = repository.Load(_root);
         loaded.Document.Name = "Saved draft";
         repository.Save(_root, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-        var reopened = new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring).Load(_root, "Draft", new());
+        var reopened = new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring).Load(_root);
         var saved = reopened.GroupEntries["a"].Single();
         Assert.That(saved.StableId, Is.EqualTo(entry.Id)); Assert.That(saved.Type, Is.EqualTo(entry.Type)); Assert.That(saved.Condition, Is.EqualTo(entry.Condition));
         Assert.That(JsonElement.DeepEquals(original, JsonSerializer.SerializeToElement(saved.Parameters)), Is.True, "Saving must not normalize, insert defaults, or coerce invalid values.");
-        Assert.That(() => new EditorDocumentRepository(_catalog).Load(_root, "Draft", new()), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => new EditorDocumentRepository(_catalog).Load(_root), Throws.TypeOf<InvalidDataException>());
         var result = new ProjectValidationService(_root).Validate(catalog: _catalog);
         Assert.That(result.Success, Is.False); Assert.That(result.Diagnostics.Any(item => item.Code.StartsWith("entry.", StringComparison.Ordinal) || item.Code == "condition.syntaxInvalid"), Is.True);
         if (kind != "condition") Assert.That(() => GalgroupCompiler.Compile(new GroupDocument { Entries = [entry] }, _catalog), Throws.Exception);
@@ -60,9 +60,9 @@ public sealed class AuthoringDraftPersistenceTests
         graph.Nodes.Add(new() { Id = "branch", Name = "Branch", Type = "Branch", BranchType = "Condition", Conditions = [new() { Id = "condition", Expression = expression }] });
         Put("Graph/graph.json", JsonSerializer.Serialize(graph));
         var repository = new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring);
-        var loaded = repository.Load(_root, "Draft", new());
+        var loaded = repository.Load(_root);
         repository.Save(_root, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-        Assert.That(repository.Load(_root, "Draft", new()).Document.Nodes[1].Conditions![0].Expression, Is.EqualTo(expression));
+        Assert.That(repository.Load(_root).Document.Nodes[1].Conditions![0].Expression, Is.EqualTo(expression));
         Assert.That(new ProjectValidationService(_root).Validate("graph").Success, Is.False);
         loaded.Document.Edges.Add(new() { Id = "broken", FromNodeId = "missing", ToNodeId = "a" });
         Assert.That(() => repository.PrepareSave(_root, loaded.Document, loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value)), Throws.TypeOf<InvalidDataException>());
@@ -80,7 +80,7 @@ public sealed class AuthoringDraftPersistenceTests
     {
         Put(Source, raw); var bytes = File.ReadAllBytes(Path.Combine(_root, Source));
         var repository = new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring);
-        Assert.That(() => repository.Load(_root, "Draft", new()), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => repository.Load(_root), Throws.TypeOf<InvalidDataException>());
         var graph = JsonSerializer.Deserialize<EditorGraphDocument>(Graph)!;
         Assert.That(() => new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring).Save(_root, graph, new Dictionary<string, IReadOnlyList<EditorEntryData>> { ["a"] = [] }), Throws.TypeOf<InvalidDataException>());
         Assert.That(File.ReadAllBytes(Path.Combine(_root, Source)), Is.EqualTo(bytes));
@@ -91,7 +91,7 @@ public sealed class AuthoringDraftPersistenceTests
     {
         var graph = JsonSerializer.Deserialize<EditorGraphDocument>(Graph)!; graph.Nodes[0].File = path;
         Put("Graph/graph.json", JsonSerializer.Serialize(graph));
-        Assert.That(() => new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring).Load(_root, "Draft", new()), Throws.TypeOf<InvalidDataException>());
+        Assert.That(() => new EditorDocumentRepository(_catalog, EditorDocumentValidation.Authoring).Load(_root), Throws.TypeOf<InvalidDataException>());
     }
 
     private void Put(string relative, string text)

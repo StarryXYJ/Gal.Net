@@ -3,12 +3,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using Serilog;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
+public partial class TitlePageViewModel : PageViewModelBase, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly IGameNavigationService _navigation;
@@ -41,7 +41,7 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     [ObservableProperty] private bool _isLoading;
 
     [RelayCommand]
-    private async Task StartNewGameAsync(CancellationToken cancellationToken)
+    protected virtual async Task StartNewGameAsync(CancellationToken cancellationToken)
     {
         if (!CanStartNewGame) return;
         IsLoading = true;
@@ -56,7 +56,7 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private async Task ContinueAsync(CancellationToken cancellationToken)
+    protected virtual async Task ContinueAsync(CancellationToken cancellationToken)
     {
         if (!CanContinueGame) return;
         IsLoading = true;
@@ -70,6 +70,17 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         finally { IsLoading = false; }
     }
 
+    [RelayCommand]
+    protected virtual async Task StartNewGameWithVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken)
+    {
+        if (!CanStartNewGame) return;
+        if (_session is not IParameterizedGameSessionService configured)
+            throw new NotSupportedException("This session does not accept new game variables.");
+        IsLoading = true;
+        try { await LaunchGameAsync(token => configured.PrepareNewGameAsync(variables, token), cancellationToken); }
+        finally { IsLoading = false; }
+    }
+
     private Task LaunchGameAsync(Func<CancellationToken, Task> prepare, CancellationToken cancellationToken)
     {
         Func<CancellationToken, Task>? begin = null;
@@ -80,12 +91,12 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
+    protected virtual Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
         _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
 
-    [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] protected virtual void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
     [RelayCommand]
-    private async Task OpenGalleryAsync(CancellationToken cancellationToken)
+    protected virtual async Task OpenGalleryAsync(CancellationToken cancellationToken)
     {
         var types = GetGalleryTypes();
         if (types.Count == 0) return;
@@ -96,9 +107,11 @@ public sealed partial class TitlePageViewModel : PageViewModelBase, IDisposable
         }
         await _navigation.NavigateAsync<GalleryPageViewModel, IReadOnlyList<GalleryTypeData>>(types, cancellationToken);
     }
-    [RelayCommand] private void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
+    public Action? ExitRequested { get; set; }
+    [RelayCommand] protected virtual void Exit() => ExitRequested?.Invoke();
+    [RelayCommand] protected virtual void OpenAbout() => _navigation.Navigate<AboutPageViewModel>();
 
-    public void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;
+    public virtual void Dispose() => _session.PropertyChanged -= OnSessionPropertyChanged;
 
     private void OnSessionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

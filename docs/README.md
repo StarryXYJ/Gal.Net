@@ -12,6 +12,7 @@
 `spec/` 描述已实现的模块契约和当前限制。新增或修改功能后，应更新其唯一对应页面，而不是另建设计或 ADR 文档。
 
 - [架构与程序集边界](spec/architecture.md)
+- [CPU 性能事件](spec/cpu-benchmark.md)
 - [运行时与存档](spec/runtime.md)
 - [条目类型与项目契约](spec/entry-types.md)
 - [资源管理](spec/assets.md)
@@ -26,6 +27,12 @@
 
 ## 二次开发手册
 
+- [内容分包与资源补丁](manual/content-packaging.md)：单图章节启动、依赖闭包、剧情分包和独立资源覆盖矩阵。
+- [Track / Bus 音频混音](manual/audio-mixing.md)
+- [跨平台后端接入](manual/cross-platform-backends.md)：原生媒体构建、包内 PAK、缓存目录、设备生命周期及移动端验收边界。
+- [NativeAOT 发布与扩展契约](manual/native-aot.md)：复用 Headless Sample 发布、自检与源生成 JSON 元数据注册。
+- [默认视觉资源与演出预设](manual/default-visuals.md)
+
 - [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
 - [定制 Avalonia Sample](manual/customize-avalonia-sample.md)：基于现有 Sample 落地项目配置、主题、原语和平台能力。
 - [注册通用 action](manual/custom-actions.md)：用固定双字符串原语调用项目逻辑，配置同步、异步和完整实例的运行行为。
@@ -33,3 +40,7 @@
 - [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。
 - [创建图片差分图集](manual/image-variants.md)：目录导入、配置与差分预览、剧情初始选择及维度切换。
 - [使用与扩展 Editor 创作工作区](manual/editor-authoring-workspace.md)：常用字段、Inspector、会话草稿、问题定位与手动布局。
+- [外部工具创作与热重载](manual/external-project-authoring.md)：CLI 批量应用、Agent Skill、Git 回退和 Editor 外部文件同步。
+- [测量 CPU 启动](manual/cpu-benchmark.md)：编译开关、Editor/Sample 自动化基线与方法内埋点。
+- [使用 Windows ReadyToRun 发布](manual/ready-to-run.md)：发布版启动优化、隔离产物与契约字节身份。
+- [发布 Editor 与 Sample](manual/release-packaging.md)：本地 ZIP、GameTestCase / Galpak 整合包和 GitHub Release tag 流程。

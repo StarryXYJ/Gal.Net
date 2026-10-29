@@ -6,4 +6,5 @@
     <ProjectReference Include="../../Shared/GalNet.Assets/GalNet.Assets.csproj" />
     <ProjectReference Include="../../Shared/GalNet.Presentation.Abstractions/GalNet.Presentation.Abstractions.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
 </Project>

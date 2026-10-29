@@ -3,7 +3,7 @@ using GalNet.Editor.Abstraction.Services;
 
 namespace GalNet.Editor.Shared.Services;
 
-/// <summary>Read-only declaration snapshots and notifications for preview variable stores.</summary>
+/// <summary>Read-only declaration snapshots and notifications for authoring queries.</summary>
 public sealed class VariableDefinitionService(IEditorDocumentService documents) : IVariableDefinitionService
 {
     public event Action<VariableScope>? DefinitionsChanged;

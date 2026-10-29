@@ -18,9 +18,10 @@
 | target profile | `TargetProfileEntryCatalog` | 组合根为某个编辑或运行目标冻结的一组 Entry 模块及其 schema；它决定哪些 primitive/composite 可作者化和编译，未挂载类型不会回退到全局内置目录。 |
 | 原始组文件 | `.rawgalgroup` | 编辑器保存的 Group 源文件，可含 primitive 和 composite，`kind` 为 `Raw`。 |
 | 编译组文件 | `.galgroup` | 仅供 Runtime 加载的 Group 产物，只含 primitive，`kind` 为 `Compiled`。 |
-| 运行时 | `IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源。 |
+| 运行时 | `GalNet.Runtime.Runtime.IGameRuntime` / `GameRuntime` | 当前节点、条目位置、变量、场景实例和文本解析器的唯一状态源；执行模块借用 Core.Runtime.IGameContext。 |
 | 游戏引擎 | `GameEngine` | 驱动节点转移、活动 primitive 队列、batch skip、Choice 和稳定快照。 |
-| 游戏视图 | `IGameView` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
+| 指令分发端口 | `Core.Execution.IPrimitiveDispatcher` | 单条 primitive 的定义解析、参数规范化、实例创建和 dispatch 入口。 |
+| 游戏执行上下文 | `IGameContext` | primitive/呈现借用的变量、场景与游戏能力；游标修改和读档由 Engine 管理。 |
 | 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
 | Gallery 目录 | `GalleryCatalog` | 由资源 `.meta.gallery[]` 与冻结类型注册聚合、在发行包中生成快照的不可变类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |
@@ -77,8 +78,10 @@
 | 资源管理器 | `IAssetManager` | 从 provider 按 GUID 定位资源，按 `(GUID, CLR 类型)` 解码/缓存，并以 `AssetHandle<T>` 引用计数释放已解析资源。 |
 | 资源句柄 | `AssetHandle<T>` | 一次成功 acquire 的独立资源引用；幂等 Dispose 只释放该次引用。 |
 | 资源解码器 | `IAssetDecoder<T>` | 将某种资源 type ID 的 `IGameFile` 解码为目标 CLR 类型；由宿主向资源管理器注册，不属于资源 metadata 类型注册。 |
-| 游戏内容提供者 | `IGameContentProvider` | 读取 Graph、设置、I18n 与 Gallery 等特殊内容的边界；`ProjectGameContentProvider` 从开发目录聚合 metadata，`InstalledGameContentProvider` 读取导出生成的 `gallery.json`。 |
+| 游戏内容提供者 | `IGameContentProvider` | 读取 Graph、设置、I18n 与 Gallery 等特殊内容的边界；`ProjectGameContentProvider` 从开发目录聚合 metadata，`InstalledGameContentProvider` 从 game.pak/localization.pak 读取内部文档与文本，兼容旧散文档。 |
 | pak | `.pak` | `PakBuilder` 构建的资源归档，含资源索引和数据。 |
-| 分发包 | `.galpak` | ZIP 分发容器，含根特殊内容、生成的 Gallery JSON、`Assets/Paks/000-base.pak` 与 JSON manifest；可验证后解压安装。 |
-| manifest | `<项目名>.galnet` | 当前 `.galpak` ZIP 根目录中唯一的 JSON manifest，描述项目与所有包的 SHA-256/大小；不是独立逻辑二进制。 |
+| 分发包 | `.galpak` | ZIP 分发容器，v3 以 `pak/` 为外层，含 game.pak、localization.pak、`Assets/Paks/*-base.pak` 和空扩展目录；可验证后解压安装。剧情 PAK 随导出生成在外部，资源覆盖 PAK 独立导出。 |
+| 剧情包 | story PAK | 同名 `storyPackage` Group 的独立依赖闭包减去本体资源，可由多个物理 PAK 组成；整体未安装时沿正常出口跳过。 |
+| 资源覆盖包 | override PAK | 携带原资源到替换资源的映射与目标依赖；按 priority、最终 PAK hash 确定覆盖来源。 |
+| manifest | `installation.json` | galpak v3 的 game.pak 内部安装清单，载荷路径相对内容根，描述项目与其余载荷 SHA-256/大小；兼容 v1/v2 的 `<项目名>.galnet` 外置清单。 |
 | 游戏安装 | `GameInstallation` | 将开发目录或验证并安装后的 `.galpak` 统一为内容 provider 与有序资源 provider 的宿主输入。 |

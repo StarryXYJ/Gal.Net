@@ -2,7 +2,9 @@ using System.Globalization;
 using Avalonia;
 using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Logging;
+#if GALNET_GAME_DEBUG
 using GalNet.Sample.Avalonia.Debug;
+#endif
 using Serilog;
 
 namespace GalNet.Sample.Avalonia;
@@ -12,12 +14,19 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
+#if BENCHMARK
+        GalNet.Diagnostics.StartupBenchmark.Start();
+#endif
         try
         {
             var launchOptions = GameLaunchOptions.Parse(args);
             Directory.CreateDirectory(launchOptions.LogDirectory);
             Log.Logger = new LoggerConfiguration()
+#if GALNET_GAME_DEBUG
                 .MinimumLevel.Debug()
+#else
+                .MinimumLevel.Information()
+#endif
                 .Enrich.WithProperty("LogChannel", "Game")
                 .WriteTo.Console(
                     formatProvider: CultureInfo.InvariantCulture,
@@ -29,7 +38,9 @@ sealed class Program
                     retainedFileCountLimit: 14,
                     shared: true,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3} {LogChannel}] {Message:lj}{NewLine}{Exception}")
+#if GALNET_GAME_DEBUG
                 .WriteTo.Sink(SampleDebugLogStore.Shared)
+#endif
                 .CreateLogger();
 
             try
@@ -49,10 +60,16 @@ sealed class Program
             {
                 GameLog.Logger.Information("Avalonia sample stopped");
                 Log.CloseAndFlush();
+#if BENCHMARK
+                if (GalNet.Diagnostics.StartupBenchmark.Failed) Environment.ExitCode = 1;
+#endif
             }
         }
         catch (Exception exception)
         {
+#if BENCHMARK
+            GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
             Console.Error.WriteLine(exception);
             Environment.ExitCode = 1;
         }
@@ -62,7 +79,7 @@ sealed class Program
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
-#if DEBUG
+#if GALNET_GAME_DEBUG
             .WithDeveloperTools()
 #endif
             .WithInterFont()

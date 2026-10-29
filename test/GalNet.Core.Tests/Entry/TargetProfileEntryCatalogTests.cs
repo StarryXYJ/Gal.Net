@@ -16,9 +16,9 @@ public class TargetProfileEntryCatalogTests
             new("day", new GalNet.Core.Parameters.ValueDescriptor(typeof(DayOfWeek), jsonOptions: options), defaultValue: JsonSerializer.SerializeToElement("Monday")),
             new("name", typeof(string), defaultValue: JsonSerializer.SerializeToElement<string?>(null), allowNull: true)]))])]);
         var entry = catalog.Create("custom.defaults");
-        Assert.That(entry.Values["day"], Is.EqualTo("\"Monday\""));
-        Assert.That(entry.Values.ContainsKey("name"), Is.False);
-        Assert.That(catalog.Get("custom.defaults").DynamicParameters!["name"].DefaultValue!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(entry.Arguments.GetProperty("day").GetString(), Is.EqualTo("Monday"));
+        Assert.That(entry.Arguments.GetProperty("name").ValueKind, Is.EqualTo(JsonValueKind.Null));
+        Assert.That(catalog.Get("custom.defaults").DynamicParameters["name"].DefaultValue!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
     }
     [Test]
     public void ProfileExposesOnlyItsOwnPrimitiveEntries()
@@ -32,9 +32,8 @@ public class TargetProfileEntryCatalogTests
 
         Assert.That(catalog.TryGet("custom.pulse", out var definition), Is.True);
         Assert.That(definition.Kind, Is.EqualTo(EntryKind.Primitive));
-        Assert.That(definition.Parameters["count"], Is.EqualTo(EntryParameterType.Integer));
-        Assert.That(definition.DynamicParameters!["count"].ValueType, Is.EqualTo(typeof(int)));
-        Assert.That(definition.Defaults["enabled"], Is.EqualTo("true"));
+        Assert.That(definition.DynamicParameters["count"].ValueType, Is.EqualTo(typeof(int)));
+        Assert.That(definition.DynamicParameters["enabled"].DefaultValue!.Value.GetBoolean(), Is.True);
         Assert.That(catalog.TryGet("layer.show", out _), Is.False);
     }
 

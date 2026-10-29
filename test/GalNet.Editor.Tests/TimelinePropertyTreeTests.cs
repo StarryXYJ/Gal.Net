@@ -28,7 +28,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var timeline = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.PlayTimeline).Single();
         timeline.Source.Parameters["timeline"] = JsonSerializer.SerializeToElement(new { playbackHandleId = "play", tracks = new[] { new { handleId = id, property = "opacity", keys = new[] { new { frame = 0, value = 1 } } } }, events = Array.Empty<object>() });
         var author = scope.GetRequiredService<GroupEntryAuthoringService>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
-        var copy = await author.PasteAsync(group.Id, author.Copy(group.Id, [creator.StableId, timeline.StableId]), timeline.StableId);
+        var copy = (await author.PasteAsync(group.Id, author.Copy(group.Id, [creator.StableId, timeline.StableId]), timeline.StableId)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
         var copiedId = copy[0].Source.Parameters["handleId"].GetString(); Assert.That(copiedId, Is.Not.EqualTo(id)); Assert.That(copy[1].Source.Parameters["timeline"].GetProperty("tracks")[0].GetProperty("handleId").GetString(), Is.EqualTo(copiedId));
         await history.UndoAsync(); Assert.That(group.Entries, Has.Count.EqualTo(2)); Assert.That(history.CanUndo, Is.False); await history.RedoAsync(); Assert.That(copy[0].Source.Parameters["handleId"].GetString(), Is.EqualTo(copiedId));
         history.Clear(); var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.ChangeType(creator, BuiltinEntryIds.PlayParticleEmitter); var particleId = creator.Source.Parameters["instanceId"].GetString(); Assert.That(Guid.TryParse(particleId, out _), Is.True);
@@ -60,7 +60,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelinePropertyTreeCreatesTracksThroughRealInputsAndRetainsIdentityHistoryAndUnknownJson()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -70,6 +70,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Assert.That(handles.All(value => Guid.TryParse(value, out _)), Is.True); Assert.That(handles.Distinct().Count(), Is.EqualTo(2));
             var timeline = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.PlayTimeline).Single();
             timeline.Source.Parameters = new() { ["timeline"] = JsonSerializer.Deserialize<JsonElement>("""{"playbackHandleId":"play","durationFrames":60,"future":[9007199254740993,null],"tracks":[],"events":[]}""") };
+            scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = timeline;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
             var view = scope.GetRequiredService<TimelinePanelView>(); view.DataContext = scope.GetRequiredService<TimelinePanelViewModel>();

@@ -102,7 +102,7 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
 
         var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Choose screenshot folder",
+            Title = ScreenshotDialogViewModel.Text("Screenshot.ChooseFolder", "Choose folder…"),
             AllowMultiple = false
         });
         if (ReferenceEquals(_viewModel, viewModel) && folders.Count > 0)
@@ -126,8 +126,13 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
         viewModel.DirectoryPath = DirectoryBox.Text?.Trim() ?? string.Empty;
         viewModel.FileName = FileNameBox.Text?.Trim() ?? string.Empty;
         viewModel.IncludeUi = IncludeUiBox.IsChecked == true;
-        await viewModel.SaveAsync();
-        if (ReferenceEquals(_viewModel, viewModel)) ErrorBlock.Text = viewModel.Error;
+        SaveButton.IsEnabled = false;
+        try
+        {
+            await viewModel.SaveAsync();
+            if (ReferenceEquals(_viewModel, viewModel)) ErrorBlock.Text = viewModel.Error;
+        }
+        finally { SaveButton.IsEnabled = true; }
     }
 
     private async Task RefreshPreviewAsync(ScreenshotDialogViewModel viewModel)
@@ -148,7 +153,7 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
         catch (Exception exception)
         {
             if (!ReferenceEquals(_viewModel, viewModel) || version != _previewVersion) return;
-            ErrorBlock.Text = $"Could not capture screenshot: {exception.Message}";
+            ErrorBlock.Text = $"{ScreenshotDialogViewModel.Text("Screenshot.CaptureFailed", "Could not capture screenshot.")} {exception.Message}";
         }
     }
 }

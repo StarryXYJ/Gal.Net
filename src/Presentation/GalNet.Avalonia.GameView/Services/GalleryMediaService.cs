@@ -1,5 +1,5 @@
 using Avalonia.Media.Imaging;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using LibVLCSharp.Shared;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 

@@ -150,7 +150,7 @@ public sealed class ProjectSchemaContextTests
     {
         var project = Deploy("SchemaA");
         var link = Path.Combine(_directory, "link");
-        Directory.CreateSymbolicLink(link, _directory);
+        DirectoryLinks.Create(link, _directory);
         try
         {
             var linkedProject = Path.Combine(link, Path.GetFileName(project));

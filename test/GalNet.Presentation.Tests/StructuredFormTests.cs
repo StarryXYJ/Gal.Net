@@ -16,6 +16,104 @@ namespace GeneralTest.Presentation;
 public sealed class StructuredFormTests
 {
     [Test]
+    public async Task CopyingSemanticScalarElementsKeepsTheirMetadataForTheHostCopyOperation()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var element = new FieldDescriptor("element", new(typeof(string)), semantic: FieldValueSemantic.LocalizedText);
+            var descriptor = new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Sequence(element));
+            var registry = EditorRegistry.CreateDefault(copyValue: (valueDescriptor, value) =>
+            {
+                using var document = new ValueDocument(new("copy", valueDescriptor), value);
+                Assert.That(document.GetIterator().Count(property => property.Field.Semantic == FieldValueSemantic.LocalizedText), Is.EqualTo(1));
+                return new FieldCopy(Json("""{"element":"copied-key"}"""));
+            });
+            var binding = new Binding("""["original-key"]"""); var form = Form(new("texts", descriptor), binding, registry); var window = Mount(form);
+            try
+            {
+                var editor = (StructuredFieldEditor)form.Editors.Single().Control; editor.IsExpanded = true; Pump(window);
+                Click(editor, "copy"); Pump(window);
+                Assert.That(binding.Value.Json!.Value[1].GetString(), Is.EqualTo("copied-key"));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task ExplicitEncodedStructuresKeepTheirRepresentationAndDoNotRebuildOnLeafEdits()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var descriptor = new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.ForType(typeof(StructuredDetails), allowsJsonString: true));
+            var binding = new Binding { Value = new(JsonSerializer.SerializeToElement("""{"caption":"before","extension":9007199254740993}""")) };
+            var form = Form(new("encoded", descriptor), binding); var window = Mount(form);
+            try
+            {
+                var editor = (StructuredFieldEditor)form.Editors.Single().Control; editor.IsExpanded = true; Pump(window);
+                var title = editor.GetVisualDescendants().OfType<SchemaForm>().Single().Contexts.Single(context => context.Field.Id == "caption");
+                title.Text = "after"; Assert.That(await title.CommitTextAsync(), Is.True); Pump(window);
+                Assert.That(editor.GetVisualDescendants().OfType<SchemaForm>().Single().Contexts.Single(context => context.Field.Id == "caption"), Is.SameAs(title));
+                title.Text = "again"; Assert.That(await title.CommitTextAsync(), Is.True);
+                using var result = JsonDocument.Parse(binding.Value.Json!.Value.GetString()!);
+                Assert.That(result.RootElement.GetProperty("caption").GetString(), Is.EqualTo("again"));
+                Assert.That(result.RootElement.GetProperty("extension").GetInt64(), Is.EqualTo(9007199254740993));
+                binding.Value = new(JsonSerializer.SerializeToElement("[1,2]"));
+                form.Schema = [new("array", new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.ForType(typeof(int[]), allowsJsonString: true)))];
+                binding.Notify(); editor = (StructuredFieldEditor)form.Editors.Single().Control; editor.IsExpanded = true; Pump(window);
+                Click(editor, "down"); Pump(window);
+                using var array = JsonDocument.Parse(binding.Value.Json!.Value.GetString()!);
+                Assert.That(array.RootElement[0].GetInt32(), Is.EqualTo(2));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task MapsUseSharedValueMetadataKeepSpecialKeysAndRejectDuplicateRenamesWithoutLosingInput()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var binding = new Binding("""{"0":1,"":2,"a/b~c":3}""");
+            var form = Form(new("dictionary", new(typeof(Dictionary<string, int>))), binding); var window = Mount(form);
+            try
+            {
+                var editor = (StructuredFieldEditor)form.Editors.Single().Control;
+                Assert.That(form.Editors.Single().ShowSeparateLabel, Is.False);
+                editor.IsExpanded = true; Pump(window);
+                Assert.That(binding.Commits, Is.Zero);
+                var keys = editor.GetVisualDescendants().OfType<TextBox>().Where(input => input.Name == "MapKey").ToArray();
+                Assert.That(keys.Select(input => input.Text), Is.EqualTo(new[] { "0", "", "a/b~c" }));
+                var values = editor.GetVisualDescendants().OfType<SchemaForm>().ToArray();
+                var stale = values[0].Contexts.Single();
+                var value = values[2].Contexts.Single(); value.Text = "7";
+                Assert.That(await value.CommitTextAsync(), Is.True);
+                Assert.That(binding.Value.Json!.Value.GetProperty("a/b~c").GetInt32(), Is.EqualTo(7));
+                keys = editor.GetVisualDescendants().OfType<TextBox>().Where(input => input.Name == "MapKey").ToArray();
+                keys[0].Text = "a/b~c";
+                keys[0].RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter }); Pump(window);
+                Assert.That(form.Contexts.Single().Issue!.Code, Is.EqualTo("structure.keyDuplicate"));
+                Assert.That(keys[0].Text, Is.EqualTo("a/b~c")); Assert.That(binding.Commits, Is.EqualTo(1));
+                keys[0].Text = "renamed";
+                keys[0].RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter }); Pump(window);
+                Assert.That(binding.Value.Json!.Value.TryGetProperty("0", out _), Is.False);
+                Assert.That(binding.Value.Json.Value.GetProperty("renamed").GetInt32(), Is.EqualTo(1));
+                Assert.That(await stale.CommitAsync(new(Json("9"))), Is.False, "A structural rename invalidates old child bindings.");
+                Assert.That(binding.Value.Json.Value.GetProperty("").GetInt32(), Is.EqualTo(2));
+                var newKey = editor.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "MapNewKey"); newKey.Text = "new";
+                Click(editor, "add"); Pump(window);
+                Assert.That(binding.Value.Json!.Value.GetProperty("new").GetInt32(), Is.Zero);
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task NestedDtoUsesWireNamesOverridesAndUnknownJsonWithoutCreatingOrWritingOnOpen()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
@@ -131,7 +229,7 @@ public sealed class StructuredFormTests
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
-            var binding = new Binding("{\"x\":1}"); var form = Form(new("value", new(typeof(Dictionary<string, int>))), binding); var window = Mount(form);
+            var binding = new Binding("{\"x\":1}"); var form = Form(new("value", new(typeof(Dictionary<string, int>)), editor: new(ValueEditorIds.Json)), binding); var window = Mount(form);
             try
             {
                 var input = (TextBox)form.Editors.Single().Control; Assert.That(input.AcceptsReturn, Is.True); Assert.That(form.Editors.Single().IsJsonFallback, Is.True);

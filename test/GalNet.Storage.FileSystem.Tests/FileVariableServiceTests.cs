@@ -1,6 +1,6 @@
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Variable;
-using GalNet.Runtime.Gallery;
+using GalNet.GameHost.Gallery;
 using GalNet.Runtime.Runtime;
 using GalNet.Runtime.Variables;
 using GalNet.Storage.FileSystem;

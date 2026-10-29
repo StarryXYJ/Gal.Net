@@ -1,5 +1,5 @@
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
-using GalNet.Core.Scene;
 using GalNet.Rendering.Scene;
 
 namespace GalNet.Avalonia.GameHost;

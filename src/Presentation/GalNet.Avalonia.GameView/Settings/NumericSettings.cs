@@ -1,5 +1,5 @@
-using System.Text.Json;
 using GalNet.Core.Parameters;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Avalonia.GameView.Settings;
 
@@ -9,7 +9,8 @@ public sealed class IntSetting : SettingItem<int>
         Func<int> read, Func<int, CancellationToken, Task> apply, object? label = null, Func<int>? forcedValue = null)
         : base(id, nameKey, defaultValue, read, apply, label, forcedValue)
     {
-        ValueContract = new(typeof(int), constraints: JsonSerializer.SerializeToElement(new { minimum, maximum }));
+        ValueContract = new(typeof(int), constraints: JsonCodec.SerializeToElement(new Dictionary<string, int>
+        { ["minimum"] = minimum, ["maximum"] = maximum }));
         if (ValueValidation.ValidateValue(ValueContract, defaultValue) is not null || step <= 0)
             throw new ArgumentException("Invalid integer setting bounds/default/step.");
         Minimum = minimum; Maximum = maximum; Step = step;
@@ -33,7 +34,8 @@ public sealed class DoubleSetting : SettingItem<double>
     {
         if (!double.IsFinite(minimum) || !double.IsFinite(maximum) || !double.IsFinite(step) || step <= 0)
             throw new ArgumentException("Invalid numeric setting bounds/default/step.");
-        ValueContract = new(typeof(double), constraints: JsonSerializer.SerializeToElement(new { minimum, maximum }));
+        ValueContract = new(typeof(double), constraints: JsonCodec.SerializeToElement(new Dictionary<string, double>
+        { ["minimum"] = minimum, ["maximum"] = maximum }));
         if (ValueValidation.ValidateValue(ValueContract, defaultValue) is not null)
             throw new ArgumentException("Invalid numeric setting default.");
         Minimum = minimum; Maximum = maximum; Step = step;

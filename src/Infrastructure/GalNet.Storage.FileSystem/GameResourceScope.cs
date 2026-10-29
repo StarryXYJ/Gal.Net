@@ -1,7 +1,7 @@
 using GalNet.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 
 namespace GalNet.Storage.FileSystem;
 
@@ -22,10 +22,10 @@ public sealed class GameResourceScope : IDisposable
 
     public static async Task<GameResourceScope> OpenAsync(string directory,
         IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes,
-        CancellationToken cancellationToken = default)
+        GameContentLoadOptions? options = null, CancellationToken cancellationToken = default)
     {
         var installation = await GameInstallation.OpenAsync(directory, cancellationToken);
-        var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync(cancellationToken);
+        var content = await installation.CreateContentProvider(resourceTypes, galleryTypes, options).LoadAsync(cancellationToken);
         var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
         try { return new GameResourceScope(installation.RootDirectory, content, assets); }
         catch { assets.Dispose(); throw; }

@@ -1,0 +1,124 @@
+using System.Text.Json;
+using GalNet.Core.Parameters;
+
+namespace GalNet.Contracts.Builtins.Scene;
+
+/// <summary>Interpolation used by the segment immediately following a timeline keyframe.</summary>
+public enum AnimationInterpolation
+{
+    Step,
+    Linear,
+    CubicHermite
+}
+
+/// <summary>Serializable clip-like timeline for float scene properties.</summary>
+/// <example>
+/// A timeline at 60 fps with <c>DurationFrames = 30</c> plays for half a second. A track whose
+/// keys are `(0, 0)` and `(30, 1)` linearly fades its target property from 0 to 1.
+/// </example>
+[GenerateFieldSchema]
+public sealed partial class TimelineDefinition
+{
+    public TimelineDefinition() { Tracks = []; Events = []; }
+    /// <summary>Opaque handle for this timeline playback; it must be unique while the timeline is active.</summary>
+    [Field(0)] public string PlaybackHandleId { get; set; } = "";
+    /// <summary>Timeline sampling frequency in frames per second. Valid authoring values are 1 through 240.</summary>
+    [Field(1)] public int FrameRate { get; set; } = 60;
+    /// <summary>Inclusive timeline end frame. Tracks must start at frame 0 and may not exceed this value.</summary>
+    [Field(2)] public int DurationFrames { get; set; }
+    [Field(3)] public bool Blocking { get; set; }
+    [Field(4)] public bool Skippable { get; set; }
+    /// <summary>Whether the whole timeline plays once or is restarted after its final frame.</summary>
+    [Field(5)] public AnimationLoopMode LoopMode { get; set; }
+    /// <summary>Property tracks sampled in parallel during playback.</summary>
+    [Field(6)] public List<TimelineTrackDefinition> Tracks { get; set; }
+    /// <summary>Entries dispatched at their declared frames without creating a separate engine checkpoint.</summary>
+    [Field(7)] public List<TimelineEventDefinition> Events { get; set; }
+}
+
+/// <summary>Keyframed values for one property on one active scene instance.</summary>
+[GenerateFieldSchema]
+public sealed partial class TimelineTrackDefinition
+{
+    public TimelineTrackDefinition() => Keys = [];
+    [Field(0)] public string HandleId { get; set; } = "";
+    [Field(1)] public string Property { get; set; } = "";
+    /// <summary>Whether keys are absolute property values or relative offsets from the current Replace value.</summary>
+    [Field(2)] public AnimationBlendMode BlendMode { get; set; }
+    /// <summary>Strictly frame-ordered keys; the first key must be at frame 0.</summary>
+    [Field(3)] public List<TimelineKeyframeDefinition> Keys { get; set; }
+}
+
+/// <summary>Tangents are values per timeline frame. Interpolation belongs to the segment after this key.</summary>
+[GenerateFieldSchema]
+public sealed partial class TimelineKeyframeDefinition
+{
+    [Field(0)] public int Frame { get; set; }
+    [Field(1)] public float Value { get; set; }
+    /// <summary>Incoming derivative in value-per-frame units, used only by cubic Hermite interpolation.</summary>
+    [Field(2)] public float InTangent { get; set; }
+    /// <summary>Outgoing derivative in value-per-frame units, used only by cubic Hermite interpolation.</summary>
+    [Field(3)] public float OutTangent { get; set; }
+    [Field(4)] public AnimationInterpolation InterpolationToNext { get; set; } = AnimationInterpolation.Linear;
+}
+
+/// <summary>Entry-like event embedded in a timeline and dispatched when its frame is reached.</summary>
+[GenerateFieldSchema]
+public sealed partial class TimelineEventDefinition
+{
+    public TimelineEventDefinition() => Parameters = new(StringComparer.Ordinal);
+    [Field(0)] public int Frame { get; set; }
+    /// <summary>Defaults to each iteration; setup and cleanup can instead belong to the whole playback.</summary>
+    [Field(1)] public TimelineEventExecution Execution { get; set; }
+    [Field(2)] public string Type { get; set; } = "";
+    /// <summary>Structured entry parameters preserved until the event is dispatched.</summary>
+    [Field(3)] public Dictionary<string, JsonElement> Parameters { get; set; }
+}
+
+public enum TimelineEventExecution { EachIteration, Once, OnCompletion }
+
+/// <summary>Terminal timeline outcome plus the terminal outcome recorded for each track.</summary>
+public sealed class TimelinePlayResult
+{
+    public AnimationOutcome Outcome { get; init; }
+    public IReadOnlyDictionary<string, AnimationOutcome> TrackOutcomes { get; init; } = new Dictionary<string, AnimationOutcome>();
+}
+
+/// <summary>Pure keyframe sampler shared by presentation implementations and tests.</summary>
+public static class TimelineSampler
+{
+    /// <summary>Evaluates one validated track at a fractional timeline frame.</summary>
+    /// <param name="track">Track whose keys are sampled.</param>
+    /// <param name="frame">Frame position, including fractional frames between authored keys.</param>
+    /// <returns>The interpolated property value, clamped to the first or last key outside the track range.</returns>
+    public static float Evaluate(TimelineTrackDefinition track, double frame)
+    {
+        var keys = track.Keys;
+        if (frame <= keys[0].Frame) return keys[0].Value;
+        if (frame >= keys[^1].Frame) return keys[^1].Value;
+
+        var index = 0;
+        while (keys[index + 1].Frame <= frame) index++;
+        var start = keys[index];
+        var end = keys[index + 1];
+        var span = end.Frame - start.Frame;
+        var t = (float)((frame - start.Frame) / span);
+        return start.InterpolationToNext switch
+        {
+            AnimationInterpolation.Step => start.Value,
+            AnimationInterpolation.Linear => start.Value + ((end.Value - start.Value) * t),
+            AnimationInterpolation.CubicHermite => Hermite(start.Value, start.OutTangent * span, end.Value, end.InTangent * span, t),
+            _ => throw new InvalidDataException($"Unsupported key interpolation '{start.InterpolationToNext}'.")
+        };
+    }
+
+    private static float Hermite(float start, float startTangent, float end, float endTangent, float t)
+    {
+        var squared = t * t;
+        var cubed = squared * t;
+        return ((2 * cubed) - (3 * squared) + 1) * start +
+               (cubed - (2 * squared) + t) * startTangent +
+               ((-2 * cubed) + (3 * squared)) * end +
+               (cubed - squared) * endTangent;
+    }
+}

@@ -6,13 +6,14 @@ using Avalonia.Headless;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using GalNet.Contracts.Builtins;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Controls;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
@@ -33,7 +34,7 @@ public sealed class EditorWorkspaceViewModelTests
     [TestCase(false), TestCase(true), NonParallelizable]
     public async Task SchemaFieldCommitUsesWorkspaceHistoryAndSaveSnapshot(bool useDto)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var fixture = new WorkspaceFixture(withProject: true, useDto: useDto);
@@ -48,7 +49,7 @@ public sealed class EditorWorkspaceViewModelTests
             // Supply only layout icon resources; the real parameter panel and bindings are used below.
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
                 Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
-            var panel = new GroupEditorPanelViewModel(workspace, group.Id, null!, fixture.ProjectService,
+            var panel = new GroupEditorPanelViewModel(workspace, group.Id, fixture.EntryAuthoring, fixture.ProjectService,
                 null!, null!, null!, catalog, new GalNet.Editor.Services.EntrySelectionContext());
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
             Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -77,12 +78,12 @@ public sealed class EditorWorkspaceViewModelTests
                 var changes = 0;
                 field.Changed += (_, _) => changes++;
                 await fixture.Content.SaveAsync();
-                ((TextBox)form.Editors[0].Control).Text = "1.5";
+                NumericControlTestSupport.Input(form.Editors[0].Control).Text = "1.5";
                 Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.True);
                 workspace.UndoRedoHistory.Undo();
                 Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1));
-                Assert.That(((TextBox)form.Editors[0].Control).Text, Is.EqualTo("1"));
+                Assert.That(NumericControlTestSupport.Input(form.Editors[0].Control).Text, Is.EqualTo("1"));
                 Assert.That(workspace.UndoRedoHistory.IsDirty, Is.False);
                 workspace.UndoRedoHistory.Redo();
                 Assert.That(field.Read().Json!.Value.GetSingle(), Is.EqualTo(1.5));
@@ -95,6 +96,17 @@ public sealed class EditorWorkspaceViewModelTests
             finally { window.Close(); }
             return true;
         }, CancellationToken.None);
+    }
+
+    [Test]
+    public void GraphProjectionCannotBeUsedAsAnAuthorWriteChannel()
+    {
+        using var fixture = new WorkspaceFixture();
+        var count = fixture.DocumentService.CurrentDocument.Nodes.Count;
+        Assert.Throws<NotSupportedException>(() => ((IList<GraphNode>)fixture.Workspace.Nodes).Clear());
+        Assert.Throws<NotSupportedException>(() => ((IList<GraphEdge>)fixture.Workspace.Edges).Clear());
+        Assert.That(fixture.DocumentService.CurrentDocument.Nodes, Has.Count.EqualTo(count));
+        Assert.That(fixture.Workspace.UndoRedoHistory.CanUndo, Is.False);
     }
 
     [Test]
@@ -211,16 +223,14 @@ public sealed class EditorWorkspaceViewModelTests
             "test",
             "Test Project",
             "C:\\test-project",
-            new ProjectSettings(),
+            new ProjectConfiguration(),
             new EditorProjectState(),
             new FakeScope()));
         var documents = new EditorDocumentService();
-        var saveCoordinator = new CapturingSaveCoordinator();
         var persistence = new EditorWorkspacePersistence(
             projects,
             new FakeDocumentRepository(WorkspaceFixture.CreateLoadedDocument()),
-            documents,
-            saveCoordinator);
+            documents);
 
         var graph = persistence.LoadCurrentProject()!;
         var saved = await persistence.SaveCurrentProjectAsync();
@@ -240,10 +250,10 @@ public sealed class EditorWorkspaceViewModelTests
     {
         public FakeProjectService ProjectService { get; } = new();
         public EditorDocumentService DocumentService { get; } = new();
-        public CapturingSaveCoordinator SaveCoordinator { get; } = new();
         public ImmediateSaveScheduler SaveScheduler { get; } = new();
         public EditorWorkspaceViewModel Workspace { get; }
         public IEntryCatalog Catalog { get; }
+        public GroupEntryAuthoringService EntryAuthoring { get; }
 
         private readonly string _root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-workspace-test-" + Guid.NewGuid().ToString("N"))).FullName;
         private readonly ProjectContentSession _content;
@@ -260,7 +270,7 @@ public sealed class EditorWorkspaceViewModelTests
                     "test",
                     "Test Project",
                     _root,
-                    new ProjectSettings(),
+                    new ProjectConfiguration(),
                     new EditorProjectState(),
                     projectScope));
             }
@@ -281,13 +291,14 @@ public sealed class EditorWorkspaceViewModelTests
             var variableDefinitions = new VariableDefinitionService(DocumentService);
             var repository = new FakeDocumentRepository(loaded);
             DocumentService.Load(loaded);
-            File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Settings));
+            File.WriteAllText(Path.Combine(_root, "settings.json"), System.Text.Json.JsonSerializer.Serialize(ProjectService.Current!.Configuration));
             _content = new ProjectContentSession(DocumentService, repository);
             _content.Open(ProjectService.Current!);
             ProjectService.Content = _content;
             var histories = new EditorHistories(_content);
             var groups = new EditorGroupProjectionStore(DocumentService, catalog, new EntryFieldAuthoringService(DocumentService, histories));
-            var persistence = new EditorWorkspacePersistence(ProjectService, repository, DocumentService, SaveCoordinator, groups);
+            var persistence = new EditorWorkspacePersistence(ProjectService, repository, DocumentService, groups);
+            EntryAuthoring = new GroupEntryAuthoringService(DocumentService, catalog, histories);
             Workspace = new EditorWorkspaceViewModel(
                 ProjectService,
                 histories,
@@ -299,12 +310,13 @@ public sealed class EditorWorkspaceViewModelTests
                 localization,
                 SaveScheduler,
                 new GraphSelectionState(),
-                persistence, new GraphAuthoringService(DocumentService, histories, _content), new GroupEntryAuthoringService(groups, DocumentService, catalog, histories));
+                persistence, new GraphAuthoringService(DocumentService, histories, _content), EntryAuthoring);
         }
 
         public void Dispose()
         {
             Workspace.Dispose();
+            EntryAuthoring.Dispose();
             _content.Dispose();
             ProjectService.Current?.Dispose();
             Directory.Delete(_root, true);
@@ -336,7 +348,7 @@ public sealed class EditorWorkspaceViewModelTests
 
         public void SetCurrent(GalProject project) => Current = project;
         public Task<GalProject> OpenAsync(string projectPath) => throw new NotSupportedException();
-        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory) => throw new NotSupportedException();
+        public Task<GalProject> CreateAsync(string projectPath, string name, ProjectConfiguration settings, string contractsDirectory) => throw new NotSupportedException();
         public Task CloseAsync() => Task.CompletedTask;
         public Task SaveAsync() { SaveCount++; return Content?.SaveAsync() ?? Task.CompletedTask; }
         public IReadOnlyList<RecentProjectInfo> GetRecentProjects() => [];
@@ -346,7 +358,7 @@ public sealed class EditorWorkspaceViewModelTests
 
     private sealed class FakeDocumentRepository(LoadedEditorProjectDocument loaded) : IEditorDocumentRepository
     {
-        public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings) => loaded;
+        public LoadedEditorProjectDocument Load(string projectPath) => loaded;
         public ProjectSavePlan PrepareSave(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => new(new Dictionary<string, byte[]>(), []);
         public void ApplySave(string projectPath, ProjectSavePlan plan, CancellationToken cancellationToken = default)
         {
@@ -360,10 +372,6 @@ public sealed class EditorWorkspaceViewModelTests
         public void Save(string projectPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => throw new NotSupportedException();
     }
 
-    private sealed class CapturingSaveCoordinator : IEditorSaveCoordinator
-    {
-        public string BuildPreviewData(string previewPath, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groupEntries) => previewPath;
-    }
 
     private sealed class ImmediateSaveScheduler : IProjectSaveScheduler
     {

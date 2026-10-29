@@ -1,0 +1,148 @@
+# 引擎核心精简与职责收敛
+
+状态：completed。P0–P6、R1–R8 均 verified；最终验收 1789 项普通测试与 10 项原生测试通过。
+
+本文件是整个重构的实施与进度入口。P0–P6 保留已提交的历史；R1–R8 整理后续工作，设计依据见 [design.md](design.md)。设计整理完成不代表实现完成。
+
+## 目标与约束
+
+- 功能正确、低耦合、代码精简、职责清晰优先；不保留旧 API、旧数据格式或过渡适配层来维持向后兼容。
+- 可恢复的小问题不应终止剧情；失败处理放在能够判断业务后果的模块边界。
+- 优先删除重复表示、重复控制流程和无效分支；不为了拆分类而引入接口、服务或通用框架。
+- Engine 保留唯一执行门与运行生命周期，协作者不能各自推进剧情；保留已验证的 batch、已读、播放模式和检查点语义。
+- 本轮不做 benchmark、profile 或专项性能改造。仅顺手消除有明确不变量保障的重复遍历、排序、转换和分配；不宣称未测量的性能收益。
+- 不为性能引入状态 revision、增量快照、缓存失效体系、并行调度或对象池；这些留给后续性能任务。
+- 计划中的类型划分是方向，实施时依据实际调用关系收敛，不要求逐项创建新类型。
+
+## 进度维护
+
+按顺序实施；每次只将正在处理的阶段标为 `in-progress`。必要代码、调用方迁移、相关验证和文档完成后，才能勾选并标为 `verified`。
+
+完成阶段的详细清单压缩为：**完成结果一句话 + 验证结果 + 证据链接/提交**。实际缺口不能被压缩掉；延期项标记 `skipped` 并说明原因，不计作完成。重要偏差在收尾 `summary.md` 中保留原因。
+
+用户追加约定：每个阶段验证完成后单独提交 Git，再继续下一阶段；未完成或仅规划的阶段不能标为完成。R1 提交为 `76753fc`，R3 提交为 `0c51c23`；R2 提交为 `669b586`（部分早期修改另包含在独立清理提交 `2a5c678`）。
+
+| 阶段 | 内容 | 状态 |
+| --- | --- | --- |
+| P0 | 核心审查与问题复现 | [x] verified |
+| P1 | 收敛错误处理，修正表达式 | [x] verified |
+| P2 | 修正推进、通知与恢复生命周期 | [x] verified |
+| P3 | 收紧状态访问，隔离运行图 | [x] verified |
+| P4 | 统一 Entry 数据，删除旧路径 | [x] verified |
+| P5 | 收敛引擎协作者与模块边界 | [x] verified |
+| P6 | 集成验证与文档收尾 | [x] verified |
+
+## P0 — verified
+
+已审查 Core、Runtime、执行/呈现抽象并抽查 Builtins/GameHost，复现表达式、检查点观察者、读档位置、可变变量暴露、重复节点和推进取消问题。前次审查验证：Core 149、Runtime 114、Architecture 49 项通过；额外复现位于本地 `artifacts/engine-core-audit/Program.cs`（忽略产物，不是长期回归测试）。关键问题在对应实施阶段转为正式回归。
+
+## 错误处理原则
+
+严格检查集中在编译、内容装载、注册和存档恢复边界。日常执行只检查会变化或不能在入口保证的条件，不在多层重复执行相同校验。
+
+| 情况 | 默认处理方向 |
+| --- | --- |
+| 重复 stop/hide、已清理的可选目标、预期取消、过期回调 | 幂等完成或忽略；通常不报错，也不反复警告。 |
+| 可选音效/特效、可降级的展示后端失败 | 由领域模块定义静音、跳过或替代呈现；释放阻塞和资源，保留必要诊断。 |
+| 本地化缺项 | 沿用已定义的文化/默认文本回退；最终缺失采用明确占位与诊断，不无故终止剧情。 |
+| 事件观察者、日志接收方失败 | 隔离异常，不改变引擎执行状态；诊断失败不能递归造成新失败。 |
+| 条件表达式解析失败 | 修复合法文本解析；非法条件返回 false 并给出定位诊断，作者校验明确报错，不静默吞错。变量赋值表达式失败拒绝该次赋值，不擅自写入默认值。 |
+| 存档无效、读档位置不合法 | 拒绝本次恢复并报告原因，保留当前运行；不要把无效节点当正常结束。 |
+| 保存/持久化失败 | 报告该次操作失败，保留可重试的数据；不误报保存成功，不无故中断仍可继续的剧情。 |
+| 无法判定的控制流、必需指令缺实现、身份冲突、状态不变量破坏 | 入口尽早拒绝；若执行期间发生且不能保持一致性，则明确进入 Faulted。 |
+
+“可选”由指令/模块的业务语义确定，不能依据异常类型或是否非阻塞一概跳过。已部分修改持久状态的操作，必须有一致的提交或补偿策略后才能降级。缺失 custom action 保留当前默认 warning/no-op 策略，不将所有未知指令都视为可选。诊断包含稳定 code 与可用的 Group/Entry/资源上下文，重复诊断应有界；优先复用现有通道，不建设全局错误策略框架。
+
+## P1 — verified
+
+修复字符串表达式、非法条件定位与限量诊断，失败/空值赋值保留原变量，音频诊断观察者不影响清理；现有可选展示降级和关键指令失败规则保留。Runtime 120、Builtins 177 项通过；实现与验证见 ExpressionEvaluatorTests、AudioRuntimeTests、BuiltinPrimitiveInstanceTests 及 [runtime 规范](../../docs/spec/runtime.md)。
+
+## P2 — verified
+
+检查点在锁外隔离发布，推进分批让出且可取消，Engine 改为异步读档并先准备验证候选再提交；宿主、调试和测试调用方已迁移。Runtime 125、Builtins 177、GameHost 5、Presentation 243 项通过；Integration 122 通过、1 项因 Windows 无创建符号链接特权失败（ScreenshotEntryTests:169）。完整解决方案构建另遇 Avalonia 遥测权限/WebAssembly 包哈希问题，最终构建在 P6 复核。行为证据见 GameEngineLifecycleTests 和 [runtime 规范](../../docs/spec/runtime.md)。
+
+## P3 — verified
+
+变量读取/集合快照隔离，运行图使用验证后的私有副本，状态锁改由 Read/Update 封装；执行模块共享的活记录保留，避免全量深拷贝。Runtime 132、Builtins 177、Core 149、Storage 22 项通过；新增外部图修改隔离、非法图入口与变量读取隔离测试，规范见 runtime/architecture。调试路线测试补齐真实的分支出口定义后通过。
+## P4 — verified
+
+Entry 统一为 JSON，作者/编译类型分离，删除 IsGeneric、字符串 Values、历史 Layer 特判和无效回退；选项统一为类型化 enum，Editor/CLI 保留输入适配与未知草稿。Core 149、Builtins 177、Generator 18 项通过，Editor 构建通过；Editor.Shared 初轮 417 通过、5 失败、2 跳过，其中选项夹具迁移后定向 5 项通过，余下为 3 项符号链接权限和 1 项文件移动拒绝访问（后者根因尚未确认，P6 重查）。规范见 entry-types。
+## P5 — verified
+
+primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimitiveDispatcher；通知统一为 EngineNotifications，删除阻塞镜像和冗余排序，Editor 设置移回 Editor.Abstraction，移除无使用者的 LauncherSettings。另补宿主替换前存档预检，避免上层提前释放旧运行。Runtime 133、Builtins 177、Presentation 243、GameHost 6、Architecture 49 项通过；Editor 构建通过，正式边界见 runtime/architecture。
+## P6 — verified（R8 复核）
+
+适用当前仓库的验收已完成：完整解决方案/locked restore 通过，链接安全断言以真实 symlink 优先、缺权限时 junction 执行，10 项真实原生/外进程测试通过。Browser 工程已不在当前解决方案，不宣称验证已移除的 WebAssembly 目标。原始限制和验收调整保留在 [summary](summary.md#r8最小组合与最终验收)。
+
+## 可顺手做的优化
+
+仅在触及相应代码时进行：活动实例顺序已经单调时删除多余 OrderBy；复用已经准备好的恢复结果；消除同一边界内无必要的重复查询/转换。保留必要的输入校验、隔离复制和检查点语义；若优化需要额外缓存或改变所有权，移出本轮。
+
+## 后续整体重构
+
+目标：项目策略归高层，通用执行归 Runtime，可选内置领域不进入内核；通过删除多份表示和共享实际重复机制精简代码。
+
+设置模型归高层、内部接收简单配置、轨道/分组可自定义、Sample 保留三个分组是已确认方向。其余拆分位置为实施方向，具体类型/程序集归属依据消费者核实，不为完成表格制造新框架。实施时遇到会改变行为或范围的偏差，先更新设计与本计划。
+
+| 阶段 | 内容 | 依赖 | 状态 |
+| --- | --- | --- | --- |
+| R1 | 执行协议与管理类型归位 | 已提交基线 | [x] verified |
+| R2 | 设置模型与模块配置解耦 | R1 | [x] verified |
+| R3 | 自定义音频分组与轨道控制 | R2 | [x] verified |
+| R4 | 自定义配置贯穿作者与运行链路 | R2、R3 | [x] verified |
+| R5 | 剥离可选领域与场景依赖 | R1–R4 | [x] verified |
+| R6 | 统一参数描述与基础校验 | R5 | [x] verified |
+| R7 | 收敛执行与异步生命周期重复 | R5、R6 | [x] verified |
+| R8 | 最小项目、完整回归与文档收尾 | R1–R7 | [x] verified |
+
+### R1 — verified
+
+执行/Choice/快进/播放端口归 Core.Execution，音频后端端口归 Core.Audio，IGameRuntime/GameRestorePoint 下移 Runtime.Runtime；Runtime 项目只依赖 Core，调用方与锁图已迁移，无兼容包装或行为变更。音频领域整体迁移仍归 R5。
+
+893 项相关回归通过，1 项集成夹具受既有符号链接权限限制；普通桌面解决方案构建、locked restore、格式和架构门禁通过。34 个锁文件仅有项目依赖变化，第三方版本/哈希和目标框架键保持不变；Browser/R2R/原生平台验证限制见 [summary](summary.md#r1执行协议与管理类型归位)。证据含 Runtime 的 ExecutionBoundaryTests（自定义分发器执行/恢复、编译产物依赖检查）与 ProjectDependencyTests，正式边界见 [architecture](../../docs/spec/architecture.md)。
+
+### R2 — verified
+
+Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道定义和 AudioMixOptions，文本消费速度值，保存服务接收槽位数；IGameContext/GameRuntime 不再携带设置容器。默认偏好模型上移 Avalonia.GameHost，PlayerSession 不持有完整设置；删除无用设置类型/服务和 SfxChannelCount 的 UI/CLI/复制路径。GameContent.Settings/作者 ProjectSettings 的整体迁移仍归 R4，自定义分组声明与单轨控制仍归 R3。
+
+1645 项相关测试通过，4 项为既有符号链接权限失败，2 项跳过；当前完整解决方案构建、locked restore、格式与 diff 检查通过。覆盖显式配置更新/拒绝、集合隔离、已有/后续 voice、默认偏好清空重绑和存档容量。证据见 [summary](summary.md#r2设置模型与模块配置解耦)、PlaybackModeTests、AudioRuntimeTests、TypedBuiltinAuthoringTests、SampleLocalizationTests、SampleSaveSessionTests；接入示例见 [manual](../../docs/manual/new-presentation-layer.md#从项目设置映射模块配置)。
+
+### R3 — verified
+
+分组/轨道任意声明，允许空配置/未分组；不可变 AudioConfiguration 在入口统一校验，master/group/track 混音影响当前及后续 voice，快进保留为显式轨道策略。删除固定分类与指令默认目标；Sample/模板明确选择三分组，默认 UI 和 Editor 复用同一声明。
+
+1752 项测试通过，4 项既有符号链接权限失败、3 项跳过；完整解决方案构建、空白格式与 diff 检查通过。最终修正后的 Builtins 185 项全通过，Integration 123 通过/1 项权限失败。证据含 AudioConfigurationTests、AudioRuntimeTests、ProjectAudioSettingsTests、SampleLocalizationTests 与 GameInstallationTests；记录见 [summary](summary.md#r3自定义音频分组与轨道)，规范见 [runtime](../../docs/spec/runtime.md) 和[接入手册](../../docs/manual/new-presentation-layer.md)。原生/外进程环境项继续保留，完整自定义 section/领域归位归 R4/R5。
+
+### R4 — verified
+
+版本化配置、通用 schema 表单和批量历史贯穿作者命令、保存、两种导出与安装加载；宿主显式投影自有 DTO，默认语言编辑仍归 I18n 面板。未知数据和缺省 section 的 Undo/Redo 无损。R4c2 产品净减 143 行，构建及 1091 项相关回归通过，3 项符号链接权限失败、2 项跳过；实际外部 Sample 的运行/Seek/停止通过，原生关闭超时继续纳入 R7/R8，不记为完整原生验收。
+
+- [x] R4a：变量单一来源，`5a08d4f`。
+- [x] R4b：配置协议/默认模型归位，`1228f94`；精简 `6218d5f`。
+- [x] R4c1：通用命令与发布链路，`3d37f50`。
+- [x] R4c2：通用界面、批量历史和宿主投影；见 [summary](summary.md#r4c2通用表单历史与宿主投影)。
+
+### R5 — verified
+
+场景/音频/Gallery/差分图片契约归可选 Builtins，运行侧音频/场景管理归内置执行，内容聚合与 Gallery 玩家包装归宿主；Core/Runtime 无上述领域依赖，最小自有执行与恢复通过。资源目录显式传递，默认类型由组合根选择；删除六个空 metadata DTO 和未使用的 AssetRoot。R5a `469a4ba`、R5b 合计产品 C# 净增 4 行；R5b 全量相关回归 1779 通过，3 项权限失败/3 项跳过，构建/locked restore/格式通过。证据见 [summary](summary.md#r5bgallery资源默认策略与宿主内容归位)。原生关闭问题继续归 R7/R8。
+
+### R6 — verified
+
+Entry 仅保存 DynamicParameterTable，编辑器按需投影；效果基础约束共用 ValueValidation，删除旧字典/回退/ABI 兼容路径。产品 C# 净减 122 行，构建/格式通过，完整回归 1781 通过、3 项权限失败及 1 项已知 Headless 释放竞态；该 GUI 用例单独复核通过（合计 1782）。测试框架会话稳定性与原生关闭仍归 R8。证据见 [summary](summary.md#r6唯一参数源与共享基础校验)。
+
+### R7 — verified
+
+共享 Engine 完全相同的收尾，确保门禁在状态捕获异常时也能释放；Seek 复用收束后快照。推进内核与异步基础已有复用，领域差异保留，不新增框架。产品净减 5 行，完整构建、格式及 Runtime/Builtins/Presentation/Debugging 640 项通过。证据见 [summary](summary.md#r7执行收尾与快照复用)。
+
+### R8 — verified
+
+最小无内置执行/恢复、自有 DTO 控制推进/实际文本/ambience、Sample 三分组和配置完整链路均通过；修正宿主把恢复 Ready 当成停止的映射。完整构建、locked restore、格式、1789 项普通回归及 10 项原生回归通过，无失败/跳过的普通用例；R6–R8 产品 C# 合计净减 125 行。并行图校验改动独立保留，共享层使用源码一致的隔离候选验证。见 [summary](summary.md#r8最小组合与最终验收) 与 [review](review.md#r8最终自审)。
+
+后续同样遵循前述进度维护规则：只勾选实际 verified 阶段，完成后压缩为“结果一句话 + 验证 + 证据”。用户已授权开始实施；各阶段状态以本表及实际验证证据为准。
+
+## 参考
+
+- [运行时规范](../../docs/spec/runtime.md)
+- [架构规范](../../docs/spec/architecture.md)
+- [Entry 契约](../../docs/spec/entry-types.md)
+- 本计划依据 2026-10-26 会话中的核心审查及用户修订：功能/低耦合/精简优先，专项性能工作延期。

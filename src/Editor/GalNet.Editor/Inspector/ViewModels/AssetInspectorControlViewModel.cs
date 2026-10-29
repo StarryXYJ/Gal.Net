@@ -49,6 +49,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     public bool IsSelectedAssetImage => InspectedAsset?.IsImage == true;
     public bool IsSelectedAssetAudio => InspectedAsset?.IsAudio == true;
     public bool IsSelectedAssetVideo => InspectedAsset?.IsVideo == true;
+    public bool HasPreview => IsSelectedAssetImage || IsSelectedAssetAudio || Variants is not null;
     public IReadOnlyList<string> FilterOptions { get; } = ["point", "bilinear"];
     public IReadOnlyList<string> CompressionOptions { get; } = ["none", "deflate", "gzip", "brotli"];
     public string AudioPreviewActionText => _localization[IsAudioPreviewPlaying ? "Inspector.Asset.Pause" : "Inspector.Asset.Play"];
@@ -134,6 +135,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         OnPropertyChanged(nameof(IsSelectedAssetImage));
         OnPropertyChanged(nameof(IsSelectedAssetAudio));
         OnPropertyChanged(nameof(IsSelectedAssetVideo));
+        OnPropertyChanged(nameof(HasPreview));
     }
 
     private void Load()

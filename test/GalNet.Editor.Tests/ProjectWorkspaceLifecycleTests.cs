@@ -6,15 +6,16 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
 using Dock.Model.Controls;
+using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Extensibility;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
@@ -44,7 +45,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(true)]
     public async Task NewProjectView_CreatesWithDefaultOrCustomContractWithoutStartingPreview(bool customContract)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
@@ -83,8 +84,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var projects = services.GetRequiredService<IProjectService>();
                 Assert.That(projects.Current!.Name, Is.EqualTo("Authored"));
                 Assert.That(services.GetRequiredService<INavigationService>().CurrentPage, Is.TypeOf<EditorPageViewModel>());
-                Assert.That(projects.Current.Services.GetRequiredService<EditorWorkspaceViewModel>().ActivePreview, Is.Null);
-                Assert.That(services.GetRequiredService<IEditorExtensionRegistry>().FindDockPanel(EditorDockPanelIds.GamePreview), Is.Null);
+                Assert.That(services.GetRequiredService<IEditorExtensionRegistry>().FindDockPanel("GamePreview"), Is.Null);
                 var projectPath = projects.Current.RootPath;
                 Assert.That(File.Exists(Path.Combine(projectPath, "Contracts", ProjectSchemaContext.AssemblyFileName)), Is.True);
                 await projects.CloseAsync();
@@ -101,7 +101,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task GroupPagesShareProjectContentAndClosingThemDoesNotDiscardEdits()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var services = Services();
@@ -142,13 +142,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task SettingsViewCommitsOneEditAndHistorySurvivesClosingThePage()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
             using var services = Services();
             var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new() { SfxChannelCount = 7 }, Contracts());
+            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsHistory"), "Original", new DefaultProjectOptions { DefaultHeight = 777 }.ToConfiguration(), Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var view = new ProjectSettingsPanelView { DataContext = panel };
@@ -170,10 +170,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(group.Name, Is.EqualTo("Local undo sentinel"), "Local text undo must consume the shortcut before the project history.");
                 input.SelectAll();
                 window.KeyTextInput("Renamed");
-                panel.SaveSlotCount = 19;
+                await Stage(panel, "saveSlotCount", 19);
                 Assert.That(project.Name, Is.EqualTo("Original"), "Typing stays in the page draft until explicit commit.");
                 Assert.That(await projects.CheckUnsavedChangesAsync(), Is.True);
-                await ((IAsyncRelayCommand)view.FindControl<Button>("ApplySettingsButton")!.Command!).ExecuteAsync(null);
+                await panel.CommitDraftAsync();
                 Assert.That(input.CanUndo, Is.False, "Committed text must not merge with an earlier local input gesture.");
                 window.UpdateLayout();
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
@@ -182,7 +182,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     frame!.Save(Path.Combine(artifacts, "p1b-project-settings.png"));
                 }
                 Assert.That(project.Name, Is.EqualTo("Renamed"));
-                Assert.That(project.Settings.SaveSlotCount, Is.EqualTo(19));
+                Assert.That(project.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(19));
                 await workspace.SaveAsync();
                 panel.ProjectName = "AfterSave";
                 await panel.SaveSettingsCommand.ExecuteAsync(null);
@@ -194,12 +194,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(project.Services.GetRequiredService<IProjectContentSession>().IsDirty, Is.False);
                 await router.RedoAsync();
                 Assert.That(project.Name, Is.EqualTo("AfterSave"));
-                Assert.That(project.Settings.SfxChannelCount, Is.EqualTo(7));
+                Assert.That(project.Configuration.ReadDefaultOptions().DefaultHeight, Is.EqualTo(777));
                 await workspace.SaveAsync();
                 await projects.CloseAsync();
                 var reopened = await projects.OpenAsync(project.RootPath);
                 Assert.That(reopened.Name, Is.EqualTo("AfterSave"));
-                Assert.That(reopened.Settings.SaveSlotCount, Is.EqualTo(19));
+                Assert.That(reopened.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(19));
                 await projects.CloseAsync();
             }
             finally { panel.Dispose(); window.Close(); }
@@ -240,20 +240,20 @@ public sealed partial class ProjectWorkspaceLifecycleTests
 
     [TestCase(false)]
     [TestCase(true)]
-    public async Task InvalidSettingsDraftBlocksSaveAndCloseWithoutDiscardingTheInput(bool invalidLocale)
+    public async Task InvalidSettingsDraftBlocksSaveAndCloseWithoutDiscardingTheInput(bool invalidValue)
     {
         using var services = Services(new TestClosePrompt(ProjectCloseChoice.Save));
         var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "InvalidDraft"), "Before", new(), Contracts());
         var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
-        if (invalidLocale) panel.TargetLocale = "";
+        if (invalidValue) Setting(panel, "defaultWidth").Draft!.Update("not a number", true, null, false);
         else panel.ProjectName = "";
-        panel.SaveSlotCount = 19;
+        await Stage(panel, "saveSlotCount", 19);
         try { await projects.CloseAsync(); Assert.Fail("An invalid draft must block Save and Close."); }
-        catch (EditorOperationException failure) { Assert.That(failure.Code, Does.StartWith(invalidLocale ? "settings." : "project.")); }
+        catch (EditorOperationException failure) { Assert.That(failure.Code, Does.StartWith(invalidValue ? "settings." : "project.")); }
         Assert.That(projects.Current, Is.SameAs(project));
-        Assert.That(invalidLocale ? panel.TargetLocale : panel.ProjectName, Is.Empty);
-        Assert.That(project.Settings.SaveSlotCount, Is.EqualTo(60), "Invalid input must not partially apply other settings.");
+        Assert.That(invalidValue ? Setting(panel, "defaultWidth").Draft!.Text : panel.ProjectName, Is.EqualTo(invalidValue ? "not a number" : ""));
+        Assert.That(project.Configuration.ReadDefaultOptions().SaveSlotCount, Is.EqualTo(60), "Invalid input must not partially apply other settings.");
         Assert.That(panel.IsDirtyText, Is.Not.Empty);
         panel.CancelDraftCommand.Execute(null);
         Assert.That(panel.ProjectName, Is.EqualTo("Before"));
@@ -327,7 +327,6 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var project = await projects.CreateAsync(Path.Combine(_root, "LateWorkspace"), "Before", new(), Contracts());
         var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
         panel.ProjectName = "Edited before opening Graph";
-        panel.TargetLocale = "zh_cn";
         await panel.SaveSettingsCommand.ExecuteAsync(null);
         var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
         Assert.That(workspace.UndoRedoHistory.CanUndo, Is.True);
@@ -373,7 +372,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase(null, ProjectCloseChoice.Cancel)]
     public async Task CloseDialogButtonsAndWindowCloseReturnTheExpectedChoice(string? buttonLabel, ProjectCloseChoice expected)
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -422,20 +421,22 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task SettingsSaveDerivesVariablesFromTheGraphAndPreservesOtherConfiguration()
+    public async Task VariablesPersistOnlyInTheGraphWhileSettingsRemainIndependent()
     {
         using var services = Services();
         var projects = services.GetRequiredService<IProjectService>();
-        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new() { SfxChannelCount = 7 }, Contracts());
+        var project = await projects.CreateAsync(Path.Combine(_root, "Settings"), "Settings", new DefaultProjectOptions { DefaultHeight = 777 }.ToConfiguration(), Contracts());
         var value = new Variable { Name = "score" };
         value.SetValue(4);
         var documents = project.Services.GetRequiredService<IEditorDocumentService>();
         documents.CurrentDocument.PlayerVariables.Add(new() { Name = "score", DefaultValue = value });
-        project.Settings.PlayerVariables.Clear();
         await projects.SaveAsync();
         using var saved = JsonDocument.Parse(File.ReadAllText(project.SettingsFilePath));
-        Assert.That(saved.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
-        Assert.That(project.Settings.SfxChannelCount, Is.EqualTo(7));
+        Assert.That(saved.RootElement.TryGetProperty("playerVariables", out _), Is.False);
+        Assert.That(saved.RootElement.TryGetProperty("saveVariables", out _), Is.False);
+        using var graph = JsonDocument.Parse(File.ReadAllText(Path.Combine(project.GraphPath, "graph.json")));
+        Assert.That(graph.RootElement.GetProperty("playerVariables")[0].GetProperty("name").GetString(), Is.EqualTo("score"));
+        Assert.That(project.Configuration.ReadDefaultOptions().DefaultHeight, Is.EqualTo(777));
         await projects.CloseAsync();
     }
 
@@ -470,12 +471,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Document = new() { Nodes = [new() { Id = "group", Type = "Group", File = "groups/group.rawgalgroup" }] },
             GroupEntries = { ["group"] = [new() { StableId = "line", Type = "custom.value", Parameters = new() { ["count"] = JsonSerializer.SerializeToElement(4) } }] }
         });
-        var store = new EditorGroupProjectionStore(documents, catalog, new EntryFieldAuthoringService(documents, new EditorHistories()));
+        using var histories = new EditorHistories();
+        var store = new EditorGroupProjectionStore(documents, catalog, new EntryFieldAuthoringService(documents, histories));
         var group = store.Get("group");
         var entry = group.Entries.Single();
         entry.ConfigureParameterFields(catalog, [], []);
         var field = (IFieldBinding)entry.ParameterFields.Single();
-        group.Entries.Remove(entry);
+        new GroupEntryAuthoringService(documents, catalog, histories).Delete("group", [entry.StableId]);
         store.Dispose();
         Assert.That(await field.CommitAsync(new(JsonSerializer.SerializeToElement(9)), CancellationToken.None), Is.Not.Null);
         Assert.That(entry.Source.Parameters["count"].GetInt32(), Is.EqualTo(4));
@@ -642,7 +644,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task GraphCanvasActualPointerDragCanCancelAndCommitOneHistoryStep()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());

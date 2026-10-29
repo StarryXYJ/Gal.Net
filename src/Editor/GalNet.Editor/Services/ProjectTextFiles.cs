@@ -14,6 +14,14 @@ namespace GalNet.Editor.Services;
 public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSession content, EditorHistories histories, IEditorLocalizationService localization, IResourceTypeCatalog? resourceTypes = null) : IDisposable
 {
     private readonly Dictionary<string, ProjectTextBuffer> _buffers = [];
+    public bool CanOpen(string path)
+    {
+        if (projects.Current is null) return false;
+        var document = content.FileDocuments.Values.FirstOrDefault(file => ProjectFilePaths.Comparer.Equals(file.Path, path));
+        if (document is not null) return document.Exists;
+        try { return File.Exists(new ProjectRawReader(projects.Current.RootPath).Resolve(path)); }
+        catch (Exception error) when (error is IOException or ArgumentException or UnauthorizedAccessException) { return false; }
+    }
     public ProjectTextBuffer Get(string id) => _buffers[id];
     public ProjectTextBuffer Open(string path)
     {
@@ -78,7 +86,7 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     private readonly IProjectContentSession _content;
     private readonly EditorHistories _histories;
     private readonly IEditorLocalizationService _localization;
-    private readonly Encoding? _encoding;
+    private Encoding? _encoding;
     private readonly string _root;
     private readonly bool _canEdit;
     private readonly IDisposable _draft;
@@ -90,7 +98,7 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
     public string Id => _document.Id;
     public string Path => _document.Path;
     public string Title => System.IO.Path.GetFileName(Path) + (IsDirty ? " *" : "");
-    public bool IsReadOnly => _disposed || !_canEdit || !_document.ManagedContent || !_document.Exists || _content.RepairRequired;
+    public bool IsReadOnly => _disposed || !_canEdit || _encoding is null || !_document.ManagedContent || !_document.Exists || _content.RepairRequired;
     public bool IsDirty => _document.Exists && _document.ManagedContent && (HasDraft || !_content.CaptureSaved().Files.TryGetValue(Id, out var saved) || !saved.Data.AsSpan().SequenceEqual(_document.Data));
     private bool HasDraft => !IsReadOnly && Text != Decode(_observed);
     public string Information => !_document.Exists ? _localization["Files.Missing"] : IsReadOnly ? _localization["Files.ReadOnly"] : _encoding!.WebName;
@@ -104,10 +112,21 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
         _document = document; _content = content; _histories = histories; _localization = localization; _encoding = encoding; _root = root;
         _canEdit = canEdit;
         _text = document.ManagedContent && encoding is not null ? Decode(document.Data) : text; _observed = document.Data.ToArray();
-        _draft = content.RegisterFileDraft(document.Id, () => HasDraft, CommitAsync, ValidateStructuredDraft);
+        _draft = content.RegisterFileDraft(document.Id, () => HasDraft, CommitAsync, ValidateStructuredDraft, Cancel);
         content.Changed += OnChanged; localization.PropertyChanged += OnLocale;
+        content.ExternalReloaded += OnExternalReload;
     }
-    private string Decode(byte[] bytes) => _encoding!.GetString(bytes, _encoding.GetPreamble().Length, bytes.Length - _encoding.GetPreamble().Length);
+    private string Decode(byte[] bytes) => bytes.Length < _encoding!.GetPreamble().Length ? "" : _encoding.GetString(bytes, _encoding.GetPreamble().Length, bytes.Length - _encoding.GetPreamble().Length);
+    private void OnExternalReload()
+    {
+        _failure = null; _externalChange = false; Error = "";
+        var full = new ProjectRawReader(_root).Resolve(Path);
+        if (!_document.ManagedContent) _document.Exists = File.Exists(full);
+        var bytes = _document.ManagedContent ? _document.Data : _document.Exists && new FileInfo(full).Length <= 2 * 1024 * 1024 ? File.ReadAllBytes(full) : [];
+        if (!ProjectTextFiles.TryDecode(bytes, out _encoding, out var text)) { _encoding = null; text = ""; }
+        _observed = _document.Data.ToArray(); Text = text;
+        OnChanged();
+    }
     partial void OnTextChanged(string value) { if (!_disposed) _content.Refresh(); OnPropertyChanged(nameof(Title)); }
     private void OnLocale(object? sender, PropertyChangedEventArgs args)
     {
@@ -183,5 +202,5 @@ public sealed partial class ProjectTextBuffer : ObservableObject, IDisposable
         public void Redo() => Apply(Before, After);
         public void Undo() => Apply(After, Before);
     }
-    public void Dispose() { if (_disposed) return; _disposed = true; _content.Changed -= OnChanged; _localization.PropertyChanged -= OnLocale; _draft.Dispose(); OnPropertyChanged(nameof(IsReadOnly)); }
+    public void Dispose() { if (_disposed) return; _disposed = true; _content.Changed -= OnChanged; _content.ExternalReloaded -= OnExternalReload; _localization.PropertyChanged -= OnLocale; _draft.Dispose(); OnPropertyChanged(nameof(IsReadOnly)); }
 }

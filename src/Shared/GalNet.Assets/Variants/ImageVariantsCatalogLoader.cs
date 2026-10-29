@@ -1,5 +1,5 @@
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
-using GalNet.Core.Variants;
 
 namespace GalNet.Assets.Variants;
 
@@ -22,6 +22,7 @@ public static class ImageVariantsCatalogLoader
             definitions.Add(file.Id, handle.Value);
         }
         ct.ThrowIfCancellationRequested();
-        return new ImageVariantsCatalog(definitions);
+        return new ImageVariantsCatalog(definitions, files.Where(file => file.TypeId == ImageVariantsCodec.ResourceType
+            && file is IAssetOverrideFile { IsResourceOverride: true }).Select(file => file.Id));
     }
 }

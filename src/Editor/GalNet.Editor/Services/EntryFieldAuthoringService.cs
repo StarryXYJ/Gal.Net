@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
@@ -6,9 +7,9 @@ using GalNet.Editor.History;
 namespace GalNet.Editor.Services;
 
 /// <summary>Entry field intents retain author values and stable IDs, never a page or control.</summary>
-public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null)
+public sealed class EntryFieldAuthoringService(IEditorDocumentService documents, EditorHistories histories, CharacterAuthoringService? characters = null, GameTextAuthoringService? texts = null, EntryEditSession? edits = null, IProjectContentSession? content = null)
 {
-    public event Action<string>? Changed;
+    internal AuthorChangeJournal Changes => histories.Content.AuthorChanges;
     internal bool IsCurrent(string groupId, EditorEntryData expected) => documents.IsLoaded
         && documents.CurrentDocument.Nodes.Any(node => node.Id == groupId && node.Type == "Group")
         && documents.Groups.TryGetValue(groupId, out var group) && group.Entries.Any(entry => ReferenceEquals(entry, expected));
@@ -29,15 +30,32 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     }
 
     public void SetType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters) =>
-        Update(groupId, expected, expected.Type, new(type, expected.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.NewEntry(type, Clone(parameters))), "Edit Type");
+        Update(groupId, expected, expected.Type, TypeValue(expected, type, parameters), "Edit Type");
+
+    private EntryValue TypeValue(EditorEntryData entry, string type, Dictionary<string, JsonElement> parameters) =>
+        new(type, entry.Condition, GalNet.Editor.Shared.Services.SceneAuthoringIdentities.ChangeType(entry.Type, entry.Parameters, type,
+            GalNet.Editor.Shared.Visuals.VisualPresetBindings.Fill(type, Clone(parameters), content?.CaptureWorking().Configuration)));
+
+    public PreparedEntryEdit PrepareType(string groupId, EditorEntryData expected, string type, Dictionary<string, JsonElement> parameters)
+    {
+        if (!IsCurrent(groupId, expected)) throw Obsolete();
+        var after = TypeValue(expected, type, parameters);
+        var address = new GalNet.Editor.Shared.Services.SceneAuthorAddress(groupId, expected.StableId);
+        var draftRevision = edits?.Revision;
+        return new(documents, histories, Wrap(new FieldEdit(this, groupId, expected.StableId, Capture(expected), after, "Edit Type")),
+            candidate => Write(candidate.GroupEntries[groupId].Single(entry => entry.StableId == expected.StableId), after),
+            edits?.CountPending([address]) ?? 0, () => edits?.Revision == draftRevision);
+    }
 
     private void Update(string groupId, EditorEntryData expected, string expectedType, EntryValue after, string description)
     {
         var entry = Find(groupId, expected.StableId);
         if (!ReferenceEquals(entry, expected) || entry.Type != expectedType) throw Obsolete();
         var before = Capture(entry);
-        if (!Equal(before, after)) histories.Content.Execute(new FieldEdit(this, groupId, entry.StableId, before, after, description));
+        if (!Equal(before, after)) histories.Content.Execute(Wrap(new FieldEdit(this, groupId, entry.StableId, before, after, description)));
     }
+    private IUndoableEdit Wrap(FieldEdit edit) => edit.Before.Type != edit.After.Type && edits is not null
+        ? new EntryDraftLifecycleEdit(edits, edit, [new(new(edit.GroupId, edit.EntryId), new(edit.GroupId, edit.EntryId))], Changes) : edit;
 
     private EditorEntryData Find(string groupId, string id)
     {
@@ -45,6 +63,7 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
             || !documents.Groups.TryGetValue(groupId, out var group)) throw Obsolete();
         return group.Entries.SingleOrDefault(entry => entry.StableId == id) ?? throw Obsolete();
     }
+    private int IndexOf(string groupId, EditorEntryData entry) => documents.Groups[groupId].Entries.IndexOf(entry);
 
     private sealed record EntryValue(string Type, string Condition, Dictionary<string, JsonElement> Parameters);
     private static Dictionary<string, JsonElement> Clone(IReadOnlyDictionary<string, JsonElement> values) =>
@@ -56,7 +75,7 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
     { entry.Type = value.Type; entry.Condition = value.Condition; entry.Parameters = Clone(value.Parameters); }
     private static EditorOperationException Obsolete() => new("entry.obsolete", "The entry or its schema is no longer current.");
 
-    private sealed record FieldEdit(EntryFieldAuthoringService Owner, string GroupId, string EntryId, EntryValue Before, EntryValue After, string Description) : IUndoableEdit
+    private sealed record FieldEdit(EntryFieldAuthoringService Owner, string GroupId, string EntryId, EntryValue Before, EntryValue After, string Description) : IUndoableEdit, IAuthorScopedEdit
     {
         public EditorText DisplayText => new(Description switch
         {
@@ -71,13 +90,11 @@ public sealed class EntryFieldAuthoringService(IEditorDocumentService documents,
         {
             var entry = Owner.Find(GroupId, EntryId);
             if (!Equal(Capture(entry), expected)) throw new EditorOperationException("entry.changed", "The entry changed outside this edit.");
-            try { Write(entry, value); Owner.Changed?.Invoke(GroupId); }
-            catch (Exception failure)
-            {
-                try { Write(entry, expected); Owner.Changed?.Invoke(GroupId); }
-                catch (Exception compensation) { throw new HistoryRepairRequiredException("Entry field compensation failed.", new AggregateException(failure, compensation)); }
-                throw;
-            }
+            Write(entry, value);
+            var kind = (expected.Type != value.Type ? GroupChangeKind.EntryType : GroupChangeKind.None)
+                | (expected.Condition != value.Condition ? GroupChangeKind.Condition : GroupChangeKind.None)
+                | (!Equal(expected with { Type = value.Type, Condition = value.Condition }, value) ? GroupChangeKind.Parameters : GroupChangeKind.None);
+            Owner.Changes.Record(GroupId, Owner.IndexOf(GroupId, entry), kind, [EntryId]);
         }
     }
 }

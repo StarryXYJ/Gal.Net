@@ -6,6 +6,15 @@
   <Folder Name="/test/Schema/">
     <Project Path="test/GalNet.SchemaGenerator.Tests/GalNet.SchemaGenerator.Tests.csproj" />
   </Folder>
+  <Folder Name="/test/Fixtures/">
+    <Project Path="test/Fixtures/SchemaA/SchemaA.csproj" />
+    <Project Path="test/Fixtures/SchemaB/SchemaB.csproj" />
+    <Project Path="test/Fixtures/SchemaDependency/SchemaDependency.csproj" />
+    <Project Path="test/Fixtures/SchemaDuplicate/SchemaDuplicate.csproj" />
+    <Project Path="test/Fixtures/SchemaIncompatible/SchemaIncompatible.csproj" />
+    <Project Path="test/Fixtures/SchemaInvalid/SchemaInvalid.csproj" />
+    <Project Path="test/Fixtures/VersionedCore/VersionedCore.csproj" />
+  </Folder>
   <Folder Name="/src/Editor/">
     <Project Path="src/Editor/GalNet.Editor.DefaultContracts/GalNet.Editor.DefaultContracts.csproj" />
     <Project Path="src/Editor/GalNet.Editor.Abstraction/GalNet.Editor.Abstraction.csproj" />
@@ -14,19 +23,10 @@
     <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/GalNet.Media.Audio/GalNet.Media.Audio.csproj" />
+    <Project Path="src/Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
-  </Folder>
-  <Folder Name="/src/Launcher/">
-    <Project Path="src/Launcher/GalNet.Launcher.Android/GalNet.Launcher.Android.csproj">
-      <Deploy />
-    </Project>
-    <Project Path="src/Launcher/GalNet.Launcher.Browser/GalNet.Launcher.Browser.csproj" />
-    <Project Path="src/Launcher/GalNet.Launcher.Desktop/GalNet.Launcher.Desktop.csproj" />
-    <Project Path="src/Launcher/GalNet.Launcher.iOS/GalNet.Launcher.iOS.csproj">
-      <Deploy />
-    </Project>
-    <Project Path="src/Launcher/GalNet.Launcher/GalNet.Launcher.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
     <Project Path="src/Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
@@ -41,6 +41,7 @@
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
+    <Project Path="src/Shared/GalNet.Diagnostics/GalNet.Diagnostics.csproj" />
     <Project Path="src/Shared/GalNet.Debugging/GalNet.Debugging.csproj" />
     <Project Path="src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <Project Path="src/Shared/GalNet.Assets/GalNet.Assets.csproj" />
@@ -51,6 +52,8 @@
     <Project Path="src/Shared/GalNet.Runtime/GalNet.Runtime.csproj" />
   </Folder>
   <Folder Name="/test/">
+    <Project Path="test/GalNet.Media.Audio.Tests/GalNet.Media.Audio.Tests.csproj" />
+    <Project Path="test/GalNet.Diagnostics.Tests/GalNet.Diagnostics.Tests.csproj" />
     <Project Path="test/GalNet.Debugging.Tests/GalNet.Debugging.Tests.csproj" />
     <Project Path="test/GalNet.GameHost.Tests/GalNet.GameHost.Tests.csproj" />
     <Project Path="test/GalNet.Architecture.Tests/GalNet.Architecture.Tests.csproj" />

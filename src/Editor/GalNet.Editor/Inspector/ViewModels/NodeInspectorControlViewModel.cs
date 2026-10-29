@@ -28,6 +28,8 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
     public bool IsAvailable => InspectedEdge is null;
     public bool HasSelectedNode => InspectedNode is not null;
     public bool IsLinearGroupSelected => InspectedNode?.NodeKind == GraphNodeKind.LinearGroup;
+    public IReadOnlyList<string> StoryPackageNames => Workspace.Nodes.Select(node => node.Source.StoryPackage)
+        .Where(name => !string.IsNullOrEmpty(name)).Select(name => name!).Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
     public bool IsChoiceBranchSelected => InspectedNode?.NodeKind == GraphNodeKind.ChoiceBranch;
     public bool IsConditionBranchSelected => InspectedNode?.NodeKind == GraphNodeKind.ConditionBranch;
     public IReadOnlyList<ConditionVariableSuggestion> ConditionSuggestions => Workspace.GetConditionVariableSuggestions();
@@ -40,7 +42,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
         _localization = localization;
         SyncSelection();
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
-        Workspace.Nodes.CollectionChanged += OnNodesChanged;
+        ((System.Collections.Specialized.INotifyCollectionChanged)Workspace.Nodes).CollectionChanged += OnNodesChanged;
         Workspace.VariableDefinitionsChanged += OnVariableDefinitionsChanged;
         _localization.PropertyChanged += OnLocalizationPropertyChanged;
     }
@@ -106,6 +108,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
         OnPropertyChanged(nameof(IsChoiceBranchSelected));
         OnPropertyChanged(nameof(IsConditionBranchSelected));
         OnPropertyChanged(nameof(EntryCountText));
+        OnPropertyChanged(nameof(StoryPackageNames));
     }
 
     private void OnVariableDefinitionsChanged()
@@ -123,7 +126,7 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
     public void Dispose()
     {
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;
-        Workspace.Nodes.CollectionChanged -= OnNodesChanged;
+        ((System.Collections.Specialized.INotifyCollectionChanged)Workspace.Nodes).CollectionChanged -= OnNodesChanged;
         Workspace.VariableDefinitionsChanged -= OnVariableDefinitionsChanged;
         _localization.PropertyChanged -= OnLocalizationPropertyChanged;
     }

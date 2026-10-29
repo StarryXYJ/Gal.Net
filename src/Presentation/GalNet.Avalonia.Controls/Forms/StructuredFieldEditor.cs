@@ -1,10 +1,9 @@
 using System.ComponentModel;
-using System.Reflection;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Avalonia;
 using Avalonia.Controls;
 using GalNet.Core.Parameters;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Game.Controls.Forms;
 
@@ -33,6 +32,9 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     public FieldEditorContext Context { get; }
     private readonly Type _type;
     private readonly Type? _element;
+    private readonly ResolvedValueStructure _shape;
+    private readonly ValueStructureResolver _resolver = new();
+    private bool IsMap => _shape.Kind == ValueStructureKind.Map;
     private readonly List<ChildBinding> _bindings = [];
     private readonly List<(Button Button, string Kind)> _buttons = [];
     private CancellationTokenSource _version = new();
@@ -44,24 +46,41 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     private Button? _jsonButton;
     private bool _disposed;
     private int _generation;
-    private static Type? ElementType(Type type) => type.IsArray && type.GetArrayRank() == 1 ? type.GetElementType()
-        : type.IsGenericType && type.GetGenericTypeDefinition() is var definition && (definition == typeof(List<>) || definition == typeof(IList<>) || definition == typeof(IReadOnlyList<>) || definition == typeof(IEnumerable<>)) ? type.GetGenericArguments()[0] : null;
-    internal static bool Supports(Type type) => ElementType(type) is not null || typeof(IFieldDto).IsAssignableFrom(type) && type.GetProperty("Schema", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy) is not null;
+    internal static bool Supports(Type type) => Supports(new ValueDescriptor(type));
+    internal static bool Supports(ValueDescriptor descriptor)
+    {
+        using var resolver = new ValueStructureResolver();
+        return resolver.Resolve(new("structure", descriptor)).Kind is ValueStructureKind.Object or ValueStructureKind.Sequence or ValueStructureKind.Map;
+    }
     internal static FieldEditorLease Create(FieldEditorContext context)
     {
-        var type = Nullable.GetUnderlyingType(context.Field.Value.ValueType) ?? context.Field.Value.ValueType;
-        if (context.Field.Value.IsStringEncoded || type.GetCustomAttribute<JsonConverterAttribute>() is not null || context.Field.Value.JsonOptions.Converters.Any(converter => converter.CanConvert(type)))
-            return DefaultFieldEditors.CreateJson(context);
+        if (!Supports(context.Field.Value)) return DefaultFieldEditors.CreateJson(context);
         var editor = new StructuredFieldEditor(context); return new(editor, editor.Dispose);
     }
     private StructuredFieldEditor(FieldEditorContext context)
     {
-        Context = context; _type = Nullable.GetUnderlyingType(context.Field.Value.ValueType) ?? context.Field.Value.ValueType; _element = ElementType(_type);
+        Context = context; DataContext = context;
+        _type = Nullable.GetUnderlyingType(context.Field.Value.ValueType) ?? context.Field.Value.ValueType;
+        using var document = new ValueDocument(context.Field, null, _resolver);
+        _shape = document.Root.Structure;
+        _element = _shape.Kind == ValueStructureKind.Sequence ? _shape.Element!.Value.ValueType : null;
         _snapshot = Current; Header = _type.Name; IsEnabled = context.IsEnabled; IsVisible = context.IsVisible;
         Classes.Add("structured-field");
         context.PropertyChanged += Changed;
     }
     private JsonElement? Current => Context.Value.Json ?? Context.Field.DefaultValue;
+    public static readonly StyledProperty<string?> TitleTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string?>(nameof(TitleText));
+    public string? TitleText { get => GetValue(TitleTextProperty); set => SetValue(TitleTextProperty, value); }
+    public static readonly StyledProperty<string> KeyTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(KeyText), "Key");
+    public string KeyText { get => GetValue(KeyTextProperty); set => SetValue(KeyTextProperty, value); }
+    public static readonly StyledProperty<string> DuplicateKeyTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(DuplicateKeyText), "A key with this name already exists.");
+    public string DuplicateKeyText { get => GetValue(DuplicateKeyTextProperty); set => SetValue(DuplicateKeyTextProperty, value); }
+    public static readonly StyledProperty<double> ChildIndentProperty = AvaloniaProperty.Register<StructuredFieldEditor, double>(nameof(ChildIndent), 12);
+    public double ChildIndent { get => GetValue(ChildIndentProperty); set => SetValue(ChildIndentProperty, value); }
+    public static readonly StyledProperty<double> ItemSpacingProperty = AvaloniaProperty.Register<StructuredFieldEditor, double>(nameof(ItemSpacing), 6);
+    public double ItemSpacing { get => GetValue(ItemSpacingProperty); set => SetValue(ItemSpacingProperty, value); }
+    private JsonElement? DecodedCurrent { get { using var doc = new ValueDocument(Context.Field, Current, _resolver); return doc.Root.Content; } }
+
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
@@ -69,10 +88,10 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         if (change.Property == IsExpandedProperty) { if (IsExpanded) Build(); else Release(); }
         else if (change.Property == ExpandByDefaultProperty && ExpandByDefault)
         {
-            try { if (_element is null && Members(Context.Field.Value, _type).Count <= 6) IsExpanded = true; }
-            catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException or TargetInvocationException) { }
+            try { if (_shape.Kind == ValueStructureKind.Object && _shape.Members.Count <= 6) IsExpanded = true; }
+            catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException) { }
         }
-        else if (change.Property == ObjectTextProperty || change.Property == ListTextProperty || change.Property == RepairTextProperty)
+        else if (change.Property == ObjectTextProperty || change.Property == ListTextProperty || change.Property == RepairTextProperty || change.Property == TitleTextProperty)
         {
             if (IsExpanded) SetHeader(_jsonMode || _fallback is not null ? "JSON" : HeaderText());
             else Header = HeaderText();
@@ -91,22 +110,25 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         _snapshot = current?.Clone();
         if (!IsExpanded) return;
         if (_fallback is not null || Context.IsSubmitting && !Equal(_submitted, current)
-            || _element is not null && !(_elementCommit && Equal(_submitted, current))
-            || _element is null && current is { ValueKind: not (JsonValueKind.Object or JsonValueKind.Null) }) Build();
+            || (_element is not null || IsMap) && !(_elementCommit && Equal(_submitted, current))
+            || _element is null && DecodedCurrent is { ValueKind: not (JsonValueKind.Object or JsonValueKind.Null) }) Build();
         else foreach (var binding in _bindings.ToArray()) binding.Refresh();
     }
     private void Build()
     {
         Release(); if (_disposed || !IsExpanded) return;
-        var value = Current;
+        var value = DecodedCurrent;
         var kind = _element is null ? JsonValueKind.Object : JsonValueKind.Array;
-        if (_jsonMode || value is { ValueKind: not JsonValueKind.Null } provided && provided.ValueKind != kind || _element is not null && value is { ValueKind: JsonValueKind.Array } array && array.GetArrayLength() > 200)
+        if (_jsonMode || value is { ValueKind: not JsonValueKind.Null } provided && provided.ValueKind != kind || value is { ValueKind: JsonValueKind.Array } array && array.GetArrayLength() > 200 || IsMap && value is { ValueKind: JsonValueKind.Object } map && map.EnumerateObject().Take(201).Count() > 200)
         { BuildJson(); return; }
         try
         {
-            if (_element is null) BuildObject(); else BuildArray();
+            using var snapshot = new ValueDocument(Context.Field, Current, _resolver);
+            if (snapshot.Root.Issue is not null) { BuildJson(); return; }
+            if (IsMap) BuildMap(); else if (_element is null) BuildObject(); else BuildArray();
+            if (Content is Control child) child.Margin = new(ChildIndent, ItemSpacing, 0, 0);
         }
-        catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException or TargetInvocationException)
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException)
         { Release(); BuildJson(); ToolTip.SetTip(this, error.InnerException?.Message ?? error.Message); }
     }
     private void BuildJson()
@@ -125,22 +147,12 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         };
         panel.Children.Add(button); Header = panel;
     }
-    private string HeaderText() => _element is null ? ObjectText ?? _type.Name : (ListText ?? _type.Name) + " · " + ArrayValues().Count;
+    private string HeaderText() => (Context.LabelOverride?.ToString() ?? TitleText ?? Context.Label.ToString() ?? Context.Field.Id) + (_element is not null ? " · " + ArrayValues().Count : IsMap ? " · " + MapValues().Count : "");
     private sealed record Member(FieldDescriptor Field, string Wire);
     private static IReadOnlyList<Member> Members(ValueDescriptor descriptor, Type type)
     {
-        var schema = (IReadOnlyList<FieldDescriptor>)type.GetProperty("Schema", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)!.GetValue(null)!;
-        var properties = descriptor.JsonOptions.GetTypeInfo(type).Properties;
-        return schema.Select(field =>
-        {
-            var member = type.GetProperties().Single(property => property.GetCustomAttribute<FieldAttribute>() is not null &&
-                (property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name)) == field.Id);
-            var wire = properties.Single(property => property.AttributeProvider is MemberInfo info && info.Name == member.Name).Name;
-            var options = new JsonSerializerOptions(descriptor.JsonOptions);
-            foreach (var converter in field.Value.JsonOptions.Converters.Reverse()) options.Converters.Insert(0, converter);
-            var child = new FieldDescriptor(field.Id, new(field.Value.ValueType, field.Value.AllowNull, field.Value.Constraints, options), field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic);
-            return new Member(child, wire);
-        }).ToArray();
+        using var document = new ValueDocument(new("structure", descriptor), null);
+        return document.Root.Structure.Members.Select(member => new Member(member.Field, member.WireName)).ToArray();
     }
     private void BuildObject()
     {
@@ -149,13 +161,13 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         var map = members.ToDictionary(member => member.Field.Id, member => member.Wire, StringComparer.Ordinal);
         var bindings = fields.ToDictionary(field => field.Id, field => Bind(field, map[field.Id], null), StringComparer.Ordinal);
         var generation = _generation;
-        var item = new DtoEditorItem(Context.Field.Id, _type, fields, field => bindings[field.Id], (patch, token) => CommitObject(patch.ToDictionary(pair => map[pair.Key], pair => pair.Value), generation, token));
+        var item = new DtoEditorItem(Context.Field.Id, Context.Field.Value.Structure?.SchemaType ?? _type, fields, field => bindings[field.Id], (patch, token) => CommitObject(patch.ToDictionary(pair => map[pair.Key], pair => pair.Value), generation, token));
         Content = new DtoEditorHost { Depth = Context.Depth + 1, Item = item, Registry = Context.Registry };
     }
     private void BuildArray()
     {
         var values = ArrayValues(); SetHeader(HeaderText());
-        var panel = new StackPanel { Spacing = 6 };
+        var panel = new StackPanel { Spacing = ItemSpacing };
         var generation = _generation;
         for (var index = 0; index < values.Count; index++)
         {
@@ -170,18 +182,73 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             {
                 if (!Available(generation)) return;
                 var items = ArrayValues();
-                using var copy = Context.Registry?.CopyValue?.Invoke(new(_element!, jsonOptions: Context.Field.Value.JsonOptions), items[position]) ?? new FieldCopy(items[position]);
-                items.Insert(position + 1, copy.Value);
-                await Submit(JsonSerializer.SerializeToElement(items), generation, CancellationToken.None);
+                var element = _shape.Element!;
+                var wrapped = element.Semantic != FieldValueSemantic.None;
+                var descriptor = wrapped ? new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Object([element])) : element.Value;
+                var source = wrapped ? JsonCodec.SerializeToElement(new Dictionary<string, JsonElement> { [element.Id] = items[position] }) : items[position];
+                using var copy = Context.Registry?.CopyValue?.Invoke(descriptor, source) ?? new FieldCopy(source);
+                items.Insert(position + 1, wrapped ? copy.Value.GetProperty(element.Id) : copy.Value);
+                await Submit(JsonCodec.SerializeToElement(items.ToArray()), generation, CancellationToken.None);
             }).IsEnabled = values.Count < 200;
             row.Children.Add(buttons);
-            var descriptor = new FieldDescriptor("element", new(_element!, jsonOptions: Context.Field.Value.JsonOptions), isRequired: true);
+            var descriptor = new FieldDescriptor(_shape.Element!.Id, _shape.Element.Value, isRequired: true, editor: _shape.Element.Editor, labelKey: _shape.Element.LabelKey, semantic: _shape.Element.Semantic, resourceTypeId: _shape.Element.ResourceTypeId);
             var binding = Bind(descriptor, null, position);
             row.Children.Add(new SchemaForm { ShowLabels = false, Depth = Context.Depth + 1, Schema = [descriptor], Registry = Context.Registry, Binding = _ => binding });
             panel.Children.Add(row);
         }
-        AddButton(panel, "add", () => ChangeArray(generation, list => list.Add(InitialValue(new(_element!, jsonOptions: Context.Field.Value.JsonOptions))))).IsEnabled = values.Count < 200;
+        AddButton(panel, "add", () => ChangeArray(generation, list => list.Add(InitialValue(_shape.Element!.Value)))).IsEnabled = values.Count < 200;
         Content = panel;
+    }
+    private Dictionary<string, JsonElement> MapValues() => DecodedCurrent is { ValueKind: JsonValueKind.Object } map
+        ? map.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal) : new(StringComparer.Ordinal);
+    private void BuildMap()
+    {
+        var values = MapValues(); SetHeader(HeaderText());
+        var panel = new StackPanel { Spacing = ItemSpacing }; var generation = _generation;
+        foreach (var pair in values)
+        {
+            var original = pair.Key;
+            var row = new StackPanel { Spacing = ItemSpacing };
+            var keys = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = ItemSpacing };
+            var key = new TextBox { Name = "MapKey", Text = original, Watermark = KeyText, MinWidth = 120 };
+            async Task Rename()
+            {
+                if (!Available(generation) || key.Text == original) return;
+                var candidate = MapValues(); var renamed = key.Text ?? "";
+                if (candidate.ContainsKey(renamed)) { Context.ReportIssue(new("structure.keyDuplicate", DuplicateKeyText)); return; }
+                if (!candidate.ContainsKey(original)) return;
+                var ordered = candidate.Select(item => new KeyValuePair<string, JsonElement>(item.Key == original ? renamed : item.Key, item.Value)).ToDictionary();
+                await Submit(JsonCodec.SerializeToElement(ordered), generation, CancellationToken.None);
+            }
+            key.KeyDown += async (_, args) =>
+            {
+                if (args.Key == global::Avalonia.Input.Key.Enter) { args.Handled = true; await Rename(); }
+                else if (args.Key == global::Avalonia.Input.Key.Escape) { key.Text = original; args.Handled = true; }
+            };
+            key.LostFocus += async (_, _) => await Rename();
+            keys.Children.Add(key);
+            AddButton(keys, "remove", async () =>
+            {
+                if (!Available(generation)) return;
+                var candidate = MapValues(); candidate.Remove(original);
+                await Submit(JsonCodec.SerializeToElement(candidate), generation, CancellationToken.None);
+            });
+            row.Children.Add(keys);
+            var descriptor = _shape.Element!;
+            row.Children.Add(new SchemaForm { Depth = Context.Depth + 1, ShowLabels = false, Schema = [descriptor], Registry = Context.Registry, Binding = _ => Bind(descriptor, original, null) });
+            panel.Children.Add(row);
+        }
+        var additions = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = ItemSpacing };
+        var input = new TextBox { Name = "MapNewKey", Watermark = KeyText, MinWidth = 120 }; additions.Children.Add(input);
+        AddButton(additions, "add", async () =>
+        {
+            if (!Available(generation)) return;
+            var candidate = MapValues(); var key = input.Text ?? "";
+            if (candidate.ContainsKey(key)) { Context.ReportIssue(new("structure.keyDuplicate", DuplicateKeyText)); return; }
+            candidate.Add(key, InitialValue(_shape.Element!.Value));
+            await Submit(JsonCodec.SerializeToElement(candidate), generation, CancellationToken.None);
+        }).IsEnabled = values.Count < 200;
+        panel.Children.Add(additions); Content = panel;
     }
     private Button AddButton(Panel panel, string kind, Func<Task> action)
     {
@@ -191,30 +258,40 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     }
     private void RefreshButtonText()
     { foreach (var (button, kind) in _buttons) button.Content = kind switch { "add" => AddText, "remove" => RemoveText, "up" => UpText, "copy" => CopyText, _ => DownText }; }
-    private List<JsonElement> ArrayValues() => Current is { ValueKind: JsonValueKind.Array } array ? array.EnumerateArray().Select(item => item.Clone()).ToList() : [];
+    private List<JsonElement> ArrayValues() => DecodedCurrent is { ValueKind: JsonValueKind.Array } array ? array.EnumerateArray().Select(item => item.Clone()).ToList() : [];
     private static JsonElement InitialValue(ValueDescriptor descriptor, int depth = 0)
     {
         var type = Nullable.GetUnderlyingType(descriptor.ValueType) ?? descriptor.ValueType;
-        if (depth >= 8) return JsonSerializer.SerializeToElement<object?>(null);
-        if (ElementType(type) is not null) return JsonSerializer.SerializeToElement(Array.Empty<object>());
-        if (typeof(IFieldDto).IsAssignableFrom(type))
-            return JsonSerializer.SerializeToElement(Members(descriptor, type).Where(member => member.Field.DefaultValue is not null || member.Field.IsRequired)
+        if (depth >= 8) return JsonCodec.SerializeToElement<object?>(null);
+        using var document = new ValueDocument(new("initial", descriptor), null);
+        var shape = document.Root.Structure;
+        if (shape.Kind == ValueStructureKind.Sequence) return JsonCodec.SerializeToElement(Array.Empty<JsonElement>());
+        if (shape.Kind == ValueStructureKind.Map) return JsonCodec.SerializeToElement(new Dictionary<string, JsonElement>());
+        if (shape.Kind == ValueStructureKind.Object)
+            return JsonCodec.SerializeToElement(Members(descriptor, type).Where(member => member.Field.DefaultValue is not null || member.Field.IsRequired)
                 .ToDictionary(member => member.Wire, member => member.Field.DefaultValue ?? InitialValue(member.Field.Value, depth + 1)));
-        return JsonSerializer.SerializeToElement(type == typeof(string) ? "" : type.IsEnum ? Enum.GetValues(type).GetValue(0) : type.IsValueType ? Activator.CreateInstance(type) : null, descriptor.ValueType, descriptor.JsonOptions);
+        return JsonCodec.SerializeToElement(type == typeof(string) ? "" : type.IsEnum ? Enum.ToObject(type, Enum.GetValuesAsUnderlyingType(type).GetValue(0)!) : type.IsValueType ? Activator.CreateInstance(type) : null, descriptor.ValueType, descriptor.JsonOptions);
     }
     private ChildBinding Bind(FieldDescriptor field, string? wire, int? index)
     { var binding = new ChildBinding(this, field, wire, index, _generation); _bindings.Add(binding); return binding; }
     private async Task<ValueIssue?> CommitObject(IReadOnlyDictionary<string, FieldValue> patch, int generation, CancellationToken token)
     {
         if (!Available(generation)) return Obsolete();
-        var values = Current is { ValueKind: JsonValueKind.Object } json ? json.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal) : new Dictionary<string, JsonElement>(StringComparer.Ordinal);
-        foreach (var (key, value) in patch) { if (value.Json is { } provided) values[key] = provided; else values.Remove(key); }
-        return await Submit(JsonSerializer.SerializeToElement(values), generation, token);
+        var candidate = Context.Value.Json;
+        foreach (var (key, value) in patch)
+        {
+            using var document = new ValueDocument(Context.Field, candidate, _resolver);
+            var changed = document.Patch([key], value.Json, token);
+            if (changed.Issue is not null) return changed.Issue;
+            candidate = changed.Value;
+        }
+        return candidate is { } result ? await Submit(result, generation, token, elementCommit: IsMap) : Obsolete();
     }
+
     private async Task ChangeArray(int generation, Action<List<JsonElement>> edit)
     {
         if (!Available(generation)) return;
-        var values = ArrayValues(); edit(values); await Submit(JsonSerializer.SerializeToElement(values), generation, CancellationToken.None);
+        var values = ArrayValues(); edit(values); await Submit(JsonCodec.SerializeToElement(values.ToArray()), generation, CancellationToken.None);
     }
     private Task Move(int index, int offset, int generation) => ChangeArray(generation, values => { var item = values[index]; values.RemoveAt(index); values.Insert(index + offset, item); });
     private bool Available(int generation) => !_disposed && IsExpanded && generation == _generation && Context.IsEnabled;
@@ -222,6 +299,8 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     private async Task<ValueIssue?> Submit(JsonElement json, int generation, CancellationToken token, bool elementCommit = false)
     {
         if (!Available(generation)) return Obsolete();
+        if (_shape.AllowsJsonString && Context.Value.Json is { ValueKind: JsonValueKind.String } && json.ValueKind != JsonValueKind.String)
+            json = JsonCodec.SerializeToElement(json.GetRawText());
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(token, _version.Token);
         _submitted = json.Clone(); _elementCommit = elementCommit;
         try { return await Context.CommitAsync(new(json), linked.Token) ? null : Context.Issue ?? Obsolete(); }
@@ -232,13 +311,17 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         public FieldDraftState? Draft => GetDraft();
         private FieldDraftState? GetDraft() => owner.Context.DraftState?.Child?.Invoke(field, wire ?? index!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture));
         public object? HostContext => owner.Context.HostContext;
+        public IReadOnlyList<string>? PropertySegments => [.. owner.Context.PropertySegments ?? [], wire ?? index!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)];
+        public object? Label => index is { } position ? "#" + (position + 1) : owner.IsMap ? wire : null;
+        public bool IsLabelLiteral => index is not null || owner.IsMap;
+        public bool CanReset => owner.Context.AllowsChildReset;
+        public bool IsVisible => owner.Context.IsVisible;
         public bool IsEnabled => owner.Available(generation);
         public FieldValue Read()
         {
-            var value = owner.Current;
-            if (wire is not null && value is { ValueKind: JsonValueKind.Object } obj && obj.TryGetProperty(wire, out var member)) return new(member);
-            if (index is { } position && value is { ValueKind: JsonValueKind.Array } array && position < array.GetArrayLength()) return new(array[position]);
-            return default;
+            using var document = new ValueDocument(owner.Context.Field, owner.Current, owner._resolver);
+            var property = document.FindProperty([wire ?? index!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)]);
+            return new(property?.Value);
         }
         public event EventHandler? Changed;
         public void Refresh() => Changed?.Invoke(this, EventArgs.Empty);
@@ -250,7 +333,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             if (wire is not null) return owner.CommitObject(new Dictionary<string, FieldValue> { [wire] = value }, generation, token);
             if (value.Json is not { } element) return Task.FromResult<ValueIssue?>(new("structure.element", "Array elements cannot be omitted; remove the element instead.", field.Id));
             var values = owner.ArrayValues(); values[index!.Value] = element;
-            return owner.Submit(JsonSerializer.SerializeToElement(values), generation, token, elementCommit: true);
+            return owner.Submit(JsonCodec.SerializeToElement(values.ToArray()), generation, token, elementCommit: true);
         }
     }
     private void Release()
@@ -261,6 +344,6 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     }
     public void Dispose()
     {
-        if (_disposed) return; _disposed = true; Context.PropertyChanged -= Changed; Release(); _version.Dispose();
+        if (_disposed) return; _disposed = true; Context.PropertyChanged -= Changed; Release(); _version.Dispose(); _resolver.Dispose();
     }
 }

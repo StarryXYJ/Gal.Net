@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.GameHost;
 using GalNet.Media.LibVlc;
@@ -14,29 +17,31 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Default Avalonia session adapter. Neutral GameSession owns command coordination.</summary>
-public partial class AvaloniaGameSession : ObservableObject, IGameSessionService, IPreparedGameSessionService, IFirstEmptySlotSession, IGameGallerySession, IAsyncDisposable
+public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, ISaveSlotNamingSession, IGameGallerySession, IAsyncDisposable
 {
     private readonly AvaloniaGameHostOptions _options;
     private readonly GamePageViewModel _gameplay;
     private readonly GamePage _page;
-    private readonly AvaloniaPlayerSettingsService _settings;
+    private readonly IAvaloniaPlayerSettings _settings;
     private readonly IPlayerLocalization _localization;
-    private readonly AvaloniaPlayerStartup _startup;
+    private readonly IPlayerStartup _startup;
     private readonly LibVlcRuntime _mediaRuntime;
-    private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
+    private readonly SaveSlotCollection _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
+    private AvaloniaProjectOptions _projectOptions = new();
     private AvaloniaGameResources? _visualResources;
     private PlayerSession? _saveSession;
     private IGalleryResourceResolver? _galleryResources;
     private readonly GameSession _session;
+    private IDisposable? _playerBinding;
     private readonly SemaphoreSlim _initialization = new(1, 1);
     private bool _disposed;
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
 
-    public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePageViewModel gameplay, GamePage page, AvaloniaPlayerSettingsService settings,
-        IPlayerLocalization localization, AvaloniaPlayerStartup startup, LibVlcRuntime mediaRuntime)
+    public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePageViewModel gameplay, GamePage page, IAvaloniaPlayerSettings settings,
+        IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime)
     {
         _options = options;
         GameTitle = options.GameTitle;
@@ -87,17 +92,20 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
         {
             var catalogs = _options.CreateContentCatalogs();
             var resources = await GameResourceScope.OpenAsync(gameDirectory,
-                catalogs.Resources, catalogs.Gallery, cancellationToken);
+                catalogs.Resources, catalogs.Gallery, _options.Content, cancellationToken);
+            AvaloniaProjectOptions projectOptions;
             profileDirectory ??= Path.Combine(resources.GameDirectory, ".galnet");
             PlayerSession? saveSession = null;
             AvaloniaGameResources? visuals = null;
             IGalleryResourceResolver? galleryResources = null;
             try
             {
+                projectOptions = _options.SelectProjectOptions(resources.Content.Configuration);
                 _options.ConfigureDecoders(resources.Assets);
                 visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
                     _options.SelectTexturePreloads, _options.SelectEffectPrograms, cancellationToken);
-                saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery, cancellationToken);
+                saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery,
+                    projectOptions.SaveSlotCount, cancellationToken);
                 galleryResources = await AssetGalleryResourceResolver.CreateAsync(resources.Assets,
                     resources.Content.Gallery, cancellationToken, resources.MediaFiles);
             }
@@ -113,6 +121,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             }
 
             _resources = resources;
+            _projectOptions = projectOptions;
             _visualResources = visuals;
             _saveSession = saveSession;
             _galleryResources = galleryResources;
@@ -133,11 +142,13 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
 
             await RefreshSlotsAsync(cancellationToken);
             if (!await _startup.InitializeAsync(saveSession.Variables,
-                    resources.Content.Settings.TargetLocale.Code, selectLanguage, cancellationToken))
+                    projectOptions.DefaultCulture, selectLanguage, cancellationToken))
                 throw new OperationCanceledException("Language selection was cancelled.", cancellationToken);
-            await _settings.AttachAsync(saveSession.Variables, saveSession.Settings, cancellationToken);
+            await _settings.AttachAsync(saveSession.Variables,
+                projectOptions.Audio, _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
+            _playerBinding = _options.AttachPlayer?.Invoke(new(saveSession, resources.Content, profileDirectory));
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";
@@ -159,6 +170,15 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
         await PrepareNewGameAsync(cancellationToken);
         await BeginPreparedGameAsync(cancellationToken);
     }
+
+    public async Task StartNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default)
+    {
+        await PrepareNewGameAsync(initialSaveVariables, cancellationToken);
+        await BeginPreparedGameAsync(cancellationToken);
+    }
+
+    public Task PrepareNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default) =>
+        _session.PrepareNewAsync(initialSaveVariables, cancellationToken);
 
     public async Task ContinueAsync(CancellationToken cancellationToken = default)
     {
@@ -184,40 +204,71 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             var saveSession = _saveSession;
             await _settings.FlushAsync();
             if (saveSession is not null) await saveSession.ClearAsync(token);
-            await OnUiAsync(() =>
+            await AvaloniaUiDispatcher.Instance.InvokeAsync(async () =>
             {
-                _gameplay.TextSpeed = saveSession?.Settings.TextSpeed ?? _gameplay.TextSpeed;
+                if (saveSession is not null)
+                    await _settings.AttachAsync(saveSession.Variables,
+                        _projectOptions.Audio,
+                        _options.ShowTrackAudioControls, token);
+                _gameplay.TextSpeed = _settings.TextSpeed;
                 _gameplay.IsNvlMode = false;
                 _gameplay.IsUiHidden = false;
                 _gameplay.StatusMessage = "Player state cleared. Restarting...";
             });
         }, cancellationToken);
 
+    public Func<byte[]?>? CaptureSavePreview { get; set; }
+
+    public bool CanRenameSlots => _saveSession?.CanRenameSlots == true;
+
+    public async Task<string> RenameSlotAsync(int slotIndex, string name, CancellationToken cancellationToken = default)
+    {
+        await _initialization.WaitAsync(cancellationToken);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            var player = _saveSession ?? throw new InvalidOperationException("The player session is not initialized.");
+            await player.RenameSlotAsync(slotIndex, name, cancellationToken);
+            var displayName = string.IsNullOrWhiteSpace(name) ? $"{_localization.GetString("SaveSlots.Slot").Value} {slotIndex + 1:D2}" : name.Trim();
+            await OnUiAsync(() =>
+            {
+                var index = _saveSlots.ToList().FindIndex(slot => slot.SlotIndex == slotIndex);
+                if (index >= 0) _saveSlots[index] = _saveSlots[index] with { Description = displayName };
+            });
+            return displayName;
+        }
+        finally { _initialization.Release(); }
+    }
+
     public async Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
+        var preview = CaptureSavePreview?.Invoke();
         await _session.WithSnapshotAsync(async (snapshot, token) =>
         {
-            await _saveSession!.SaveAsync(slotIndex, snapshot, token);
-            await RefreshSlotsAsync(token);
+            await _saveSession!.SaveAsync(slotIndex, snapshot, preview, token);
+            await RefreshSlotAsync(slotIndex, token);
             await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slotIndex}.");
             return true;
         }, cancellationToken);
     }
 
-    public Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default) =>
-        _session.WithSnapshotAsync(async (snapshot, token) =>
+    public Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default)
+    {
+        var preview = CaptureSavePreview?.Invoke();
+        return _session.WithSnapshotAsync(async (snapshot, token) =>
         {
             if (!IsPlaying || _saveSession is null)
                 throw new InvalidOperationException("No active game is available to save.");
             await _settings.FlushAsync();
-            var slot = await _saveSession.SaveFirstEmptyAsync(snapshot, token);
+            var slot = await _saveSession.SaveFirstEmptyAsync(snapshot, preview, token);
             if (slot is not null)
             {
-                await RefreshSlotsAsync(token);
+                await RefreshSlotAsync(slot.Value, token);
                 await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slot.Value + 1}.");
             }
             return slot;
         }, cancellationToken);
+    }
 
     public async Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default)
     {
@@ -245,6 +296,8 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             _gameplay.InteractionObserved -= OnInteractionObserved;
             await cleanup.RunAsync(() => _session.DisposeAsync());
             await cleanup.RunAsync(() => new(_settings.FlushAsync()));
+            await cleanup.RunAsync(() => ResourceCleanup.DisposeAsync(_playerBinding));
+            _playerBinding = null;
             var saves = _saveSession;
             _saveSession = null;
             GalleryResources = null;
@@ -286,6 +339,7 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
             _settings,
             _localization,
             _options,
+            _projectOptions.Audio,
             _mediaRuntime.Instance,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),
@@ -298,20 +352,60 @@ public partial class AvaloniaGameSession : ObservableObject, IGameSessionService
     {
         if (_saveSession is null) return;
         var slots = await _saveSession.ListSlotsAsync(cancellationToken);
+        var previews = new Dictionary<int, byte[]>();
+        foreach (var slot in slots)
+        {
+            if (slot.PreviewImage is not { } path) continue;
+            try { previews[slot.SlotIndex] = await File.ReadAllBytesAsync(path, cancellationToken); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
         await OnUiAsync(() =>
         {
-            _saveSlots.Clear();
-            foreach (var slot in slots)
-            {
-                _saveSlots.Add(new GameSaveSlot(
-                    slot.SlotIndex,
-                    slot.Timestamp,
-                    slot.IsCorrupt ? "Corrupt save" : slot.Timestamp == default ? "Empty" : "Saved game",
-                    slot.Timestamp == default && !slot.IsCorrupt,
-                    slot.IsCorrupt));
-            }
+            _saveSlots.ReplaceAll(slots.Select(slot => CreateSlot(slot, previews.GetValueOrDefault(slot.SlotIndex))));
             CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
         });
+    }
+
+    private GameSaveSlot CreateSlot(GalNet.Runtime.Persistence.SaveSlotInfo slot, byte[]? preview) => new(
+        slot.SlotIndex, slot.Timestamp,
+        slot.IsCorrupt ? _localization.GetString("SaveSlots.Corrupt").Value
+            : slot.Timestamp == default ? _localization.GetString("SaveSlots.Empty").Value
+            : string.IsNullOrWhiteSpace(slot.Description) ? $"{_localization.GetString("SaveSlots.Slot").Value} {slot.SlotIndex + 1:D2}" : slot.Description,
+        slot.Timestamp == default && !slot.IsCorrupt, slot.IsCorrupt)
+    { PreviewImage = preview };
+
+    private async Task RefreshSlotAsync(int slotIndex, CancellationToken cancellationToken)
+    {
+        var slot = await _saveSession!.GetSlotInfoAsync(slotIndex, cancellationToken);
+        if (slot is null) return;
+        byte[]? preview = null;
+        if (slot.PreviewImage is { } path)
+        {
+            try { preview = await File.ReadAllBytesAsync(path, cancellationToken); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+        await OnUiAsync(() =>
+        {
+            var index = _saveSlots.ToList().FindIndex(item => item.SlotIndex == slotIndex);
+            if (index >= 0) _saveSlots[index] = CreateSlot(slot, preview);
+            else _saveSlots.Add(CreateSlot(slot, preview));
+            CanContinue = _saveSlots.Any(item => !item.IsEmpty && !item.IsCorrupt);
+        });
+    }
+
+    private sealed class SaveSlotCollection : ObservableCollection<GameSaveSlot>
+    {
+        public void ReplaceAll(IEnumerable<GameSaveSlot> slots)
+        {
+            var next = slots.ToArray();
+            Items.Clear();
+            foreach (var slot in next) Items.Add(slot);
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
     }
 
     /// <summary>Runs a project-specific save action under the same command gate as normal saves and run replacement.</summary>

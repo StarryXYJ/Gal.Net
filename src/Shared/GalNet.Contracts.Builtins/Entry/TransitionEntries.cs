@@ -1,19 +1,19 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Contracts.Builtins;
 
 internal static class TransitionEntrySupport
 {
-    public static readonly JsonSerializerOptions TimelineJsonOptions = new()
+    public static readonly JsonSerializerOptions TimelineJsonOptions = BuiltinJson.CreateOptions(new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new JsonStringEnumConverter() }
-    };
-    private static readonly JsonSerializerOptions TransformJsonOptions = new() { PropertyNameCaseInsensitive = true };
+    }, stringEnums: true);
+    private static readonly JsonSerializerOptions TransformJsonOptions = BuiltinJson.CreateOptions(new() { PropertyNameCaseInsensitive = true });
 
     public static string Require(string? value, string name, string type) =>
         !string.IsNullOrWhiteSpace(value) ? value : throw new InvalidDataException($"Transition '{type}' requires '{name}'.");
@@ -36,8 +36,8 @@ internal static class TransitionEntrySupport
         try
         {
             var transform = value.ValueKind == JsonValueKind.String
-                ? JsonSerializer.Deserialize<LayerTransform>(value.GetString()!, TransformJsonOptions)
-                : value.Deserialize<LayerTransform>(TransformJsonOptions);
+                ? JsonCodec.Deserialize<LayerTransform>(value.GetString()!, TransformJsonOptions)
+                : JsonCodec.Deserialize<LayerTransform>(value, TransformJsonOptions);
             return transform is { ScaleX: > 0, ScaleY: > 0 } ? transform : throw new InvalidDataException();
         }
         catch (JsonException exception) { throw new InvalidDataException($"Transition '{type}' has invalid transform '{name}'.", exception); }
@@ -47,7 +47,7 @@ internal static class TransitionEntrySupport
     {
         return new PrimitiveEntry(
             BuiltinEntryIds.PlayTimeline,
-            ValueCodec.SerializeFields(new TimelineOptions { Timeline = JsonSerializer.SerializeToElement(timeline, TimelineJsonOptions) }, omitNullValues: true))
+            ValueCodec.SerializeFields(new TimelineOptions { Timeline = JsonCodec.SerializeToElement(timeline, TimelineJsonOptions) }, omitNullValues: true))
         {
             Condition = context.Condition,
             BatchId = batchId
@@ -89,13 +89,13 @@ internal static class CrossFadeTransition
     {
         Frame = 0,
         Type = BuiltinEntryIds.ShowLayer,
-        Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle), ["assetId"] = JsonSerializer.SerializeToElement(asset), ["transform"] = transform, ["z"] = JsonSerializer.SerializeToElement(z), ["opacity"] = JsonSerializer.SerializeToElement(opacity), ["displayMode"] = JsonSerializer.SerializeToElement(displayMode.ToString()) }
+        Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonCodec.SerializeToElement(handle), ["assetId"] = JsonCodec.SerializeToElement(asset), ["transform"] = transform, ["z"] = JsonCodec.SerializeToElement(z), ["opacity"] = JsonCodec.SerializeToElement(opacity), ["displayMode"] = JsonCodec.SerializeToElement(displayMode.ToString()) }
     };
     internal static TimelineEventDefinition HideLayer(string handle, int frame) => new()
     {
         Frame = frame,
         Type = BuiltinEntryIds.HideLayer,
-        Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonSerializer.SerializeToElement(handle) }
+        Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal) { ["handleId"] = JsonCodec.SerializeToElement(handle) }
     };
 }
 
@@ -125,7 +125,7 @@ internal static class SlideTransition
             Blocking = true,
             Skippable = true,
             Tracks = [Track(oldHandle, property, 0, -incomingX - incomingY, frames, AnimationBlendMode.Additive), Track(newHandle, property, incomingX != 0 ? initial.X : initial.Y, incomingX != 0 ? destination.X : destination.Y, frames, AnimationBlendMode.Replace)],
-            Events = [CrossFadeTransition.ShowLayer(newHandle, TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", BuiltinEntryIds.SlideTransition), JsonSerializer.SerializeToElement(initial, TransitionEntrySupport.TimelineJsonOptions), options.ToZ, 1, TransitionEntrySupport.DisplayMode(options.ToDisplayMode)), CrossFadeTransition.HideLayer(oldHandle, frames)]
+            Events = [CrossFadeTransition.ShowLayer(newHandle, TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", BuiltinEntryIds.SlideTransition), JsonCodec.SerializeToElement(initial, TransitionEntrySupport.TimelineJsonOptions), options.ToZ, 1, TransitionEntrySupport.DisplayMode(options.ToDisplayMode)), CrossFadeTransition.HideLayer(oldHandle, frames)]
         };
         return [TransitionEntrySupport.TimelineEntry(context, timeline, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];
     }
@@ -157,7 +157,7 @@ internal static class BlindsTransition
         if (!string.Equals(orientation, "Vertical", StringComparison.OrdinalIgnoreCase) && !string.Equals(orientation, "Horizontal", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException($"Transition '{BuiltinEntryIds.BlindsTransition}' has an unknown orientation.");
         var mask = $"{context.SourceEntryId}:blinds-mask";
-        var maskParameters = JsonSerializer.SerializeToElement(new { bladeCount, orientation }, TransitionEntrySupport.TimelineJsonOptions);
+        var maskParameters = JsonCodec.SerializeToElement(new { bladeCount, orientation }, TransitionEntrySupport.TimelineJsonOptions);
         var timeline = new TimelineDefinition
         {
             PlaybackHandleId = playback,
@@ -191,9 +191,9 @@ internal static class BlindsTransition
         Type = BuiltinEntryIds.ApplyEffect,
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
         {
-            ["program"] = JsonSerializer.SerializeToElement(program),
-            ["instanceId"] = JsonSerializer.SerializeToElement(instanceId),
-            ["targetHandleId"] = JsonSerializer.SerializeToElement(targetHandleId),
+            ["program"] = JsonCodec.SerializeToElement(program),
+            ["instanceId"] = JsonCodec.SerializeToElement(instanceId),
+            ["targetHandleId"] = JsonCodec.SerializeToElement(targetHandleId),
             ["parameters"] = parameters
         }
     };
@@ -204,7 +204,7 @@ internal static class BlindsTransition
         Type = BuiltinEntryIds.StopEffect,
         Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
         {
-            ["instanceId"] = JsonSerializer.SerializeToElement(instanceId)
+            ["instanceId"] = JsonCodec.SerializeToElement(instanceId)
         }
     };
 }
@@ -235,10 +235,10 @@ internal static class ColorFieldTransition
             Skippable = true,
             Tracks = [new TimelineTrackDefinition { HandleId = overlay, Property = "opacity", Keys = keys }],
             Events = [new() { Frame = 0, Type = BuiltinEntryIds.ShowColorLayer, Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
-            { ["handleId"] = JsonSerializer.SerializeToElement(overlay), ["color"] = JsonSerializer.SerializeToElement(color), ["transform"] = JsonSerializer.SerializeToElement(new { }), ["z"] = JsonSerializer.SerializeToElement(options.OverlayZ), ["opacity"] = JsonSerializer.SerializeToElement(0f) } },
+            { ["handleId"] = JsonCodec.SerializeToElement(overlay), ["color"] = JsonCodec.SerializeToElement(color), ["transform"] = JsonCodec.SerializeToElement(new { }), ["z"] = JsonCodec.SerializeToElement(options.OverlayZ), ["opacity"] = JsonCodec.SerializeToElement(0f) } },
             CrossFadeTransition.HideLayer(oldHandle, swapFrame),
             new() { Frame = swapFrame, Type = BuiltinEntryIds.ShowLayer, Parameters = new Dictionary<string, JsonElement>(StringComparer.Ordinal)
-            { ["handleId"] = JsonSerializer.SerializeToElement(newHandle), ["assetId"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", type)), ["transform"] = TransitionEntrySupport.Json(options.ToTransform, "toTransform", type), ["z"] = JsonSerializer.SerializeToElement(options.ToZ), ["opacity"] = JsonSerializer.SerializeToElement(1f), ["displayMode"] = JsonSerializer.SerializeToElement(TransitionEntrySupport.DisplayMode(options.ToDisplayMode).ToString()) } },
+            { ["handleId"] = JsonCodec.SerializeToElement(newHandle), ["assetId"] = JsonCodec.SerializeToElement(TransitionEntrySupport.Require(options.ToAssetId, "toAssetId", type)), ["transform"] = TransitionEntrySupport.Json(options.ToTransform, "toTransform", type), ["z"] = JsonCodec.SerializeToElement(options.ToZ), ["opacity"] = JsonCodec.SerializeToElement(1f), ["displayMode"] = JsonCodec.SerializeToElement(TransitionEntrySupport.DisplayMode(options.ToDisplayMode).ToString()) } },
             CrossFadeTransition.HideLayer(overlay, duration)]
         };
         return [TransitionEntrySupport.TimelineEntry(context, timeline, TransitionEntrySupport.NullIfWhiteSpace(options.BatchId))];

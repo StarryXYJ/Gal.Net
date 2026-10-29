@@ -1,12 +1,13 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Sample.Avalonia.Services;
 
 namespace GalNet.Sample.Avalonia.ViewModels;
 
 /// <summary>Owns the first-run selection; language sources must be loaded before choosing.</summary>
-public sealed partial class LanguageSelectionViewModel(SampleLocalizationService localization) : ObservableObject
+public sealed partial class LanguageSelectionViewModel(IPlayerLocalization localization) : ObservableObject
 {
     private TaskCompletionSource<string?>? _selection;
 
@@ -43,6 +44,11 @@ public sealed partial class LanguageSelectionViewModel(SampleLocalizationService
         }
     }
 
+    partial void OnSelectedLanguageChanged(SettingOption? value)
+    {
+        if (value is not null) localization.ApplyCulture(value.Value);
+    }
+
     private bool CanConfirm() => _selection is { Task.IsCompleted: false } && SelectedLanguage is not null;
 
     [RelayCommand(CanExecute = nameof(CanConfirm))]
@@ -52,6 +58,4 @@ public sealed partial class LanguageSelectionViewModel(SampleLocalizationService
             _selection!.TrySetResult(SelectedLanguage!.Value);
     }
 
-    [RelayCommand]
-    private void Cancel() => _selection?.TrySetResult(null);
 }

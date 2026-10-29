@@ -2,8 +2,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
 using GalNet.Debugging;
 using GalNet.Editor.Shared.Services;
@@ -132,7 +133,7 @@ public sealed class ImageVariantsNativeSampleTests
             app.Refresh();
             TestContext.Out.WriteLine(JsonSerializer.Serialize(new
             { nativeWorkingSetBytes = app.WorkingSet64, nativePrivateBytes = app.PrivateMemorySize64, nativePeakWorkingSetBytes = app.PeakWorkingSet64 }));
-            app.CloseMainWindow();
+            NativeSampleWindow.Close(app);
             await app.WaitForExitAsync(timeout.Token).WaitAsync(TimeSpan.FromSeconds(10));
             Assert.That(app.ExitCode, Is.Zero, await stderr);
             TestContext.Out.WriteLine(await stdout);
@@ -141,7 +142,11 @@ public sealed class ImageVariantsNativeSampleTests
         {
             if (Directory.Exists(root))
                 foreach (var log in Directory.GetFiles(root, "game-*.log", SearchOption.AllDirectories))
-                    TestContext.Out.WriteLine(await File.ReadAllTextAsync(log));
+                {
+                    await using var stream = new FileStream(log, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                    using var reader = new StreamReader(stream);
+                    TestContext.Out.WriteLine(await reader.ReadToEndAsync());
+                }
             throw;
         }
         finally

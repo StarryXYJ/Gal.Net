@@ -1,13 +1,14 @@
 using GalNet.Assets.Provider;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
-using GalNet.Runtime.Content;
+using GalNet.GameHost.Content;
 
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>Resolved game input: a development directory or a verified installed package directory.</summary>
 public sealed class GameInstallation
 {
+    private readonly Dictionary<IResourceTypeCatalog, Lazy<InstalledPackageSet>> _packageSets = new(ReferenceEqualityComparer.Instance);
     private GameInstallation(string rootDirectory, bool isPackaged)
     {
         RootDirectory = rootDirectory;
@@ -30,28 +31,37 @@ public sealed class GameInstallation
         }
 
         if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"Game directory was not found: {fullPath}");
-        return new GameInstallation(fullPath, Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
+        return new GameInstallation(fullPath, File.Exists(Path.Combine(fullPath, GalNet.Assets.PackedGameDocuments.GameFileName))
+            || Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
     }
 
-    public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes) => IsPackaged
-        ? new InstalledGameContentProvider(RootDirectory, resourceTypes, galleryTypes)
-        : new ProjectGameContentProvider(RootDirectory, resourceTypes, galleryTypes);
+    public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, GameContentLoadOptions? options = null) => IsPackaged
+        ? new InstalledGameContentProvider(RootDirectory, resourceTypes, galleryTypes, options, () => Packages(resourceTypes))
+        : new ProjectGameContentProvider(RootDirectory, resourceTypes, galleryTypes, options);
 
-    /// <summary>Returns every resource PAK in descending relative-path priority, or the source directory.</summary>
+    /// <summary>Returns the session's verified base/story PAK selection, or development resources.</summary>
     public IReadOnlyList<IAssetProvider> CreateAssetProviders(IResourceTypeCatalog resourceTypes)
     {
         ArgumentNullException.ThrowIfNull(resourceTypes);
         var assetsDirectory = Path.Combine(RootDirectory, "Assets");
-        if (!IsPackaged) return [new LocalFileProvider(assetsDirectory, resourceTypes, optional: true)];
+        if (!IsPackaged) return [new CompiledStoryAssetProvider(RootDirectory), new LocalFileProvider(assetsDirectory, resourceTypes, optional: true)];
 
-        var providers = new List<IAssetProvider>();
-        var resourcePaksDirectory = Path.Combine(assetsDirectory, "Paks");
-        if (Directory.Exists(resourcePaksDirectory))
+        return Packages(resourceTypes).CreateProviders();
+    }
+
+    internal static IReadOnlyList<IAssetProvider> CreateInstalledAssetProviders(string rootDirectory, IResourceTypeCatalog resourceTypes)
+    {
+        return InstalledPackageSet.Load(rootDirectory, resourceTypes).CreateProviders();
+    }
+
+    private InstalledPackageSet Packages(IResourceTypeCatalog types)
+    {
+        Lazy<InstalledPackageSet> value;
+        lock (_packageSets)
         {
-            foreach (var pakPath in Directory.EnumerateFiles(resourcePaksDirectory, "*.pak", SearchOption.AllDirectories)
-                         .OrderByDescending(path => Path.GetRelativePath(resourcePaksDirectory, path), StringComparer.OrdinalIgnoreCase))
-                providers.Add(new PakFileProvider(pakPath, "assets", resourceTypes));
+            if (!_packageSets.TryGetValue(types, out value!))
+                _packageSets.Add(types, value = new(() => InstalledPackageSet.Load(RootDirectory, types)));
         }
-        return providers;
+        return value.Value;
     }
 }

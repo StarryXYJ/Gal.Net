@@ -8,6 +8,36 @@ namespace GeneralTest.Entry;
 
 public class FieldDescriptorTests
 {
+    [TestCase(".3", "0.3")]
+    [TestCase(".22", "0.22")]
+    [TestCase("-.22", "-0.22")]
+    [TestCase(" .3e-2 ", "0.003")]
+    public void FractionalEditorShorthandIsTypedAndDoesNotRelaxJson(string input, string expected)
+    {
+        foreach (var type in new[] { typeof(float), typeof(double), typeof(decimal), typeof(float?) })
+            Assert.That(ValueCodec.FromEditorText(new(type), input).GetDecimal(), Is.EqualTo(decimal.Parse(expected, System.Globalization.CultureInfo.InvariantCulture)));
+        Assert.That(ValueCodec.FromEditorText(new(typeof(string)), input).GetString(), Is.EqualTo(input));
+        Assert.That(() => ValueCodec.ParseEditorText(new(typeof(int)), input), Throws.InstanceOf<JsonException>());
+        Assert.That(() => JsonDocument.Parse(input), Throws.InstanceOf<JsonException>());
+    }
+
+    [TestCase("-", true)]
+    [TestCase(".", true)]
+    [TestCase("-.", true)]
+    [TestCase("1.", true)]
+    [TestCase("-1.", true)]
+    [TestCase("1e-", true)]
+    [TestCase(".3e+", true)]
+    [TestCase("hello", false)]
+    [TestCase(".3", false)]
+    [TestCase("1e--", false)]
+    public void NumericPrefixesAreOnlyTransientInput(string input, bool incomplete)
+    {
+        Assert.That(ValueCodec.IsIncompleteEditorNumber(new(typeof(float)), input), Is.EqualTo(incomplete));
+        Assert.That(ValueCodec.IsIncompleteEditorNumber(new(typeof(string)), input), Is.False);
+        if (incomplete) Assert.That(() => ValueCodec.FromEditorText(new(typeof(float)), input), Throws.InstanceOf<JsonException>());
+    }
+
     private static readonly string[] ExpectedFieldIds = ["z", "a"];
     [Test]
     public void EntryFieldsRetainInputOrderAndCannotBeEditedAfterConstruction()
@@ -31,21 +61,6 @@ public class FieldDescriptorTests
         Assert.That(field.IsRequired, Is.True);
         Assert.That(field.Editor!.EditorId, Is.EqualTo("custom.color"));
         Assert.Throws<ArgumentException>(() => new FieldDescriptor("int", new(typeof(int)), defaultValue: field.DefaultValue));
-    }
-
-    [Test]
-    public void BuiltinEditorHintsAreSeparateFromLegalOptionsAndPreserveLegacyEditorTypes()
-    {
-        var types = Enum.GetValues<EntryParameterType>();
-        var parameters = EntrySchema.DynamicParameters(types.ToDictionary(type => type.ToString(), type => type),
-            options: EntrySchema.Options(("Select", ["first", "second"])));
-        foreach (var type in types)
-        {
-            Assert.That(EntrySchema.GetEditorType(parameters[type.ToString()]), Is.EqualTo(type));
-            Assert.That(parameters[type.ToString()].TryGetConstraint("editorType", out _), Is.False);
-        }
-        Assert.That(parameters["Select"].Editor!.EditorId, Is.EqualTo(ValueEditorIds.Choice));
-        Assert.Throws<ArgumentException>(() => parameters["Select"].Validate(JsonSerializer.SerializeToElement("other")));
     }
 
     [Test]

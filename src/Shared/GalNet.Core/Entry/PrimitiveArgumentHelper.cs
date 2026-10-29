@@ -1,5 +1,7 @@
 using System.Text.Json;
+using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Entry;
 
@@ -7,6 +9,17 @@ namespace GalNet.Core.Entry;
 public static class PrimitiveArgumentHelper
 {
     public static JsonElement Normalize(DynamicParameterTable parameters, JsonElement arguments)
+        => NormalizeCore(parameters, arguments, null);
+
+    /// <summary>Validates once and writes decoded fields into a fresh invocation DTO, including independent defaults.</summary>
+    public static (JsonElement Arguments, T Options) NormalizeFields<T>(DynamicParameterTable parameters, JsonElement arguments)
+        where T : IFieldDto, new()
+    {
+        var options = new T();
+        return (NormalizeCore(parameters, arguments, options), options);
+    }
+
+    private static JsonElement NormalizeCore(DynamicParameterTable parameters, JsonElement arguments, IFieldDto? options)
     {
         ArgumentNullException.ThrowIfNull(parameters);
         if (arguments.ValueKind != JsonValueKind.Object)
@@ -17,7 +30,8 @@ public static class PrimitiveArgumentHelper
         {
             if (!parameters.TryGetValue(property.Name, out var parameter))
                 throw new InvalidDataException($"Unknown primitive parameter '{property.Name}'.");
-            Validate(parameter, property.Value);
+            var decoded = Read(parameter, property.Value);
+            options?.WriteField(parameter.Name, decoded);
             normalized.Add(property.Name, property.Value.Clone());
         }
 
@@ -28,14 +42,17 @@ public static class PrimitiveArgumentHelper
             try
             {
                 if (parameter.DefaultValue is { } defaultValue)
+                {
                     normalized.Add(parameter.Name, defaultValue);
+                    if (options is not null) options.WriteField(parameter.Name, Read(parameter, defaultValue));
+                }
                 else if (parameter.IsRequired)
                     throw new ArgumentException($"Primitive requires parameter '{parameter.Name}'.");
             }
             catch (ArgumentException exception) { throw new InvalidDataException(exception.Message, exception); }
         }
 
-        var result = JsonSerializer.SerializeToElement(normalized);
+        var result = JsonCodec.SerializeToElement(normalized);
         parameters.ValidateArguments(result);
         return result;
     }
@@ -60,18 +77,17 @@ public static class PrimitiveArgumentHelper
             }
             values.Add(property.Name, property.Value.Clone());
         }
-        return (JsonSerializer.SerializeToElement(values), batchId);
+        return (JsonCodec.SerializeToElement(values), batchId);
     }
 
-    private static void Validate(DynamicParameterDescriptor parameter, JsonElement value)
+    private static object? Read(DynamicParameterDescriptor parameter, JsonElement value)
     {
         try
         {
-            parameter.Validate(value);
+            var decoded = ValueValidation.Read(parameter.Value, value, out var issue);
+            if (issue is not null) throw new InvalidDataException($"Parameter '{parameter.Name}': {issue.Message}");
+            return decoded;
         }
-        catch (ArgumentException exception)
-        {
-            throw new InvalidDataException(exception.Message, exception);
-        }
+        catch (ArgumentException exception) { throw new InvalidDataException(exception.Message, exception); }
     }
 }

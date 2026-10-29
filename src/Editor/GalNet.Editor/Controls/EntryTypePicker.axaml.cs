@@ -18,7 +18,6 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Controls;
 
@@ -28,6 +27,13 @@ public sealed class EntryTypeConfirmedEventArgs(string type) : EventArgs { publi
 
 public partial class EntryTypePicker : UserControl
 {
+    public static readonly DirectProperty<EntryTypePicker, bool> IsButtonModeProperty =
+        AvaloniaProperty.RegisterDirect<EntryTypePicker, bool>(nameof(IsButtonMode), picker => picker.IsButtonMode);
+    public static readonly StyledProperty<string?> ButtonLabelProperty =
+        AvaloniaProperty.Register<EntryTypePicker, string?>(nameof(ButtonLabel));
+    public string? ButtonLabel { get => GetValue(ButtonLabelProperty); set => SetValue(ButtonLabelProperty, value); }
+    public bool IsButtonMode => ButtonLabel is not null;
+
     public static readonly StyledProperty<IEnumerable?> OptionsProperty =
         AvaloniaProperty.Register<EntryTypePicker, IEnumerable?>(nameof(Options));
     public static readonly StyledProperty<string> SelectedValueProperty =
@@ -71,7 +77,9 @@ public partial class EntryTypePicker : UserControl
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
-        if (change.Property == ShortcutServiceProperty)
+        if (change.Property == ButtonLabelProperty)
+            RaisePropertyChanged(IsButtonModeProperty, change.OldValue is not null, change.NewValue is not null);
+        else if (change.Property == ShortcutServiceProperty)
         {
             SubscribeToShortcuts(change.NewValue as EditorShortcutService);
             RebuildCategories();

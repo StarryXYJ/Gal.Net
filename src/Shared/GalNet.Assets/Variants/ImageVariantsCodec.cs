@@ -1,7 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
-using GalNet.Core.Variants;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Assets.Variants;
 
@@ -9,23 +10,23 @@ namespace GalNet.Assets.Variants;
 public static class ImageVariantsCodec
 {
     public const string ResourceType = "image-variants";
-    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions Options = JsonMetadata.CreateOptions(new(JsonSerializerDefaults.Web)
     {
         UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
+        AllowDuplicateProperties = false,
         PropertyNameCaseInsensitive = false
-    };
+    }, AssetsJsonContext.Default);
 
     public static ImageVariantsSource ReadSource(ReadOnlyMemory<byte> data)
     {
-        RejectDuplicateProperties(data);
-        return JsonSerializer.Deserialize<ImageVariantsSource>(data.Span, Options)
+        return JsonCodec.Deserialize<ImageVariantsSource>(data.Span, Options)
             ?? throw new InvalidDataException("Image variants source must be an object.");
     }
 
     public static byte[] Encode(ImageVariantsDefinition definition)
     {
         ArgumentNullException.ThrowIfNull(definition);
-        return JsonSerializer.SerializeToUtf8Bytes(new Payload
+        return JsonCodec.SerializeToUtf8Bytes(new Payload
         {
             Kind = "image-variants",
             Version = 1,
@@ -37,12 +38,14 @@ public static class ImageVariantsCodec
 
     public static ImageVariantsDefinition Decode(ReadOnlyMemory<byte> data)
     {
-        RejectDuplicateProperties(data);
-        var payload = JsonSerializer.Deserialize<Payload>(data.Span, Options);
+        var payload = JsonCodec.Deserialize<Payload>(data.Span, Options);
         if (payload is not { Kind: "image-variants", Version: 1, Dimensions: not null, Variants: not null })
             throw new InvalidDataException("Unsupported compiled image variants payload.");
         if (payload.Variants.Any(item => item is null || string.IsNullOrEmpty(item.Key)))
             throw new InvalidDataException("Compiled variants require exact keys.");
+        // Compiled payloads contain the full inferred structure; only author sources infer missing names.
+        if (payload.Dimensions.Count != payload.Variants.Select(item => item.Key.Split('_').Length).DefaultIfEmpty(0).Max())
+            throw new InvalidDataException("Compiled dimensions must match the variant positions.");
         var result = ImageVariantsBuilder.Build(new ImageVariantsSource
         {
             Folder = ".",
@@ -55,27 +58,7 @@ public static class ImageVariantsCodec
     internal static ImageVariantsDefinition RequireDefinition(ImageVariantsBuildResult result) => result.Definition
         ?? throw new InvalidDataException(string.Join("; ", result.Diagnostics.Select(item => $"{item.Path} [{item.Code}]: {item.Message}")));
 
-    private static void RejectDuplicateProperties(ReadOnlyMemory<byte> data)
-    {
-        using var document = JsonDocument.Parse(data);
-        Check(document.RootElement);
-        static void Check(JsonElement element)
-        {
-            if (element.ValueKind == JsonValueKind.Object)
-            {
-                var names = new HashSet<string>(StringComparer.Ordinal);
-                foreach (var property in element.EnumerateObject())
-                {
-                    if (!names.Add(property.Name)) throw new InvalidDataException($"Duplicate image variants property '{property.Name}'.");
-                    Check(property.Value);
-                }
-            }
-            else if (element.ValueKind == JsonValueKind.Array)
-                foreach (var item in element.EnumerateArray()) Check(item);
-        }
-    }
-
-    private sealed class Payload
+    internal sealed class Payload
     {
         public string Kind { get; set; } = "";
         public int Version { get; set; }
@@ -84,7 +67,7 @@ public static class ImageVariantsCodec
         public List<Variant>? Variants { get; set; }
     }
 
-    private sealed class Variant
+    internal sealed class Variant
     {
         public string Key { get; set; } = "";
         public string AssetId { get; set; } = "";

@@ -29,12 +29,16 @@ public partial class MainWindow : UrsaWindow
         _navigation.CurrentPageChanged += OnCurrentPageChanged;
         Closed += OnClosed;
         Closing += OnClosing;
+#if BENCHMARK
+        Opened += (_, _) => GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.Window.Opened");
+        Loaded += (_, _) => GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.Window.Loaded");
+#endif
 
-        Loaded += (_, _) =>
-        {
-            Log.Information("=== GalNet Editor starting ===");
-            _navigation.NavigateTo<StartupPageViewModel>();
-        };
+        Log.Information("=== GalNet Editor starting ===");
+#if BENCHMARK
+        using var startupMeasurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.NavigateStartup");
+#endif
+        _navigation.NavigateTo<StartupPageViewModel>();
     }
 
     public void ShowSuccessToast(string message) =>

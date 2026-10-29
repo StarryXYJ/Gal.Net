@@ -1,8 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using GalNet.Core.Audio;
+using GalNet.Contracts.Builtins.Audio;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
 
 namespace GalNet.Contracts.Builtins;
 
@@ -10,9 +10,9 @@ namespace GalNet.Contracts.Builtins;
 public partial class LayerShowOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
-    [Common, Field(1, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
-    [Field(2, EditorId = ValueEditorIds.Json)] public JsonElement Flipbook { get; set; }
-    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? AssetId { get; set; }
+    [Field(2, EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.FlipbookDefinition), StructureIgnoresCase = true, StructureUsesFieldIds = true)] public JsonElement Flipbook { get; set; }
+    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
@@ -24,7 +24,7 @@ public partial class LayerColorOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Color { get; set; }
-    [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(3, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 1000;
     [Field(4, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
 }
@@ -33,7 +33,7 @@ public partial class LayerColorOptions
 public partial class LayerMoveOptions
 {
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
-    [Field(1, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(1, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Common, Field(3, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public float Duration { get; set; } = 0.5f;
 }
@@ -43,7 +43,7 @@ public partial class AnimationOptions
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
-    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AnimationPropertyValueConverter))]
+    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice)]
     [Common]
     public string? Property { get; set; }
     [Common, Field(3, EditorId = ValueEditorIds.Numeric)] public float From { get; set; }
@@ -62,17 +62,6 @@ public partial class AnimationOptions
     public AnimationBlendMode? BlendMode { get; set; } = AnimationBlendMode.Replace;
 }
 
-public sealed class AnimationPropertyValueConverter : JsonConverter<string>, IStringValueEncoding
-{
-    public IReadOnlyList<string> Choices { get; } = Array.AsReadOnly(Layer.AnimationProperties
-        .Concat(ParticleEmitterInstance.AnimationProperties)
-        // Shader effect properties come from program metadata, so the compiler cannot enumerate
-        // them here. Keep the common Shadertoy time property authorable.
-        .Select(property => property.Name).Append("time").Distinct(StringComparer.Ordinal).ToArray());
-    public override string? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) => reader.GetString();
-    public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) => writer.WriteStringValue(value);
-}
-
 [GenerateFieldSchema]
 public partial class TimelineOptions
 {
@@ -83,36 +72,56 @@ public partial class TimelineOptions
 [GenerateFieldSchema]
 public partial class AudioPlayOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "bgm";
-    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
+    public AudioPlayOptions() => TrackId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset", ResourceTypeId = "audio")] public string? Asset { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
     [Field(3, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioPlacementValueConverter))]
     public AudioPlacement? Placement { get; set; } = AudioPlacement.Enqueue;
     [Field(4, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public float FadeIn { get; set; } = 0;
     [Field(5, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? AutoBlocking { get; set; } = false;
+    [Field(6, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public int LoopCount { get; set; } = 1;
+    [Field(7, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioCompletionValueConverter))]
+    public AudioCompletion Completion { get; set; } = AudioCompletion.Discard;
+    [Field(8, Minimum = 0, EditorId = ValueEditorIds.Numeric)] public float FadeOut { get; set; } = 0;
 }
 
 public sealed class AudioPlacementValueConverter() : StringEnumValueConverter<AudioPlacement>(JsonNamingPolicy.CamelCase);
+public sealed class AudioCompletionValueConverter() : StringEnumValueConverter<AudioCompletion>(JsonNamingPolicy.CamelCase);
 
 [GenerateFieldSchema]
 public partial class AudioSEffectOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "bgm";
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
-    [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; }
-    [Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
+    public AudioSEffectOptions() => TargetId = "";
+    [Common, Field(1, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
+    [Field(4, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice)] public string? Id { get; set; }
+    [Common, Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
+    [Common, Field(0, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
+}
+
+public sealed class AudioTargetScopeValueConverter() : StringEnumValueConverter<SEffectScope>(JsonNamingPolicy.CamelCase);
+
+[GenerateFieldSchema]
+public partial class AudioLevelOptions
+{
+    public AudioLevelOptions() => TargetId = "";
+    [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; }
+    [Field(1, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public SEffectScope Scope { get; set; } = SEffectScope.Track;
+    [Field(2, Minimum = 0, Maximum = 1, EditorId = ValueEditorIds.Slider, Step = .01)] public float Gain { get; set; } = 1;
+    [Field(3, EditorId = ValueEditorIds.Choice)] public bool Muted { get; set; }
 }
 
 [GenerateFieldSchema]
 public partial class VideoPlayOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = "entry.videoasset")] public string? Asset { get; set; }
+    [Common, Field(0, AllowNull = true, EditorId = "entry.videoasset", ResourceTypeId = "video")] public string? Asset { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; } = "video";
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringBooleanValueConverter))]
     public bool? Blocking { get; set; } = true;
     [Field(3, DefaultJson = "[]", EditorId = ValueEditorIds.Json)] public JsonElement SkipPoints { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(6, EditorId = ValueEditorIds.Numeric)] public float Opacity { get; set; } = 1;
     [Field(7, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
@@ -122,7 +131,7 @@ public partial class VideoPlayOptions
 [GenerateFieldSchema]
 public partial class EffectApplyOptions
 {
-    [Common, Field(0, AllowNull = true, EditorId = "entry.effectprogramasset")] public string? Program { get; set; } = "";
+    [Common, Field(0, AllowNull = true, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string? Program { get; set; } = "";
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; } = "";
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
     [Common, Field(3, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TargetHandleId { get; set; } = "";

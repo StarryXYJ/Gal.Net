@@ -1,3 +1,9 @@
 {
+  "group.ending.entry.visual-intro.content": "The default visual library is next: editable project shaders and compiled performance presets.",
+  "group.ending.entry.visual-grade.content": "Bloom, vignette and warm color grading can be combined, then stopped independently.",
+  "group.ending.entry.visual-depth.content": "Layer Z depth of field: the portrait at Z=10 is sharp and the background at Z=0 is blurred.",
+  "group.ending.entry.visual-focus.content": "The focus moved to Z=0: the background is now sharp and the portrait is blurred.",
+  "group.ending.entry.visual-impact.content": "Jump, nod, character shake, animated radial and directional lines, then a combined impact. Every temporary overlay is cleaned up.",
+  "group.ending.entry.visual-transitions.content": "A directional soft wipe, two-pass blur crossfade, and image-mask dissolve. This example uses the brightness of an ordinary project image as the mask.",
   "group.ending.entry.line.content": "Runtime smoke test complete."
 }

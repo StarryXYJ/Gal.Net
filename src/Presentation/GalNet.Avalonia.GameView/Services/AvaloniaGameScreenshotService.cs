@@ -21,13 +21,13 @@ public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageV
         var viewModel = new ScreenshotDialogViewModel(
             directory,
             fileName,
-            request.CapturePngAsync,
+            request.CapturePreviewPngAsync ?? request.CapturePngAsync,
             async (targetDirectory, targetFileName, includeUi) =>
             {
                 try
                 {
                     if (string.IsNullOrWhiteSpace(targetFileName))
-                        return "Enter a file name.";
+                        return ScreenshotDialogViewModel.Text("Screenshot.FileNameRequired", "Enter a file name.");
 
                     if (!targetFileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                         targetFileName += ".png";
@@ -40,7 +40,7 @@ public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageV
                 }
                 catch (Exception exception)
                 {
-                    return $"Could not save screenshot: {exception.Message}";
+                    return $"{ScreenshotDialogViewModel.Text("Screenshot.SaveFailed", "Could not save screenshot.")} {exception.Message}";
                 }
             });
 

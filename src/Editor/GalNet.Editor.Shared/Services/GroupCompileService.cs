@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Editor.Abstraction.Commands;
 
@@ -28,11 +29,10 @@ public sealed class GroupCompileService(string projectDirectory)
             { diagnostics.Add(new("contract.load", "error", exception.Message, "Contracts/" + ProjectSchemaContext.AssemblyFileName)); return Result(null, diagnostics); }
             using (schema)
             {
-                var document = new ProjectValidationService(_reader.Root).ValidateGroup(source, diagnostics, schema.Catalog);
+                var document = new ProjectValidationService(_reader.Root).ValidateGroup(source, diagnostics, out var compiled, schema.Catalog);
                 if (document is null) return Result(null, diagnostics);
                 cancellationToken.ThrowIfCancellationRequested();
-                var compiled = GalgroupCompiler.Compile(document, schema.Catalog);
-                report = new(source, output, request.DryRun, document.Entries.Count, compiled.Document.Entries.Count, compiled.SourceMap, schema.Fingerprint);
+                report = new(source, output, request.DryRun, document.Entries.Count, compiled!.Document.Entries.Count, compiled.SourceMap, schema.Fingerprint);
                 if (request.DryRun) return Result(report, diagnostics);
                 ValidateOutputPath(output);
                 Directory.CreateDirectory(Path.GetDirectoryName(output)!);
@@ -91,16 +91,10 @@ public sealed class GroupCompileService(string projectDirectory)
         if (IsChild(output, _reader.Root) && !IsChild(output, Path.Combine(_reader.Root, "Output")))
             throw new InvalidDataException("Compiled output inside the project must remain under Output/; author files and Contracts are protected.");
         if (Directory.Exists(output)) throw new InvalidDataException("Compiled output is an existing directory.");
-        var current = Path.GetPathRoot(output)!;
-        foreach (var component in output[current.Length..].Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries))
-        {
-            current = Path.Combine(current, component);
-            if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("Compiled output must not traverse filesystem links.");
-        }
+        FileSystemPaths.RequireNoLinks(output, "Compiled output must not traverse filesystem links.");
     }
     private static StringComparison PathComparison => OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-    private static bool IsChild(string path, string parent) => path.Equals(parent, PathComparison) || path.StartsWith(Path.TrimEndingDirectorySeparator(parent) + Path.DirectorySeparatorChar, PathComparison);
+    private static bool IsChild(string path, string parent) => FileSystemPaths.IsSameOrChild(path, parent);
     private static ToolResult Result(GroupCompileReport? report, IReadOnlyList<ToolDiagnostic> diagnostics) =>
         new("group.compile", !diagnostics.Any(item => item.Severity == "error"), report, diagnostics);
 }

@@ -1,13 +1,13 @@
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
 internal static partial class BuiltinRuntimeActions
 {
-    public static void ApplyTimelineEventToRuntime(IGameRuntime runtime, TimelineEventDefinition planEvent)
+    public static void ApplyTimelineEventToRuntime(IGameContext runtime, TimelineEventDefinition planEvent)
     {
         switch (planEvent.Type)
         {

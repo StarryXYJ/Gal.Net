@@ -1,15 +1,16 @@
 using System.Text.Json;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>Loads generated Gallery content and verifies its type snapshot against the composed registry.</summary>
 public static class GalleryFileLoader
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
+    private static readonly JsonSerializerOptions JsonOptions = GalNet.Contracts.Builtins.BuiltinJson.CreateOptions(new(JsonSerializerDefaults.Web)
     {
         PropertyNameCaseInsensitive = true
-    };
+    });
 
     public static GalleryCatalog LoadGenerated(string path, IGalleryTypeCatalog expectedTypes)
     {
@@ -27,7 +28,7 @@ public static class GalleryFileLoader
         ArgumentNullException.ThrowIfNull(expectedTypes);
         try
         {
-            var configuration = JsonSerializer.Deserialize<GalleryConfiguration>(json, JsonOptions)
+            var configuration = JsonCodec.Deserialize<GalleryConfiguration>(json, JsonOptions)
                 ?? throw new InvalidDataException($"The Gallery file '{sourceName}' is empty.");
             var catalog = GalleryCatalog.Create(configuration);
             if (catalog.Types.Count != expectedTypes.Types.Count || catalog.Types.Any(type =>

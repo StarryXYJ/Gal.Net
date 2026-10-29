@@ -19,6 +19,7 @@ public sealed class EditorRegistry
     /// <summary>Host policy: optional non-string text inputs may be cleared without authoring null.</summary>
     public bool EmptyInputClearsOptionalFields { get; init; }
     public Func<ValueDescriptor, JsonElement, FieldCopy>? CopyValue { get; init; }
+    public Func<FieldDescriptor, ValueIssue, string>? FormatIssue { get; init; }
     private readonly Dictionary<string, FieldEditorFactory> _factories = new(StringComparer.Ordinal);
     private readonly Dictionary<FieldValueSemantic, FieldEditorFactory> _semantics = [];
     public void RegisterSemantic(FieldValueSemantic semantic, FieldEditorFactory factory)
@@ -103,19 +104,23 @@ public sealed class EditorRegistry
         var type = Nullable.GetUnderlyingType(field.Value.ValueType) ?? field.Value.ValueType;
         if (_typeFactories.TryGetValue(type, out var custom)) return custom;
         var id = field.Editor?.EditorId;
+        if (id is null && field.Value.Structure is not null && StructuredFieldEditor.Supports(field.Value)) id = "structure";
         if (id is null)
-            id = field.Value.TryGetConstraint("enum", out _) || field.Value.TryGetConstraint("options", out _)
+            id = field.Value.TryGetConstraint("enum", out _)
                 ? ValueEditorIds.Choice : _defaults.TryGetValue(type, out var mapped) ? mapped
-                    : type.IsEnum ? ValueEditorIds.Choice : StructuredFieldEditor.Supports(type) ? "structure" : ValueEditorIds.Json;
+                    : type.IsEnum ? ValueEditorIds.Choice : StructuredFieldEditor.Supports(field.Value) ? "structure" : ValueEditorIds.Json;
         return _factories.TryGetValue(id, out var factory) ? factory
             : throw new NotSupportedException($"Editor '{id}' for field '{field.Id}' is not registered.");
     }
 
-    public static EditorRegistry CreateDefault(bool emptyInputClearsOptionalFields = false, Func<ValueDescriptor, JsonElement, FieldCopy>? copyValue = null)
+    public static EditorRegistry CreateDefault(bool emptyInputClearsOptionalFields = false, Func<ValueDescriptor, JsonElement, FieldCopy>? copyValue = null,
+        Func<FieldDescriptor, ValueIssue, string>? formatIssue = null)
     {
-        var registry = new EditorRegistry { EmptyInputClearsOptionalFields = emptyInputClearsOptionalFields, CopyValue = copyValue };
+        var registry = new EditorRegistry { EmptyInputClearsOptionalFields = emptyInputClearsOptionalFields, CopyValue = copyValue, FormatIssue = formatIssue };
         registry.Register(ValueEditorIds.Text, DefaultFieldEditors.CreateText);
         registry.Register(ValueEditorIds.Numeric, DefaultFieldEditors.CreateNumeric);
+        registry.Register(ValueEditorIds.NumericText, DefaultFieldEditors.CreateNumeric);
+        registry.Register(ValueEditorIds.NumericUpDown, NumericFieldEditors.CreateUpDown);
         registry.Register(ValueEditorIds.Slider, DefaultFieldEditors.CreateSlider);
         registry.Register(ValueEditorIds.Toggle, DefaultFieldEditors.CreateToggle);
         registry.Register(ValueEditorIds.Choice, DefaultFieldEditors.CreateChoice);

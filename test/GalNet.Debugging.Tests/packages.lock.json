@@ -116,6 +116,12 @@
         "resolved": "13.0.3",
         "contentHash": "HrC5BXdl00IP9zeV+0Z848QWPAoCr9P3bDEZguI+gkLcBKAOxix/tLEAAHC+UvDNPv4a2d18lOReHMOagPa+zQ=="
       },
+      "galnet.contracts.builtins": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
       "galnet.core": {
         "type": "Project"
       },
@@ -128,6 +134,7 @@
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -136,7 +143,6 @@
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },

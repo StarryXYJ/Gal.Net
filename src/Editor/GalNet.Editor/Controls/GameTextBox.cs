@@ -27,7 +27,8 @@ public sealed class GameTextBox : ContentControl
         if (Binding is null || Authoring is null) return;
         _context = new(new("text", new(typeof(string), allowNull: false), isRequired: true, semantic: FieldValueSemantic.LocalizedText), Binding);
         _lease = GameTextFieldEditor.Create(_context, Authoring);
-        Content = new FieldEditorRow { Context = _context, Editor = _lease.Control, ShowLabel = false };
+        HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Stretch;
+        Content = new FieldEditorRow { Context = _context, Editor = _lease.Control, ShowLabel = false, RowSpacing = 0 };
     }
     private void Release() { Content = null; _lease?.Dispose(); _context?.Dispose(); _lease = null; _context = null; }
 }

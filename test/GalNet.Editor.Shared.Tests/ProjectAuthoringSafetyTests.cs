@@ -21,7 +21,7 @@ public sealed class ProjectAuthoringSafetyTests
         _catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
         Put("Graph/graph.json", """{"version":2,"name":"Original","rootNodeId":"entry","nodes":[{"id":"entry","name":"Entry","type":"Entry"},{"id":"a","name":"A","type":"Group","file":"groups/a.rawgalgroup"}],"edges":[{"id":"edge","fromNodeId":"entry","fromOutlet":0,"toNodeId":"a"}],"playerVariables":[],"saveVariables":[]}""");
         Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"text","type":"dialogue.text","parameters":{"content":""}}]}""");
-        Put("settings.json", "{}");
+        Put("settings.json", """{"version":1,"sections":{}}""");
     }
     [TearDown]
     public void TearDown() => Directory.Delete(_root, true);
@@ -41,12 +41,16 @@ public sealed class ProjectAuthoringSafetyTests
     }
 
     [Test]
-    public void UnknownSettings_AreRejectedWithoutLoss()
+    public async Task UnknownConfigurationSections_ArePreservedOnSave()
     {
-        Put("settings.json", """{"custom":{"keep":true}}""");
-        var original = Snapshot();
-        Assert.That(() => Persistence().Load(), Throws.TypeOf<JsonException>().With.Message.Contains("custom"));
-        AssertSnapshot(original);
+        Put("settings.json", """{"version":1,"sections":{"custom":{"version":7,"data":{"keep":true}}}}""");
+        var persistence = Persistence();
+        var document = persistence.Load();
+        document.Graph.Name = "Renamed";
+        await persistence.SaveAsync(document);
+        var stored = DirectProjectPersistence.LoadSettings(_root).Sections["custom"];
+        Assert.That(stored.Version, Is.EqualTo(7));
+        Assert.That(stored.Data.GetProperty("keep").GetBoolean(), Is.True);
     }
 
     [Test]
@@ -147,7 +151,7 @@ public sealed class ProjectAuthoringSafetyTests
     public void RepositoryTracksOnlyItsOwnFiles_WhenEditorSavesSettingsSeparately()
     {
         var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
+        var loaded = repository.Load(_root);
         var entries = loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value);
         loaded.Document.Name = "First";
         repository.Save(_root, loaded.Document, entries);
@@ -177,58 +181,6 @@ public sealed class ProjectAuthoringSafetyTests
         Assert.Throws<ArgumentException>(() => ProjectAuthorFileTransaction.Commit(_root,
             new Dictionary<string, byte[]> { [file] = Encoding.UTF8.GetBytes("changed") }, []));
         AssertSnapshot(original);
-    }
-
-    [Test]
-    public void Preview_PreservesAuthorIdentityAndDoesNotDiscardUnknownParameters()
-    {
-        var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
-        var entries = loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value);
-        var coordinator = new EditorSaveCoordinator(repository, _catalog);
-        var preview = Path.Combine(_root, "Temp/Preview");
-        coordinator.BuildPreviewData(preview, loaded.Document, entries);
-        using var graph = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(preview, "graph.json")));
-        Assert.That(graph.RootElement.GetProperty("edges")[0].GetProperty("id").GetString(), Is.EqualTo("edge"));
-        var source = graph.RootElement.GetProperty("nodes")[1].GetProperty("file").GetString()!;
-        Assert.That(File.Exists(Path.Combine(preview, source)), Is.True);
-        loaded.GroupEntries["a"][0].Parameters["unknown"] = JsonSerializer.SerializeToElement("value");
-        Assert.That(() => coordinator.BuildPreviewData(preview, loaded.Document, entries), Throws.TypeOf<InvalidDataException>());
-    }
-
-    [Test]
-    public void Preview_GroupIdsCannotBecomeOutputPaths()
-    {
-        var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
-        loaded.Document.Nodes[1].Id = "../../escape";
-        loaded.Document.Edges[0].ToNodeId = "../../escape";
-        var entries = new Dictionary<string, IReadOnlyList<EditorEntryData>> { ["../../escape"] = loaded.GroupEntries["a"] };
-        var preview = Path.Combine(_root, "Temp/Preview");
-        new EditorSaveCoordinator(repository, _catalog).BuildPreviewData(preview, loaded.Document, entries);
-        using var graph = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(preview, "graph.json")));
-        var file = graph.RootElement.GetProperty("nodes")[1].GetProperty("file").GetString()!;
-        Assert.That(file, Is.EqualTo(Path.GetFileName(file)));
-        Assert.That(File.Exists(Path.Combine(preview, file)), Is.True);
-        Assert.That(File.Exists(Path.Combine(_root, "escape.galgroup")), Is.False);
-        Assert.That(graph.RootElement.GetProperty("nodes")[1].GetProperty("id").GetString(), Is.EqualTo("../../escape"));
-    }
-
-    [Test]
-    public void Preview_RejectsLinkedOutputBeforeWriting()
-    {
-        var repository = new EditorDocumentRepository(_catalog);
-        var loaded = repository.Load(_root, "Original", new());
-        var target = Directory.CreateDirectory(Path.Combine(_root, "target")).FullName;
-        var link = Path.Combine(_root, "preview-link");
-        Directory.CreateSymbolicLink(link, target);
-        try
-        {
-            var entries = loaded.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value);
-            Assert.Throws<InvalidDataException>(() => new EditorSaveCoordinator(repository, _catalog).BuildPreviewData(link, loaded.Document, entries));
-            Assert.That(Directory.GetFiles(target), Is.Empty);
-        }
-        finally { Directory.Delete(link); }
     }
 
     [Test]

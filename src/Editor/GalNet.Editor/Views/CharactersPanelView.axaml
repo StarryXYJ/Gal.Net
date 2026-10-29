@@ -3,27 +3,36 @@
              xmlns:loc="clr-namespace:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Views.CharactersPanelView" x:DataType="vm:CharactersPanelViewModel">
   <Grid RowDefinitions="Auto,Auto,*,Auto,Auto" Margin="12" RowSpacing="8">
-    <DockPanel><Button x:Name="AddCharacter" DockPanel.Dock="Right" Content="{loc:Localize Characters.Add}" Command="{Binding AddCommand}"/>
+    <Grid.Resources><ResourceDictionary><ResourceDictionary.MergedDictionaries><ResourceInclude Source="avares://GalNet.Editor/Themes/AuthoringPanelResources.axaml"/></ResourceDictionary.MergedDictionaries></ResourceDictionary></Grid.Resources>
+    <DockPanel><Button x:Name="AddCharacter" DockPanel.Dock="Right" Theme="{StaticResource EditorIconButton}" Command="{Binding AddCommand}" ToolTip.Tip="{loc:Localize Characters.Add}" AutomationProperties.Name="{loc:Localize Characters.Add}" Click="OnCharacterAdded"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
       <TextBox x:Name="CharacterSearch" Text="{Binding Search}" PlaceholderText="{loc:Localize Characters.Search}" Margin="0,0,8,0"/>
     </DockPanel>
-    <Grid Grid.Row="1" ColumnDefinitions="*,*"><TextBlock Text="{loc:Localize Characters.Name}"/><TextBlock Grid.Column="1" Text="{loc:Localize Characters.Key}"/></Grid>
-    <ListBox x:Name="CharacterRows" Grid.Row="2" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
+    <TextBlock Grid.Row="1" Text="{loc:Localize Characters.Name}" Foreground="{DynamicResource SemiColorText2}"/>
+    <Grid Grid.Row="2">
+    <ListBox x:Name="CharacterRows" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected}">
       <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
-      <ListBox.ItemTemplate><DataTemplate x:DataType="services:CharacterRow"><Grid ColumnDefinitions="*,*" ColumnSpacing="12">
-        <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap"/><TextBlock Grid.Column="1" Text="{Binding Id}" TextWrapping="Wrap"/>
-      </Grid></DataTemplate></ListBox.ItemTemplate>
+      <ListBox.ItemTemplate><DataTemplate x:DataType="services:CharacterRow"><StackPanel Spacing="2">
+        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding DisplayName}"/><TextBlock Text="{Binding Id}" Foreground="{DynamicResource SemiColorText2}" FontSize="11" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Id}"/>
+      </StackPanel></DataTemplate></ListBox.ItemTemplate>
     </ListBox>
+    <TextBlock Text="{loc:Localize Uiux.Panel.NoResults}" IsVisible="{Binding !HasRows}" VerticalAlignment="Center" HorizontalAlignment="Center" TextWrapping="Wrap" Margin="8" Foreground="{DynamicResource SemiColorText2}"/>
+    </Grid>
     <StackPanel Grid.Row="3" Spacing="6">
       <TextBlock Text="{loc:Localize Characters.Incomplete}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap"/>
-      <Grid ColumnDefinitions="*,*" ColumnSpacing="12" IsEnabled="{Binding CanEdit}">
-        <TextBox x:Name="CharacterName" Text="{Binding DraftName}" PlaceholderText="{loc:Localize Characters.Name}"/>
-        <TextBox x:Name="CharacterKey" Grid.Column="1" Text="{Binding DraftKey}" PlaceholderText="{loc:Localize Characters.AutoKey}"/>
-      </Grid>
-      <WrapPanel>
-        <Button x:Name="ApplyCharacter" Content="{loc:Localize Characters.Apply}" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanEdit}" Margin="0,0,8,0"/>
-        <Button Content="{loc:Localize Characters.Revert}" Command="{Binding RevertCommand}" Margin="0,0,8,0"/>
-        <Button x:Name="DeleteCharacter" Content="{loc:Localize Characters.Delete}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}"/>
-      </WrapPanel>
+      <TextBlock Text="{Binding IncompleteDetails}" IsVisible="{Binding Incomplete}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource SemiColorText2}"/>
+      <TextBlock Text="{loc:Localize Uiux.Panel.SelectItem}" IsVisible="{Binding !HasEditor}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorText2}"/>
+      <StackPanel IsVisible="{Binding HasEditor}" Spacing="6" IsEnabled="{Binding CanEdit}">
+        <TextBlock Text="{loc:Localize Characters.Name}" FontSize="12"/>
+        <TextBox x:Name="CharacterName" Text="{Binding DraftName}"/>
+        <TextBlock Text="{loc:Localize Characters.Key}" FontSize="12"/>
+        <TextBox x:Name="CharacterKey" Text="{Binding DraftKey}" PlaceholderText="{loc:Localize Characters.AutoKey}"/>
+      </StackPanel>
+      <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding HasEditor}">
+        <Button x:Name="ApplyCharacter" Theme="{StaticResource EditorIconButton}" Command="{Binding ApplyCommand}" IsEnabled="{Binding CanEdit}" ToolTip.Tip="{loc:Localize Characters.Apply}" AutomationProperties.Name="{loc:Localize Characters.Apply}"><PathIcon Width="16" Height="16" Data="{StaticResource PanelApplyIcon}"/></Button>
+        <Button Theme="{StaticResource EditorIconButton}" Command="{Binding RevertCommand}" ToolTip.Tip="{loc:Localize Characters.Revert}" AutomationProperties.Name="{loc:Localize Characters.Revert}"><PathIcon Width="16" Height="16" Data="{StaticResource ResetIcon}"/></Button>
+        <Button x:Name="DeleteCharacter" Theme="{StaticResource EditorIconButton}" Command="{Binding DeleteCommand}" IsEnabled="{Binding CanDelete}" ToolTip.Tip="{loc:Localize DeleteHintKey}" AutomationProperties.Name="{loc:Localize Characters.Delete}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}"/></Button>
+        <TextBlock Text="{loc:Localize Uiux.Panel.Unapplied}" IsVisible="{Binding HasDraft}" VerticalAlignment="Center" Foreground="{DynamicResource SemiColorText2}"/>
+      </StackPanel>
     </StackPanel>
     <TextBlock Grid.Row="4" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/>
   </Grid>

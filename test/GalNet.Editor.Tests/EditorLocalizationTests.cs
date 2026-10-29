@@ -12,6 +12,34 @@ namespace GeneralTest.Editor;
 public sealed class EditorLocalizationTests
 {
     [Test]
+    public void BackgroundStartupPreparationDoesNotPublishLocalizationOrChangeCallerCulture()
+    {
+        var current = CultureInfo.CurrentCulture;
+        var ui = CultureInfo.CurrentUICulture;
+        var published = EditorLocalizationService.Current;
+        var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "GalNet-preparation-" + Guid.NewGuid().ToString("N"))).FullName;
+        try
+        {
+            var path = Path.Combine(root, "editor.json");
+            var settings = new EditorSettingsService(path);
+            settings.GetSettings().UiLocale = new I18nLocale("ko-KR");
+            settings.SaveSettings();
+            using var preparation = new EditorStartupPreparation(path);
+            var loaded = preparation.Settings.GetAwaiter().GetResult();
+            var resources = preparation.Localization.GetAwaiter().GetResult();
+            Assert.That(EditorLocalizationService.Current, Is.SameAs(published));
+            Assert.That(CultureInfo.CurrentCulture, Is.SameAs(current));
+            Assert.That(CultureInfo.CurrentUICulture, Is.SameAs(ui));
+            var localization = new EditorLocalizationService(resources);
+            localization.ApplyLocale(loaded.GetSettings().UiLocale.Code);
+            Assert.That(localization.CurrentCulture.Name, Is.EqualTo("ko-KR"));
+            Assert.That(localization["Close.Title"], Is.EqualTo("프로젝트 닫기"));
+            Assert.That(localization["Missing.Custom.Key"], Is.EqualTo("[Missing.Custom.Key]"));
+        }
+        finally { CultureInfo.CurrentCulture = current; CultureInfo.CurrentUICulture = ui; Directory.Delete(root, true); }
+    }
+
+    [Test]
     public void FourPublishedLanguagesHaveIdenticalKeysAndCompatibleFormatArguments()
     {
         var assembly = typeof(EditorLocalizationService).Assembly;
@@ -23,6 +51,16 @@ public sealed class EditorLocalizationTests
         foreach (var map in maps)
         {
             Assert.That(map.Keys, Is.EquivalentTo(maps[0].Keys));
+            foreach (var definition in new GalNet.Core.Entry.TargetProfileEntryCatalog(GalNet.Contracts.Builtins.BuiltinSchemas.CreateAllModules()).Definitions)
+            {
+                Assert.That(map, Does.ContainKey("Entry.Type." + definition.Type), definition.Type);
+                Assert.That(map, Does.ContainKey("Entry.Category." + definition.Category), definition.Category);
+
+            }
+            var missingFields = new GalNet.Core.Entry.TargetProfileEntryCatalog(GalNet.Contracts.Builtins.BuiltinSchemas.CreateAllModules()).Definitions
+                .SelectMany(definition => definition.DynamicParameters.Fields).Where(field => field.LabelKey is null && !map.ContainsKey("Entry.Parameter." + field.Id)).Select(field => field.Id).Distinct().ToArray();
+            Assert.That(missingFields, Is.Empty);
+            Assert.That(map, Does.ContainKey("Editor.Menu.ProjectSettings"));
             foreach (var (key, value) in map)
             {
                 Assert.That(value, Is.Not.Empty, key);

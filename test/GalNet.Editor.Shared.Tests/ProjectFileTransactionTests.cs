@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Changes;
@@ -102,11 +103,14 @@ public sealed class ProjectFileTransactionTests
         Assert.ThrowsAsync<EditorOperationException>(() => operation.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
         Assert.That(Directory.GetFiles(Path.Combine(_root, "target")), Is.Empty);
         var link = Path.Combine(_root, "link");
-        try { Directory.CreateSymbolicLink(link, Path.Combine(_root, "target")); }
-        catch (Exception error) when (error is UnauthorizedAccessException or IOException) { Assert.Ignore("Directory links unavailable: " + error.Message); }
-        using var linked = new ProjectFileOperation(_root, new(ProjectFileAction.Move, ["first/a.bin"], "link"), catalog);
-        Assert.ThrowsAsync<InvalidDataException>(() => linked.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
-        Assert.That(File.Exists(Path.Combine(_root, "first/a.bin")), Is.True);
+        DirectoryLinks.Create(link, Path.Combine(_root, "target"));
+        try
+        {
+            using var linked = new ProjectFileOperation(_root, new(ProjectFileAction.Move, ["first/a.bin"], "link"), catalog);
+            Assert.ThrowsAsync<InvalidDataException>(() => linked.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
+            Assert.That(File.Exists(Path.Combine(_root, "first/a.bin")), Is.True);
+        }
+        finally { Directory.Delete(link); }
     }
 
     [TestCase(false)]
@@ -146,8 +150,8 @@ public sealed class ProjectFileTransactionTests
         var persistence = new DirectProjectPersistence(_root, new EditorDocumentRepository(catalog)); var document = persistence.Load();
         File.WriteAllBytes(Path.Combine(_root, "Assets/a.png"), [1]);
         File.WriteAllText(Path.Combine(_root, "Assets/a.png.meta"), """{"id":"asset-a","type":"sprite","path":"a.png"}""");
-        var definition = catalog.Definitions.First(item => item.DynamicParameters?.Values.Any(field => field.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true) == true);
-        var parameter = definition.DynamicParameters!.First(pair => pair.Value.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true).Key;
+        var definition = catalog.Definitions.First(item => item.DynamicParameters.Values.Any(field => field.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true));
+        var parameter = definition.DynamicParameters.First(pair => pair.Value.Editor?.EditorId?.Contains("asset", StringComparison.OrdinalIgnoreCase) == true).Key;
         document.GroupEntries.Values.First().Add(new() { StableId = "reference-entry", Type = definition.Type, Parameters = new() { [parameter] = JsonSerializer.SerializeToElement("asset-a") } });
         using var operation = new ProjectFileOperation(_root, new(ProjectFileAction.Delete, ["Assets/a.png"], AllowCandidateReferences: true), catalog);
         Assert.That(operation.Analyze(document, document).References.Single().Certain, Is.True);

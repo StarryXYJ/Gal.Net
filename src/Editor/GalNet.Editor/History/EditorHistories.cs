@@ -21,6 +21,7 @@ public sealed class EditorHistories : IProjectEditLifetime, IDisposable
             Content.BindContent(() => session.IsDirty, () => session.RepairRequired);
             _captureRegistration = session.RegisterCaptureGuard(Content.AcquireCaptureAsync);
             Content.Changed += OnContentChanged;
+            session.ExternalReloaded += Clear;
         }
     }
 
@@ -30,6 +31,7 @@ public sealed class EditorHistories : IProjectEditLifetime, IDisposable
     public void Dispose()
     {
         Content.Changed -= OnContentChanged;
+        if (_session is not null) _session.ExternalReloaded -= Clear;
         _captureRegistration?.Dispose();
         Content.Dispose();
         GC.SuppressFinalize(this);

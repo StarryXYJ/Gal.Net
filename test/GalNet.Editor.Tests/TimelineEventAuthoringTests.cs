@@ -9,6 +9,8 @@ using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Controls;
 using GalNet.Editor.History;
+using GalNet.Editor.Inspector.ViewModels;
+using GalNet.Editor.Inspector.Views;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
@@ -33,7 +35,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TimelineEventLaneUsesRealPickerAndDragWithAtomicHistoryOrderingUnknownDataAndStaleProtection()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -47,7 +49,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             try
             {
                 Assert.That(session.Events, Has.Count.EqualTo(4)); Assert.That(history.CanUndo, Is.False);
-                Assert.That(view.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "EditTimelineEvent" && item.DataContext is TimelineEventRow { Index: 0 }).IsEnabled, Is.False);
+                Assert.That(session.Events.Single(item => item.Index == 0).CanEdit, Is.False);
+                session.Frame = 0; session.NavigateKey(1); Assert.That(session.Frame, Is.EqualTo(3));
+                session.NavigateKey(1); Assert.That(session.Frame, Is.EqualTo(5)); session.NavigateKey(-1); Assert.That(session.Frame, Is.EqualTo(3));
                 session.Frame = 5; var picker = view.FindControl<EntryTypePicker>("TimelineEventType")!; picker.OpenAt(); TimelinePump(window);
                 Assert.That(picker.Results.Select(item => item.Value), Is.EquivalentTo(TimelineEventCapabilities.Types));
                 var search = picker.FindControl<TextBox>("SearchInput")!; search.Text = BuiltinEntryIds.ShowLayer; TimelinePump(window); PressGroupKey(search, Key.Down); PressGroupKey(search, Key.Enter); TimelinePump(window);
@@ -92,9 +96,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
-    public async Task TimelineEventDtoFlyoutHidesOutputsUsesEventBeforePickerAndAppliesOneCancelableDraft()
+    public async Task TimelineEventInspectorHidesOutputsUsesEventBeforePickerAndAppliesOneCancelableDraft()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -103,36 +107,46 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayTimeline).Single(); entry.Source.Parameters["timeline"] = EventAuthorFixture();
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
             var session = scope.GetRequiredService<TimelineEditSession>(); var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear();
-            var view = new TimelinePanelView { DataContext = scope.GetRequiredService<TimelinePanelViewModel>() }; var window = new Window { Content = view, Width = 1400, Height = 950 }; window.Show(); TimelinePump(window);
+            var panel = scope.GetRequiredService<TimelinePanelViewModel>(); var view = new TimelinePanelView { DataContext = panel };
+            using var inspector = new TimelineEventInspectorViewModel(panel); var body = new TimelineEventInspectorView { DataContext = inspector, Width = 520 };
+            var layout = new Grid { ColumnDefinitions = new ColumnDefinitions("*,520") }; layout.Children.Add(view); Grid.SetColumn(body, 1); layout.Children.Add(body);
+            var window = new Window { Content = layout, Width = 1400, Height = 950 }; window.Show(); TimelinePump(window);
             try
             {
-                var row = session.Events.Single(item => item.Index == 1); var edit = view.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "EditTimelineEvent" && ReferenceEquals(item.DataContext, row)); TimelineClick(window, edit);
-                var flyout = (Flyout)FlyoutBase.GetAttachedFlyout(edit)!; var body = (Control)flyout.Content!; var host = body.GetVisualDescendants().OfType<DtoEditorHost>().Single();
-                Assert.That(host.Diagnostics, Is.Empty); Assert.That(session.EventEdit!.Field("handleId").IsVisible, Is.False);
+                var row = session.Events.Single(item => item.Index == 1); session.SelectEvent(row); TimelinePump(window);
+                var host = body.GetVisualDescendants().OfType<DtoEditorHost>().Single();
+                using (var lockedInspector = new TimelineEventInspectorViewModel(panel))
+                {
+                    lockedInspector.SetLocked(true); var lockedDraft = lockedInspector.Draft;
+                    session.SelectEvent(session.Events.Single(item => item.Index == 2));
+                    Assert.That(lockedInspector.Draft, Is.SameAs(lockedDraft)); Assert.That(lockedDraft!.IsCurrent, Is.True);
+                    session.SelectEvent(row); TimelinePump(window);
+                }
+                Assert.That(inspector.Draft!.IsCurrent, Is.True);
+                Assert.That(host.Diagnostics, Is.Empty); Assert.That(inspector.Draft!.Field("handleId").IsVisible, Is.False);
                 Assert.That(host.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Diagnostics), Is.Empty);
                 Assert.That(host.GetVisualDescendants().OfType<AssetPicker>().Single().Filter, Is.EqualTo(GalNet.Editor.Models.AssetPickerFilter.Image));
-                var x = host.GetVisualDescendants().OfType<TextBox>().Single(item => item.Name == "TransformX"); x.Focus(); x.Text = "13"; PressGroupKey(x, Key.Enter); TimelinePump(window);
+                var x = NumericControlTestSupport.NamedInputs(host, "TransformX").Single(); x.Focus(); x.Text = "13"; PressGroupKey(x, Key.Enter); TimelinePump(window);
                 Assert.That(history.CanUndo, Is.False); Assert.That(entry.Source.Parameters["timeline"].GetProperty("Events")[1].GetProperty("Parameters").GetProperty("transform").GetProperty("x").GetSingle(), Is.EqualTo(7));
                 TimelineClick(window, body.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "ApplyTimelineEvent")); TimelinePump(window);
-                Assert.That(flyout.IsOpen, Is.False); var parameters = entry.Source.Parameters["timeline"].GetProperty("Events")[1].GetProperty("Parameters");
+                var parameters = entry.Source.Parameters["timeline"].GetProperty("Events")[1].GetProperty("Parameters");
                 Assert.That(parameters.GetProperty("transform").GetProperty("x").GetSingle(), Is.EqualTo(13)); Assert.That(parameters.GetProperty("transform").GetProperty("opaque").GetRawText(), Is.EqualTo("9007199254740993"));
                 await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); await history.RedoAsync(); history.Clear(); TimelinePump(window);
-                row = session.Events.Single(item => item.Index == 2); edit = view.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "EditTimelineEvent" && ReferenceEquals(item.DataContext, row)); TimelineClick(window, edit);
-                flyout = (Flyout)FlyoutBase.GetAttachedFlyout(edit)!; body = (Control)flyout.Content!; host = body.GetVisualDescendants().OfType<DtoEditorHost>().Single();
+                row = session.Events.Single(item => item.Index == 2); session.SelectEvent(row); TimelinePump(window);
+                host = body.GetVisualDescendants().OfType<DtoEditorHost>().Single();
                 var targetButton = host.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "SceneTargetField"); Assert.That(targetButton.Content?.ToString(), Does.Contain("image.png")); TimelineClick(window, targetButton);
                 var picker = (SceneTargetPicker)((Flyout)targetButton.Flyout!).Content!;
                 Assert.That(picker.ResourcePanel.Results.Any(item => item.Label.Contains("image.png", StringComparison.Ordinal)), Is.True);
                 Assert.That(picker.ResourcePanel.Results.Any(item => item.Label.Contains("later.png", StringComparison.Ordinal)), Is.False);
                 PressGroupKey(picker.ResourcePanel.Search, Key.Escape); TimelinePump(window);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts) { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "events-b-form.png")); }
-                var stale = session.EventEdit!; session.Frame = 2; TimelinePump(window); Assert.That(flyout.IsOpen, Is.False); Assert.That(stale.Apply(), Is.False); Assert.That(history.CanUndo, Is.False);
+                var stale = inspector.Draft!; session.Frame = 2; TimelinePump(window); Assert.That(stale.Apply(), Is.False); Assert.That(history.CanUndo, Is.False);
                 var pending = session.BeginEventEdit(session.Events.Single(item => item.Index == 1))!;
                 await pending.Field("transform").CommitAsync(new(JsonSerializer.SerializeToElement(new { x = 99 })), CancellationToken.None); session.EndEventEdit(); Assert.That(pending.Apply(), Is.False); Assert.That(history.CanUndo, Is.False);
                 foreach (var type in TimelineEventCapabilities.Types)
                 {
                     Assert.That(session.AddEvent(type), Is.True); TimelinePump(window);
-                    row = session.Events.Single(item => item.Index == 4); edit = view.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "EditTimelineEvent" && ReferenceEquals(item.DataContext, row)); TimelineClick(window, edit);
-                    flyout = (Flyout)FlyoutBase.GetAttachedFlyout(edit)!; body = (Control)flyout.Content!;
+                    row = session.Events.Single(item => item.Index == 4); session.SelectEvent(row); TimelinePump(window);
                     Assert.That(body.GetVisualDescendants().OfType<DtoEditorHost>().Single().Diagnostics, Is.Empty, type);
                     Assert.That(body.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Diagnostics), Is.Empty, type);
                     TimelineClick(window, body.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "CancelTimelineEvent"));

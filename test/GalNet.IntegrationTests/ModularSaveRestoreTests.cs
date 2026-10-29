@@ -3,15 +3,15 @@ using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Audio;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
-using GalNet.Core.Audio;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
 using GalNet.Core.Serialization;
-using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -45,7 +45,8 @@ public class ModularSaveRestoreTests
         using var assets = new AssetManager([new LocalFileProvider(Path.Combine(directory.FullName, "GameTestCase", "Assets"), BuiltinResourceTypes.CreateCatalog())]);
         assets.RegisterImageVariantsDecoder();
         var variants = await assets.LoadImageVariantsCatalogAsync();
-        using var registration = new GameRegistration().AddBuiltins(audioHost: host, imageVariants: variants);
+        using var registration = new GameRegistration().AddBuiltins(audioHost: host, imageVariants: variants,
+            audioConfiguration: GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
         var compiled = GalgroupCompiler.Compile(commands, registration.BuildCatalog()).Document;
         var group = new Group { Id = "intro" };
         GalgroupLoader.LoadIntoGroupFromContent(group, JsonSerializer.Serialize(compiled));
@@ -63,9 +64,9 @@ public class ModularSaveRestoreTests
             }
             var snapshot = await saves.LoadAsync(0);
             Assert.That(snapshot, Is.Not.Null);
-            Assert.That(snapshot!.Version, Is.EqualTo(4));
+            Assert.That(snapshot!.Version, Is.EqualTo(5));
             await using var restored = new GameEngine(graph, view);
-            restored.RestoreFrom(snapshot);
+            await restored.RestoreFromAsync(snapshot);
             await using var restoration = new StateRestoreSession(view);
             await restored.SynchronizePresentationAsync(restoration.RestoreAsync);
             Assert.That(restored.Runtime.State.Table<Layer>().Values.Select(value => value.Id), Is.EquivalentTo(new[] { "background", "teacher" }));

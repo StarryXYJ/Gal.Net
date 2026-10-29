@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
@@ -254,7 +255,7 @@ public class CompositeGameViewTests
     public async Task AsyncDisposalThroughGameViewInterfaceUsesModuleAsyncCleanup()
     {
         var module = new AsyncDisposableModule();
-        await using (IGameView view = new GameRegistration().RegisterImplementation(module).BuildView())
+        await using (IPrimitiveDispatcher view = new GameRegistration().RegisterImplementation(module).BuildView())
             Assert.That(module.CleanedUp, Is.False);
         Assert.That(module.CleanedUp, Is.True);
     }

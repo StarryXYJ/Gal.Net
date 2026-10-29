@@ -21,7 +21,7 @@ public static class ProjectSchemaQueryService
             diagnostics.Add(new("object.notFound", "error", $"Entry schema '{type}' is not declared by this project.", context.AssemblyPath, type));
         var descriptions = definitions.Select(definition =>
         {
-            var parameters = definition.DynamicParameters?.Values.Select(parameter =>
+            var parameters = definition.DynamicParameters.Values.Select(parameter =>
             {
                 JsonElement? valueSchema = null;
                 try { valueSchema = ValueCodec.Describe(parameter.Value); }
@@ -29,7 +29,7 @@ public static class ProjectSchemaQueryService
                 { diagnostics.Add(new("schema.descriptionLimited", "warning", $"Cannot fully describe '{definition.Type}.{parameter.Name}': {exception.Message}", context.AssemblyPath, definition.Type)); }
                 return new SchemaParameterDescription(parameter.Name, parameter.IsRequired, parameter.DefaultValue, parameter.Constraints,
                     valueSchema, valueSchema is not null, parameter.Editor, parameter.Field.Semantic.ToString());
-            }).ToArray() ?? [];
+            }).ToArray();
             return new SchemaEntryDescription(definition.Type, definition.Category, definition.Kind.ToString().ToLowerInvariant(), definition.IsReading, parameters,
                 "Schema descriptions do not serialize custom C# validators or Composite expansion code; full validation/compilation uses the DLL.");
         }).ToArray();

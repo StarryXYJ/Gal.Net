@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Core.Serialization;
 using GalNet.Runtime.Persistence;
 using GalVariable = GalNet.Core.Variable.Variable;
 
@@ -20,7 +21,7 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
         {
             if (!File.Exists(_path)) return new Dictionary<string, GalVariable>(StringComparer.Ordinal);
             var json = await File.ReadAllTextAsync(_path, ct);
-            var stored = JsonSerializer.Deserialize<Dictionary<string, GalVariable>>(json) ?? [];
+            var stored = JsonCodec.Deserialize<Dictionary<string, GalVariable>>(json) ?? [];
             return stored.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
         }
         catch (JsonException)
@@ -35,11 +36,8 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
         await _gate.WaitAsync(ct);
         try
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
             var copy = variables.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
-            var temporaryPath = _path + ".tmp";
-            await File.WriteAllTextAsync(temporaryPath, JsonSerializer.Serialize(copy), ct);
-            File.Move(temporaryPath, _path, true);
+            await FileReplacement.WriteTextAsync(_path, JsonCodec.Serialize(copy), ct).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }

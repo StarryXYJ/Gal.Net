@@ -1,11 +1,13 @@
 using System.Text.Json;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Core.Assets;
 
 /// <summary>Two-step metadata codec selected by stable type IDs, never CLR type names.</summary>
 public sealed class AssetMetaCodec(IResourceTypeCatalog resourceTypes, JsonSerializerOptions? options = null)
 {
-    private readonly JsonSerializerOptions _options = options ?? new JsonSerializerOptions(JsonSerializerDefaults.Web);
+    private readonly JsonSerializerOptions _options = JsonMetadata.Prepare(options ?? new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, JsonSerializerOptions> _metadataOptions = new(StringComparer.Ordinal);
     public AssetMeta Deserialize(string json, string? pathHint = null)
     {
         JsonDocument document;
@@ -32,7 +34,7 @@ public sealed class AssetMetaCodec(IResourceTypeCatalog resourceTypes, JsonSeria
         ArgumentNullException.ThrowIfNull(meta);
         var registration = resourceTypes.Get(meta.TypeId);
         if (!registration.MetaDtoType.IsInstanceOfType(meta)) throw new InvalidDataException($"Metadata for '{meta.TypeId}' must use '{registration.MetaDtoType.Name}'.");
-        return JsonSerializer.Serialize(meta, registration.MetaDtoType, _options);
+        return JsonCodec.Serialize(meta, registration.MetaDtoType, Options(registration));
     }
 
     private string ReadTypeId(JsonElement root, string? pathHint)
@@ -41,22 +43,25 @@ public sealed class AssetMetaCodec(IResourceTypeCatalog resourceTypes, JsonSeria
         if (!string.IsNullOrWhiteSpace(declared)) return resourceTypes.NormalizeTypeId(declared);
         var extension = Path.GetExtension(pathHint ?? "");
         if (resourceTypes.TryGetByExtension(extension, out var inferred)) return inferred.TypeId;
-        return "data";
+        return resourceTypes.DefaultTypeId ?? throw new InvalidDataException("Asset metadata requires a type or a catalog-defined default for this extension.");
     }
 
     private AssetMeta DeserializeOrDefault(string json, ResourceTypeRegistration registration, string typeId)
     {
         try
         {
-            return (AssetMeta?)JsonSerializer.Deserialize(json, registration.MetaDtoType, _options)
+            return (AssetMeta?)JsonCodec.Deserialize(json, registration.MetaDtoType, Options(registration))
                 ?? throw new InvalidDataException($"Metadata for '{typeId}' is empty.");
         }
         catch (JsonException)
         {
-            return (AssetMeta)(Activator.CreateInstance(registration.MetaDtoType)
-                ?? throw new InvalidDataException($"Metadata type '{registration.MetaDtoType.Name}' cannot be created."));
+            return registration.Create?.Invoke()
+                ?? throw new InvalidDataException($"Metadata type '{registration.MetaDtoType.Name}' requires a registered creation factory.");
         }
     }
+
+    private JsonSerializerOptions Options(ResourceTypeRegistration registration) =>
+        _metadataOptions.GetOrAdd(registration.TypeId, _ => JsonMetadata.CreateOptions(_options, registration.JsonResolver));
 
     private static string ReadRequiredString(JsonElement root, string name) =>
         ReadOptionalString(root, name) is { Length: > 0 } value

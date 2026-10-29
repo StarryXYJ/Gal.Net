@@ -1,81 +1,61 @@
-using System.Buffers.Binary;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using GalNet.Assets.Variants;
 using GalNet.Core.Assets;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Assets;
 
-/// <summary>
-/// .pak 归档实现 —— 可寻址资源文件集合。
-///
-/// 二进制格式：
-///   [Magic   ] 4 bytes   "GPAK"
-///   [Ver     ] 4 bytes   int32
-///   [Count   ] 4 bytes   int32
-///   ── Entry Table ──
-///   [IdLen   ] 4 bytes   int32
-///   [Id      ] IdLen     UTF-8
-///   [PathLen ] 4 bytes   int32
-///   [Path    ] PathLen   UTF-8
-///   [TypeLen ] 4 bytes   int32
-///   [TypeId  ] TypeLen   UTF-8
-///   [MetaLen ] 4 bytes   int32
-///   [Meta    ] MetaLen   UTF-8 canonical registered metadata JSON
-///   [Offset  ] 8 bytes   int64   数据段起始偏移
-///   [OrigLen ] 8 bytes   int64   原始大小(未压缩)
-///   [StoredLen] 8 bytes  int64   存储大小(压缩后)
-///   [Compress] 4 bytes   int32   CompressionMode
-///   [Hash    ] 32 bytes  SHA256  (十六进制解码后)
-///   ── Data Section ──
-///   [Block 1]  StoredLen bytes
-///   [Block 2]  StoredLen bytes
-///   ...
-/// </summary>
-public sealed class Archive : IArchive
+/// <summary>GPAK v3: magic/version, length-prefixed control JSON, entry count/table and data blocks.</summary>
+public sealed class Archive : IPakArchive
 {
-    private const string Magic = "GPAK";
-    private const int CurrentVersion = 2;
-
-    private readonly string _name;
-    private readonly Dictionary<string, EntryDescriptor> _entries = new();
-    private readonly Dictionary<string, string> _pathToId = new();
+    public const int CurrentVersion = 3;
+    private static readonly UTF8Encoding Utf8 = new(false, true);
+    private static readonly JsonSerializerOptions ControlOptions = JsonMetadata.CreateOptions(new(JsonSerializerDefaults.Web)
+    {
+        AllowDuplicateProperties = false,
+        PropertyNameCaseInsensitive = false,
+        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow
+    });
+    private readonly Dictionary<string, EntryDescriptor> _entries;
+    private readonly Dictionary<string, string> _pathToId;
     private readonly byte[] _dataSection;
+    private readonly PakDescriptor _descriptor;
     private bool _disposed;
 
     private Archive(string name, byte[] dataSection, Dictionary<string, EntryDescriptor> entries,
-        Dictionary<string, string> pathToId)
+        Dictionary<string, string> pathToId, PakDescriptor descriptor)
     {
-        _name = name;
+        Name = name;
         _dataSection = dataSection;
         _entries = entries;
         _pathToId = pathToId;
+        _descriptor = descriptor;
     }
 
-    public string Name => _name;
+    public string Name { get; }
+    public PakDescriptor Descriptor => _descriptor with { Mappings = new(_descriptor.Mappings, StringComparer.OrdinalIgnoreCase) };
     public IEnumerable<string> AssetIds => _entries.Keys;
-
-    public bool Contains(string assetId) => _entries.ContainsKey(assetId);
+    public IReadOnlyList<PakAssetIndexEntry> MetadataIndex => _entries.Values.Select(entry => new PakAssetIndexEntry(
+        entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, entry.OriginalLength, entry.Hash)).ToArray();
+    public bool Contains(string assetId) => _entries.ContainsKey(assetId.Trim());
 
     public IGameFile? GetAsset(string assetId)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-
-        if (!_entries.TryGetValue(assetId, out var desc))
-            return null;
-
-        var raw = new ReadOnlySpan<byte>(_dataSection, (int)desc.Offset, (int)desc.StoredLength).ToArray();
-        var data = desc.Compression != CompressionMode.None
-            ? CompressionHelper.Decompress(raw, desc.Compression)
-            : raw;
-
-        return new GameFile(assetId, desc.Path, desc.TypeId, desc.Metadata, data, desc.Hash);
+        if (!_entries.TryGetValue(assetId.Trim(), out var entry)) return null;
+        var raw = _dataSection.AsSpan((int)entry.Offset, (int)entry.StoredLength).ToArray();
+        var data = entry.Compression == CompressionMode.None ? raw : CompressionHelper.Decompress(raw, entry.Compression);
+        if (data.LongLength != entry.OriginalLength || CryptoHelper.HashSHA256(data) != entry.Hash)
+            throw new InvalidDataException($"PAK resource '{assetId}' failed size/hash verification.");
+        var file = new GameFile(entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, data, entry.Hash);
+        ValidateCompiledDependencies(file);
+        return file;
     }
 
-    public IGameFile? GetAssetByPath(string path)
-    {
-        if (_pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id))
-            return GetAsset(id);
-        return null;
-    }
+    public IGameFile? GetAssetByPath(string path) =>
+        _pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id) ? GetAsset(id) : null;
 
     public void Dispose()
     {
@@ -84,215 +64,157 @@ public sealed class Archive : IArchive
         _pathToId.Clear();
     }
 
-    // ── 序列化/反序列化 ──
-
-    /// <summary>将二进制数据反序列化为 Archive。</summary>
-    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog? resourceTypes = null)
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes)
     {
-        var metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
-        var span = new ReadOnlySpan<byte>(pakData);
-        var offset = 0;
-
-        // Magic
-        if (Encoding.UTF8.GetString(span[offset..(offset + 4)]) != Magic)
-            throw new InvalidDataException("Invalid .pak magic number");
-        offset += 4;
-
-        // Version
-        var version = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-        offset += 4;
-        if (version != CurrentVersion)
-            throw new InvalidDataException($"Unsupported .pak version: {version}");
-
-        // Entry count
-        var count = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-        offset += 4;
-
-        var entries = new Dictionary<string, EntryDescriptor>(count);
-        var pathToId = new Dictionary<string, string>(count);
-
-        for (var i = 0; i < count; i++)
+        try
         {
-            var idLen = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-            offset += 4;
-            var id = Encoding.UTF8.GetString(span[offset..(offset + idLen)]);
-            offset += idLen;
-
-            var pathLen = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-            offset += 4;
-            var path = Encoding.UTF8.GetString(span[offset..(offset + pathLen)]);
-            offset += pathLen;
-
-            var typeLength = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-            offset += 4;
-            var typeId = Encoding.UTF8.GetString(span[offset..(offset + typeLength)]);
-            offset += typeLength;
-
-            var metadataLength = BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-            offset += 4;
-            var metadataJson = Encoding.UTF8.GetString(span[offset..(offset + metadataLength)]);
-            offset += metadataLength;
-            var metadata = metaCodec.Deserialize(metadataJson);
-            if (!string.Equals(id, metadata.Id, StringComparison.Ordinal)
-                || !string.Equals(path, metadata.Path, StringComparison.Ordinal)
-                || !string.Equals(typeId, metadata.TypeId, StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("Pak entry identity does not match its typed metadata.");
-
-            var dataOffset = BinaryPrimitives.ReadInt64LittleEndian(span[offset..]);
-            offset += 8;
-            var origLen = BinaryPrimitives.ReadInt64LittleEndian(span[offset..]);
-            offset += 8;
-            var storedLen = BinaryPrimitives.ReadInt64LittleEndian(span[offset..]);
-            offset += 8;
-
-            var compress = (CompressionMode)BinaryPrimitives.ReadInt32LittleEndian(span[offset..]);
-            offset += 4;
-
-            var hashBytes = span[offset..(offset + 64)]; // 64 hex chars = 32 bytes
-            var hash = Encoding.UTF8.GetString(hashBytes).TrimEnd('\0');
-            offset += 64;
-
-            entries[id] = new EntryDescriptor
+            using var stream = new MemoryStream(pakData, writable: false);
+            using var reader = new BinaryReader(stream, Utf8);
+            if (!ReadExact(reader, 4).AsSpan().SequenceEqual("GPAK"u8)) throw new InvalidDataException("Invalid .pak magic number.");
+            var version = reader.ReadInt32();
+            if (version != CurrentVersion) throw new InvalidDataException($"Unsupported .pak version: {version}.");
+            var descriptor = JsonCodec.Deserialize<PakDescriptor>(ReadString(reader), ControlOptions)
+                ?? throw new InvalidDataException("Missing PAK control descriptor.");
+            descriptor.Validate();
+            descriptor = descriptor with { Mappings = new(descriptor.Mappings, StringComparer.OrdinalIgnoreCase) };
+            var count = reader.ReadInt32();
+            if (count < 0 || count > (stream.Length - stream.Position) / 108)
+                throw new InvalidDataException("Invalid PAK entry count.");
+            var codec = new AssetMetaCodec(resourceTypes);
+            var entries = new Dictionary<string, EntryDescriptor>(StringComparer.OrdinalIgnoreCase);
+            var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            for (var i = 0; i < count; i++)
             {
-                Path = path,
-                TypeId = typeId,
-                Metadata = metadata,
-                Offset = dataOffset,
-                OriginalLength = origLen,
-                StoredLength = storedLen,
-                Compression = compress,
-                Hash = hash,
-            };
-
-            pathToId[AssetPathHelper.Normalize(path)] = id;
+                var id = ReadString(reader);
+                var path = ReadString(reader);
+                var type = ReadString(reader);
+                var metadata = codec.Deserialize(ReadString(reader));
+                if (id != metadata.Id || path != metadata.Path || type != metadata.TypeId)
+                    throw new InvalidDataException("PAK entry identity does not match its typed metadata.");
+                var entry = new EntryDescriptor(metadata, reader.ReadInt64(), reader.ReadInt64(), reader.ReadInt64(),
+                    (CompressionMode)reader.ReadInt32(), Utf8.GetString(ReadExact(reader, 64)));
+                if (!Enum.IsDefined(entry.Compression) || entry.Offset < 0 || entry.OriginalLength < 0
+                    || entry.OriginalLength > int.MaxValue || entry.StoredLength < 0 || entry.StoredLength > int.MaxValue
+                    || entry.Hash.Length != 64 || entry.Hash.Any(c => c is not (>= '0' and <= '9' or >= 'a' and <= 'f')))
+                    throw new InvalidDataException("Invalid PAK entry lengths, compression or SHA-256.");
+                if (!entries.TryAdd(id, entry) || !paths.TryAdd(AssetPathHelper.Normalize(path), id))
+                    throw new InvalidDataException("Duplicate PAK resource ID or logical path.");
+            }
+            var data = pakData[(int)stream.Position..];
+            long position = 0;
+            foreach (var entry in entries.Values)
+            {
+                if (entry.Offset != position || entry.StoredLength > data.LongLength - position)
+                    throw new InvalidDataException("Invalid PAK data block range.");
+                position += entry.StoredLength;
+            }
+            if (position != data.LongLength) throw new InvalidDataException("Unexpected PAK trailing bytes.");
+            ValidateTargets(descriptor, entries.Keys);
+            var archive = new Archive(name, data, entries, paths, descriptor);
+            foreach (var id in entries.Where(pair => pair.Value.Metadata.TypeId == ImageVariantsCodec.ResourceType).Select(pair => pair.Key))
+                archive.GetAsset(id);
+            return archive;
         }
-
-        // Data section starts at offset
-        var dataSection = pakData[offset..];
-
-        return new Archive(name, dataSection, entries, pathToId);
+        catch (Exception exception) when (exception is EndOfStreamException or JsonException or DecoderFallbackException or ArgumentException or OverflowException)
+        {
+            throw new InvalidDataException("Malformed PAK archive.", exception);
+        }
     }
 
-    /// <summary>将 Archive 序列化为二进制数据（.pak 格式）。</summary>
     public static byte[] Serialize(string name, IReadOnlyList<IGameFile> files,
-        CompressionMode compression = CompressionMode.Brotli, IResourceTypeCatalog? resourceTypes = null)
+        IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli, PakDescriptor? descriptor = null)
     {
-        var metaCodec = new AssetMetaCodec(resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
-        // Build entry descriptors (compress if needed)
-        var entryList = new List<(IGameFile file, byte[] storedData, CompressionMode actualCompression, string hash, byte[] typeBytes, byte[] metadataBytes)>();
-        foreach (var file in files)
+        ArgumentNullException.ThrowIfNull(files);
+        if (!Enum.IsDefined(compression)) throw new ArgumentOutOfRangeException(nameof(compression));
+        descriptor ??= new();
+        descriptor.Validate();
+        descriptor = descriptor with
         {
-            var data = file.ReadAllBytes();
-            var hash = string.IsNullOrEmpty(file.Hash)
-                ? CryptoHelper.HashSHA256(data)
-                : file.Hash;
-            var useCompression = compression != CompressionMode.None && data.Length > 256;
-            var stored = useCompression ? CompressionHelper.Compress(data, compression) : data;
-            var typeBytes = Encoding.UTF8.GetBytes(file.TypeId);
-            var metadataBytes = Encoding.UTF8.GetBytes(metaCodec.Serialize(file.Metadata));
-            entryList.Add((file, stored, useCompression ? compression : CompressionMode.None, hash, typeBytes, metadataBytes));
-        }
-
-        // Calculate sizes
-        var headerSize = 4 + 4 + 4; // magic + version + count
-        foreach (var (file, storedData, _, _, typeBytes, metadataBytes) in entryList)
+            Mappings = descriptor.Mappings.OrderBy(pair => pair.Key, StringComparer.Ordinal)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase)
+        };
+        var codec = new AssetMetaCodec(resourceTypes);
+        var entries = new List<(EntryDescriptor Entry, byte[] Data)>();
+        var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var file in files.OrderBy(file => file.Id, StringComparer.Ordinal))
         {
-            headerSize += 4 + Encoding.UTF8.GetByteCount(file.Id); // id
-            headerSize += 4 + Encoding.UTF8.GetByteCount(file.Path); // path
-            headerSize += 4 + typeBytes.Length + 4 + metadataBytes.Length + 8 + 8 + 8 + 4 + 64;
+            if (string.IsNullOrWhiteSpace(file.Id) || file.Id != file.Id.Trim()
+                || string.IsNullOrWhiteSpace(file.Path) || file.Path != file.Path.Trim().Replace('\\', '/'))
+                throw new InvalidDataException("PAK resources require canonical, non-empty identity and path.");
+            if (file.Id != file.Metadata.Id || file.Path != file.Metadata.Path || file.TypeId != file.Metadata.TypeId)
+                throw new InvalidDataException("PAK entry identity does not match its typed metadata.");
+            if (!ids.Add(file.Id) || !paths.Add(AssetPathHelper.Normalize(file.Path)))
+                throw new InvalidDataException("Duplicate PAK resource ID or logical path.");
+            var bytes = file.ReadAllBytes();
+            if (bytes.LongLength != file.Length) throw new InvalidDataException("Resource size changed while preparing PAK.");
+            ValidateCompiledDependencies(new GameFile(file.Id, file.Path, file.TypeId, file.Metadata, bytes));
+            var actualCompression = compression != CompressionMode.None && bytes.Length > 256 ? compression : CompressionMode.None;
+            var stored = actualCompression == CompressionMode.None ? bytes : CompressionHelper.Compress(bytes, actualCompression);
+            entries.Add((new(file.Metadata, 0, bytes.Length, stored.Length, actualCompression, CryptoHelper.HashSHA256(bytes)), stored));
         }
-
-        var pakSize = headerSize;
-        foreach (var (_, storedData, _, _, _, _) in entryList)
-            pakSize += storedData.Length;
-
-        var pak = new byte[pakSize];
-        var span = new Span<byte>(pak);
-        var pos = 0;
-
-        // Magic
-        Encoding.UTF8.GetBytes(Magic, span[pos..(pos + 4)]);
-        pos += 4;
-
-        // Version
-        BinaryPrimitives.WriteInt32LittleEndian(span[pos..], CurrentVersion);
-        pos += 4;
-
-        // Entry count
-        BinaryPrimitives.WriteInt32LittleEndian(span[pos..], entryList.Count);
-        pos += 4;
-
-        // Entry table
-        var dataRelativeOffset = 0L;
-        foreach (var (file, storedData, actualCompression, hash, typeBytes, metadataBytes) in entryList)
+        ValidateTargets(descriptor, ids);
+        using var stream = new MemoryStream();
+        using var writer = new BinaryWriter(stream, Utf8, leaveOpen: true);
+        writer.Write("GPAK"u8);
+        writer.Write(CurrentVersion);
+        WriteString(writer, JsonCodec.Serialize(descriptor, ControlOptions));
+        writer.Write(entries.Count);
+        long offset = 0;
+        foreach (var (entry, stored) in entries)
         {
-            // Id
-            var idBytes = Encoding.UTF8.GetBytes(file.Id);
-            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], idBytes.Length);
-            pos += 4;
-            idBytes.CopyTo(span[pos..]);
-            pos += idBytes.Length;
-
-            // Path
-            var pathBytes = Encoding.UTF8.GetBytes(file.Path);
-            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], pathBytes.Length);
-            pos += 4;
-            pathBytes.CopyTo(span[pos..]);
-            pos += pathBytes.Length;
-
-            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], typeBytes.Length);
-            pos += 4;
-            typeBytes.CopyTo(span[pos..]);
-            pos += typeBytes.Length;
-
-            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], metadataBytes.Length);
-            pos += 4;
-            metadataBytes.CopyTo(span[pos..]);
-            pos += metadataBytes.Length;
-
-            // Offset (relative to data section start)
-            BinaryPrimitives.WriteInt64LittleEndian(span[pos..], dataRelativeOffset);
-            pos += 8;
-
-            // Original length
-            BinaryPrimitives.WriteInt64LittleEndian(span[pos..], file.Length);
-            pos += 8;
-
-            // Stored length
-            BinaryPrimitives.WriteInt64LittleEndian(span[pos..], storedData.Length);
-            pos += 8;
-
-            // Compression
-            BinaryPrimitives.WriteInt32LittleEndian(span[pos..], (int)actualCompression);
-            pos += 4;
-
-            // Hash (64 hex chars)
-            var hashBytes = Encoding.UTF8.GetBytes(hash.PadRight(64, '\0')[..64]);
-            hashBytes.CopyTo(span[pos..]);
-            pos += 64;
-
-            dataRelativeOffset += storedData.Length;
+            WriteString(writer, entry.Metadata.Id);
+            WriteString(writer, entry.Metadata.Path);
+            WriteString(writer, entry.Metadata.TypeId);
+            WriteString(writer, codec.Serialize(entry.Metadata));
+            writer.Write(offset);
+            writer.Write(entry.OriginalLength);
+            writer.Write(entry.StoredLength);
+            writer.Write((int)entry.Compression);
+            writer.Write(Utf8.GetBytes(entry.Hash));
+            offset += stored.Length;
         }
-
-        // Data section
-        foreach (var (_, storedData, _, _, _, _) in entryList)
-        {
-            storedData.CopyTo(span[pos..]);
-            pos += storedData.Length;
-        }
-
-        return pak;
+        foreach (var (_, stored) in entries) writer.Write(stored);
+        writer.Flush();
+        return stream.ToArray();
     }
 
-    private struct EntryDescriptor
+    private static void ValidateCompiledDependencies(GameFile file)
     {
-        public string Path;
-        public string TypeId;
-        public AssetMeta Metadata;
-        public long Offset;
-        public long OriginalLength;
-        public long StoredLength;
-        public CompressionMode Compression;
-        public string Hash;
+        if (file.TypeId != ImageVariantsCodec.ResourceType) return;
+        var definition = ImageVariantsCodec.Decode(file.ReadAllBytes());
+        var expected = definition.Variants.Select(variant => variant.AssetId.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (file.Metadata is not IAssetDependencies source) throw new InvalidDataException("Compiled image variants require dependency metadata.");
+        var info = source.GetDependencies();
+        if (!info.Complete || info.Direct.Any(item => item is null || string.IsNullOrWhiteSpace(item.AssetId)
+                || item.ExpectedTypeId != "sprite" || item.RequiredStoryPackage is not null)
+            || !expected.SetEquals(info.Direct.Select(item => item.AssetId.Trim())))
+            throw new InvalidDataException("Compiled image variants dependencies do not match their payload.");
     }
+
+    private static void ValidateTargets(PakDescriptor descriptor, IEnumerable<string> ids)
+    {
+        var available = ids.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (descriptor.Mappings.Values.Any(id => !available.Contains(id)))
+            throw new InvalidDataException("Override mapping targets must be carried by their PAK.");
+    }
+
+    private static string ReadString(BinaryReader reader) => Utf8.GetString(ReadExact(reader, reader.ReadInt32()));
+    private static byte[] ReadExact(BinaryReader reader, int count)
+    {
+        if (count < 0 || count > reader.BaseStream.Length - reader.BaseStream.Position)
+            throw new InvalidDataException("Invalid PAK field length.");
+        var bytes = reader.ReadBytes(count);
+        if (bytes.Length != count) throw new InvalidDataException("Truncated PAK field.");
+        return bytes;
+    }
+    private static void WriteString(BinaryWriter writer, string value)
+    {
+        var bytes = Utf8.GetBytes(value);
+        writer.Write(bytes.Length);
+        writer.Write(bytes);
+    }
+
+    private sealed record EntryDescriptor(AssetMeta Metadata, long Offset, long OriginalLength, long StoredLength,
+        CompressionMode Compression, string Hash);
 }

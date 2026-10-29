@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Project;
+using GalNet.Editor.Abstraction.Settings;
 
 namespace GalNet.Editor.Abstraction.Services;
 
@@ -22,7 +23,7 @@ public interface IProjectService
     Task<GalProject> OpenAsync(string projectPath);
 
     /// <summary>新建项目</summary>
-    Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory);
+    Task<GalProject> CreateAsync(string projectPath, string name, ProjectConfiguration settings, string contractsDirectory);
 
     /// <summary>关闭当前项目（含脏检查）</summary>
     Task CloseAsync();

@@ -29,8 +29,8 @@ Dock.Avalonia 是一个面向 Avalonia UI 框架的停靠布局系统，支持�
 │  EditorPageView.axaml — DockControl Layout="{Binding Layout}"   │
 ├──────────────────────────────────────────────────────────────────┤
 │  ViewModel 层                                                     │
-│  EditorPageViewModel — 管理 IRootDock Layout                     │
-│  各面板 ViewModel（EditorWorkspaceViewModel, GamePreviewPanel...）│
+│  EditorPageViewModel — 绑定 EditorLayoutSession.Layout                     │
+│  各面板 ViewModel（EditorWorkspaceViewModel, ExternalDebugPanel...）│
 ├──────────────────────────────────────────────────────────────────┤
 │  Dock 工厂层                                                      │
 │  EditorDockFactory — 创建/恢复布局树、管理面板生命周期             │
@@ -71,7 +71,7 @@ RootDock ("Root")
     ├── ProportionalDock ("Center", Vertical, Proportion=0.68)
     │   ├── DocumentDock ("Documents")           ← 中央主区域
     │   │   ├── Document ("NodeGraph")           ← 节点图编辑器
-    │   │   ├── Document ("GamePreview")          ← 游戏预览
+    │   │   ├── Document ("ExternalDebug")        ← 外部游戏调试
     │   │   └── ... (其他默认/用户打开的面板)
     │   ├── ProportionalDockSplitter
     │   └── DocumentDock ("LogDocuments")         ← 底部区域
@@ -139,7 +139,7 @@ registry.RegisterDockPanel(new DelegateDockPanelContribution(
 | `GroupEditor` | MainDocument | 否 | 否 | 组编辑器（按需打开） |
 | `Inspector` | InspectorDocument | 否 | 是 | 属性检查器 |
 
-Editor 工作区重构期间暂不注册 `GamePreview`，旧布局中的该项会作为不可用面板移除；当前也没有 `UiCustomization` contribution。`EditorDockFactory` 属于项目 scope。Group contribution 接收稳定 Group ID 字符串，项目文档及共享投影不由 Dock 页面拥有；关闭页面释放其订阅，重开继续使用相同项目内容。
+旧内嵌 `GamePreview` 及其运行宿主已删除，旧布局中的该项会作为不可用面板移除；当前也没有 `UiCustomization` contribution。`EditorDockFactory` 属于项目 scope。Group contribution 接收稳定 Group ID 字符串，项目文档及共享投影不由 Dock 页面拥有；关闭页面释放其订阅，重开继续使用相同项目内容。
 
 Timeline 使用项目 scope 的 `EntrySelectionContext` 与 `TimelineEditSession`；页面只发布稳定选择，面板不持有 Group 页字段 lease。激活 Group 页恢复其活动选择，工具面板获焦不改变来源。关闭 Timeline 释放面板并取消未确认输入，项目会话与内容历史保留；重新打开使用同一个项目会话。当前编辑行为与后续画布范围见 [Group 编辑](editor-groups.md#timeline-dock)。
 
@@ -314,3 +314,5 @@ services.AddTransient<MyNewPanelViewModel>();
 预设调整现有 Dock，不销毁打开的文档、作者选择或项目草稿。最大化当前面板可恢复操作前结构；临时最大化状态不覆盖自动保存的布局。Timeline 属性树初始宽 320 DIP，可通过分隔条调整；显示完整时长、定位播放头及缩放读数只改变视口。
 
 Editor 图标按钮默认透明、32 DIP 点击区域，保留键盘焦点、禁用及切换反馈。按钮、背景与文字使用 Editor 调色板；普通 Button、ToggleButton、输入与菜单的 hover 直接使用 Ursa/Semi 原生模板行为。Editor 不再向全局 `Border`、控件模板或图标按钮注入自定义画刷过渡，以免 entry 卡片等非按钮容器参与动画。游戏作者数据和其他宿主不依赖这些 Editor 外观。
+
+布局恢复、命名布局和防抖写盘由 `Shell.EditorLayoutSession` 统一持有；页面只公开布局与命令。菜单由 `EditorMenuBuilder` 根据命令和贡献项构建，普通面板切换只更新菜单勾选状态，命名布局变化才重建菜单。

@@ -4,11 +4,12 @@ using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Contracts.Builtins.Audio;
+using GalNet.Contracts.Builtins.Scene;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
+using GalNet.Core.Execution;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
-using GalNet.Core.Variants;
-using GalNet.Presentation.Abstractions.Audio;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -32,11 +33,13 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     public AvaloniaGamePresenters Presenters { get; private set; } = null!;
     public AvaloniaEffectRuntime Effects { get; private set; } = null!;
     public IAudioPlaybackHost Audio { get; private set; } = null!;
-    public AvaloniaVideoPresenter Video { get; private set; } = null!;
+    public IVideoPresenter Video { get; private set; } = null!;
     public CompositeGameView View { get; private set; } = null!;
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
     public StateRestoreSession Restorer { get; private set; } = null!;
     public ImageVariantsCatalog ImageVariants { get; private set; } = ImageVariantsCatalog.Empty;
+    public GalNet.GameHost.DialogueHistoryJournal History { get; } = new();
+    public GalNet.GameHost.DialogueVoiceReplay VoiceReplay { get; private set; } = null!;
 
     public static async Task<AvaloniaGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, IAssetManager assets,
@@ -44,7 +47,8 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         IReadOnlyList<EffectProgramResource> effectPrograms, IAssetFileMaterializer files,
         Action<GameRegistration, AvaloniaGamePresentation> configure,
         IEnumerable<string> requiredInstructions,
-        AvaloniaGamePresentationOptions? options = null, LibVLC? sharedLibVlc = null, CancellationToken cancellationToken = default)
+        AvaloniaGamePresentationOptions? options = null, LibVLC? sharedLibVlc = null,
+        AudioConfiguration? audioConfiguration = null, CancellationToken cancellationToken = default)
     {
         options ??= new AvaloniaGamePresentationOptions();
         var presentation = new AvaloniaGamePresentation();
@@ -60,13 +64,16 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
             GameLog.Logger.Information(
                 "Preloaded {UsableEffectProgramCount}/{EffectProgramCount} effect programs in {ElapsedMilliseconds} ms",
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
-            presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs);
-            presentation.Audio = options.CreateAudioHost(assets, files, sharedLibVlc);
-            presentation.AudioModule = new BuiltinAudioModule(presentation.Audio);
-            presentation.Video = new AvaloniaVideoPresenter(assets, gameplay, files: files,
-                sharedLibVlc: sharedLibVlc);
+            presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs, assets);
+            presentation.Audio = options.CreateAudioHost(assets, files);
+            presentation.VoiceReplay = new(presentation.Audio);
+            presentation.AudioModule = new BuiltinAudioModule(presentation.Audio, configuration: audioConfiguration);
+            presentation.Video = options.CreateVideoPresenter is { } createVideo
+                ? createVideo(assets, gameplay, files) ?? throw new InvalidOperationException("The video presenter factory returned null.")
+                : new AvaloniaVideoPresenter(assets, gameplay, files: files, sharedLibVlc: sharedLibVlc);
             using var registration = new GameRegistration();
             configure(registration, presentation);
+            registration.RegisterImplementation(GalNet.GameHost.DialogueHistoryJournal.CreateModule());
             presentation.View = registration.BuildView();
             presentation.View.RequireInstructions(requiredInstructions);
             presentation.Restorer = new StateRestoreSession(presentation.View);
@@ -92,7 +99,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         await Restorer.SuspendAsync(cancellationToken);
     }
 
-    public async Task EndCatchUpAsync(IGameRuntime runtime, CancellationToken cancellationToken)
+    public async Task EndCatchUpAsync(IGameContext runtime, CancellationToken cancellationToken)
     {
         await AvaloniaUiDispatcher.Instance.InvokeAsync(() =>
         {
@@ -109,10 +116,12 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     private async Task DisposeCoreAsync()
     {
         var cleanup = new GalNet.GameHost.ResourceCleanup();
+        await cleanup.RunAsync(() => VoiceReplay?.DisposeAsync() ?? ValueTask.CompletedTask);
         // Implementations borrow platform ports, so release the view first.
         await cleanup.RunAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
         await cleanup.RunAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);
-        await cleanup.RunAsync(() => Video?.DisposeAsync() ?? ValueTask.CompletedTask);
+        if (Video is IAsyncDisposable asyncVideo) await cleanup.RunAsync(asyncVideo.DisposeAsync);
+        else cleanup.Run(() => (Video as IDisposable)?.Dispose());
         if (Audio is IAsyncDisposable asyncAudio) await cleanup.RunAsync(asyncAudio.DisposeAsync);
         else cleanup.Run(() => Audio?.Dispose());
         cleanup.Run(() =>

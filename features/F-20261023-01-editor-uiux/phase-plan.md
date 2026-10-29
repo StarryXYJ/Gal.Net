@@ -22,7 +22,7 @@
 | Primitives.Builtins | 175 通过 | `artifacts-uiux-recheck-GalNet.Primitives.Builtins.Tests.log` |
 | SchemaGenerator | 18 通过 | `artifacts-uiux-recheck-GalNet.SchemaGenerator.Tests.log` |
 
-`scripts/test-contract-reproducibility.ps1 -Configuration Release` 通过：两次不同 SourceRevisionId 的 Sample 契约 SHA-256 同为 `9B97CA52F84880E640C7DAD5012C9DB9667C7887FD47959FDB1A07F1FF2CE535`。Editor 默认契约输出与打包目录 DLL 指纹一致。
+`scripts/contracts/test-contract-reproducibility.ps1 -Configuration Release` 通过：两次不同 SourceRevisionId 的 Sample 契约 SHA-256 同为 `9B97CA52F84880E640C7DAD5012C9DB9667C7887FD47959FDB1A07F1FF2CE535`。Editor 默认契约输出与打包目录 DLL 指纹一致。
 
 `dotnet build GalNet.slnx --no-restore -c Release -m:1` 在本机 IPC 权限下通过，0 错误、14 个 NU1900 审计连接警告（`artifacts-uiux-solution-elevated.log`）。首次沙箱运行的 Android/Browser MSBuild 任务宿主连接失败；同一命令在本机构建权限下成功，未为绕过错误修改平台构建配置。
 
@@ -41,3 +41,7 @@
 实际挂载 1200×800、960×640 和模拟 150% 缩放，并检查实际字段尺寸、透明按钮、资源/Graph/Timeline 控件。稳定截图位于忽略的 `artifacts/uiux/uiux-*.png`。截图捕获临时取消实例过渡以获得稳定端点；颜色中间值由独立过渡测试验证，不用稳定截图替代动画验证。
 
 真实系统 DPI、原生 IME 候选窗口及完整桌面人工操作仍待人工验收。GUI 检查同步捕获当前版本，没有异步旧结果发布窗口。对象/列表草稿使用保守根来源签名，相关根值变化需要解决冲突。正式 spec/manual 已同步，详见 summary。
+
+本地化页后续精简及直接更新已自动验证，最终 Editor 293/293 通过、解决方案 0 错误；范围及人工验收边界见 [实施记录](phase-localization-20261025.md)。
+
+本地化实测修正：表头/内容明确左对齐、正文左上对齐、输入改为失焦/Ctrl+Enter/Save All 提交。完整 Editor 295/295 通过，详见 [交互修正记录](follow-up-localization-20261025.md)。

@@ -14,6 +14,7 @@
   <SolidColorBrush x:Key="GalNet.Brush.OnSecondary" Color="{DynamicResource GalNet.Palette.OnSecondaryColor}" />
   <Color x:Key="GalNet.Palette.BackgroundColor">#1A141C</Color>
   <SolidColorBrush x:Key="GalNet.Brush.Background" Color="{DynamicResource GalNet.Palette.BackgroundColor}" />
+  <SolidColorBrush x:Key="GalNet.Brush.SaveCaption" Color="{DynamicResource GalNet.Palette.BackgroundColor}" Opacity="0.86" />
   <Color x:Key="GalNet.Palette.SurfaceColor">#2D222E</Color>
   <SolidColorBrush x:Key="GalNet.Brush.Surface" Color="{DynamicResource GalNet.Palette.SurfaceColor}" />
   <Color x:Key="GalNet.Palette.SurfaceRaisedColor">#3D2B3A</Color>

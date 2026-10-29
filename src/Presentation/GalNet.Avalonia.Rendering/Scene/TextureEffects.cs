@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;
@@ -39,11 +39,28 @@ public sealed class ShaderProgramTextureEffect : IGpuTextureEffect
         using var uniforms = new SKRuntimeEffectUniforms(_effect!);
         using var children = new SKRuntimeEffectChildren(_effect!);
         if (uniforms.Contains("size")) uniforms.Add("size", new SKSize(width, height));
+        if (uniforms.Contains("layerZ")) uniforms.Add("layerZ", instance.LayerZ);
         children.Add(_descriptor.SourceInput, input);
-        foreach (var parameter in _descriptor.Parameters) BindParameter(uniforms, parameter, instance);
-        using var shader = _effect!.ToShader(uniforms, children);
-        using var paint = new SKPaint { Shader = shader, IsAntialias = false };
-        target.DrawRect(0, 0, width, height, paint);
+        var textureShaders = new List<SKShader>();
+        try
+        {
+            foreach (var parameter in _descriptor.Parameters)
+            {
+                if (parameter.Kind != ShaderEffectParameterKind.Texture) { BindParameter(uniforms, parameter, instance); continue; }
+                var image = instance.Textures?.Get(parameter.Name)?.SkImage;
+                if (image is null && parameter.Required)
+                    throw new InvalidOperationException($"Required shader texture '{parameter.Name}' is unavailable.");
+                var texture = image is null ? SKShader.CreateColor(SKColors.Transparent) :
+                    image.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp,
+                        SKMatrix.CreateScale((float)width / image.Width, (float)height / image.Height));
+                textureShaders.Add(texture);
+                children.Add(parameter.Uniform, texture);
+            }
+            using var shader = _effect!.ToShader(uniforms, children);
+            using var paint = new SKPaint { Shader = shader, IsAntialias = false };
+            target.DrawRect(0, 0, width, height, paint);
+        }
+        finally { foreach (var texture in textureShaders) texture.Dispose(); }
     }
 
     private static void BindParameter(SKRuntimeEffectUniforms uniforms, ShaderEffectParameterDescriptor parameter, SceneEffectInstance instance)
@@ -75,6 +92,9 @@ public sealed class ShaderProgramTextureEffect : IGpuTextureEffect
                 break;
             case ShaderEffectParameterKind.Vector2:
                 uniforms.Add(parameter.Uniform, ReadVector(instance, parameter, 2));
+                break;
+            case ShaderEffectParameterKind.Vector3:
+                uniforms.Add(parameter.Uniform, ReadVector(instance, parameter, 3));
                 break;
             case ShaderEffectParameterKind.Vector4:
                 uniforms.Add(parameter.Uniform, ReadVector(instance, parameter, 4));

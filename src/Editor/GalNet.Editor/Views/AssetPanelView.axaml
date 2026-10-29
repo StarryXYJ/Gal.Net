@@ -49,7 +49,7 @@
         <TreeView.Styles><Style Selector="TreeViewItem"><Setter Property="IsExpanded" Value="{ReflectionBinding IsExpanded,Mode=TwoWay}" /></Style></TreeView.Styles>
         <TreeView.DataTemplates>
           <TreeDataTemplate DataType="model:ProjectDirectoryNode" ItemsSource="{Binding Children}">
-            <Border Padding="3" DragDrop.AllowDrop="True" DragDrop.DragOver="OnTargetDragOver" DragDrop.DragLeave="OnTargetDragLeave" DragDrop.Drop="OnTargetDrop"><TextBlock Text="{Binding Name}" /></Border>
+            <Border Padding="3" DragDrop.AllowDrop="True" DragDrop.DragOver="OnTargetDragOver" DragDrop.DragLeave="OnTargetDragLeave" DragDrop.Drop="OnTargetDrop"><StackPanel Orientation="Horizontal" Spacing="5"><PathIcon Data="{Binding IconGeometry}" Width="16" Height="16"/><TextBlock Text="{Binding Name}" /></StackPanel></Border>
           </TreeDataTemplate>
         </TreeView.DataTemplates>
       </TreeView>
@@ -89,8 +89,8 @@
               <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding #Root.DataContext.ShowInExplorerCommand}" CommandParameter="{Binding}" />
             </ContextMenu></Border.ContextMenu>
             <Grid RowDefinitions="*,Auto">
-              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><TextBlock Text="{Binding Icon}" FontSize="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
-              <TextBlock Text="{Binding Path}" IsVisible="{Binding #Root.DataContext.IsListView}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SemiColorText2}" FontSize="11"/>
+              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><PathIcon Data="{Binding IconGeometry}" Width="38" Height="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
+              <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding #Root.DataContext.IsListView}"><PathIcon Data="{Binding IconGeometry}" Width="16" Height="16"/><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SemiColorText2}" FontSize="11"/></StackPanel>
               <TextBlock Grid.Row="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" IsVisible="{Binding !IsRenaming}" />
               <TextBox Grid.Row="1" Text="{Binding #Root.DataContext.RenameText,Mode=TwoWay}" IsVisible="{Binding IsRenaming}" AttachedToVisualTree="OnRenameAttached" PropertyChanged="OnRenamePropertyChanged" KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />
             </Grid>

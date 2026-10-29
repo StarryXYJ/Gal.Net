@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
 using Avalonia;
-using Avalonia.Controls;
 using GalNet.Core.Assets;
 using GalNet.Editor.Models;
 using GalNet.Game.Controls.Forms;
@@ -31,6 +30,6 @@ internal static class AssetFieldEditor
             finally { Refresh(); }
         }
         Refresh(); context.PropertyChanged += Changed; picker.PropertyChanged += Selected;
-        return new(picker, () => { disposed = true; lifetime.Cancel(); context.PropertyChanged -= Changed; picker.PropertyChanged -= Selected; picker.FindControl<Avalonia.Controls.Button>("PickerButton")?.Flyout?.Hide(); picker.AssetManager = null; lifetime.Dispose(); });
+        return new(picker, () => { disposed = true; lifetime.Cancel(); context.PropertyChanged -= Changed; picker.PropertyChanged -= Selected; picker.Dispose(); picker.AssetManager = null; lifetime.Dispose(); });
     }
 }

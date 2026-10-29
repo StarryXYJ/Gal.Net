@@ -141,7 +141,7 @@ public sealed class GroupCompileServiceTests
     {
         var external = Directory.CreateDirectory(Path.Combine(_root, "external")).FullName;
         var link = Path.Combine(_root, "Output");
-        Directory.CreateSymbolicLink(link, external);
+        DirectoryLinks.Create(link, external);
         try
         {
             var result = await new GroupCompileService(_root).CompileAsync(new(new(Id: "a")));

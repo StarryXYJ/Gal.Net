@@ -1,5 +1,5 @@
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -14,7 +14,7 @@ public sealed class StateRestoreSessionTests
     public async Task RestoredLoopsKeepTheirDefinitionsAndWaitForPresentationCleanup(bool timeline)
     {
         var runtime = BuiltinTestRuntime.Create(null);
-        runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image" });
+        runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image" });
         PrimitiveInstance definition = timeline
             ? new TimelinePrimitiveInstance(runtime, null, null, null, null,
                 new TimelineDefinition { PlaybackHandleId = "loop", DurationFrames = 60, LoopMode = AnimationLoopMode.Loop }, null, CancellationToken.None)
@@ -43,7 +43,7 @@ public sealed class StateRestoreSessionTests
     public async Task RestoredVideoIsDetachedAndDrainedBeforeReusingItsHandle()
     {
         var runtime = BuiltinTestRuntime.Create(null);
-        runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
+        runtime.Scene().GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
         using var view = new GameRegistration().AddBuiltins(videoPresenter: video).BuildView();
         await using var restorer = new StateRestoreSession(view);
@@ -69,7 +69,7 @@ public sealed class StateRestoreSessionTests
     public async Task CanceledSuspensionStillDrainsOldPlaybackBeforeTheNextRestore()
     {
         var runtime = BuiltinTestRuntime.Create(null);
-        runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
+        runtime.Scene().GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
         using var view = new GameRegistration().AddBuiltins(videoPresenter: video).BuildView();
         await using var restorer = new StateRestoreSession(view);
@@ -92,7 +92,7 @@ public sealed class StateRestoreSessionTests
     public async Task DisposalDrainsPresentationAndRejectsAnotherRestore()
     {
         var runtime = BuiltinTestRuntime.Create(null);
-        runtime.SceneInstances.GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
+        runtime.Scene().GetOrAdd("video", id => new Layer { Id = id, AssetId = "clip", IsVideo = true });
         var video = new DelayedVideoPresenter();
         using var view = new GameRegistration().AddBuiltins(videoPresenter: video).BuildView();
         var replay = new StateRestoreSession(view);

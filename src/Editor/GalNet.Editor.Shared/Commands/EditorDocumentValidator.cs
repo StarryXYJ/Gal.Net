@@ -5,9 +5,11 @@ namespace GalNet.Editor.Shared.Commands;
 
 public sealed class EditorDocumentValidator
 {
-    public static ValidationResult Validate(EditorProjectDocument document)
+    public static ValidationResult Validate(EditorProjectDocument document, GalNet.Core.Configuration.ProjectConfigurationSchema? configurations = null)
     {
         var diagnostics = new List<EditorDiagnostic>();
+        try { configurations?.Validate(document.Configuration); }
+        catch (InvalidDataException error) { diagnostics.Add(EditorDiagnostic.Error("settings.configuration.invalid", error.Message, "settings.json")); }
         AddDuplicateDiagnostics(document.Graph.Nodes.Select(node => node.Id), "graph.node.duplicateId", "node", diagnostics);
         AddDuplicateDiagnostics(document.Graph.Edges.Select(edge => edge.Id), "graph.edge.duplicateId", "edge", diagnostics);
         if (document.Graph.Nodes.Any(node => string.IsNullOrWhiteSpace(node.Id)))
@@ -26,10 +28,10 @@ public sealed class EditorDocumentValidator
         {
             if (!nodes.TryGetValue(edge.FromNodeId, out var from))
                 diagnostics.Add(EditorDiagnostic.Error("graph.edge.fromNotFound", $"Edge '{edge.Id}' references missing source node '{edge.FromNodeId}'.", $"graph/edges/{edge.Id}"));
-            if (!nodes.ContainsKey(edge.ToNodeId))
+            if (!nodes.TryGetValue(edge.ToNodeId, out var to))
                 diagnostics.Add(EditorDiagnostic.Error("graph.edge.toNotFound", $"Edge '{edge.Id}' references missing target node '{edge.ToNodeId}'.", $"graph/edges/{edge.Id}"));
-            if (from is not null && (edge.FromOutlet < 0 || edge.FromOutlet >= OutputCount(from)))
-                diagnostics.Add(EditorDiagnostic.Error("graph.edge.invalidOutlet", $"Edge '{edge.Id}' references invalid outlet {edge.FromOutlet} on '{from.Id}'.", $"graph/edges/{edge.Id}"));
+            if (from is not null && GraphEditRules.ConnectionError(from, edge.FromOutlet, to) is { } issue)
+                diagnostics.Add(EditorDiagnostic.Error(issue.Code, issue.Message, $"graph/edges/{edge.Id}"));
         }
 
         foreach (var (groupId, entries) in document.GroupEntries)
@@ -66,12 +68,4 @@ public sealed class EditorDocumentValidator
             diagnostics.Add(EditorDiagnostic.Error(code, $"Duplicate {kind} identifier '{value.Key}'."));
     }
 
-    private static int OutputCount(EditorGraphNodeDto node)
-    {
-        if (node.BranchType?.Equals("Choice", StringComparison.OrdinalIgnoreCase) == true)
-            return Math.Max(1, node.Options?.Count ?? 0);
-        if (node.BranchType?.Equals("Condition", StringComparison.OrdinalIgnoreCase) == true)
-            return Math.Max(1, node.Conditions?.Count ?? 0);
-        return 1;
-    }
 }

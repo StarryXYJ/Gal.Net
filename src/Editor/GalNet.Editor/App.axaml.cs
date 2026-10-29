@@ -3,8 +3,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-using GalNet.Core.Scene;
-using GalNet.Editor.Abstraction.Services;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services;
@@ -12,40 +11,74 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GalNet.Editor;
 
 public partial class App : Application
 {
+    internal EditorStartupPreparation? Preparation { get; init; }
     /// <summary>DI container for application-level services.</summary>
     public static IServiceProvider? ServiceProvider { get; private set; }
 
-    public static ISettingsService GetSettingsService() =>
-        ServiceProvider!.GetRequiredService<ISettingsService>();
 
     public override void Initialize()
     {
+#if BENCHMARK
+        using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.Xaml");
+#endif
         AvaloniaXamlLoader.Load(this);
     }
 
     public override void OnFrameworkInitializationCompleted()
     {
+#if BENCHMARK
+        using var frameworkMeasurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.FrameworkInitialization");
+#endif
         var services = new ServiceCollection();
-        services.AddSingleton<IEffectCatalog>(_ => AvaloniaEffectRuntime.CreateDefaultCatalog());
-        services.AddEditorServices();
-
-        ServiceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+#if BENCHMARK
+        using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.RegisterServices"))
+#endif
         {
-            ValidateOnBuild = true,
-            ValidateScopes = true
-        });
+            services.AddSingleton<IEffectCatalog>(_ => AvaloniaEffectRuntime.CreateDefaultCatalog());
+            services.AddEditorServices();
+        }
 
-        var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
-        ServiceProvider.GetRequiredService<IEditorLocalizationService>().ApplyLocale(editorSettings.UiLocale.Code);
-        ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
+        if (Preparation is { } preparation)
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.WaitStartupPreparation");
+#endif
+            services.Replace(ServiceDescriptor.Singleton<IEditorSettingsService>(preparation.Settings.GetAwaiter().GetResult()));
+            var resources = preparation.Localization.GetAwaiter().GetResult();
+            services.Replace(ServiceDescriptor.Singleton<IEditorLocalizationService>(_ => new EditorLocalizationService(resources)));
+        }
+
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.BuildServiceProvider");
+#endif
+            ServiceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            });
+        }
+
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.SettingsLocaleTheme");
+#endif
+            var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
+            ServiceProvider.GetRequiredService<IEditorLocalizationService>().ApplyLocale(editorSettings.UiLocale.Code);
+            ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
+        }
 
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.CreateMainWindow"))
+#endif
             desktop.MainWindow = ServiceProvider.GetRequiredService<MainWindow>();
             desktop.Exit += (_, _) =>
             {

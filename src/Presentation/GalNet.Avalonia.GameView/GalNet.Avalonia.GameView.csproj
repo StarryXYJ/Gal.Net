@@ -23,4 +23,5 @@
   <ItemGroup>
     <EmbeddedResource Include="Assets\MissingLayer.png" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
 </Project>

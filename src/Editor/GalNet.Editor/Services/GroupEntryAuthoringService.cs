@@ -1,50 +1,54 @@
-using System.Collections.ObjectModel;
 using System.Text;
 using System.Text.Json;
 using GalNet.Core.Entry;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
-using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Services;
 
 /// <summary>Project-owned batch entry intents. History never retains a Group page.</summary>
-public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups, IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null)
+public sealed partial class GroupEntryAuthoringService(IEditorDocumentService documents, IEntryCatalog catalog, EditorHistories histories, GameTextAuthoringService? texts = null, EntryEditSession? edits = null, IProjectContentSession? content = null) : IDisposable
 {
-    public IReadOnlyList<EntryEditorItemViewModel> Insert(string groupId, int index, int count, string? type)
+    public IReadOnlyList<string> Insert(string groupId, int index, int count, string? type)
     {
         var group = Group(groupId);
         type ??= GalNet.Contracts.Builtins.BuiltinEntryIds.Text;
         if (!catalog.TryGet(type, out _)) return [];
         index = Math.Clamp(index, 0, group.Entries.Count);
-        var inserted = Enumerable.Range(0, Math.Clamp(count, 1, MaximumEntries)).Select(_ => new EntryEditorItemViewModel(new EditorEntryData
+        var configuration = content?.CaptureWorking().Configuration;
+        var inserted = Enumerable.Range(0, Math.Clamp(count, 1, MaximumEntries)).Select(_ => new EditorEntryData
         {
             StableId = Guid.NewGuid().ToString("N"),
             Type = type,
-            Parameters = SceneAuthoringIdentities.NewEntry(type, EditorEntryData.ParseParameters(catalog, type, catalog.Create(type).Values))
-        }, catalog)).ToArray();
-        histories.Content.Execute(new PresenceEdit(this, groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
+            Parameters = SceneAuthoringIdentities.NewEntry(type, GalNet.Editor.Shared.Visuals.VisualPresetBindings.Fill(type,
+                EditorEntryData.CreateParameters(catalog, type), configuration))
+        }).ToArray();
+        histories.Content.Execute(Presence(groupId, inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray(), true,
             new("History.AddEntries", inserted.Length)));
-        return inserted;
+        return inserted.Select(entry => entry.StableId).ToArray();
     }
-    private sealed record EntryClipboard(string Kind, int Version, List<EditorEntryData> Entries, GameTextClipboard Texts);
+    private sealed record EntryClipboard(string Kind, int Version, List<EditorEntryData> Entries, GameTextClipboard Texts, string? MoveToken = null);
     private const string ClipboardKind = "GalNet.Entries";
     private const int MaximumEntries = 1000;
     private const int MaximumBytes = 16 * 1024 * 1024;
 
-    private EditorGroupProjection Group(string id)
+    private EditorGroupDocument Group(string id)
     {
         if (!documents.CurrentDocument.Nodes.Any(node => node.Id == id && node.Type == "Group"))
             throw new EditorOperationException("entry.groupMissing", "The Group no longer exists.");
-        return groups.Get(id);
+        if (!documents.Groups.TryGetValue(id, out var group)) throw new EditorOperationException("entry.groupMissing", "The Group source no longer exists.");
+        return group;
     }
+
+    private void Record(string groupId, int first, GroupChangeKind kind, IEnumerable<string> ids) => histories.Content.AuthorChanges.Record(groupId, first, kind, ids);
 
     public string Copy(string groupId, IEnumerable<string> ids)
     {
         var selected = ids.ToHashSet(StringComparer.Ordinal);
-        var entries = Group(groupId).Entries.Where(entry => selected.Contains(entry.StableId)).Select(entry => entry.Source).ToList();
+        var entries = Group(groupId).Entries.Where(entry => selected.Contains(entry.StableId)).ToList();
         if (entries.Count == 0) return "";
         if (entries.Count > MaximumEntries) throw InvalidClipboard();
         var text = JsonSerializer.Serialize(new EntryClipboard(ClipboardKind, 2, entries, texts?.CaptureCopies(entries) ?? new(new(), new())));
@@ -52,8 +56,17 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         return text;
     }
 
-    public async Task<IReadOnlyList<EntryEditorItemViewModel>> PasteAsync(string groupId, string text, string? anchorId)
+    public async Task<IReadOnlyList<string>> PasteAsync(string groupId, string text, string? anchorId, Func<PreparedEntryEdit, Task<bool>>? review = null)
     {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        LastPasteCopiedMove = false;
+        if (TryPrepareMove(groupId, text, anchorId, out var move))
+        {
+            if (move is null) return [];
+            if (review is not null && !await review(move.Edit)) return [];
+            move.Edit.Commit(); CancelPendingMove();
+            return Group(groupId).Entries.Where(entry => move.TargetIds.Contains(entry.StableId)).Select(entry => entry.StableId).ToArray();
+        }
         var group = Group(groupId);
         var index = anchorId is null ? group.Entries.Count : group.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
         if (anchorId is not null && index == 0) throw new EditorOperationException("entry.anchorMissing", "The insertion target was removed.");
@@ -65,6 +78,7 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
             if (clip.Kind != ClipboardKind || clip.Version != 2 || clip.Entries is not { Count: > 0 and <= MaximumEntries }
                 || clip.Entries.Any(entry => entry is null || string.IsNullOrWhiteSpace(entry.Type) || entry.Condition is null || entry.Parameters is null)) throw new JsonException();
             GameTextAuthoringService.ValidateClipboard(clip.Texts);
+            LastPasteCopiedMove = clip.MoveToken is not null;
             // Check the entire payload before creating any live projection. Keep incomplete drafts;
             // full semantic validation belongs to compile/check, not clipboard insertion.
             foreach (var entry in clip.Entries)
@@ -80,19 +94,35 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
             if (anchorId is not null && !group.Entries.Any(entry => entry.StableId == anchorId)) throw new EditorOperationException("entry.anchorMissing", "The insertion target was removed.");
         });
         index = anchorId is null ? group.Entries.Count : group.Entries.ToList().FindIndex(entry => entry.StableId == anchorId) + 1;
-        var inserted = clip.Entries.Select(entry => new EntryEditorItemViewModel(entry, catalog)).ToArray();
+        var inserted = clip.Entries.ToArray();
         var positions = inserted.Select((entry, offset) => new PositionedEntry(index + offset, entry)).ToArray();
-        var presence = new PresenceEdit(this, groupId, positions, true, new("History.PasteEntries", inserted.Length));
+        var presence = Presence(groupId, positions, true, new("History.PasteEntries", inserted.Length));
         if (copy is null) histories.Content.Execute(presence);
         else await histories.Content.ExecuteAsync(new AsyncCompositeEdit("Paste entries", [copy, new AsyncEditAdapter(presence)], new("History.PasteEntries", inserted.Length)));
-        return inserted;
+        return inserted.Select(entry => entry.StableId).ToArray();
     }
 
     public void Delete(string groupId, IEnumerable<string> ids)
     {
         var selected = ids.ToHashSet(StringComparer.Ordinal);
         var entries = Group(groupId).Entries.Select((entry, index) => new PositionedEntry(index, entry)).Where(item => selected.Contains(item.Entry.StableId)).ToArray();
-        if (entries.Length > 0) histories.Content.Execute(new PresenceEdit(this, groupId, entries, false, new("History.DeleteEntries", entries.Length)));
+        if (entries.Length > 0) histories.Content.Execute(Presence(groupId, entries, false, new("History.DeleteEntries", entries.Length)));
+    }
+
+    public PreparedEntryEdit? PrepareDelete(string groupId, IEnumerable<string> ids)
+    {
+        var selected = ids.ToHashSet(StringComparer.Ordinal);
+        var entries = Group(groupId).Entries.Select((entry, index) => new PositionedEntry(index, entry)).Where(item => selected.Contains(item.Entry.StableId)).ToArray();
+        var revision = edits?.Revision;
+        return entries.Length == 0 ? null : new(documents, histories,
+            Presence(groupId, entries, false, new("History.DeleteEntries", entries.Length)),
+            candidate => candidate.GroupEntries[groupId].RemoveAll(entry => selected.Contains(entry.StableId)),
+            edits?.CountPending(entries.Select(item => new SceneAuthorAddress(groupId, item.Entry.StableId))) ?? 0, () => edits?.Revision == revision);
+    }
+    private IUndoableEdit Presence(string groupId, PositionedEntry[] entries, bool insert, EditorText display)
+    {
+        var edit = new PresenceEdit(this, groupId, entries, insert, display);
+        return edits is null ? edit : new EntryDraftLifecycleEdit(edits, edit, entries.Select(item => new EntryAddressTransition(new(groupId, item.Entry.StableId), new(groupId, item.Entry.StableId))).ToArray(), histories.Content.AuthorChanges);
     }
 
     public void Move(string groupId, IEnumerable<string> ids, string draggedId, int newIndex)
@@ -110,33 +140,32 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
         if (!before.SequenceEqual(after)) histories.Content.Execute(new OrderEdit(this, groupId, before, after.ToArray()));
     }
 
-    private sealed record PositionedEntry(int Index, EntryEditorItemViewModel Entry);
-    private sealed record PresenceEdit(GroupEntryAuthoringService Owner, string GroupId, PositionedEntry[] Entries, bool Insert, EditorText DisplayText) : IUndoableEdit
+    private sealed record PositionedEntry(int Index, EditorEntryData Entry);
+    private sealed record PresenceEdit(GroupEntryAuthoringService Owner, string GroupId, PositionedEntry[] Entries, bool Insert, EditorText DisplayText) : IUndoableEdit, IAuthorScopedEdit
     {
         public string Description => Insert ? "Paste entries" : "Delete entries";
-        public long RetainedBytes => Entries.Sum(item => (long)JsonSerializer.SerializeToUtf8Bytes(item.Entry.Source).Length);
+        public long RetainedBytes => Entries.Sum(item => (long)JsonSerializer.SerializeToUtf8Bytes(item.Entry).Length);
         public void Redo() => Apply(Insert);
         public void Undo() => Apply(!Insert);
         private void Apply(bool present)
         {
             var entries = Owner.Group(GroupId).Entries;
-            ApplyAtomically(entries, () =>
+            if (present)
             {
-                if (present)
-                {
-                    if (Entries.Any(item => entries.Any(entry => entry.StableId == item.Entry.StableId))) throw new InvalidOperationException("Entry already exists.");
-                    foreach (var item in Entries) entries.Insert(Math.Min(item.Index, entries.Count), item.Entry);
-                }
-                else
-                {
-                    if (Entries.Any(item => !entries.Contains(item.Entry))) throw new InvalidOperationException("Entry no longer exists.");
-                    foreach (var item in Entries.Reverse()) entries.Remove(item.Entry);
-                }
-            });
+                if (Entries.Any(item => entries.Any(entry => entry.StableId == item.Entry.StableId))) throw new InvalidOperationException("Entry already exists.");
+                foreach (var item in Entries) entries.Insert(Math.Min(item.Index, entries.Count), item.Entry);
+            }
+            else
+            {
+                if (Entries.Any(item => !entries.Contains(item.Entry))) throw new InvalidOperationException("Entry no longer exists.");
+                foreach (var item in Entries.Reverse()) entries.Remove(item.Entry);
+            }
+            Renumber(entries);
+            Owner.Record(GroupId, Entries.Min(item => item.Index), GroupChangeKind.Membership, Entries.Select(item => item.Entry.StableId));
         }
     }
 
-    private sealed record OrderEdit(GroupEntryAuthoringService Owner, string GroupId, string[] Before, string[] After) : IUndoableEdit
+    private sealed record OrderEdit(GroupEntryAuthoringService Owner, string GroupId, string[] Before, string[] After) : IUndoableEdit, IAuthorScopedEdit
     {
         public string Description => "Move entries";
         public EditorText DisplayText => new("History.MoveEntries");
@@ -148,42 +177,13 @@ public sealed class GroupEntryAuthoringService(EditorGroupProjectionStore groups
             var entries = Owner.Group(GroupId).Entries;
             var map = entries.ToDictionary(entry => entry.StableId);
             if (map.Count != order.Length || order.Any(id => !map.ContainsKey(id))) throw new InvalidOperationException("Entry order has changed.");
-            ApplyAtomically(entries, () =>
-            {
-                for (var index = 0; index < order.Length; index++)
-                    if (!ReferenceEquals(entries[index], map[order[index]])) entries.Move(entries.IndexOf(map[order[index]]), index);
-            });
+            var first = entries.Select(entry => entry.StableId).Zip(order).TakeWhile(pair => pair.First == pair.Second).Count();
+            entries.Clear(); entries.AddRange(order.Select(id => map[id])); Renumber(entries);
+            Owner.Record(GroupId, first, GroupChangeKind.Order, order.Skip(first));
         }
     }
 
-    private static void ApplyAtomically(ObservableCollection<EntryEditorItemViewModel> entries, Action apply)
-    {
-        var before = entries.ToArray();
-        try { apply(); Renumber(entries); }
-        catch (Exception failure)
-        {
-            try
-            {
-                // ObservableCollection mutates before notifying. A failing observer can
-                // therefore leave even its current operation applied; reconcile the
-                // actual collection rather than counting completed calls.
-                var retained = before.ToHashSet();
-                for (var index = entries.Count - 1; index >= 0; index--)
-                    if (!retained.Contains(entries[index])) entries.RemoveAt(index);
-                for (var index = 0; index < before.Length; index++)
-                {
-                    var current = entries.IndexOf(before[index]);
-                    if (current < 0) entries.Insert(index, before[index]);
-                    else if (current != index) entries.Move(current, index);
-                }
-                Renumber(entries);
-            }
-            catch (Exception compensation) { throw new HistoryRepairRequiredException("Entry edit compensation failed.", new AggregateException(failure, compensation)); }
-            throw;
-        }
-    }
-
-    private static void Renumber(IEnumerable<EntryEditorItemViewModel> entries)
+    private static void Renumber(IEnumerable<EditorEntryData> entries)
     {
         var index = 0;
         foreach (var entry in entries) entry.Id = ++index;

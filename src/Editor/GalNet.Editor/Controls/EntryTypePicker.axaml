@@ -4,14 +4,18 @@
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              x:Class="GalNet.Editor.Controls.EntryTypePicker"
              x:Name="Root"
+             HorizontalContentAlignment="Stretch"
              Focusable="True">
     <Grid>
         <ToggleButton x:Name="OpenButton"
                       IsChecked="{Binding #PickerPopup.IsOpen, Mode=TwoWay}"
+                      HorizontalAlignment="Stretch"
                       HorizontalContentAlignment="Stretch">
             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
-                <TextBlock Text="{Binding SelectedDisplayName,ElementName=Root}" />
-                <TextBlock Grid.Column="1" Text="{Binding SelectedGestureText, ElementName=Root}"
+                <TextBlock Text="{Binding SelectedDisplayName,ElementName=Root}" IsVisible="{Binding !#Root.IsButtonMode}"
+                           HorizontalAlignment="Left" TextAlignment="Left" />
+                <TextBlock Text="{Binding ButtonLabel,ElementName=Root}" IsVisible="{Binding #Root.IsButtonMode}" />
+                <TextBlock Grid.Column="1" Text="{Binding SelectedGestureText, ElementName=Root}" IsVisible="{Binding !#Root.IsButtonMode}"
                            Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
             </Grid>
         </ToggleButton>

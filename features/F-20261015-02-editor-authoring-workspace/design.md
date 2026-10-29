@@ -1,5 +1,7 @@
 # Editor 创作工作区设计
 
+2026-10-26 Group 一致性补充设计已获用户授权按阶段实施：针对 [专项审核](review.md)，以项目作者操作的准备/提交边界统一变更发布，以共享 Entry 作者语义目录支持引用索引、身份迁移和场景分析；草稿生命周期与控件 lease 分离，查询按依赖和结果版本失效。沿用现有作者文档、历史和保存基线，不新增通用事件总线或重复 schema。模块职责、接口、数据流、取舍、兼容性、迁移与验收见 [Group 编辑一致性与模块化设计](group-authoring-consistency-design.md)。GC1 作者提交边界已 verified，900 项执行通过、4 项 Explicit 原生 GUI 未运行，见 [阶段记录](phase-group-consistency.md)；待移动剪切、删除输入归档/恢复与局部依赖失效仍在后续阶段，不表示这些交互已经交付。
+
 2026-10-21 P6e4c4：播放控制候选以 Playbacks 与场景 Targets 分域，共用纯分析、项目代次和 Locator 选择 lease；停止动画字段复用共享选择器，语言刷新保留域，UI 只显示类型及原条目来源。后续播放存在性保持可能，立即完成与迭代后停止区别处理，阻塞终态不泄漏内部播放。范围及验证见 [phase-6e4.md](phase-6e4.md)，当前行为见 [场景目标规范](../../docs/spec/editor-scene-targets.md)。
 
 2026-10-21 P6e4c3b：效果声明通过项目级后台资源准备进入不可变场景查询代次，Core 与 renderer 共用受支持标量转换；legacy catalog 与 program metadata 分开处理。当前对象能力缺失与上游语义未知独立保留；资源刷新/关闭使旧加载、选择及编辑行失效，既有轨道保留。已验证边界见 [phase-6e4.md](phase-6e4.md)，稳定规则见 [场景目标查询规范](../../docs/spec/editor-scene-targets.md)。

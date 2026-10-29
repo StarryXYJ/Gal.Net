@@ -11,11 +11,10 @@ internal sealed class ActivePrimitiveRegistry(Action<PrimitiveInstance> complete
     private readonly Action<PrimitiveInstance> _autoChanged = autoChanged;
     private string? _groupId;
     private long _groupExecutionId;
-    private long _nextSequence;
 
     public ActivePrimitive Track(PrimitiveInstance instance, string groupId, string stableId, bool wasRead, bool isReading)
     {
-        var active = new ActivePrimitive(_groupExecutionId, ++_nextSequence, instance, groupId, stableId, wasRead, isReading);
+        var active = new ActivePrimitive(_groupExecutionId, instance, groupId, stableId, wasRead, isReading);
         _items.Add(active);
         instance.Completed += _completed;
         instance.AutoBlockingChanged += _autoChanged;
@@ -35,7 +34,7 @@ internal sealed class ActivePrimitiveRegistry(Action<PrimitiveInstance> complete
             yield break;
         }
 
-        foreach (var item in _items.OrderBy(item => item.Sequence))
+        foreach (var item in _items)
             if (item.GroupExecutionId == blocker.GroupExecutionId &&
                 string.Equals(item.Instance.BatchId, blocker.Instance.BatchId, StringComparison.Ordinal) &&
                 !item.Instance.IsCompleted && item.Instance.IsSkippable)
@@ -44,13 +43,12 @@ internal sealed class ActivePrimitiveRegistry(Action<PrimitiveInstance> complete
 
     public ActivePrimitive? EarliestBlocker() => _items
         .Where(item => item.Instance.IsBlocking && !item.Instance.IsCompleted)
-        .OrderBy(item => item.Sequence)
         .FirstOrDefault();
 
     public bool HasBlockingInstance() => _items.Any(item =>
         item.Instance.IsBlocking && !item.Instance.IsCompleted);
 
-    public void RemoveCompleted(Action<ActivePrimitive> reconcile, Action<PrimitiveInstance> removed)
+    public void RemoveCompleted(Action<ActivePrimitive> reconcile)
     {
         for (var index = _items.Count - 1; index >= 0; index--)
         {
@@ -64,7 +62,6 @@ internal sealed class ActivePrimitiveRegistry(Action<PrimitiveInstance> complete
                 item.Instance.PresentationCompletion.GetAwaiter().GetResult();
             item.Instance.Completed -= _completed;
             item.Instance.AutoBlockingChanged -= _autoChanged;
-            removed(item.Instance);
             _items.RemoveAt(index);
         }
     }
@@ -92,7 +89,6 @@ internal sealed class ActivePrimitiveRegistry(Action<PrimitiveInstance> complete
 
 internal sealed record ActivePrimitive(
         long GroupExecutionId,
-        long Sequence,
         PrimitiveInstance Instance,
         string GroupId,
         string StableId,

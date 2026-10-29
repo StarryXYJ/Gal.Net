@@ -1,10 +1,11 @@
 using System.Globalization;
 using System.Text.Json;
+using GalNet.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.I18n;
-using GalNet.Core.Settings;
-using GalNet.Runtime.Content;
+using GalNet.Core.Serialization;
+using GalNet.GameHost.Content;
 
 namespace GalNet.Storage.FileSystem;
 
@@ -13,7 +14,7 @@ public static class GameLocalizationLoader
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
-    public static GameLocalizationContent Load(string gameDirectory, Graph graph, ProjectSettings settings,
+    public static GameLocalizationContent Load(string gameDirectory, Graph graph, string? defaultCulture = null,
         CancellationToken cancellationToken = default)
     {
         var root = Path.Combine(Path.GetFullPath(gameDirectory), "I18n");
@@ -26,7 +27,7 @@ public static class GameLocalizationLoader
             RejectLink(charactersPath);
             try
             {
-                var definitions = JsonSerializer.Deserialize<List<CharacterDefinition>>(File.ReadAllText(charactersPath), JsonOptions)
+                var definitions = JsonCodec.Deserialize<List<CharacterDefinition>>(File.ReadAllText(charactersPath), JsonOptions)
                     ?? throw new InvalidDataException("Character catalog must be a JSON array.");
                 characters = new CharacterCatalog(definitions);
             }
@@ -55,11 +56,9 @@ public static class GameLocalizationLoader
                 var json = File.ReadAllText(path);
                 try
                 {
-                    using var document = JsonDocument.Parse(json);
-                    var keys = new HashSet<string>(StringComparer.Ordinal);
-                    ReadKeys(document.RootElement, "", keys);
-                    if (string.Equals(culture.Name, settings.TargetLocale.Code, StringComparison.OrdinalIgnoreCase))
-                        defaultKeys.UnionWith(keys);
+                    var text = new GameLocalizationSource(culture.Name, relative, json).ReadText();
+                    if (string.Equals(culture.Name, defaultCulture, StringComparison.OrdinalIgnoreCase))
+                        defaultKeys.UnionWith(text.Keys);
                 }
                 catch (JsonException error)
                 {
@@ -69,11 +68,12 @@ public static class GameLocalizationLoader
             }
         }
 
-        ValidateRequiredKeys(graph, characters, defaultKeys, settings.TargetLocale.Code);
+        if (defaultCulture is not null) ValidateRequiredKeys(graph, characters, defaultKeys, defaultCulture);
         var diagnostics = new List<GameLocalizationDiagnostic>();
         var externalSources = LoadExternal(Path.Combine(root, "External"), diagnostics, cancellationToken);
         return new GameLocalizationContent
         {
+            DefaultCulture = defaultCulture ?? "en-US",
             Characters = characters,
             Sources = sources.AsReadOnly(),
             ExternalSources = externalSources,
@@ -81,8 +81,42 @@ public static class GameLocalizationLoader
         };
     }
 
+    internal static GameLocalizationContent LoadPacked(string directory, Graph graph, PackedDocumentSet documents,
+        PackedDocumentSet languages, string? defaultCulture, CancellationToken cancellationToken)
+    {
+        var definitions = JsonCodec.Deserialize<List<CharacterDefinition>>(documents.GetText("characters.json"), JsonOptions)
+            ?? throw new InvalidDataException("Packed character catalog must be an array.");
+        var characters = new CharacterCatalog(definitions);
+        var sources = new List<GameLocalizationSource>();
+        var cultures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var defaultKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in languages.Documents.Keys.Order(StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!path.StartsWith("texts/", StringComparison.Ordinal) || !path.EndsWith(".json", StringComparison.Ordinal)
+                || path.Split('/').Length != 2) throw new InvalidDataException("Invalid packed language entry.");
+            var culture = CultureInfo.GetCultureInfo(path[6..^5]);
+            if (culture.Name.Length == 0 || !cultures.Add(culture.Name)) throw new InvalidDataException("Duplicate or invalid packed culture.");
+            var source = new GameLocalizationSource(culture.Name, path, languages.GetText(path));
+            var text = source.ReadText();
+            if (string.Equals(culture.Name, defaultCulture, StringComparison.OrdinalIgnoreCase)) defaultKeys.UnionWith(text.Keys);
+            sources.Add(source);
+        }
+        if (defaultCulture is not null) ValidateRequiredKeys(graph, characters, defaultKeys, defaultCulture);
+        var diagnostics = new List<GameLocalizationDiagnostic>();
+        var external = LoadExternal(Path.Combine(directory, "I18n"), diagnostics, cancellationToken, "I18n");
+        return new GameLocalizationContent
+        {
+            DefaultCulture = defaultCulture ?? "en-US",
+            Characters = characters,
+            Sources = sources.AsReadOnly(),
+            ExternalSources = external,
+            Diagnostics = diagnostics.AsReadOnly()
+        };
+    }
+
     private static IReadOnlyList<GameLocalizationSource> LoadExternal(string root,
-        List<GameLocalizationDiagnostic> diagnostics, CancellationToken cancellationToken)
+        List<GameLocalizationDiagnostic> diagnostics, CancellationToken cancellationToken, string sourcePrefix = "External")
     {
         var sources = new List<GameLocalizationSource>();
         if (!Directory.Exists(root)) return sources;
@@ -100,34 +134,20 @@ public static class GameLocalizationLoader
                     if (!relative.Contains('/')) throw new InvalidDataException("External JSON must be below a culture directory.");
                     var culture = CultureInfo.GetCultureInfo(relative.Split('/')[0]);
                     var json = File.ReadAllText(path);
-                    using var document = JsonDocument.Parse(json);
-                    ReadKeys(document.RootElement, "", new(StringComparer.Ordinal));
-                    sources.Add(new(culture.Name, $"External/{relative}", json));
+                    _ = new GameLocalizationSource(culture.Name, relative, json).ReadText();
+                    sources.Add(new(culture.Name, $"{sourcePrefix}/{relative}", json));
                 }
                 catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException)
                 {
-                    diagnostics.Add(new($"External/{relative}", error.Message));
+                    diagnostics.Add(new($"{sourcePrefix}/{relative}", error.Message));
                 }
             }
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            diagnostics.Add(new("External", error.Message));
+            diagnostics.Add(new(sourcePrefix, error.Message));
         }
         return sources.AsReadOnly();
-    }
-
-    private static void ReadKeys(JsonElement element, string prefix, HashSet<string> keys)
-    {
-        if (element.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Localization documents must contain JSON objects with string leaves.");
-        foreach (var property in element.EnumerateObject())
-        {
-            if (string.IsNullOrWhiteSpace(property.Name)) throw new InvalidDataException("Localization keys cannot be empty.");
-            var key = prefix.Length == 0 ? property.Name : $"{prefix}.{property.Name}";
-            if (property.Value.ValueKind == JsonValueKind.Object) ReadKeys(property.Value, key, keys);
-            else if (property.Value.ValueKind == JsonValueKind.String) keys.Add(key);
-            else throw new InvalidDataException($"Localization key '{key}' must have a string value.");
-        }
     }
 
     private static void ValidateRequiredKeys(Graph graph, CharacterCatalog characters, HashSet<string> defaultKeys, string defaultCulture)
@@ -138,7 +158,7 @@ public static class GameLocalizationLoader
             {
                 if (entry.Type is not ("dialogue.text" or "nvl.append")) continue;
                 if (entry.Type == "dialogue.text" && entry.Arguments.TryGetProperty("speaker", out var speaker)
-                    && !string.IsNullOrEmpty(speaker.GetString())) characters.GetRequired(speaker.GetString()!);
+                    && !string.IsNullOrWhiteSpace(speaker.GetString())) characters.GetRequired(speaker.GetString()!);
                 Require(entry.Arguments.TryGetProperty("content", out var content) ? content.GetString() ?? "" : "");
             }
         foreach (var branch in graph.Nodes.OfType<Branch>().Where(branch => branch.BranchType == BranchType.Choice))
@@ -146,7 +166,8 @@ public static class GameLocalizationLoader
 
         void Require(string key)
         {
-            if (string.IsNullOrWhiteSpace(key) || !defaultKeys.Contains(key))
+            if (string.IsNullOrWhiteSpace(key)) return;
+            if (!defaultKeys.Contains(key))
                 throw new InvalidDataException($"Default language '{defaultCulture}' is missing required localization key '{key}'.");
         }
     }

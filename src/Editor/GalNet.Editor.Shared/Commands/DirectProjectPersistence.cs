@@ -1,6 +1,5 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
@@ -8,15 +7,9 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Shared.Commands;
 
-public sealed class DirectProjectPersistence(string projectPath, IEditorDocumentRepository repository)
+public sealed class DirectProjectPersistence(string projectPath, IEditorDocumentRepository repository, ProjectConfigurationSchema? configurations = null)
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web)
-    {
-        WriteIndented = true,
-        PropertyNameCaseInsensitive = false,
-        UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private readonly string _projectPath = Path.GetFullPath(projectPath);
     private readonly IEditorDocumentRepository _repository = repository ?? throw new ArgumentNullException(nameof(repository));
     private byte[]? _settingsBaseline;
@@ -25,15 +18,15 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
     {
         if (!Directory.Exists(_projectPath)) throw new DirectoryNotFoundException($"Project directory not found: {_projectPath}");
         var settings = LoadSettings(_projectPath);
+        configurations?.Validate(settings);
         _settingsBaseline = File.ReadAllBytes(new ProjectRawReader(_projectPath).Resolve("settings.json"));
-        var loaded = _repository.Load(_projectPath, Path.GetFileName(Path.TrimEndingDirectorySeparator(_projectPath)), settings);
-        return new EditorProjectDocument { Graph = loaded.Document, GroupEntries = loaded.GroupEntries, Settings = settings };
+        var loaded = _repository.Load(_projectPath);
+        return new EditorProjectDocument { Graph = loaded.Document, GroupEntries = loaded.GroupEntries, Configuration = settings };
     }
 
     public Task SaveAsync(EditorProjectDocument document, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (File.Exists(Path.Combine(_projectPath, "settings.json"))) _ = LoadSettings(_projectPath);
         var plan = PrepareSave(document);
         _repository.ApplySave(_projectPath, plan, cancellationToken);
         _settingsBaseline = plan.Writes["settings.json"].ToArray();
@@ -42,17 +35,15 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
 
     public ProjectSavePlan PrepareSave(EditorProjectDocument document)
     {
+        configurations?.Validate(document.Configuration);
         var settingsPath = new ProjectRawReader(_projectPath).Resolve("settings.json");
         if (_settingsBaseline is not null && (!File.Exists(settingsPath) || !_settingsBaseline.AsSpan().SequenceEqual(File.ReadAllBytes(settingsPath))))
             throw new IOException("Project settings changed after loading. Reload before saving.");
         if (File.Exists(settingsPath)) _ = LoadSettings(_projectPath);
         var plan = _repository.PrepareSave(_projectPath, document.Graph,
             document.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
-        var settings = JsonSerializer.SerializeToElement(document.Settings, JsonOptions).Deserialize<ProjectSettings>(JsonOptions)!;
-        settings.PlayerVariables = document.Graph.PlayerVariables.Select(item => item.Clone()).ToList();
-        settings.SaveVariables = document.Graph.SaveVariables.Select(item => item.Clone()).ToList();
         var writes = new Dictionary<string, byte[]>(plan.Writes)
-        { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(settings, JsonOptions) };
+        { ["settings.json"] = JsonSerializer.SerializeToUtf8Bytes(document.Configuration, JsonOptions) };
         return new(writes, plan.DeletedFiles);
     }
 
@@ -65,11 +56,11 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         if (change is GalNet.Editor.Abstraction.Changes.IProjectFileStructureChange files) plan = plan with { Files = files.Files };
         _repository.ApplySave(_projectPath, plan, cancellationToken);
         _settingsBaseline = plan.Writes["settings.json"].ToArray();
-        document.Graph = next.Graph; document.GroupEntries = next.GroupEntries; document.Settings = next.Settings;
+        document.Graph = next.Graph; document.GroupEntries = next.GroupEntries; document.Configuration = next.Configuration;
         return Task.CompletedTask;
     }
 
-    public static ProjectSettings LoadSettings(string projectPath)
+    public static ProjectConfiguration LoadSettings(string projectPath)
     {
         var path = new ProjectRawReader(projectPath).Resolve("settings.json");
         using var raw = JsonDocument.Parse(File.ReadAllBytes(path));
@@ -77,7 +68,8 @@ public sealed class DirectProjectPersistence(string projectPath, IEditorDocument
         var diagnostics = new List<GalNet.Editor.Abstraction.Commands.ToolDiagnostic>();
         ProjectValidationService.DuplicateProperties(raw.RootElement, "settings.json", "", diagnostics);
         if (diagnostics.Count != 0) throw new InvalidDataException(string.Join("\n", diagnostics.Select(item => $"{item.JsonPointer}: {item.Message}")));
-        return raw.RootElement.Deserialize<ProjectSettings>(JsonOptions)
+        var settings = raw.RootElement.Deserialize<ProjectConfiguration>(JsonOptions)
             ?? throw new InvalidDataException("Project settings must be an object.");
+        return settings;
     }
 }

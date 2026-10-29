@@ -1,5 +1,21 @@
 # Editor 创作工作区实施计划
 
+2026-10-26 Group 无弹窗修订（verified）：移除页面影响确认，Problems 无需先检查即可刷新场景诊断，保留严格编译/构建门禁及草稿/历史保护。Editor 325 项及 Shared 相关 34 项通过，覆盖删除、换类型、移动、Undo/Redo、保存重开和既有编译错误拒绝；隔离输出编译及 diff 格式检查通过，原生 GUI 未执行，详见 [修订记录](group-direct-editing.md)。
+
+## Group 一致性补充阶段（2026-10-26）
+
+用户“开始吧”授权实施 [Group 一致性设计](group-authoring-consistency-design.md)，随后要求继续至全部完成。GC1–GC5 现已逐阶段实现与验证；本轮 Group 改造收口，整个 feature 其他 P6/P7 状态仍分别保留。
+
+| 阶段 | 状态 | 目标与模块 | 验证及退出条件 |
+| --- | --- | --- | --- |
+| GC1 作者提交边界 | verified | Abstraction 变更契约、Editor 历史事务、Entry 字段/批量操作、Group 投影、场景查询与 Timeline 通知；操作直接修改作者数据，成功后一次发布；投影不回写作者列表 | 四项目 900 项执行通过，4 项 Explicit 原生 GUI 未运行；同步/异步/复合补偿、未知范围、提交完整性、通知失败隔离、挂载表单/Timeline/剪贴板/保存重开已验证，格式与 13 文件指纹一致；见 [阶段记录](phase-group-consistency.md) |
+| GC2 语义与引用诊断 | verified | 前置 GC1；Shared 收敛输出/引用/类别声明、引用索引与位置影响；接入删除/换类型影响及 Problems | 四项目 909 项通过、4 项 Explicit GUI 未运行；跨 Group、条件/分支/循环、Timeline 事件/轨道、播放实例、未知/预算及取消/过期/Undo/Save 重开已验证，四语/格式/指纹通过；见阶段记录 |
+| GC3 身份与输入生命周期 | verified | 前置 GC2；相容换类型、项目内待移动剪切、草稿归档/新绑定恢复 | 四项目 918 项通过、4 项 Explicit GUI 未运行；待移动/跨 Group 冲突地址/过期与跨项目复制、输出角色迁移、输入预算/持久化/新绑定恢复/补偿均验证；四语/格式/32 文件指纹通过，见阶段记录 |
+| GC4 查询依赖与局部失效 | verified | 前置 GC1/GC2；提交范围驱动 Group/前缀缓存、结果版本和统一 lease；资源代次与来源代次分开 | Editor 322、Shared 426、Architecture 49、Integration 123 通过；最后上下文/资源准备补充 22 项通过；2,000 条目夹具验证复用、128 检查点和无重复捕获；见阶段记录 |
+| GC5 呈现与释放 | verified | 前置 GC3/GC4；筛选、友好摘要、诊断导航、历史/草稿/投影释放；整 Group/文件删除输入协调 | 最终四项目 926 项通过；当前源码完整解决方案构建、51 个 C# 文件格式/IDE0005、1,356 文件指纹一致；实际 GC、挂载列表、四语、保存重开及结构删除失败/恢复验收，见阶段记录 |
+
+每阶段证据和当前 spec 已同步，保留已有 Working/Saved 文件事务。GC1 的整代查询/全投影与强缓存后续已由 GC4/GC5 收敛，GC2 的语义/诊断与 GC3 的身份/归档完成联合验收；整 Group/文件删除输入协调也已验证。四项 Explicit GUI 与原生 IME/剪贴板人工流程未在本轮执行；一次未复现的 Headless 释放异常保留材料供后续关注。
+
 日期：2026-10-15；进度更新：2026-10-17。依赖：[需求](feature.md)、[设计](design.md)。用户已授权实施，P1a 已验证，见 [phase-1a.md](phase-1a.md)；P1b 已完成当前工作树集成验证，构建成功、311 项测试通过，见 [phase-1b.md](phase-1b.md)。P2 已验证，当前工作树构建成功、323 项回归通过，见 [phase-2.md](phase-2.md)。用户追加编辑器 UI i18n 后，在 P3 前插入 P2i；P2i 已验证，隔离基线构建成功、328 项回归通过，见 [phase-2i.md](phase-2i.md)；P3 已验证，当前工作树构建成功、339 项回归通过，见 [phase-3.md](phase-3.md)；P4a 已验证，当前工作树构建成功、365 项相关回归通过，见 [phase-4a.md](phase-4a.md)；P4b 已验证，最终隔离解决方案构建成功、383 项相关回归通过，见 [phase-4b.md](phase-4b.md)；P6a 共享 UI 基础提前验证，P5a Group 交互、P5b 多选剪贴板及 P5c 变量面板已验证，P5d/P5e 已验证，P5 整体 verified（635 项相关回归）；状态只使用 planned / in-progress / verified / skipped；状态更新必须附实际证据。
 
 ## 顺序与范围

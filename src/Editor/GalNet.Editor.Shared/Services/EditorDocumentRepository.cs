@@ -1,7 +1,6 @@
 using System.Text.Json;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Services;
@@ -17,7 +16,13 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocume
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     private Dictionary<string, byte[]?>? _baseline;
 
-    public LoadedEditorProjectDocument Load(string projectPath, string projectName, ProjectSettings settings)
+    public IReadOnlyDictionary<string, byte[]?> SourceBaseline => _baseline is null ? new Dictionary<string, byte[]?>() :
+        _baseline.ToDictionary(pair => pair.Key, pair => pair.Value?.ToArray(), PathComparer);
+
+    public void AdoptExternalBaseline(IReadOnlyDictionary<string, byte[]?> sources) =>
+        _baseline = sources.ToDictionary(pair => pair.Key, pair => pair.Value?.ToArray(), PathComparer);
+
+    public LoadedEditorProjectDocument Load(string projectPath)
     {
         var reader = new ProjectRawReader(projectPath);
         var validator = new ProjectValidationService(projectPath);
@@ -51,7 +56,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocume
     {
         var reader = new ProjectRawReader(projectPath);
         EnsureUnchanged(reader);
-        if (_baseline is null && File.Exists(reader.Resolve("Graph/graph.json"))) _ = Load(projectPath, document.Name, new ProjectSettings());
+        if (_baseline is null && File.Exists(reader.Resolve("Graph/graph.json"))) _ = Load(projectPath);
         var diagnostics = new List<ToolDiagnostic>();
         var validator = new ProjectValidationService(projectPath);
         var graph = JsonSerializer.SerializeToElement(document, JsonOptions);
@@ -111,7 +116,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocume
         {
             var definition = catalog.Get(entry.Type);
             foreach (var key in entry.Parameters.Keys)
-                if (!definition.Parameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
+                if (!definition.DynamicParameters.ContainsKey(key)) throw new InvalidDataException($"Unknown parameter '{key}' for '{entry.Type}'.");
         }
         return new GroupEntryDocument
         {

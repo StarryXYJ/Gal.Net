@@ -1,6 +1,6 @@
 using Avalonia;
 using Avalonia.Media;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using SkiaSharp;
 
 namespace GalNet.Rendering.Scene;
@@ -60,10 +60,18 @@ public static class SceneRenderPipeline
     }
 
     public static SKBitmap Render(SceneRenderPlan plan, IEnumerable<SceneEffectInstance> effects, IEnumerable<ISceneRenderable>? renderables, Size logicalSize, SceneRenderOptions? options = null)
+        => Render(plan, effects, renderables, logicalSize,
+            new PixelSize(Math.Max(1, (int)Math.Ceiling(logicalSize.Width)), Math.Max(1, (int)Math.Ceiling(logicalSize.Height))), options);
+
+    /// <summary>Renders a bounded snapshot while preserving logical layer coordinates and native image sizes.</summary>
+    public static SKBitmap Render(SceneRenderPlan plan, IEnumerable<SceneEffectInstance> effects, IEnumerable<ISceneRenderable>? renderables,
+        Size logicalSize, PixelSize pixelSize, SceneRenderOptions? options = null)
     {
         using var budget = new SceneRenderBudgetGuard(options, isGpu: false);
-        var width = Math.Max(1, (int)Math.Ceiling(logicalSize.Width));
-        var height = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
+        var width = Math.Max(1, pixelSize.Width);
+        var height = Math.Max(1, pixelSize.Height);
+        var logicalWidth = Math.Max(1, (int)Math.Ceiling(logicalSize.Width));
+        var logicalHeight = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
         var scene = NewBitmap(width, height);
         using var sceneCanvas = new SKCanvas(scene);
         sceneCanvas.Clear(SKColors.Black);
@@ -73,7 +81,7 @@ public static class SceneRenderPipeline
         {
             if (entry.Renderable is not ILayerEffectTarget target)
             {
-                entry.Renderable.Render(new SceneRenderContext(sceneCanvas, new SKSize(width, height), false));
+                RenderEntry(sceneCanvas, entry.Renderable);
                 continue;
             }
             var layerEffects = effectPlan.GetLayer(target.EffectTargetHandleId);
@@ -81,13 +89,13 @@ public static class SceneRenderPipeline
             {
                 // An empty texture-to-texture chain is an identity pass. Keep the fixed logical
                 // pipeline, but do not allocate a full-scene intermediate just to copy it.
-                entry.Renderable.Render(new SceneRenderContext(sceneCanvas, new SKSize(width, height), false));
+                RenderEntry(sceneCanvas, entry.Renderable);
                 continue;
             }
 
             using var layer = NewBitmap(width, height);
-            using (var layerCanvas = new SKCanvas(layer)) entry.Renderable.Render(new SceneRenderContext(layerCanvas, new SKSize(width, height), false));
-            using var output = ApplyEffects(layer, layerEffects, budget);
+            using (var layerCanvas = new SKCanvas(layer)) RenderEntry(layerCanvas, entry.Renderable);
+            using var output = ApplyEffects(layer, layerEffects, budget, (float)entry.Renderable.Z);
             sceneCanvas.DrawBitmap(output ?? layer, 0, 0);
         }
 
@@ -97,13 +105,25 @@ public static class SceneRenderPipeline
         if (result is null) return scene;
         scene.Dispose();
         return result;
+
+        void RenderEntry(SKCanvas canvas, ISceneRenderable renderable)
+        {
+            canvas.Save();
+            try
+            {
+                canvas.Scale((float)width / logicalWidth, (float)height / logicalHeight);
+                renderable.Render(new SceneRenderContext(canvas, new SKSize(logicalWidth, logicalHeight), false));
+            }
+            finally { canvas.Restore(); }
+        }
     }
 
-    private static SKBitmap? ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects, SceneRenderBudgetGuard budget)
+    private static SKBitmap? ApplyEffects(SKBitmap source, IEnumerable<SceneEffectInstance> effects, SceneRenderBudgetGuard budget, float layerZ = 0)
     {
         SKBitmap? current = null;
         foreach (var effect in effects)
         {
+            effect.LayerZ = layerZ;
             if (!budget.TryAcquireEffectPass(effect, source.Width, source.Height)) continue;
             var next = NewBitmap(source.Width, source.Height);
             using (var canvas = new SKCanvas(next))
@@ -143,7 +163,7 @@ public static class SceneRenderPipeline
             entry.Renderable.Render(new SceneRenderContext(layerSurface.Canvas, new SKSize(width, height), true));
             layerSurface.Flush();
             using var input = layerSurface.Snapshot();
-            using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height, budget);
+            using var output = ApplyGpuEffects(gpuContext, input, layerEffects, width, height, budget, (float)entry.Renderable.Z);
             canvas.DrawImage(output ?? input, 0, 0);
         }
 
@@ -156,11 +176,12 @@ public static class SceneRenderPipeline
             .OrderBy(entry => entry.Order).ThenBy(entry => entry.InsertionOrder);
     }
 
-    private static SKImage? ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height, SceneRenderBudgetGuard budget)
+    private static SKImage? ApplyGpuEffects(GRContext gpuContext, SKImage source, IEnumerable<SceneEffectInstance> effects, int width, int height, SceneRenderBudgetGuard budget, float layerZ = 0)
     {
         SKImage? current = null;
         foreach (var effect in effects)
         {
+            effect.LayerZ = layerZ;
             if (!budget.TryAcquireEffectPass(effect, width, height)) continue;
             using var nextSurface = NewGpuSurface(gpuContext, width, height)
                 ?? throw new InvalidOperationException("Unable to allocate a GPU effect surface.");

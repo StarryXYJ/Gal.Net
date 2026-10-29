@@ -29,7 +29,7 @@ public sealed class ProjectContentSessionTests
         var settings = DirectProjectPersistence.LoadSettings(_root);
         _repository = new(new EditorDocumentRepository(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())));
         _documents = new();
-        _documents.Load(_repository.Load(_root, "Original", settings));
+        _documents.Load(_repository.Load(_root));
         _project = new("project", "Original", _root, settings, new(), new EmptyScope());
         _session = new(_documents, _repository);
         _session.Open(_project);
@@ -41,6 +41,52 @@ public sealed class ProjectContentSessionTests
         await _project.DisposeAsync();
         _session.Dispose();
         Directory.Delete(_root, true);
+    }
+
+    [Test]
+    public async Task DirtyComparisonDetectsDirectLateMutationsAndIgnoresDisplayNumbers()
+    {
+        var entries = _documents.LoadedProject.GroupEntries.Values.First();
+        entries.Clear();
+        entries.Add(new()
+        {
+            StableId = "line",
+            Id = 1,
+            Type = BuiltinEntryIds.Wait,
+            Parameters = new() { ["duration"] = JsonSerializer.SerializeToElement(1f) }
+        });
+        await _session.SaveAsync();
+        entries[0].Id = 99;
+        Assert.That(_session.IsDirty, Is.False);
+        entries[0].Parameters["future"] = JsonSerializer.SerializeToElement(new { precise = 9007199254740993L });
+        Assert.That(_session.IsDirty, Is.True, "A read cannot cache away a mutation outside history notifications.");
+        entries[0].Parameters.Remove("future");
+        Assert.That(_session.IsDirty, Is.False);
+        entries[0].StableId = "replacement";
+        Assert.That(_session.IsDirty, Is.True);
+        entries[0].StableId = "line";
+        Assert.That(_session.IsDirty, Is.False);
+    }
+
+    [Test]
+    public async Task RepeatedDirtyReadsDoNotAllocateSerializedCopiesOfEveryEntry()
+    {
+        var entries = _documents.LoadedProject.GroupEntries.Values.First();
+        entries.Clear();
+        for (var index = 0; index < 500; index++) entries.Add(new()
+        {
+            StableId = "line-" + index,
+            Type = BuiltinEntryIds.Wait,
+            Parameters = new() { ["duration"] = JsonSerializer.SerializeToElement(1f) }
+        });
+        await _session.SaveAsync();
+        _ = _session.IsDirty;
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var dirty = false;
+        for (var index = 0; index < 20; index++) dirty |= _session.IsDirty;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Assert.That(dirty, Is.False);
+        Assert.That(allocated, Is.LessThan(2_000_000), "Status reads must not serialize and clone the complete project.");
     }
 
     [Test]
@@ -69,14 +115,16 @@ public sealed class ProjectContentSessionTests
     public async Task SaveAllIncludesGraphGroupsAndCompleteSettingsAndComparesActualContent()
     {
         _documents.CurrentDocument.Name = "Renamed";
-        _project.Settings.DefaultWidth = 1440;
-        _project.Settings.SaveSlotCount = 17;
+        var options = _project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1440;
+        options.SaveSlotCount = 17;
+        _project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         Assert.That(_session.IsDirty, Is.True);
         await _session.SaveAsync();
         Assert.That(_session.IsDirty, Is.False);
         Assert.That(_repository.LastPlan!.Writes.Keys, Does.Contain("Graph/graph.json"));
         Assert.That(_repository.LastPlan.Writes.Keys.Any(path => path.EndsWith(".rawgalgroup", StringComparison.Ordinal)), Is.True);
-        Assert.That(DirectProjectPersistence.LoadSettings(_root).DefaultWidth, Is.EqualTo(1440));
+        Assert.That(DirectProjectPersistence.LoadSettings(_root).ReadDefaultOptions().DefaultWidth, Is.EqualTo(1440));
         _documents.CurrentDocument.Name = "Other";
         Assert.That(_session.IsDirty, Is.True);
         _documents.CurrentDocument.Name = "Renamed";
@@ -129,7 +177,9 @@ public sealed class ProjectContentSessionTests
     {
         var original = File.ReadAllBytes(Path.Combine(_root, "Graph/graph.json"));
         _documents.CurrentDocument.Name = "Unsaved";
-        _project.Settings.DefaultWidth = 1440;
+        var options = _project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1440;
+        _project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         _repository.Transaction = new FaultTransaction(failRecovery, 3);
         try { await _session.SaveAsync(); Assert.Fail("Injected publication must fail."); }
         catch (IOException) { }
@@ -207,11 +257,13 @@ public sealed class ProjectContentSessionTests
         var file = Path.Combine(_root, "Graph/groups/created.rawgalgroup");
         Assert.That(File.Exists(file), Is.True);
         Assert.That(_session.IsDirty, Is.False);
-        _project.Settings.DefaultWidth = 1440;
+        var options = _project.Configuration.ReadDefaultOptions();
+        options.DefaultWidth = 1440;
+        _project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         await _session.PublishStructureAsync(new GroupPresence(false));
         Assert.That(File.Exists(file), Is.False);
         Assert.That(_session.IsDirty, Is.True);
-        Assert.That(DirectProjectPersistence.LoadSettings(_root).DefaultWidth, Is.EqualTo(1920));
+        Assert.That(DirectProjectPersistence.LoadSettings(_root).ReadDefaultOptions().DefaultWidth, Is.EqualTo(1920));
     }
 
     [Test]
@@ -387,7 +439,7 @@ public sealed class ProjectContentSessionTests
         public Action? BeforeApply { get; set; }
         public AuthorFileTransaction? Transaction { get; set; }
         public ProjectSavePlan? LastPlan { get; private set; }
-        public LoadedEditorProjectDocument Load(string path, string name, GalNet.Core.Settings.ProjectSettings settings) => inner.Load(path, name, settings);
+        public LoadedEditorProjectDocument Load(string path) => inner.Load(path);
         public ProjectSavePlan PrepareSave(string path, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> entries) => inner.PrepareSave(path, document, entries);
         public void ApplySave(string path, ProjectSavePlan plan, CancellationToken cancellationToken = default)
         {

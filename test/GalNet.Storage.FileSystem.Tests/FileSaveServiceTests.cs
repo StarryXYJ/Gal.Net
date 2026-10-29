@@ -8,6 +8,69 @@ namespace GeneralTest.Storage;
 public sealed class FileSaveServiceTests
 {
     [Test]
+    public async Task SingleSlotLookupMatchesListMetadataForOccupiedEmptyAndCorruptSlots()
+    {
+        var directory = CreateProfileDirectory();
+        try
+        {
+            using var saves = new FileSaveService(directory, 3);
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "chapter" }, Description = "Name", PreviewImage = [1, 2] });
+            await File.WriteAllTextAsync(Path.Combine(directory, "saves", "slot-002.json"), "broken");
+            var all = await saves.ListSlotsAsync();
+            for (var slot = 0; slot < 3; slot++)
+            {
+                var single = await saves.GetSlotInfoAsync(slot);
+                Assert.That(single.Description, Is.EqualTo(all[slot].Description));
+                Assert.That(single.Timestamp, Is.EqualTo(all[slot].Timestamp));
+                Assert.That(single.PreviewImage, Is.EqualTo(all[slot].PreviewImage));
+                Assert.That(single.IsCorrupt, Is.EqualTo(all[slot].IsCorrupt));
+            }
+            Assert.That(() => saves.GetSlotInfoAsync(3), Throws.TypeOf<ArgumentOutOfRangeException>());
+            using var canceled = new CancellationTokenSource();
+            canceled.Cancel();
+            Assert.That(async () => await saves.GetSlotInfoAsync(0, canceled.Token), Throws.InstanceOf<OperationCanceledException>());
+        }
+        finally { DeleteProfileDirectory(directory); }
+    }
+
+    [Test]
+    public async Task RenamePersistsOnlyTheNameAndRejectsInvalidOrMissingSaves()
+    {
+        var directory = CreateProfileDirectory();
+        try
+        {
+            using var saves = new FileSaveService(directory, 3);
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "chapter-2" }, PreviewImage = [1, 2, 3] });
+            var before = (await saves.ListSlotsAsync())[0];
+            await saves.RenameAsync(0, "  雨中的重逢 / Reunion  ");
+            using var reopened = new FileSaveService(directory, 3);
+            var after = (await reopened.ListSlotsAsync())[0];
+            Assert.Multiple(() =>
+            {
+                Assert.That(after.Description, Is.EqualTo("雨中的重逢 / Reunion"));
+                Assert.That(after.Timestamp, Is.EqualTo(before.Timestamp));
+                Assert.That(after.PreviewImage, Is.EqualTo(before.PreviewImage));
+                Assert.That(File.ReadAllBytes(after.PreviewImage!), Is.EqualTo(new byte[] { 1, 2, 3 }));
+            });
+            Assert.That((await reopened.LoadAsync(0))!.NodeId, Is.EqualTo("chapter-2"));
+            Assert.ThrowsAsync<ArgumentException>(() => saves.RenameAsync(0, new string('a', 121)));
+            Assert.ThrowsAsync<ArgumentException>(() => saves.RenameAsync(0, "two\nlines"));
+            Assert.ThrowsAsync<FileNotFoundException>(() => saves.RenameAsync(1, "missing"));
+            var corrupt = Path.Combine(directory, "saves", "slot-002.json");
+            await File.WriteAllTextAsync(corrupt, "broken");
+            Assert.CatchAsync(() => saves.RenameAsync(2, "invalid"));
+            Assert.That(await File.ReadAllTextAsync(corrupt), Is.EqualTo("broken"));
+            using var canceled = new CancellationTokenSource();
+            canceled.Cancel();
+            Assert.That(async () => await saves.RenameAsync(0, "canceled", canceled.Token), Throws.InstanceOf<OperationCanceledException>());
+            Assert.That((await saves.ListSlotsAsync())[0].Description, Is.EqualTo("雨中的重逢 / Reunion"));
+            await saves.RenameAsync(0, "  ");
+            Assert.That((await saves.ListSlotsAsync())[0].Description, Is.Null);
+        }
+        finally { DeleteProfileDirectory(directory); }
+    }
+
+    [Test]
     public async Task SaveRequest_RoundTripsSnapshotMetadataAndPreview()
     {
         var profileDirectory = CreateProfileDirectory();

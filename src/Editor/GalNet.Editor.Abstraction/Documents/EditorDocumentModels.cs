@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
-using GalNet.Core.Settings;
 using GalNet.Core.Variable;
 
 namespace GalNet.Editor.Abstraction.Documents;
@@ -51,6 +51,10 @@ public sealed class EditorGraphNodeDto
 
     [JsonPropertyName("file")]
     public string? File { get; set; }
+
+    [JsonPropertyName("storyPackage")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? StoryPackage { get; set; }
 
     [JsonPropertyName("branchType")]
     public string? BranchType { get; set; }
@@ -107,15 +111,23 @@ public sealed class EditorEntryData
     /// <summary>Owned author JSON. A missing key and a provided JSON null are distinct.</summary>
     public Dictionary<string, JsonElement> Parameters { get; set; } = new();
 
+    /// <summary>Text-to-JSON adaptation lives at the author input boundary, not in Core entries.</summary>
+    public static Dictionary<string, JsonElement> CreateParameters(IEntryCatalog catalog, string type,
+        IReadOnlyDictionary<string, string>? text = null)
+    {
+        var entry = catalog.Create(type, arguments: text is null ? null : JsonSerializer.SerializeToElement(ParseParameters(catalog, type, text)));
+        return entry.Arguments.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal);
+    }
+
     public static Dictionary<string, JsonElement> ParseParameters(IEntryCatalog catalog, string type, IReadOnlyDictionary<string, string> values) =>
         values.ToDictionary(pair => pair.Key,
-            pair => catalog.TryGet(type, out var schema) && schema.Parameters.ContainsKey(pair.Key)
-                ? ValueCodec.ParseEditorText(schema.DynamicParameters![pair.Key].Value, pair.Value).Clone()
+            pair => catalog.TryGet(type, out var schema) && schema.DynamicParameters.ContainsKey(pair.Key)
+                ? ValueCodec.ParseEditorText(schema.DynamicParameters[pair.Key].Value, pair.Value).Clone()
                 : JsonSerializer.Deserialize<JsonElement>(pair.Value).Clone(), StringComparer.Ordinal);
 
     public Dictionary<string, string> GetParameterText(IEntryCatalog catalog) => Parameters.ToDictionary(pair => pair.Key,
-        pair => catalog.TryGet(Type, out var schema) && schema.Parameters.ContainsKey(pair.Key)
-            ? ValueCodec.ToEditorText(schema.DynamicParameters![pair.Key].Value, pair.Value) : pair.Value.GetRawText(), StringComparer.Ordinal);
+        pair => catalog.TryGet(Type, out var schema) && schema.DynamicParameters.ContainsKey(pair.Key)
+            ? ValueCodec.ToEditorText(schema.DynamicParameters[pair.Key].Value, pair.Value) : pair.Value.GetRawText(), StringComparer.Ordinal);
 }
 
 /// <summary>Project-owned content identity; its path can change without replacing the document.</summary>
@@ -141,7 +153,7 @@ public sealed class EditorProjectDocument
 {
     public EditorGraphDocument Graph { get; set; } = new();
     public Dictionary<string, List<EditorEntryData>> GroupEntries { get; set; } = [];
-    public ProjectSettings Settings { get; set; } = new();
+    public ProjectConfiguration Configuration { get; set; } = new();
     public Dictionary<string, EditorFileDocument> Files { get; set; } = [];
 }
 

@@ -18,11 +18,6 @@ public partial class TimelinePanelView : UserControl
         vm.Session.Canvas.PixelsPerFrame = Math.Max(1, TimelineKeys.Bounds.Width - 20) / Math.Max(1, vm.Session.Duration);
         vm.Session.Canvas.StartFrame = 0;
     }
-    private void OnLocatePlayhead(object? sender, RoutedEventArgs args)
-    {
-        if (DataContext is ViewModels.TimelinePanelViewModel vm)
-            vm.Session.Canvas.StartFrame = Math.Max(0, vm.Session.Frame - TimelineKeys.Bounds.Width / vm.Session.Canvas.PixelsPerFrame / 2);
-    }
     private Flyout? _objectFlyout;
     private Flyout? _keyFlyout;
     public TimelinePanelView() { InitializeComponent(); AddHandler(KeyDownEvent, OnValueKeyDown, RoutingStrategies.Tunnel); }
@@ -120,10 +115,10 @@ public partial class TimelinePanelView : UserControl
             item.Click += (_, _) => { action(); menu.Hide(); }; return item;
         }
         var interpolation = new MenuItem { Header = text["Timeline.Curve.Interpolation"] };
-        foreach (var mode in Enum.GetValues<GalNet.Core.Scene.AnimationInterpolation>())
+        foreach (var mode in Enum.GetValues<GalNet.Contracts.Builtins.Scene.AnimationInterpolation>())
         {
             var captured = mode;
-            interpolation.Items.Add(Item("TimelineInterpolation" + mode, mode == GalNet.Core.Scene.AnimationInterpolation.CubicHermite ? "Timeline.Curve.Hermite" : "Timeline.Key." + mode,
+            interpolation.Items.Add(Item("TimelineInterpolation" + mode, mode == GalNet.Contracts.Builtins.Scene.AnimationInterpolation.CubicHermite ? "Timeline.Curve.Hermite" : "Timeline.Key." + mode,
                 () => { draft.InterpolationIndex = (int)captured; draft.CommitInterpolation(); }, draft.InterpolationIndex == (int)mode));
         }
         menu.Items.Add(interpolation);
@@ -160,5 +155,5 @@ public partial class TimelinePanelView : UserControl
         menu.Closed += (_, _) => { if (ReferenceEquals(Avalonia.Controls.Primitives.FlyoutBase.GetAttachedFlyout(anchor), menu)) Avalonia.Controls.Primitives.FlyoutBase.SetAttachedFlyout(anchor, null); };
         menu.ShowAt(anchor, true);
     }
-    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) { _objectFlyout?.Hide(); _keyFlyout?.Hide(); _eventFlyout?.Hide(); _eventInsertion = null; base.OnDetachedFromVisualTree(e); }
+    protected override void OnDetachedFromVisualTree(Avalonia.VisualTreeAttachmentEventArgs e) { _objectFlyout?.Hide(); _keyFlyout?.Hide(); _eventInsertion = null; base.OnDetachedFromVisualTree(e); }
 }

@@ -1,26 +1,31 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
-using GalNet.Core.Scene;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Contracts.Builtins;
 
 /// <summary>Portable semantic checks shared by compilation and every implementation of built-in contracts.</summary>
 internal static class BuiltinArgumentValidation
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    private static readonly JsonSerializerOptions JsonOptions = BuiltinJson.CreateOptions(new()
     {
         PropertyNameCaseInsensitive = true,
-        Converters = { new JsonStringEnumConverter() }
-    };
+    }, stringEnums: true);
 
     public static void Validate(string type, JsonElement arguments)
     {
         switch (type)
         {
+            case BuiltinEntryIds.StopAudioSEffect:
+                if (arguments.TryGetProperty("all", out var all) && all.ValueKind == JsonValueKind.True &&
+                    arguments.TryGetProperty("instanceId", out var instance) && instance.ValueKind == JsonValueKind.String && !string.IsNullOrEmpty(instance.GetString()))
+                    throw new ArgumentException("Stopping all audio effects cannot specify an instance.");
+                break;
             case BuiltinEntryIds.PlayVideo:
                 RequireText(type, arguments, "asset", "handleId");
-                var points = arguments.GetProperty("skipPoints").Deserialize<double[]>(JsonOptions)
+                var points = JsonCodec.Deserialize<double[]>(arguments.GetProperty("skipPoints"), JsonOptions)
                     ?? throw new InvalidDataException("video.play skipPoints must be an array.");
                 if (points.Any(point => !double.IsFinite(point) || point < 0) ||
                     points.Zip(points.Skip(1), (left, right) => right > left).Any(valid => !valid))
@@ -29,7 +34,7 @@ internal static class BuiltinArgumentValidation
             case BuiltinEntryIds.PlayTimeline:
                 if (!arguments.TryGetProperty("timeline", out var value) || value.ValueKind != JsonValueKind.Object)
                     throw new InvalidDataException("timeline.play requires a timeline object.");
-                ValidateTimeline(value.Deserialize<TimelineDefinition>(JsonOptions)!);
+                ValidateTimeline(JsonCodec.Deserialize<TimelineDefinition>(value, JsonOptions)!);
                 break;
             case BuiltinEntryIds.PlayParticleEmitter:
             case BuiltinEntryIds.BurstParticles:
@@ -78,8 +83,12 @@ internal static class BuiltinArgumentValidation
         }
         foreach (var item in timeline.Events)
         {
-            if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames)
+            if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames || !Enum.IsDefined(item.Execution))
                 throw new InvalidDataException("Animation events must be inside the timeline duration.");
+            if (item.Execution == TimelineEventExecution.Once && item.Frame != 0 ||
+                item.Execution == TimelineEventExecution.OnCompletion && (item.Frame != timeline.DurationFrames ||
+                    item.Type is not (BuiltinEntryIds.HideLayer or BuiltinEntryIds.StopEffect or BuiltinEntryIds.StopParticleEmitter)))
+                throw new InvalidDataException("Playback setup must be at frame zero; completion events must be terminal cleanup operations.");
         }
     }
 }

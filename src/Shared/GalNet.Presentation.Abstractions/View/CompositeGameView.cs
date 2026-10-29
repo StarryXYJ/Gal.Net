@@ -1,4 +1,5 @@
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 using GalNet.Presentation.Abstractions.Execution;
@@ -6,13 +7,13 @@ using GalNet.Presentation.Abstractions.Execution;
 namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>Dispatches validated instructions to independently registered execution modules.</summary>
-public sealed class CompositeGameView : IGameView
+public sealed class CompositeGameView : IPrimitiveDispatcher
 {
     private readonly IEntryCatalog _catalog;
     private readonly IReadOnlyList<IPrimitiveModule> _modules;
     private readonly Dictionary<string, Func<PrimitiveCreateContext, PrimitiveInstance>> _instructions;
     private bool _disposed;
-    private readonly IReadOnlyList<Action<IGameRuntime, GameState>> _stateValidators;
+    private readonly IReadOnlyList<Action<IGameContext, GameState>> _stateValidators;
 
     public CompositeGameView(IEntryCatalog catalog, IEnumerable<IPrimitiveModule> modules)
     {
@@ -34,7 +35,7 @@ public sealed class CompositeGameView : IGameView
     public StateCatalog StateCatalog { get; }
     public bool RequiresStateRestore => StateRestorers.Count != 0;
     internal IReadOnlyList<StateRestorer> StateRestorers { get; }
-    public void ValidateState(IGameRuntime runtime, GameState state)
+    public void ValidateState(IGameContext runtime, GameState state)
     {
         foreach (var validate in _stateValidators) validate(runtime, state);
     }
@@ -54,29 +55,20 @@ public sealed class CompositeGameView : IGameView
         if (missing.Length != 0) throw new InvalidOperationException($"Project contract declares primitives without registered execution implementations: {string.Join(", ", missing)}.");
     }
 
-    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken,
+    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameContext runtime, CancellationToken cancellationToken,
         PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal)
     {
         ArgumentNullException.ThrowIfNull(entry);
         ArgumentNullException.ThrowIfNull(runtime);
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (!entry.IsGeneric)
-            throw new InvalidOperationException($"Instruction '{entry.Type}' must be compiled before dispatch.");
         runtime.State.Configure(StateCatalog);
         if (!_instructions.TryGetValue(entry.Type, out var implementation))
             throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
         var definition = _catalog.Get(entry.Type);
-        var normalized = new PrimitiveEntry(entry.Type,
-            PrimitiveArgumentHelper.Normalize(definition.DynamicParameters!, entry.Arguments), entry.BatchId)
-        {
-            Id = entry.Id,
-            StableId = entry.StableId,
-            ReadingBoundaryId = entry.ReadingBoundaryId,
-            Condition = entry.Condition
-        };
-        var instance = implementation(new PrimitiveCreateContext(definition, normalized, runtime, cancellationToken))
+        var instance = implementation(new PrimitiveCreateContext(definition, entry, runtime, cancellationToken))
             ?? throw new InvalidOperationException($"Instruction '{entry.Type}' returned no instance.");
-        if (!string.Equals(instance.BatchId, normalized.BatchId, StringComparison.Ordinal))
+        var expectedBatchId = string.IsNullOrWhiteSpace(entry.BatchId) ? null : entry.BatchId;
+        if (!string.Equals(instance.BatchId, expectedBatchId, StringComparison.Ordinal))
             throw new InvalidOperationException($"Instruction '{entry.Type}' created an instance with a different BatchId.");
         instance.Dispatch(mode);
         return instance;

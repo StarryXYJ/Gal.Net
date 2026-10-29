@@ -1,0 +1,102 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer
+
+@param time
+  uniform: time
+  type: float
+  default: 0
+  animatable: true
+
+@param speed
+  uniform: speed
+  type: float
+  default: 2
+  range: -20..20
+  animatable: true
+
+@param density
+  uniform: density
+  type: float
+  default: 64
+  range: 4..256
+  animatable: true
+
+@param strength
+  uniform: strength
+  type: float
+  default: 1
+  range: 0..1
+  animatable: true
+
+@param flicker
+  uniform: flicker
+  type: float
+  default: 0.3
+  range: 0..1
+  animatable: true
+
+@param mode
+  uniform: mode
+  type: enum
+  default: Radial
+  options: Radial,Directional
+  animatable: false
+
+@param angle
+  uniform: angle
+  type: float
+  default: 0
+  range: -360..360
+  animatable: true
+
+@param center
+  uniform: center
+  type: vector2
+  default: [0.5,0.5]
+  animatable: false
+
+@param color
+  uniform: color
+  type: color
+  default: #FFFFFF
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size, center;
+uniform float time, speed, density, strength, flicker, mode, angle;
+uniform float4 color;
+float hash(float x) { return fract(sin(x*127.1+311.7)*43758.5453); }
+half4 main(float2 p) {
+    float2 q = (p-center*size)/max(min(size.x,size.y),1.0);
+    float stroke;
+    if (mode < 0.5) {
+        float angular = (atan(q.y,q.x)+3.14159265)/6.2831853*floor(density);
+        float sector = floor(angular);
+        float noise = hash(sector);
+        float width = mix(0.035,0.14,hash(sector+71.0));
+        float across = 1.0-smoothstep(width,width+0.045,abs(fract(angular)-0.5));
+        float r = length(q);
+        float head = fract(time*speed*0.25+noise)*1.6;
+        float along = smoothstep(head-0.8,head-0.65,r)*(1.0-smoothstep(head,head+0.12,r));
+        stroke = across * along * smoothstep(0.08+noise*0.1,0.36,r);
+    } else {
+        float a = angle*0.01745329252;
+        float2 axis = float2(cos(a),sin(a));
+        float coordinate = dot(q,float2(-axis.y,axis.x))*density;
+        float lane = floor(coordinate);
+        float noise = hash(lane);
+        float width = mix(0.035,0.14,hash(lane+71.0));
+        float aa = max(0.02,0.5*density/max(min(size.x,size.y),1.0));
+        float across = 1.0-smoothstep(max(0.0,width-aa),width+aa,abs(fract(coordinate)-0.5));
+        float u = fract((dot(q,axis)-time*speed)*0.5+noise);
+        float along = smoothstep(0.1,0.2,u)*(1.0-smoothstep(0.8,0.9,u));
+        stroke = across * along;
+    }
+    float blink = 1.0-flicker*(0.5+0.5*sin(time*37.0));
+    float alpha = clamp(stroke*blink*strength*color.a,0.0,1.0);
+    // A shader-generated overlay; the transparent source is an explicit layer carrier.
+    half4 inputColor = source.eval(p);
+    return half4(half3(color.rgb*alpha),half(alpha)) + inputColor * half(1.0-alpha);
+}

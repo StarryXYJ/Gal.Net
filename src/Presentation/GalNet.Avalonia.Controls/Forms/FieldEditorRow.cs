@@ -23,7 +23,7 @@ public sealed class FieldEditorRow : Grid
     public IFieldBinding? Binding { get => GetValue(BindingProperty); set => SetValue(BindingProperty, value); }
     public bool ShowLabel { get => GetValue(ShowLabelProperty); set => SetValue(ShowLabelProperty, value); }
     private readonly ContentControl _label = new() { Name = "FieldLabel", VerticalAlignment = VerticalAlignment.Top, Margin = new(0, 6, 0, 0) };
-    private readonly ContentControl _editor = new() { HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
+    private readonly ContentControl _editor = new() { Name = "FieldEditor", HorizontalContentAlignment = HorizontalAlignment.Stretch, VerticalAlignment = VerticalAlignment.Top };
     private readonly FieldEditorActions _actions = new() { Simplified = true, VerticalAlignment = VerticalAlignment.Top };
     private readonly TextBlock _issue = new() { TextWrapping = global::Avalonia.Media.TextWrapping.Wrap };
     private FieldEditorContext? _owned, _active;
@@ -43,7 +43,7 @@ public sealed class FieldEditorRow : Grid
         base.OnPropertyChanged(change);
         if (_label is null) return;
         if (change.Property == LabelProperty) _label.Content = Label;
-        if (change.Property == EditorProperty) _editor.Content = Editor;
+        if (change.Property == EditorProperty) { _editor.Content = Editor; Layout(_narrow); }
         if (change.Property == ContextProperty || change.Property == FieldProperty || change.Property == BindingProperty) { if (_mounted) Connect(); }
         if (change.Property == ShowLabelProperty) Layout(_narrow);
     }
@@ -62,20 +62,21 @@ public sealed class FieldEditorRow : Grid
     private void Changed(object? sender, PropertyChangedEventArgs args) => Refresh();
     private void Refresh()
     {
-        _issue.Text = _active?.Issue?.Message; _issue.IsVisible = !string.IsNullOrEmpty(_issue.Text);
+        _issue.Text = _active?.IssueMessage; _issue.IsVisible = !string.IsNullOrEmpty(_issue.Text);
         IsVisible = _active?.IsVisible ?? true;
         _editor.IsEnabled = _active?.IsEnabled ?? true;
     }
     private void Layout(bool narrow)
     {
         _narrow = narrow;
-        _label.IsVisible = ShowLabel;
-        ColumnDefinitions = new(narrow || !ShowLabel ? "*,Auto" : "130,*,Auto");
-        RowDefinitions = new(narrow && ShowLabel ? "Auto,Auto,Auto" : "Auto,Auto");
+        var showLabel = ShowLabel && Editor is not StructuredFieldEditor;
+        _label.IsVisible = showLabel;
+        ColumnDefinitions = new(narrow || !showLabel ? "*,Auto" : "130,*,Auto");
+        RowDefinitions = new(narrow && showLabel ? "Auto,Auto,Auto" : "Auto,Auto");
         SetRow(_label, 0); SetColumn(_label, 0);
-        SetRow(_editor, narrow && ShowLabel ? 1 : 0); SetColumn(_editor, narrow || !ShowLabel ? 0 : 1);
-        SetRow(_actions, 0); SetColumn(_actions, narrow || !ShowLabel ? 1 : 2);
-        SetRow(_issue, narrow && ShowLabel ? 2 : 1); SetColumn(_issue, narrow || !ShowLabel ? 0 : 1);
+        SetRow(_editor, narrow && showLabel ? 1 : 0); SetColumn(_editor, narrow || !showLabel ? 0 : 1);
+        SetRow(_actions, 0); SetColumn(_actions, narrow || !showLabel ? 1 : 2);
+        SetRow(_issue, narrow && showLabel ? 2 : 1); SetColumn(_issue, narrow || !showLabel ? 0 : 1);
         _label.Margin = new(0, narrow ? 0 : 6, 0, 0);
     }
 }

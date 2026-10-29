@@ -21,9 +21,60 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task NestedMapDraftsKeepTheirWirePathAndSaveAfterEveryViewCloses()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme();
+            var catalog = new TargetProfileEntryCatalog([new DefaultEntryModule("structured", [DefaultPrimitiveEntryBase.ForDto<StructuredAuthorOptions>("custom.structure")])]);
+            using var services = Services(catalog: catalog); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "PropertyMapDraft"), "Properties", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var entry = workspace.InsertEntriesInto(group, 0, 1, "custom.structure").Single();
+            scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type,
+                new() { ["items"] = JsonSerializer.Deserialize<JsonElement>("""{"a/b~c":{"Title":"before","extension":9007199254740993},"0":{"Title":"other"}}""") });
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id);
+            var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1100, Height = 850 };
+            window.Show(); TimelinePump(window);
+            var root = view.GetVisualDescendants().OfType<SchemaForm>().Single(form => form.Schema?.Any(field => field.Id == "items") == true);
+            var map = (StructuredFieldEditor)root.Editors.Single(item => item.Context.Field.Id == "items").Control;
+            map.IsExpanded = true; TimelinePump(window);
+            Assert.That(((StackPanel)map.Header!).Children.OfType<TextBlock>().First().Text, Is.EqualTo("items · 2"),
+                "Unknown translation keys fall back to the field name, while map keys remain literal labels.");
+            foreach (var child in map.GetVisualDescendants().OfType<StructuredFieldEditor>()) child.IsExpanded = true;
+            TimelinePump(window);
+            var title = map.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Contexts)
+                .Single(context => context.Field.Id == "title" && context.PropertySegments?.SequenceEqual(new[] { "a/b~c", "Title" }) == true);
+            title.Text = "after";
+            Assert.That(entry.Source.Parameters["items"].GetProperty("a/b~c").GetProperty("Title").GetString(), Is.EqualTo("before"));
+            if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+            {
+                Directory.CreateDirectory(artifacts); Avalonia.Headless.HeadlessWindowExtensions.CaptureRenderedFrame(window)!.Save(Path.Combine(artifacts, "recursive-map-group.png"));
+            }
+            window.Close(); page.Dispose();
+            await workspace.SaveAsync();
+            Assert.That(entry.Source.Parameters["items"].GetProperty("a/b~c").GetProperty("Title").GetString(), Is.EqualTo("after"));
+            Assert.That(entry.Source.Parameters["items"].GetProperty("a/b~c").GetProperty("extension").GetInt64(), Is.EqualTo(9007199254740993));
+            Assert.That(entry.Source.Parameters["items"].GetProperty("0").GetProperty("Title").GetString(), Is.EqualTo("other"));
+            await scope.GetRequiredService<EditorHistories>().Content.UndoAsync();
+            Assert.That(entry.Source.Parameters["items"].GetProperty("a/b~c").GetProperty("Title").GetString(), Is.EqualTo("before"));
+            await scope.GetRequiredService<EditorHistories>().Content.RedoAsync();
+            Assert.That(entry.Source.Parameters["items"].GetProperty("a/b~c").GetProperty("Title").GetString(), Is.EqualTo("after"));
+            scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type,
+                new() { ["items"] = JsonSerializer.Deserialize<JsonElement>("""{"0":{"Title":42}}""") });
+            var problems = scope.GetRequiredService<ProblemsPanelViewModel>(); await AwaitAutomaticProblems(problems);
+            var issue = problems.Problems.Single(problem => problem.Target?.EntryId == entry.StableId && problem.FieldPath?.SequenceEqual(new[] { "0", "Title" }) == true);
+            Assert.That(issue.Source, Does.Contain("[\"0\"]"), "Numeric dictionary keys are literal keys, not list ordinals.");
+            await projects.CloseAsync(); return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task GeneratedComplexFieldsUseProjectHistoryAndReopenWithoutLosingUnknownOrAbsentValues()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme();
@@ -88,6 +139,7 @@ public partial class StructuredAuthorOptions
     [Field(0)] public StructuredAuthorDetails? Details { get; set; }
     [Field(1)] public List<int>? Numbers { get; set; }
     [Field(2, AllowNull = true)] public int? Optional { get; set; }
+    [Field(3)] public Dictionary<string, StructuredAuthorDetails>? Items { get; set; }
 }
 
 [GenerateFieldSchema]

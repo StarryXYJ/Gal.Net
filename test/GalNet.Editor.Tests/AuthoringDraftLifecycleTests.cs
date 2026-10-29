@@ -22,7 +22,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task AuthoringDraftsReopenInMountedGroupAndKeepOpaqueValuesThroughEditsCopyUndoAndSave()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -58,7 +58,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(text.Source.Parameters["speaker"].ValueKind, Is.EqualTo(JsonValueKind.Object), "Editing one dedicated text field must not reparse and coerce another invalid string field.");
                 await history.UndoAsync(); Assert.That(text.Parameters["content"], Is.EqualTo("original")); Assert.That(history.CanUndo, Is.False); await history.RedoAsync();
                 var authoring = project.Services.GetRequiredService<GroupEntryAuthoringService>(); var payload = opaque.Source.Parameters["payload"].Clone();
-                var copied = (await authoring.PasteAsync(groupId, authoring.Copy(groupId, [opaque.StableId]), null)).Single();
+                var copiedId = (await authoring.PasteAsync(groupId, authoring.Copy(groupId, [opaque.StableId]), null)).Single();
+                var copied = group.Entries.Single(entry => entry.StableId == copiedId);
                 Assert.That(copied.StableId, Is.Not.EqualTo(opaque.StableId)); Assert.That(copied.Type, Is.EqualTo(opaque.Type));
                 Assert.That(JsonElement.DeepEquals(copied.Source.Parameters["payload"], payload), Is.True);
                 await history.UndoAsync(); Assert.That(group.Entries.Contains(copied), Is.False); await history.RedoAsync();

@@ -305,6 +305,7 @@
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -312,20 +313,24 @@
         "type": "Project",
         "dependencies": {
           "Avalonia": "[12.0.5, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.avalonia.gamehost": {
         "type": "Project",
         "dependencies": {
+          "Avalonia.Controls.ColorPicker": "[12.0.5, )",
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
           "GalNet.Avalonia.GameView": "[1.0.0, )",
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Media.LibVlc": "[1.0.0, )",
+          "GalNet.Media.Miniaudio": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
@@ -340,6 +345,7 @@
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
@@ -354,6 +360,7 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "Avalonia.Skia": "[12.0.5, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -362,7 +369,8 @@
         "dependencies": {
           "Avalonia.Themes.Fluent": "[12.0.5, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
-          "GalNet.Avalonia.GameView": "[1.0.0, )"
+          "GalNet.Avalonia.GameView": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )"
         }
       },
       "galnet.contracts.builtins": {
@@ -402,23 +410,41 @@
       "galnet.gamehost": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
+      "galnet.media.audio": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.media.libvlc": {
         "type": "Project",
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "LibVLCSharp": "[3.10.0, )"
         }
       },
+      "galnet.media.miniaudio": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Media.Audio": "[1.0.0, )"
+        }
+      },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -443,7 +469,6 @@
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },
@@ -486,6 +511,7 @@
         "type": "Project",
         "dependencies": {
           "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
@@ -500,6 +526,16 @@
           "Avalonia.BuildServices": "11.3.2",
           "Avalonia.Remote.Protocol": "12.0.5",
           "MicroCom.Runtime": "0.11.4"
+        }
+      },
+      "Avalonia.Controls.ColorPicker": {
+        "type": "CentralTransitive",
+        "requested": "[12.0.5, )",
+        "resolved": "12.0.5",
+        "contentHash": "EmYXjNZq5wevvvvbLTNvnDBnZfQ6YuFBPOwDc6IXMFFIFLY4WAfpi3Dr94/qmt55shDcMceogaUiNy0yyLf5NQ==",
+        "dependencies": {
+          "Avalonia": "12.0.5",
+          "Avalonia.Remote.Protocol": "12.0.5"
         }
       },
       "Avalonia.Desktop": {

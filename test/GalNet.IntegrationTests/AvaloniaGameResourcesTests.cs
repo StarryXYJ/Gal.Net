@@ -13,14 +13,14 @@ public sealed class AvaloniaGameResourcesTests
     [Test]
     public async Task PartialPreloadFailureReleasesSuccessfulAcquisitions()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var texture = new SceneTexture(LayerImageFallback.MissingImage);
             using var assets = new Assets(texture);
             Assert.ThrowsAsync<IOException>(() => AvaloniaGameResources.CreateAsync(assets,
                 (_, _) => Task.FromResult<IReadOnlyList<IGameFile>>([new Source("ok"), new Source("fail")]),
-                (_, _) => Task.FromResult(Array.Empty<GalNet.Core.Scene.EffectProgramResource>())));
+                (_, _) => Task.FromResult(Array.Empty<GalNet.Contracts.Builtins.Scene.EffectProgramResource>())));
             Assert.That(assets.Released, Is.EqualTo(1));
             await Task.CompletedTask;
             return true;
@@ -30,7 +30,7 @@ public sealed class AvaloniaGameResourcesTests
     [Test]
     public async Task DefaultPresentationUsesAndReleasesInjectedAdapters()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(ScreenshotTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             using var texture = new SceneTexture(LayerImageFallback.MissingImage);
@@ -38,10 +38,17 @@ public sealed class AvaloniaGameResourcesTests
             using var files = new GalNet.Assets.AssetFileMaterializer(assets);
             var audio = new Audio();
             var layers = new Layers(texture);
+            var video = new Video();
             var options = new AvaloniaGamePresentationOptions
             {
                 CreateLayers = _ => layers,
-                CreateAudioHost = (_, _, _) => audio
+                CreateAudioHost = (_, _) => audio,
+                CreateVideoPresenter = (actualAssets, _, actualFiles) =>
+                {
+                    Assert.That(actualAssets, Is.SameAs(assets));
+                    Assert.That(actualFiles, Is.SameAs(files));
+                    return video;
+                }
             };
             var presentation = await AvaloniaGamePresentation.CreateAsync(
                 new GalNet.Avalonia.GameView.ViewModels.GamePageViewModel(null!),
@@ -49,13 +56,52 @@ public sealed class AvaloniaGameResourcesTests
                 new Dictionary<string, AssetHandle<SceneTexture>>(), [], files,
                 (registration, _) => registration.RegisterSchema(new GalNet.Core.Entry.DefaultEntryModule("custom")), [], options);
             Assert.That(presentation.Audio, Is.SameAs(audio));
+            Assert.That(presentation.Video, Is.SameAs(video));
             var closing = presentation.DisposeAsync().AsTask();
             await closing;
             Assert.That(presentation.DisposeAsync().AsTask(), Is.SameAs(closing));
             Assert.That(audio.Disposals, Is.EqualTo(1));
             Assert.That(layers.Disposals, Is.EqualTo(1));
+            Assert.That(video.Disposals, Is.EqualTo(1));
             return true;
         }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task FailedVideoBackendCreationReleasesPreviouslyCreatedAudioAndLayers()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            using var texture = new SceneTexture(LayerImageFallback.MissingImage);
+            using var assets = new Assets(texture);
+            using var files = new GalNet.Assets.AssetFileMaterializer(assets);
+            var audio = new Audio();
+            var layers = new Layers(texture);
+            Assert.ThrowsAsync<IOException>(() => AvaloniaGamePresentation.CreateAsync(
+                new GalNet.Avalonia.GameView.ViewModels.GamePageViewModel(null!),
+                new GalNet.Avalonia.GameView.Page.GamePage(), assets,
+                new Dictionary<string, AssetHandle<SceneTexture>>(), [], files, (_, _) => { }, [], new()
+                {
+                    CreateLayers = _ => layers,
+                    CreateAudioHost = (_, _) => audio,
+                    CreateVideoPresenter = (_, _, _) => throw new IOException("Video backend unavailable.")
+                }));
+            Assert.That(audio.Disposals, Is.EqualTo(1));
+            Assert.That(layers.Disposals, Is.EqualTo(1));
+            await Task.CompletedTask;
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    private sealed class Video : GalNet.Presentation.Abstractions.View.IVideoPresenter, IDisposable, IAsyncDisposable
+    {
+        public int Disposals { get; private set; }
+        public Task PlayVideoAsync(GalNet.Presentation.Abstractions.View.VideoRenderRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
+        public void AdvanceVideo(string playbackId) { }
+        public void StopVideo(string handleId) { }
+        public void Dispose() => throw new InvalidOperationException("Prefer asynchronous video cleanup.");
+        public async ValueTask DisposeAsync() { await Task.Yield(); Disposals++; }
     }
 
     private sealed class Layers(SceneTexture texture) : IGamePageLayerFactory, IDisposable
@@ -64,13 +110,13 @@ public sealed class AvaloniaGameResourcesTests
         public SceneTexture ResolveTexture(string assetId) => texture;
         public void Dispose() => Disposals++;
     }
-    private sealed class Audio : GalNet.Presentation.Abstractions.Audio.IAudioPlaybackHost
+    private sealed class Audio : GalNet.Contracts.Builtins.Audio.IAudioPlaybackHost
     {
         public int Disposals { get; private set; }
-        public GalNet.Core.Audio.AudioBackendCapabilities Capabilities => GalNet.Core.Audio.AudioBackendCapabilities.None;
-        public GalNet.Core.Audio.ISEffectCatalog SEffects => GalNet.Core.Audio.SEffectCatalog.Empty;
-        public event Action<GalNet.Core.Audio.AudioBackendEvent>? EventReceived { add { } remove { } }
-        public Task ApplyAsync(GalNet.Core.Audio.AudioBackendRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public GalNet.Contracts.Builtins.Audio.AudioBackendCapabilities Capabilities => GalNet.Contracts.Builtins.Audio.AudioBackendCapabilities.None;
+        public GalNet.Contracts.Builtins.Audio.ISEffectCatalog SEffects => GalNet.Contracts.Builtins.Audio.SEffectCatalog.Empty;
+        public event Action<GalNet.Contracts.Builtins.Audio.AudioBackendEvent>? EventReceived { add { } remove { } }
+        public Task ApplyAsync(GalNet.Contracts.Builtins.Audio.AudioBackendRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public void Dispose() => Disposals++;
     }
 

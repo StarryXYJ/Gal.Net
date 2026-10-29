@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.VisualTree;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Contracts.Builtins;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
@@ -20,7 +21,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task OpenFoundationViewsHistoryErrorsAndDialogRefreshAcrossFourLanguagesWithoutChangingContent()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var originalCulture = CultureInfo.CurrentCulture;
@@ -29,7 +30,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var localization = new EditorLocalizationService();
             using var services = Services(localization: localization);
             var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "Localized"), "Authored 名称", new(), Contracts());
+            var audio = GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create();
+            var project = await projects.CreateAsync(Path.Combine(_root, "Localized"), "Authored 名称",
+                new DefaultProjectOptions { AudioBuses = audio.Buses.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration(), Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
             var page = project.Services.GetRequiredService<EditorPageViewModel>();
@@ -74,7 +77,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     var save = dialog.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "CloseSave");
                     Assert.That(save.Content, Is.EqualTo(localization["Close.Save"]));
                     Assert.That(save.Bounds.Width, Is.GreaterThan(0));
-                    Assert.That(settingsView.FindControl<Button>("ApplySettingsButton")!.Content, Is.EqualTo(localization["Settings.Project.Apply"]));
+                    Assert.That(settingsView.FindControl<TextBlock>("ProjectSettingsTitle")!.Text, Is.EqualTo(localization["Settings.Project.Title"]));
                     Assert.That(graphView.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == localization["Graph.Kind.LinearGroup"]), Is.True);
                     Assert.That(inspectorView.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == localization["Graph.Kind.LinearGroup"]), Is.True);
                     Assert.That(page.MenuItems.SelectMany(menu => menu.Children ?? []).Any(item => item.Header?.Contains(localization["History.Rename"], StringComparison.Ordinal) == true), Is.True);
@@ -86,7 +89,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(JsonSerializer.Serialize(content.CaptureWorking()), Is.EqualTo(snapshot));
                     Assert.That(content.IsDirty, Is.EqualTo(beforeDirty));
                     Assert.That(history.UndoDescription, Is.EqualTo(undo));
-                    Assert.That(project.Settings.TargetLocale.Code, Is.EqualTo("zh-CN"));
+                    Assert.That(project.Configuration.ReadDefaultOptions().TargetLocale.Code, Is.EqualTo("zh-CN"));
                     if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
                     {
                         using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "p2i-workspace-" + locale + ".png"));
@@ -100,13 +103,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 {
                     language.SelectedItem = editorSettings.AvailableCultures.Single(culture => culture.Name == locale);
                     window.UpdateLayout();
-                    var gain = settingsView.GetVisualDescendants().OfType<NumericUpDown>().First(input => ReferenceEquals(input.DataContext, panel.AudioTracks[0]));
+                    Assert.That(settingsView.GetVisualDescendants().OfType<GalNet.Game.Controls.Forms.StructuredFieldEditor>()
+                        .Any(editor => editor.Context.Field.Id == "audioTracks"), Is.True);
                     var expectedGain = gains[gainIndex++];
-                    gain.Value = expectedGain;
+                    var tracks = project.Configuration.ReadDefaultOptions().AudioTracks;
+                    tracks[0] = tracks[0] with { DefaultGain = (float)expectedGain };
+                    await Stage(panel, "audioTracks", tracks);
                     await panel.SaveSettingsCommand.ExecuteAsync(null);
                     await workspace.SaveAsync();
                     using var json = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")));
-                    Assert.That(json.RootElement.GetProperty("audioTracks")[0].GetProperty("defaultGain").GetDouble(), Is.EqualTo((double)expectedGain).Within(0.00001));
+                    Assert.That(json.RootElement.GetProperty("sections").GetProperty("galnet.project").GetProperty("data").GetProperty("audioTracks")[0].GetProperty("defaultGain").GetDouble(), Is.EqualTo((double)expectedGain).Within(0.00001));
                 }
             }
             finally
@@ -122,7 +128,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task NewProjectErrorsAndDisposedViewsKeepCorrectLocalizationLifetime()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());

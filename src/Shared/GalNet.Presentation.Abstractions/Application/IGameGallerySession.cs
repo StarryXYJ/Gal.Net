@@ -1,4 +1,4 @@
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
 
 namespace GalNet.Presentation.Abstractions.Application;
 

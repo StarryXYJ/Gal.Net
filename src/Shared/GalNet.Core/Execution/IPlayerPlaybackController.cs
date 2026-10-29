@@ -1,0 +1,14 @@
+using GalNet.Core.Primitives;
+
+namespace GalNet.Core.Execution;
+
+/// <summary>Player commands without a dependency on an engine or UI implementation.</summary>
+public interface IPlayerPlaybackController
+{
+    PlaybackMode PlaybackMode { get; }
+    event Action<PlaybackMode>? PlaybackModeChanged;
+    void CancelPlayback();
+    Task SetPlaybackModeAsync(PlaybackMode mode, CancellationToken cancellationToken = default);
+    Task SkipToUnreadAsync(CancellationToken cancellationToken = default);
+    Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default);
+}

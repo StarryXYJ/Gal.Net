@@ -16,7 +16,7 @@ GalNet 将叙事运行、内容与资源、呈现和具体应用宿主分开。�
 flowchart TB
     Content[Graph / .galgroup / 项目设置] --> Runtime[Runtime\n编译内容、Engine、GameState、存档]
     Contracts[Contracts.Builtins\nSchema 与 Composite] --> Runtime
-    Runtime --> Ports[Presentation.Abstractions\nIGameView、Presenter、应用端口]
+    Ports[Presentation.Abstractions\n执行组合、Presenter、应用端口]
     Core[Core\n领域模型与基础契约] --> Contracts
     Core --> Runtime
     Core --> Assets[Assets\nProvider、Archive、AssetManager]

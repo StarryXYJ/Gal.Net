@@ -1,18 +1,17 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
 
 namespace GalNet.Contracts.Builtins;
 
-[GenerateFieldSchema]
-public partial class CrossFadeOptions
+public abstract class CrossFadeOptionsBase
 {
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? NewHandleId { get; set; }
-    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? AssetId { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? DisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -20,6 +19,9 @@ public partial class CrossFadeOptions
     [Common, Field(8, EditorId = ValueEditorIds.Numeric)] public int DurationFrames { get; set; } = 48;
     [Field(9, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? BatchId { get; set; }
 }
+
+[GenerateFieldSchema]
+public partial class CrossFadeOptions : CrossFadeOptionsBase;
 
 public enum SlideDirection { Left, Right, Up, Down }
 public enum BlindsOrientation { Vertical, Horizontal }
@@ -30,8 +32,8 @@ public partial class SlideOptions
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
     [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
-    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement ToTransform { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? ToAssetId { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement ToTransform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float ToZ { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? ToDisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -49,9 +51,9 @@ public partial class BlindsOptions
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? OldHandleId { get; set; }
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? NewHandleId { get; set; }
-    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? AssetId { get; set; }
-    [Common, Field(4, AllowNull = true, EditorId = "entry.effectprogramasset")] public string? MaskProgram { get; set; }
-    [Field(5, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Transform { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? AssetId { get; set; }
+    [Common, Field(4, AllowNull = true, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string? MaskProgram { get; set; }
+    [Field(5, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
     [Field(6, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 0;
     [Field(7, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? DisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -68,8 +70,8 @@ public abstract class ColorFieldOptionsBase
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? PlaybackHandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? FromLayerHandleId { get; set; }
     [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? ToLayerHandleId { get; set; }
-    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset")] public string? ToAssetId { get; set; }
-    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement ToTransform { get; set; }
+    [Common, Field(3, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? ToAssetId { get; set; }
+    [Field(4, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement ToTransform { get; set; }
     [Field(5, EditorId = ValueEditorIds.Numeric)] public float ToZ { get; set; } = 0;
     [Field(6, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<LayerDisplayMode>))]
     public LayerDisplayMode? ToDisplayMode { get; set; } = LayerDisplayMode.Fill;
@@ -92,18 +94,20 @@ public partial class ColorFadeOptions : ColorFieldOptionsBase
 [GenerateFieldSchema]
 public partial class TextVoiceOptions
 {
+    public TextVoiceOptions() => TrackId = "";
     [Common, Field(0, AllowNull = true, EditorId = "entry.autocomplete"), CharacterReference] public string? Speaker { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText] public string? Content { get; set; }
-    [Common, Field(2, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = "entry.audioasset", ResourceTypeId = "audio")] public string? Asset { get; set; }
     [Field(3, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
-    [Common, Field(4, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
+    [Common, Field(4, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
 }
 
 [GenerateFieldSchema]
 public partial class NvlVoiceOptions
 {
+    public NvlVoiceOptions() => TrackId = "";
     [Common, Field(0, AllowNull = true, EditorId = "entry.multilinetext"), LocalizedText] public string? Content { get; set; }
-    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset")] public string? Asset { get; set; }
+    [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset", ResourceTypeId = "audio")] public string? Asset { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
-    [Common, Field(3, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? TrackId { get; set; } = "vocal";
+    [Common, Field(3, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
 }

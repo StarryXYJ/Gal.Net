@@ -29,6 +29,7 @@ public partial class GameShell : UserControl, IDisposable
     private bool _hadActiveRun;
     private bool _returningToTitle;
     private bool _disposed;
+    private byte[]? _savePreview;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputRouter? _inputRouter;
     private readonly GalNet.Avalonia.GameView.Input.TouchInputRecognizer? _touchInput;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputSettings? _inputSettings;
@@ -48,6 +49,7 @@ public partial class GameShell : UserControl, IDisposable
         _views = views;
         _screenshots = screenshots;
         _session = session;
+        if (session is ISavePreviewSource previewSource) previewSource.CaptureSavePreview = CaptureSavePreview;
         _navigation = navigation;
         _transitions = transitions;
         _inputSettings = settings.Input;
@@ -62,12 +64,17 @@ public partial class GameShell : UserControl, IDisposable
         if (settings.Input is { } input)
         {
             _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack);
-            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false }, _inputRouter.DispatchAsync);
+            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
         }
     }
 
     private void GoBack()
     {
+        if (_viewModel.CurrentViewModel is GamePageViewModel { IsHistoryOpen: true } game)
+        {
+            game.CloseHistoryCommand.Execute(null);
+            return;
+        }
         if (_viewModel.CurrentViewModel is BackNavigablePageViewModel page)
         {
             if (page.BackCommand.CanExecute(null)) page.BackCommand.Execute(null);
@@ -78,6 +85,7 @@ public partial class GameShell : UserControl, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        if (_session is ISavePreviewSource previewSource) previewSource.CaptureSavePreview = null;
         _pageBackInput.Dispose();
         _inputRouter?.Dispose();
         _touchInput?.Dispose();
@@ -155,6 +163,8 @@ public partial class GameShell : UserControl, IDisposable
                 return;
             }
 
+            if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is SaveSlotsPageViewModel)
+                _savePreview = TryCaptureScene(page);
             targetContent = contentFactory();
             if (targetContent is Visual targetVisual &&
                 targetVisual.GetVisualParent() is ContentPresenter previousPresenter)
@@ -274,7 +284,10 @@ public partial class GameShell : UserControl, IDisposable
         await _screenshots.CaptureAsync(new GameScreenshotRequest(
             _session.GameTitle,
             owner,
-            includeUi => Task.FromResult(includeUi ? CapturePng(this) : page.CaptureScenePng())));
+            includeUi => CaptureScreenshotAsync(page, includeUi, null))
+        {
+            CapturePreviewPngAsync = includeUi => CaptureScreenshotAsync(page, includeUi, new PixelSize(720, 405))
+        });
     }
 
     private async void OnReturnToTitleRequested()
@@ -290,14 +303,22 @@ public partial class GameShell : UserControl, IDisposable
         finally { _returningToTitle = false; }
     }
 
-    private static byte[] CapturePng(Control target)
+    private byte[]? CaptureSavePreview() => PageHost.Content is GamePage page ? TryCaptureScene(page) : _savePreview;
+
+    private static byte[]? TryCaptureScene(GamePage page)
     {
-        var width = Math.Max(1, (int)Math.Ceiling(target.Bounds.Width));
-        var height = Math.Max(1, (int)Math.Ceiling(target.Bounds.Height));
-        using var bitmap = new RenderTargetBitmap(new PixelSize(width, height));
-        bitmap.Render(target);
-        using var stream = new MemoryStream();
-        bitmap.Save(stream);
-        return stream.ToArray();
+        try { return page.SceneHost.CapturePng(new PixelSize(480, 270)); }
+        catch (Exception error) { Log.Logger.Warning(error, "Unable to capture save preview"); return null; }
+    }
+
+    private async Task<byte[]> CaptureScreenshotAsync(GamePage page, bool includeUi, PixelSize? maximumSize)
+    {
+        using var bitmap = page.SceneHost.CaptureControl(includeUi ? this : page.Scene, maximumSize);
+        return await Task.Run(() =>
+        {
+            using var stream = new MemoryStream();
+            bitmap.Save(stream);
+            return stream.ToArray();
+        });
     }
 }

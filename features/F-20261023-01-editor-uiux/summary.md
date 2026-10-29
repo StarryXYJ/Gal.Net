@@ -39,6 +39,8 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 
 ## 正式文档
 
+第二轮面板优化（2026-10-25）已实现变量分作用域选择和项目会话草稿、正文主输入行对齐、Inspector 底部独立预览、角色图标工具栏与身份安全的草稿保留，以及本地化搜索/状态筛选、语言与导出弹层、固定上下文和列头、窄面板布局。完整实施、验证结果与保留边界见 [第二轮实施](phase-ui-20261025.md)；原始候选方案保留在 [分析](analysis-20261025.md)。本轮不修改作者格式、项目保存语义或 Runtime。
+
 - [共享表单契约](../../docs/spec/control.md)
 - [Group 与 Inspector](../../docs/spec/editor-groups.md)
 - [历史、草稿与保存](../../docs/spec/editor-history-and-save.md)
@@ -46,3 +48,9 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 - [Graph 导航](../../docs/spec/editor-graph.md)
 - [资源操作](../../docs/spec/editor-files.md)
 - [使用及 DTO 扩展手册](../../docs/manual/editor-authoring-workspace.md)
+
+本地化页后续按用户反馈进一步精简：单行工具栏、紧凑资源表、结构化双行定位列、统一不透明背景、语言搜索/已有语言管理/移除及列宽与可见性。输入直接更新 Working，取消草稿/复核 UI，Save All 仍负责写盘；失败输入就地保留，成功更新通过项目撤销恢复。实现与验证边界见 [本地化精简实施](phase-localization-20261025.md)，当前规范及操作见 [本地化规范](../../docs/spec/editor-game-localization.md) 和 [使用手册](../../docs/manual/game-localization.md)。
+
+后续实测修正：输入改为失焦/Ctrl+Enter/Save All 提交，输入期间不逐字更新项目；正文和摘要左上对齐。表头明确靠左，修复隐藏语言后表格变窄时居中导致的列错位。验证见 [交互修正记录](follow-up-localization-20261025.md)。
+
+2026-10-27 Group 后续完成：正常待提交输入不计条目问题，完整作者检查自动刷新；提示使用本地化字段名及修正建议，可跳转正文按稳定身份定位到 Entry/字段及能唯一识别的子字段。普通数字默认保留文字的上下调整框，支持显式 NumericUpDown、Slider + 精确输入及无损文本路径，浮点简写与 Save All 共用解析。解决方案构建和 1,246 项相关回归通过，最后子字段标签补充另有 16 项聚焦通过；5 项既有媒体/显式预览未执行。模块、取舍、验证中修正和范围边界见 [本轮记录](follow-up-group-diagnostics-numeric-20261027.md)。

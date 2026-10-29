@@ -1,8 +1,8 @@
 using Avalonia.Input;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
-using GalNet.Core.Settings;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using GalNet.Editor.Commands;
 using GalNet.Primitives.Builtins;
 

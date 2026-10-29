@@ -1,6 +1,8 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Core.Graph;
+using GalNet.Core.Serialization;
+using GalNet.Runtime.Serialization;
 
 namespace GalNet.Runtime.Loader;
 
@@ -9,25 +11,28 @@ namespace GalNet.Runtime.Loader;
 /// </summary>
 public static class GraphLoader
 {
-    private static readonly JsonSerializerOptions Options = new()
+    private static readonly JsonSerializerOptions Options = JsonMetadata.CreateOptions(new()
     {
         PropertyNameCaseInsensitive = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        Converters = { new NodeJsonConverter() }
-    };
+        Converters = { new NodeJsonConverter(), new JsonStringEnumConverter<GalNet.Core.Variable.VariableType>() }
+    }, RuntimeJsonContext.Default);
 
     /// <summary>从 JSON 字符串加载图。</summary>
     public static Graph LoadFromJson(string json)
     {
-        var dto = JsonSerializer.Deserialize<GraphDto>(json, Options)
+        var dto = JsonCodec.Deserialize<GraphDto>(json, Options)
                   ?? throw new InvalidOperationException("Failed to deserialize graph.json");
 
         var graph = new Graph
         {
+            Id = dto.Id ?? GalNet.Core.Assets.StoryResourceIds.Graph,
             Name = dto.Name,
             RootNodeId = dto.RootNodeId,
             Nodes = dto.Nodes?.Select(ConvertNode).ToList() ?? [],
-            Edges = dto.Edges?.Select(e => new Edge(e.FromNodeId, e.FromOutlet, e.ToNodeId)).ToList() ?? []
+            Edges = dto.Edges?.Select(e => new Edge(e.FromNodeId, e.FromOutlet, e.ToNodeId)).ToList() ?? [],
+            PlayerVariables = dto.PlayerVariables ?? [],
+            SaveVariables = dto.SaveVariables ?? []
         };
 
         return graph;
@@ -39,6 +44,8 @@ public static class GraphLoader
         {
             Id = dto.Id,
             Name = dto.Name ?? "",
+            ResourceId = dto.ResourceId ?? GalNet.Core.Assets.StoryResourceIds.Group(dto.Id),
+            StoryPackage = dto.StoryPackage ?? "",
             Entries = [] // entries loaded separately from .galgroup
         },
         "Branch" => new Branch
@@ -61,16 +68,21 @@ public static class GraphLoader
 
     // ── DTO types ──
 
-    private sealed class GraphDto
+    internal sealed class GraphDto
     {
+        public string? Id { get; set; }
+        public List<GalNet.Core.Variable.ProjectVariableDefinition>? PlayerVariables { get; set; }
+        public List<GalNet.Core.Variable.ProjectVariableDefinition>? SaveVariables { get; set; }
         public string Name { get; set; } = "";
         public string RootNodeId { get; set; } = "";
         public List<NodeDto>? Nodes { get; set; }
         public List<EdgeDto>? Edges { get; set; }
     }
 
-    private sealed class NodeDto
+    internal sealed class NodeDto
     {
+        public string? ResourceId { get; set; }
+        public string? StoryPackage { get; set; }
         public string Id { get; set; } = "";
         public string Type { get; set; } = "";
         public string? Name { get; set; }
@@ -79,20 +91,20 @@ public static class GraphLoader
         public List<ConditionDto>? Conditions { get; set; }
     }
 
-    private sealed class EdgeDto
+    internal sealed class EdgeDto
     {
         public string FromNodeId { get; set; } = "";
         public int FromOutlet { get; set; }
         public string ToNodeId { get; set; } = "";
     }
 
-    private sealed class OptionDto
+    internal sealed class OptionDto
     {
         public string? Text { get; set; }
         public string? Condition { get; set; }
     }
 
-    private sealed class ConditionDto
+    internal sealed class ConditionDto
     {
         public string? Expression { get; set; }
     }
@@ -115,6 +127,8 @@ public static class GraphLoader
 
             if (element.TryGetProperty("name", out var nameProp))
                 dto.Name = nameProp.GetString();
+            if (element.TryGetProperty("resourceId", out var resource)) dto.ResourceId = resource.GetString();
+            if (element.TryGetProperty("storyPackage", out var package)) dto.StoryPackage = package.GetString();
 
             if (element.TryGetProperty("branchType", out var btProp))
                 dto.BranchType = btProp.GetString();

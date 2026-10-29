@@ -52,7 +52,7 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
     public string? ConflictActionKey { get; private set; }
     public void ReportError(string? key) { ErrorKey = key; Changed?.Invoke(); }
     public event Action? Changed;
-    /// <summary>Optional future page extension; no handler means the history action is unavailable.</summary>
+    /// <summary>History page callback; no handler means the history action is unavailable.</summary>
     public Func<Task>? OpenHistoryAsync { get; set; }
     public Func<Task>? ToggleFullscreenAsync { get; set; }
     public bool IsActionAvailable(string id) => id != "open.history" || OpenHistoryAsync is not null;
@@ -127,13 +127,20 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         Changed?.Invoke();
         OnPropertyChanged(nameof(EastConfirms));
     }
-    public string Serialize() => JsonSerializer.Serialize(_configuration);
+    public string Serialize() => JsonSerializer.Serialize(_configuration, PlayerInputJsonContext.Default.PlayerInputConfiguration);
     public void Restore(string? json)
     {
         try
         {
-            var parsed = json is null ? null : JsonSerializer.Deserialize<PlayerInputConfiguration>(json);
-            Apply(parsed is not null && Validate(parsed) is null ? parsed : Defaults());
+            var parsed = json is null ? null : JsonSerializer.Deserialize(json, PlayerInputJsonContext.Default.PlayerInputConfiguration);
+            var restored = parsed is not null && Validate(parsed) is null ? parsed : Defaults();
+            // Older preferences had no default history binding. Preserve explicit unbinding and conflicts.
+            if (!restored.Bindings.ContainsKey("open.history"))
+            {
+                var occupied = restored.Bindings.Values.SelectMany(bindings => bindings).ToHashSet();
+                restored.Bindings["open.history"] = Defaults().Bindings["open.history"].Where(binding => !occupied.Contains(binding)).ToArray();
+            }
+            Apply(restored);
         }
         catch (JsonException) { Apply(Defaults()); }
     }
@@ -171,13 +178,14 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         ["hold.quick"] = [new(PlayerInputDevice.KeyboardMouse, "Control"), new(PlayerInputDevice.Gamepad, "West")],
         ["toggle.quick"] = [new(PlayerInputDevice.KeyboardMouse, "Tab")],
         ["toggle.auto"] = [new(PlayerInputDevice.KeyboardMouse, "A")],
-        ["toggle.ui"] = [new(PlayerInputDevice.KeyboardMouse, "H"), new(PlayerInputDevice.KeyboardMouse, "MouseMiddle"), new(PlayerInputDevice.Gamepad, "North"), new(PlayerInputDevice.Touch, "TwoFingerTap")],
+        ["toggle.ui"] = [new(PlayerInputDevice.KeyboardMouse, "H"), new(PlayerInputDevice.KeyboardMouse, "MouseRight"), new(PlayerInputDevice.Gamepad, "North"), new(PlayerInputDevice.Touch, "TwoFingerTap")],
         ["save.first-empty"] = [new(PlayerInputDevice.KeyboardMouse, "Control+S")],
         ["open.save"] = [new(PlayerInputDevice.KeyboardMouse, "F5")],
         ["open.load"] = [new(PlayerInputDevice.KeyboardMouse, "Control+L")],
         ["open.settings"] = [new(PlayerInputDevice.KeyboardMouse, "F1"), new(PlayerInputDevice.Gamepad, "Start")],
         ["screenshot"] = [new(PlayerInputDevice.KeyboardMouse, "F12")],
-        ["toggle.fullscreen"] = [new(PlayerInputDevice.KeyboardMouse, "Alt+Enter")]
+        ["toggle.fullscreen"] = [new(PlayerInputDevice.KeyboardMouse, "Alt+Enter")],
+        ["open.history"] = [new(PlayerInputDevice.KeyboardMouse, "WheelUp")]
     });
     public void Dispose() { CancelGamepad(); _edits.Dispose(); }
 }

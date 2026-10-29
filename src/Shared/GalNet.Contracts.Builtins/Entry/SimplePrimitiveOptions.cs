@@ -1,6 +1,7 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Parameters;
-using GalNet.Core.Scene;
 
 namespace GalNet.Contracts.Builtins;
 
@@ -37,7 +38,7 @@ public partial class LayerReplaceOptions
     [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
     [Common]
     public string? HandleId { get; set; }
-    [Field(1, AllowNull = true, EditorId = "entry.imageasset")]
+    [Field(1, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")]
     [Common]
     public string? AssetId { get; set; }
 }
@@ -52,11 +53,24 @@ public partial class InstanceIdOptions
 [GenerateFieldSchema]
 public partial class AudioSEffectStopOptions
 {
-    [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    public AudioSEffectStopOptions() => TargetId = "";
+    [Field(1, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)]
     [Common]
-    public string? TrackId { get; set; } = "bgm";
-    [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)]
+    public string TargetId { get; set; }
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Choice)]
     public string? InstanceId { get; set; }
+    [Common, Field(0, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))] public GalNet.Contracts.Builtins.Audio.SEffectScope Scope { get; set; } = GalNet.Contracts.Builtins.Audio.SEffectScope.Track;
+    [Field(3, EditorId = ValueEditorIds.Choice)] public bool All { get; set; }
+}
+
+[GenerateFieldSchema]
+public partial class AudioSEffectUpdateOptions
+{
+    [Common, Field(0, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioTargetScopeValueConverter))]
+    public GalNet.Contracts.Builtins.Audio.SEffectScope Scope { get; set; } = GalNet.Contracts.Builtins.Audio.SEffectScope.Track;
+    [Common, Field(1, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TargetId { get; set; } = "";
+    [Common, Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
+    [Common, Field(3, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
 }
 
 [GenerateFieldSchema]

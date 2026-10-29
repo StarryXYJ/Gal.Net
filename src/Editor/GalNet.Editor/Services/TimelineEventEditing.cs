@@ -100,7 +100,7 @@ public sealed partial class TimelineEditSession
     public bool AddEvent(string type)
     {
         if (_disposed || !CanEdit || _document is null || !TimelineEventCapabilities.Supports(type) || !_catalog.TryGet(type, out var schema)) return false;
-        var parameters = schema.DynamicParameters!.Values.Where(parameter => parameter.DefaultValue is not null).ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value.Clone());
+        var parameters = schema.DynamicParameters.Values.Where(parameter => parameter.DefaultValue is not null).ToDictionary(parameter => parameter.Name, parameter => parameter.DefaultValue!.Value.Clone());
         parameters = SceneAuthoringIdentities.NewEntry(type, parameters);
         var index = _document.Events.Count;
         if (!Submit(_document.AddEvent(type, Frame, parameters))) return false;
@@ -137,13 +137,20 @@ public sealed partial class TimelineEditSession
     public TimelineEventEdit? BeginEventEdit(TimelineEventRow row)
     {
         EndEventEdit();
-        if (_disposed || !CanEdit || _document is null || !Events.Contains(row) || !TimelineEventCapabilities.Supports(row.Type) || !_catalog.TryGet(row.Type, out var schema) || schema.DynamicParameters is null) return null;
-        EventCanvas.Cancel(); Canvas.Cancel(); SelectEvent(row);
+        if (_disposed || !CanEdit || _document is null || !Events.Contains(row) || !TimelineEventCapabilities.Supports(row.Type) || !_catalog.TryGet(row.Type, out var schema)) return null;
+        EventCanvas.Cancel(); Canvas.Cancel();
+        if (EventCanvas.Selection.Count != 1 || !EventCanvas.Selection.Contains(row.Id)) SelectEvent(row);
         try { EventEdit = new(this, _document, _generation, Frame, row.Index, row.Type, schema.FieldDataType, schema.DynamicParameters.Fields); }
         catch (Exception error) when (error is JsonException or InvalidDataException or InvalidOperationException or ArgumentException) { EditError(error); return null; }
         OnPropertyChanged(nameof(EventEdit)); return EventEdit;
     }
-    internal bool IsEventEditCurrent(TimelineEventEdit draft) => !_disposed && CanEdit && ReferenceEquals(EventEdit, draft) && ReferenceEquals(_document, draft.Document) && draft.Generation == _generation && draft.Frame == Frame && _target == _selection.Current;
+    public TimelineEventEdit? CreateInspectorEventEdit(TimelineEventRow row)
+    {
+        if (_disposed || !CanEdit || _document is null || !Events.Contains(row) || !TimelineEventCapabilities.Supports(row.Type) || !_catalog.TryGet(row.Type, out var schema)) return null;
+        try { return new(this, _document, _generation, Frame, row.Index, row.Type, schema.FieldDataType, schema.DynamicParameters.Fields, independent: true); }
+        catch (Exception error) when (error is JsonException or InvalidDataException or InvalidOperationException or ArgumentException) { EditError(error); return null; }
+    }
+    internal bool IsEventEditCurrent(TimelineEventEdit draft) => !_disposed && CanEdit && (draft.Independent || ReferenceEquals(EventEdit, draft)) && ReferenceEquals(_document, draft.Document) && draft.Generation == _generation && draft.Frame == Frame && _target == _selection.Current;
     internal IReadOnlyList<GalNet.Game.Controls.Forms.FieldEditorOption>? EventFieldOptions(int index, string type, string field) => _target?.EntryId is { } id && _document is not null
         ? _targets.FieldOptions(_target.GroupId, id, type, field, new(_document.Events[index].Frame, index)) : null;
     internal bool ApplyEvent(TimelineEventEdit draft) => IsEventEditCurrent(draft) && Submit(draft.Document.PatchEvent(draft.Index, draft.Patch));

@@ -39,24 +39,33 @@ public sealed class EditorLocalizationService : IEditorLocalizationService
         }
     }
 
-    public EditorLocalizationService()
+    public EditorLocalizationService() : this(Resources.Load()) { }
+
+    internal EditorLocalizationService(Resources resources)
     {
         _cultureService = new CultureService();
         Current = this;
 
-        var provider = new JsonLocalizationProvider();
-        provider.Initialize(new JsonLocalizationProviderOptions
-        {
-            BasePath = "Localization",
-            UseEmbeddedResources = true,
-            Assembly = typeof(MainWindow).Assembly
-        });
-
-        _cultureService.RegisterProvider(provider);
-        var assembly = typeof(MainWindow).Assembly;
-        using var stream = assembly.GetManifestResourceStream(assembly.GetManifestResourceNames().Single(name => name.EndsWith("Localization.zh-CN.json", StringComparison.Ordinal)))!;
-        _fallback = JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!;
+        _cultureService.RegisterProvider(resources.Provider);
+        _fallback = resources.Fallback;
         ApplyLocale(DefaultLocale);
+    }
+
+    internal sealed record Resources(JsonLocalizationProvider Provider, Dictionary<string, string> Fallback)
+    {
+        internal static Resources Load()
+        {
+            var assembly = typeof(MainWindow).Assembly;
+            var provider = new JsonLocalizationProvider();
+            provider.Initialize(new JsonLocalizationProviderOptions
+            {
+                BasePath = "Localization",
+                UseEmbeddedResources = true,
+                Assembly = assembly
+            });
+            using var stream = assembly.GetManifestResourceStream(assembly.GetManifestResourceNames().Single(name => name.EndsWith("Localization.zh-CN.json", StringComparison.Ordinal)))!;
+            return new(provider, JsonSerializer.Deserialize<Dictionary<string, string>>(stream)!);
+        }
     }
 
     public string Format(string key, params object[] args)

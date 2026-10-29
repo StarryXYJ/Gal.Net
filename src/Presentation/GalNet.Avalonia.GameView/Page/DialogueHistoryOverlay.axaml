@@ -1,0 +1,41 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions" xmlns:controls="using:GalNet.Game.Controls"
+             xmlns:page="using:GalNet.Avalonia.GameView.Page"
+             x:Class="GalNet.Avalonia.GameView.Page.DialogueHistoryOverlay" x:CompileBindings="False"
+             IsVisible="{Binding IsHistoryOpen}" page:GamePage.IsPlayerInteraction="True">
+  <Border Background="{DynamicResource GalNet.Brush.Background}" Padding="32">
+    <Grid RowDefinitions="Auto,*,Auto" RowSpacing="20" MaxWidth="1080">
+      <Grid ColumnDefinitions="*,Auto">
+        <TextBlock Text="{text:PlayerText History.Title, History}" FontSize="30" FontWeight="SemiBold" />
+        <Button Name="CloseHistory" Grid.Column="1" Content="{text:PlayerText Common.Back, Back}" Command="{Binding CloseHistoryCommand}" />
+      </Grid>
+      <ItemsControl Name="HistoryList" Grid.Row="1" ItemsSource="{Binding HistoryLines}">
+        <ItemsControl.Template>
+          <ControlTemplate>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+            </ScrollViewer>
+          </ControlTemplate>
+        </ItemsControl.Template>
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate>
+            <Border Padding="12,16" BorderBrush="{DynamicResource GalNet.Brush.Divider}" BorderThickness="0,0,0,1">
+              <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
+                <StackPanel Spacing="8">
+                  <TextBlock Text="{Binding Speaker}" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.Primary}" />
+                  <controls:TypewriterTextBlock SourceText="{Binding Text}" CharactersPerSecond="0" FontSize="21"
+                       TextWrapping="Wrap" controls:ReadTextStyle.WasRead="{Binding WasRead}" />
+                </StackPanel>
+                <Button Grid.Column="1" Content="🔊" IsVisible="{Binding HasVoice}" VerticalAlignment="Top"
+                        Command="{Binding $parent[UserControl].DataContext.ReplayHistoryVoiceCommand}" CommandParameter="{Binding}"
+                        ToolTip.Tip="{text:PlayerText History.ReplayVoice, 'Replay voice'}" AutomationProperties.Name="{text:PlayerText History.ReplayVoice, 'Replay voice'}" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+      <TextBlock Grid.Row="2" Text="{text:PlayerText History.Empty, 'No dialogue yet.'}" IsVisible="{Binding IsHistoryEmpty}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
+    </Grid>
+  </Border>
+</UserControl>

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Documents;
@@ -19,15 +20,18 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     IProjectContentSession content, IEditorDocumentService documents, IEntryCatalog catalog,
     LocalizationAuthoringService authoring, IEditorLocalizationService text, GameTextAuthoringService texts)
 {
+    private const int DisplayedIncompleteIssueLimit = 5;
+    private const int LoggedIncompleteIssueLimit = 20;
     private readonly SemaphoreSlim _gate = new(1, 1);
     public IEditorLocalizationService Text => text;
     public event Action? Changed { add => content.Changed += value; remove => content.Changed -= value; }
     private LocalizationReferenceIndex Index => query.Get() ?? throw Error("character.obsolete");
     public bool Complete => query.Get()?.Complete == true;
+    public string IncompleteDetails => FormatIncompleteDetails(query.Get());
     public IReadOnlyList<CharacterRow> Rows()
     {
         var index = Index;
-        var culture = content.CaptureWorking().Settings.TargetLocale.Code;
+        var culture = content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
         var counts = index.References.Where(reference => reference.Semantic == FieldValueSemantic.CharacterReference)
             .GroupBy(reference => reference.Key, StringComparer.Ordinal).ToDictionary(group => group.Key, group => group.Count(), StringComparer.Ordinal);
         return index.Characters.Select(character => new CharacterRow(character.Id, character.DisplayNameKey,
@@ -35,6 +39,24 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             counts.GetValueOrDefault(character.Id))).ToArray();
     }
     private EditorOperationException Error(string code) => new(code, text["Error." + code]);
+    private string FormatIncompleteDetails(LocalizationReferenceIndex? index)
+    {
+        if (index is null) return text["Characters.IncompleteReasonUnavailable"];
+        if (index.Complete) return "";
+        var issues = index.IncompleteIssues;
+        if (issues.Count == 0) return text["Characters.IncompleteReasonUnavailable"];
+        var lines = issues.Take(DisplayedIncompleteIssueLimit).Select(issue =>
+        {
+            var location = issue.File;
+            if (!string.IsNullOrWhiteSpace(issue.EntryId)) location += " / " + issue.EntryId;
+            if (!string.IsNullOrWhiteSpace(issue.JsonPointer)) location += " " + issue.JsonPointer;
+            return text.Format("Characters.IncompleteReason", issue.Code, location, issue.Message);
+        }).ToList();
+        if (issues.Count > DisplayedIncompleteIssueLimit)
+            lines.Add(text.Format("Characters.IncompleteMore", issues.Count - DisplayedIncompleteIssueLimit,
+                Math.Min(issues.Count, LoggedIncompleteIssueLimit)));
+        return string.Join(Environment.NewLine, lines);
+    }
     private static JsonArray ReadCatalog(LocalizationFileSnapshot snapshot)
     {
         LocalizationJson.Validate(snapshot.Path, snapshot.Data);
@@ -43,13 +65,31 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     private static JsonObject Find(JsonArray array, string id) => array.Select(node => node!.AsObject()).Single(node => node["id"]!.GetValue<string>() == id);
     private async Task EnsureFilesAsync()
     {
-        var locale = content.CaptureWorking().Settings.TargetLocale.Code;
+        var locale = content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
         var files = new[] { store.CaptureFile(LocalizationJson.CatalogPath), store.CaptureFile($"I18n/{locale}/characters.json") };
         var missing = files.Where(file => !file.Exists).Select(file => new LocalizationFilePatch(file, file.Data)).ToArray();
         if (missing.Length > 0) await store.Prepare(missing).ApplyAsync(true);
     }
     private void ValidateName(string name) { if (string.IsNullOrWhiteSpace(name)) throw Error("character.name"); }
-    private void RequireComplete() { if (!Complete) throw Error("character.incomplete"); }
+    private void RequireComplete(string operation, string characterId)
+    {
+        var index = query.Get();
+        if (index?.Complete == true) return;
+        var issues = index?.IncompleteIssues ?? [];
+        var causes = issues.Take(LoggedIncompleteIssueLimit).Select(issue => new
+        {
+            issue.Code,
+            issue.File,
+            issue.EntryId,
+            issue.JsonPointer,
+            issue.Message
+        }).ToArray();
+        Serilog.Log.Warning(
+            "Blocked character operation {Operation} for {CharacterId}: reference analysis is incomplete. IssueCount={IssueCount}, LoggedIssueCount={LoggedIssueCount}, Causes={@Causes}",
+            operation, characterId, issues.Count, causes.Length, causes);
+        var details = FormatIncompleteDetails(index);
+        throw new EditorOperationException("character.incomplete", text.Format("Error.character.incomplete", details), details);
+    }
 
     public async Task<CharacterRow> CreateAsync(string name, string? key = null)
     {
@@ -70,7 +110,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         if (array.Any(node => node!["id"]!.GetValue<string>() == key)) throw Error("character.duplicate");
         var nameKey = "character." + Guid.NewGuid().ToString("N") + ".name";
         array.Add(new JsonObject { ["id"] = key, ["displayNameKey"] = nameKey });
-        var target = store.CaptureText(nameKey, newFile: $"I18n/{content.CaptureWorking().Settings.TargetLocale.Code}/characters.json");
+        var target = store.CaptureText(nameKey, newFile: $"I18n/{content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code}/characters.json");
         await content.CommitFileDraftsAsync(target.File.Id);
         var patches = new[] { new LocalizationFilePatch(file, LocalizationJson.WriteLike(file.Data, array)), store.PrepareText(target, name) };
         await authoring.ApplyAsync(store.Prepare(patches), key, "History.Character");
@@ -85,7 +125,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
             ValidateName(name);
             if (string.IsNullOrWhiteSpace(key)) throw Error("character.key");
             if (Rows().Any(row => row.Id == key && row.Id != expected.Id)) throw Error("character.duplicate");
-            if (key != expected.Id) RequireComplete();
+            if (key != expected.Id) RequireComplete("change-id", expected.Id);
             var before = store.CaptureFile(LocalizationJson.CatalogPath);
             var array = ReadCatalog(before);
             var row = Rows().SingleOrDefault(row => row.Id == expected.Id);
@@ -107,7 +147,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         await _gate.WaitAsync();
         try
         {
-            RequireComplete();
+            RequireComplete("delete", expected.Id);
             var row = Rows().SingleOrDefault(row => row.Id == expected.Id);
             if (row is null || row.DisplayNameKey != expected.DisplayNameKey || row.Name != expected.Name) throw Error("character.changed");
             if (row.Uses > 0) throw Error("character.inUse");
@@ -123,8 +163,8 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
     {
         var before = expected.Parameters.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
         var candidate = new EditorEntryData { StableId = expected.StableId, Type = type, Parameters = updated };
-        var oldRefs = References(groupId, expected).ToDictionary(reference => reference.JsonPointer, reference => reference.Key, StringComparer.Ordinal);
-        var changed = References(groupId, candidate).Where(reference => oldRefs.GetValueOrDefault(reference.JsonPointer) != reference.Key).ToArray();
+        var oldRefs = References(groupId, expected).ToDictionary(reference => reference.LocationKey, reference => reference.Key, StringComparer.Ordinal);
+        var changed = References(groupId, candidate).Where(reference => oldRefs.GetValueOrDefault(reference.LocationKey) != reference.Key).ToArray();
         if (changed.Length == 0) return false;
         await _gate.WaitAsync(cancellationToken);
         try
@@ -143,7 +183,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
                 var exact = rows.SingleOrDefault(row => row.Id == reference.Key);
                 var names = rows.Where(row => row.Name == reference.Key).ToArray();
                 if (exact is null && names.Length > 1) throw Error("character.ambiguous");
-                if (exact is not null || names.Length == 1) Set(root, reference.JsonPointer, (exact ?? names[0]).Id);
+                if (exact is not null || names.Length == 1) Set(root, reference, (exact ?? names[0]).Id);
                 else needed.TryAdd(reference.Key, "");
             }
             var filePatches = new List<LocalizationFilePatch>();
@@ -152,7 +192,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
                 await EnsureFilesAsync();
                 foreach (var name in needed.Keys.ToArray()) { needed[name] = await store.ReserveCharacterKeyAsync(); Current(); }
                 var file = store.CaptureFile(LocalizationJson.CatalogPath); var array = ReadCatalog(file);
-                var nameFile = store.CaptureFile($"I18n/{content.CaptureWorking().Settings.TargetLocale.Code}/characters.json");
+                var nameFile = store.CaptureFile($"I18n/{content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code}/characters.json");
                 await content.CommitFileDraftsAsync(nameFile.Id); Current(); nameFile = store.CaptureFile(nameFile.Path);
                 var namesBytes = nameFile.Data;
                 foreach (var (name, id) in needed)
@@ -162,7 +202,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
                     namesBytes = LocalizationJson.SetText(namesBytes, nameKey, name);
                 }
                 filePatches.Add(new(file, LocalizationJson.WriteLike(file.Data, array))); filePatches.Add(new(nameFile, namesBytes));
-                foreach (var reference in changed.Where(reference => needed.ContainsKey(reference.Key))) Set(root, reference.JsonPointer, needed[reference.Key]);
+                foreach (var reference in changed.Where(reference => needed.ContainsKey(reference.Key))) Set(root, reference, needed[reference.Key]);
             }
             Current();
             var after = root.Deserialize<Dictionary<string, JsonElement>>()!;
@@ -186,7 +226,7 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         {
             var entry = documents.Groups[group.Key.Owner].Entries.Single(entry => entry.StableId == group.Key.EntryId);
             var node = JsonSerializer.SerializeToNode(entry.Parameters)!.AsObject();
-            foreach (var reference in group) Set(node, reference.JsonPointer, to);
+            foreach (var reference in group) Set(node, reference, to);
             var after = node.Deserialize<Dictionary<string, JsonElement>>()!;
             ValidateParameters(entry.Type, after, entry.Parameters);
             patches.Add(new(group.Key.Owner, entry.StableId, entry.Type, entry.Parameters, after));
@@ -199,12 +239,10 @@ public sealed class CharacterAuthoringService(LocalizationDocumentStore store, P
         schema?.ValidatePartialArguments(JsonSerializer.SerializeToElement(values.Where(pair => schema.ContainsKey(pair.Key) &&
             (!before.TryGetValue(pair.Key, out var previous) || !JsonElement.DeepEquals(previous, pair.Value))).ToDictionary(pair => pair.Key, pair => pair.Value)));
     }
-    private static void Set(JsonNode root, string pointer, string value)
+    private static void Set(JsonNode root, LocalizationReference reference, string value)
     {
-        var parts = pointer.Split('/').Skip(1).Select(part => part.Replace("~1", "/", StringComparison.Ordinal).Replace("~0", "~", StringComparison.Ordinal)).ToArray();
-        var parent = root;
-        foreach (var part in parts.SkipLast(1)) parent = parent is JsonArray array ? array[int.Parse(part, System.Globalization.CultureInfo.InvariantCulture)]! : parent[part]!;
-        if (parent is JsonArray list) list[int.Parse(parts[^1], System.Globalization.CultureInfo.InvariantCulture)] = value;
-        else parent[parts[^1]] = value;
+        var updated = reference.Rewrite(JsonSerializer.SerializeToElement(root), value);
+        var target = root.AsObject(); target.Clear();
+        foreach (var member in updated.EnumerateObject()) target.Add(member.Name, JsonNode.Parse(member.Value.GetRawText()));
     }
 }

@@ -1,5 +1,5 @@
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Core.Variable;
 using GalNet.Sample.Avalonia.Debug;
 using GalVariable = GalNet.Core.Variable.Variable;
@@ -19,6 +19,9 @@ public sealed class SampleDebugSnapshotFactoryTests
         {
             Assert.That(snapshot.NodeId, Is.EqualTo("chapter-2"));
             Assert.That(snapshot.EntryIndex, Is.EqualTo(7));
+            Assert.That(snapshot.ContentBuildId, Is.EqualTo("packaged-build"));
+            Assert.That(snapshot.StoryPackages, Is.EqualTo(new[] { "extra" }));
+            Assert.That(snapshot.StoryPackages, Is.Not.SameAs(source.StoryPackages));
             Assert.That(snapshot.Variables["score"].AsInt(), Is.EqualTo(42));
             Assert.That(snapshot.Variables["score"], Is.Not.SameAs(source.Variables["score"]));
             Assert.That(BuiltinTestRuntime.State(snapshot).Table<Layer>().Values, Is.Empty);
@@ -53,6 +56,15 @@ public sealed class SampleDebugSnapshotFactoryTests
         runtime.State.Table<Layer>().Add(new Layer { Id = "hero", AssetId = "hero-a" });
         runtime.State.Table<EffectInstance>().Add(new EffectInstance { Id = "blur-1", EffectId = "blur" });
         runtime.State.Table<LoopAnimationState>().Add(new LoopAnimationState { Id = "fade", Request = new AnimationRequest { PlaybackHandleId = "fade" } });
-        return runtime.CreateSnapshot();
+        var snapshot = runtime.CreateSnapshot();
+        return new GameSnapshot
+        {
+            NodeId = snapshot.NodeId,
+            EntryIndex = snapshot.EntryIndex,
+            States = snapshot.States,
+            Variables = snapshot.Variables,
+            ContentBuildId = "packaged-build",
+            StoryPackages = ["extra"]
+        };
     }
 }

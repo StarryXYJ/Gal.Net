@@ -64,7 +64,7 @@ public sealed class EditorCommandCatalog : IEditorCommandCatalog
         Define<SetVariableDefinitionTypeCommand>("variable.definition.setType", "Changes a variable type and converts or resets its default value."),
         Define<SetVariableDefaultValueCommand>("variable.definition.setDefault", "Changes the default value of a project variable."),
         Define<RenameProjectCommand>("project.rename", "Changes the project display name without moving its directory."),
-        Define<PatchProjectSettingsCommand>("project.settings.patch", "Updates selected project settings after validating each supported field.")
+        Define<PatchConfigurationCommand>("project.configuration.patch", "Sets or removes fields in a declared configuration section; validates the complete candidate before publishing.")
     ];
 
     private static ProjectCommandDefinition Define<TCommand>(string id, string description)

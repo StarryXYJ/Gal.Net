@@ -13,3 +13,13 @@
 验收及实施顺序见 [设计](design.md)、[阶段](phase-plan.md)。现有其他 feature 与测试修改保留。
 
 首次使用反馈见 [2026-10-24 后续记录](follow-up-20261024.md)：人物 Enter 与 Inspector 焦点问题已修复；按钮 hover 最初仅分析，随后按用户授权实施 [动画统一](motion-unification.md)。
+
+第二轮 UI 优化的原始分析见 [2026-10-25 分析](analysis-20261025.md)：GameTextBox 主输入行对齐、Inspector 底部预览、角色/本地化图标与排版、变量子页选择及草稿、其他 UX 建议。用户随后明确授权实施，进度及证据见 [第二轮实施](phase-ui-20261025.md)。
+
+本地化页后续反馈与资源表精简方案见 [本地化 UI 再分析](analysis-localization-20261025.md)：状态降噪、已有语言列表/新增候选/移除语义、双行定位列、不透明统一背景及 VS/Rider 参考。用户随后授权实施，并要求直接更新输入、不提供草稿或复核流程；进度与验证见 [本地化精简实施](phase-localization-20261025.md)。
+
+本地化实测反馈：隐藏列后表头错位、正文输入需左上对齐、逐字更新卡顿。用户要求改为失焦提交，当前修正见 [本地化交互修正](follow-up-localization-20261025.md)。
+
+2026-10-27 Group 后续：待提交分级、自动检查、人性化提示与稳定定位，以及 NumericUpDown/Slider/精确文本可选路径和浮点简写已实现验证，见 [实现及验证记录](follow-up-group-diagnostics-numeric-20261027.md)。
+
+2026-10-27 嵌套结构后续：用户要求借鉴 Unity 的属性迭代，统一结构描述、编辑、校验和引用分析，替代对已知 JSON 对象的分析盲区；[前期设计讨论](design-recursive-properties-20261027.md) 保留于此，后续已按用户选择归入独立 [F-20261027-03-recursive-properties](../F-20261027-03-recursive-properties/feature.md)，已进入实现和验证，实际范围与遗留见该 feature 总结。

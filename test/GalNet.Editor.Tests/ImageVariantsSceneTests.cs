@@ -5,9 +5,9 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
-using GalNet.Core.Scene;
-using GalNet.Core.Variants;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Controls;
@@ -27,16 +27,26 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task ColdAtlasSelectorCanFinishPreparationButAnAuthorEditStillInvalidatesIt()
     {
-        using var assets = new VariantsAssets(); using var services = VariantsServices(assets); var projects = services.GetRequiredService<IProjectService>();
+        var gate = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously);
+        using var assets = new VariantsAssets(); assets.File.Gate = gate;
+        using var services = VariantsServices(assets); var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "ColdAtlas"), "Atlas", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
         var scope = project.Services; var workspace = scope.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         var show = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ShowVariants).Single(); show.Source.Parameters["assetId"] = JsonSerializer.SerializeToElement("atlas");
         var select = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.SelectVariants).Single();
-        var gate = new TaskCompletionSource<byte[]>(TaskCreationOptions.RunContinuationsAsynchronously); assets.File.Gate = gate;
         var catalog = scope.GetRequiredService<SceneTargetCatalog>(); using var selection = new SceneTargetSelection(catalog, catalog.Query(group.Id, select.StableId));
-        selection.Select(selection.Items.Single().Id); var preparing = selection.PrepareAsync();
-        await assets.File.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10)); gate.SetResult(AtlasBytes()); await preparing;
-        Assert.That(selection.TryResolve(out var handle), Is.True); Assert.That(handle, Is.EqualTo(show.Source.Parameters["handleId"].GetString()));
+        Assert.That(selection.Select(selection.Items.Single().Id), Is.True, "The initial cold snapshot must be selectable before preparation.");
+        var preparing = selection.PrepareAsync();
+        await assets.File.Entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
+        Assert.That(preparing.IsCompleted, Is.False, "Resource preparation must remain cold until the controlled read completes.");
+        gate.SetResult(AtlasBytes()); await preparing;
+        var resolved = selection.TryResolve(out var handle);
+        if (!resolved)
+        {
+            var current = catalog.Query(group.Id, select.StableId);
+            Assert.Fail($"Cold selection became stale: selected={selection.SelectedId}; current={selection.IsCurrent}; revision={selection.Snapshot.Revision}/{current.Revision}; context={selection.Snapshot.ContextRevision}/{current.ContextRevision}; choices={selection.Snapshot.Choices.Count}/{current.Choices.Count}.");
+        }
+        Assert.That(handle, Is.EqualTo(show.Source.Parameters["handleId"].GetString()));
         scope.GetRequiredService<EntryFieldAuthoringService>().SetCondition(group.Id, show.Source, "false"); Assert.That(selection.TryResolve(out _), Is.False);
         await projects.CloseAsync();
     }
@@ -84,7 +94,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task MountedVariantsFieldsUseTypedAssetAndScenePickersSingleHistoryAndSaveReopen()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var assets = new VariantsAssets(); using var services = VariantsServices(assets);

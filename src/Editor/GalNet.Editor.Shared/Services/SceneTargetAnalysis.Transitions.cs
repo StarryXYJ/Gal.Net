@@ -21,7 +21,7 @@ public sealed partial class SceneTargetAnalysis
         {
             Entries = [new() { Id = entry.StableId, Type = entry.Type,
                 // Unknown author extensions remain on the original document, not in the strict compiler input.
-                Parameters = entry.Parameters.Where(pair => definition.Parameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value.Clone()) }]
+                Parameters = entry.Parameters.Where(pair => definition.DynamicParameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value.Clone()) }]
         };
         var expanded = GalgroupCompiler.Compile(source, TransitionCatalog.Value).Document.Entries.Single();
         if (expanded.TypeId != BuiltinEntryIds.PlayTimeline) throw new InvalidDataException("Unsupported transition expansion.");
@@ -40,15 +40,18 @@ public sealed partial class SceneTargetAnalysis
         // Timeline queries recover from individual event errors. A composite must not publish only
         // the successful half of its expansion. Track local validity separately from upstream uncertainty.
         candidate.Complete = true;
-        TransferTimeline(candidate, group, TransitionTimeline(entry));
-        if (!candidate.Complete) throw new InvalidDataException("Incomplete transition expansion.");
-        var slot = SceneAuthoringIdentities.CreationSlot(entry.Type)!;
-        var handle = entry.Parameters[slot].GetString()!;
-        if (candidate.Targets.TryGetValue(handle, out var target) && target.Locator.GroupId == group && target.Locator.EntryId == entry.StableId)
+        TransferTimeline(candidate, group, TransitionTimeline(entry), requireValidExpansion: true);
+        foreach (var (id, playback) in candidate.Playbacks.ToArray())
+            if (playback.Locator.GroupId == group && playback.Locator.EntryId == entry.StableId)
+                candidate.Playbacks[id] = playback with { Locator = new(group, entry.StableId, "playbackHandleId"), Resource = entry.Type };
+        var slot = SceneAuthoringIdentities.CreationSlot(entry.Type);
+        var handle = slot is null ? null : entry.Parameters[slot].GetString();
+        if (slot is not null && handle is not null && candidate.Targets.TryGetValue(handle, out var target) && target.Locator.GroupId == group && target.Locator.EntryId == entry.StableId)
             candidate.Targets[handle] = target with { Locator = new(group, entry.StableId, slot), CreatedAtFrame = null, IsFuture = false };
         state.Targets.Clear();
         foreach (var pair in candidate.Targets) state.Targets.Add(pair.Key, pair.Value);
         state.Playbacks.Clear();
         foreach (var pair in candidate.Playbacks) state.Playbacks.Add(pair.Key, pair.Value);
+        state.Complete &= candidate.Complete;
     }
 }

@@ -4,9 +4,10 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Editor.Abstraction.Settings;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
@@ -51,15 +52,16 @@ public sealed class ProjectService : IProjectService
         Commands.ProjectAuthorFileTransaction.Recover(projectPath);
 
         var scope = _globalServices.CreateScope();
-        ProjectSettings settings;
+        ProjectConfiguration settings;
         EditorProjectState editorState;
         string name;
         try
         {
             scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Open(projectPath);
             settings = Commands.DirectProjectPersistence.LoadSettings(projectPath);
+            scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Context.Configurations.Validate(settings);
             editorState = await LoadEditorProjectStateAsync(projectPath);
-            var loaded = scope.ServiceProvider.GetRequiredService<IEditorDocumentRepository>().Load(projectPath, "", settings);
+            var loaded = scope.ServiceProvider.GetRequiredService<IEditorDocumentRepository>().Load(projectPath);
             if (loaded.Document.Nodes.Count(node => node.Type == "Entry") != 1 ||
                 !loaded.Document.Nodes.Any(node => node.Type == "Entry" && node.Id == loaded.Document.RootNodeId))
                 throw new InvalidDataException("The editor graph requires one explicit Entry root node.");
@@ -70,8 +72,10 @@ public sealed class ProjectService : IProjectService
 
         var id = Path.GetFileName(projectPath);
 
-        var program = new GalProject(id, name, projectPath, settings, editorState, scope);
-        scope.ServiceProvider.GetService<IProjectContentSession>()?.Open(program);
+        var program = new GalProject(id, name, projectPath, settings, editorState, scope,
+            scope.ServiceProvider.GetRequiredService<ProjectSchemaSession>().Context.Configurations);
+        try { scope.ServiceProvider.GetService<IProjectContentSession>()?.Open(program); }
+        catch { await program.DisposeAsync(); throw; }
 
         _current = program;
 
@@ -95,7 +99,7 @@ public sealed class ProjectService : IProjectService
         return program;
     }
 
-    public async Task<GalProject> CreateAsync(string projectPath, string name, ProjectSettings settings, string contractsDirectory)
+    public async Task<GalProject> CreateAsync(string projectPath, string name, ProjectConfiguration settings, string contractsDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(contractsDirectory);
         if (_current is not null) await CloseAsync();

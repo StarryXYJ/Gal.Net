@@ -79,7 +79,7 @@ public sealed class SampleStartupTests
     public async Task SeparateProfilesAndExternalLanguagesAreSupported()
     {
         using var localization = CreateLocalization();
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent
         {
             Graph = new(),
             Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
@@ -94,7 +94,7 @@ public sealed class SampleStartupTests
     }
 
     [Test]
-    public void LanguageViewConfirmsCancelsAndCancelsOnCloseToken()
+    public void LanguageViewConfirmsAndCancelsOnCloseToken()
     {
         using var localization = CreateLocalization();
         var model = new LanguageSelectionViewModel(localization);
@@ -103,9 +103,7 @@ public sealed class SampleStartupTests
         Assert.That(view.FindControl<ComboBox>("LanguagePicker")!.SelectedItem, Is.EqualTo(model.SelectedLanguage));
         view.FindControl<Button>("ConfirmButton")!.Command!.Execute(null);
         Assert.That(confirmed.GetAwaiter().GetResult(), Is.EqualTo("zh-CN"));
-        var cancelled = model.ChooseAsync("en-US", CancellationToken.None);
-        view.FindControl<Button>("CancelButton")!.Command!.Execute(null);
-        Assert.That(cancelled.GetAwaiter().GetResult(), Is.Null);
+        Assert.That(view.FindControl<Button>("CancelButton"), Is.Null);
         using var closing = new CancellationTokenSource();
         var closed = model.ChooseAsync("en-US", closing.Token);
         closing.Cancel();
@@ -117,7 +115,7 @@ public sealed class SampleStartupTests
     {
         using var localization = CreateLocalization();
         var model = new LanguageSelectionViewModel(localization);
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent
         {
             Graph = new(),
             Localization = new() { ExternalSources = [new("ja-JP", "external", """{"line":"日本語"}""")] }
@@ -126,8 +124,9 @@ public sealed class SampleStartupTests
         string[] expectedCultures = ["en-US", "ja-JP", "zh-CN"];
         Assert.That(model.Languages.Select(option => option.Value), Is.EqualTo(expectedCultures));
         Assert.That(model.SelectedLanguage!.Value, Is.EqualTo("ja-JP"));
+        Assert.That(localization.CultureService.CurrentCulture.Name, Is.EqualTo("ja-JP"));
         Assert.ThrowsAsync<InvalidOperationException>(() => model.ChooseAsync("en-US", CancellationToken.None));
-        localization.AttachGame(new GalNet.Runtime.Content.GameContent { Graph = new() });
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         Assert.That(model.Languages.Select(option => option.Value), Does.Contain("ja-JP"), "No provider-change subscription.");
         model.SelectedLanguage = null;
         Assert.That(model.ConfirmCommand.CanExecute(null), Is.False);
@@ -139,11 +138,11 @@ public sealed class SampleStartupTests
         Assert.That(model.ConfirmCommand.CanExecute(null), Is.False);
         var fallback = model.ChooseAsync("missing", CancellationToken.None);
         Assert.That(model.SelectedLanguage!.Value, Is.EqualTo("en-US"));
-        model.CancelCommand.Execute(null);
-        Assert.That(await fallback, Is.Null);
+        model.ConfirmCommand.Execute(null);
+        Assert.That(await fallback, Is.EqualTo("en-US"));
     }
 
-    private static SampleLocalizationService CreateLocalization()
+    private static AvaloniaPlayerLocalization CreateLocalization()
     {
         var provider = new JsonLocalizationProvider();
         provider.LoadJsonString("""{"line":"English"}""", "en-US");
@@ -151,7 +150,7 @@ public sealed class SampleStartupTests
         var culture = new CultureService();
         culture.RegisterProvider(provider);
         culture.SetCulture("en-US");
-        return new SampleLocalizationService(culture, [provider]);
+        return new AvaloniaPlayerLocalization(culture, [provider]);
     }
 
     private sealed class FailedStore : IPlayerVariableStore

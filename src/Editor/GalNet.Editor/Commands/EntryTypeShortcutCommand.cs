@@ -4,7 +4,6 @@ using CommunityToolkit.Mvvm.Input;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Entry;
 using GalNet.Core.I18n;
-using GalNet.Primitives.Builtins;
 
 namespace GalNet.Editor.Commands;
 

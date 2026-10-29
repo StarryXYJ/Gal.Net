@@ -18,7 +18,14 @@ internal static class GameTextFieldEditor
     public static FieldEditorLease Create(FieldEditorContext context, GameTextAuthoringService texts)
     {
         var multiline = context.Field.Editor?.EditorId?.Contains("multiline", StringComparison.OrdinalIgnoreCase) == true;
-        var input = new TextBox { Name = "GameTextInput", AcceptsReturn = multiline, TextWrapping = multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap, MinHeight = multiline ? 80 : 0 };
+        var input = new TextBox
+        {
+            Name = "GameTextInput",
+            AcceptsReturn = multiline,
+            TextWrapping = multiline ? Avalonia.Media.TextWrapping.Wrap : Avalonia.Media.TextWrapping.NoWrap,
+            MinHeight = multiline ? 80 : 32,
+            VerticalContentAlignment = multiline ? Avalonia.Layout.VerticalAlignment.Top : Avalonia.Layout.VerticalAlignment.Center
+        };
         var hint = new TextBlock { Name = "GameTextHint", TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontSize = 11 };
         var panel = new StackPanel { Children = { input, hint }, Spacing = 4 };
         var disposed = false; var updating = false; var dirty = false; var busy = false;

@@ -2,12 +2,14 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using GalNet.Assets.Variants;
+using GalNet.Editor.Abstraction.Documents;
 
 namespace GalNet.Editor.Shared.Services;
 
 public sealed partial class ProjectFileOperation
 {
     private readonly List<(string From, string To)> _variantCopies = [];
+    private readonly HashSet<string> _variantDescriptors = new(ProjectFilePaths.Comparer);
 
     private (Dictionary<string, string> Files, HashSet<string> Directories) AssetSnapshot()
     {
@@ -31,12 +33,14 @@ public sealed partial class ProjectFileOperation
         foreach (var pair in snapshot.Files.Where(pair => IsVariants(pair.Key, snapshot.Files)).ToArray())
         {
             var destination = pair.Key;
+            _variantDescriptors.Add(destination);
             var origin = destination;
             (string From, string To)? copied = null;
             foreach (var move in _moves.Where(move => !move.From.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
                 if (ProjectFilePaths.Within(destination, move.To)) { origin = move.From + destination[move.To.Length..]; break; }
             foreach (var copy in _variantCopies)
                 if (ProjectFilePaths.Within(destination, copy.To)) { origin = copy.From + destination[copy.To.Length..]; copied = copy; break; }
+            _variantDescriptors.Add(origin);
             var bytes = File.ReadAllBytes(pair.Value);
             var source = ImageVariantsCodec.ReadSource(bytes);
             var oldFolder = "Assets/" + LocalAssetCompiler.ResolveFolder(origin[7..], source.Folder);
@@ -44,7 +48,7 @@ public sealed partial class ProjectFileOperation
             var newFolder = Map(oldFolder, true);
             if (copied is { } relation && ProjectFilePaths.Within(oldFolder, relation.From))
                 newFolder = relation.To + oldFolder[relation.From.Length..];
-            if (ProjectFilePaths.Comparer.Equals(origin, destination) && ProjectFilePaths.Comparer.Equals(oldFolder, newFolder)) continue;
+            if (origin == destination && oldFolder == newFolder) continue;
             var parent = Path.GetDirectoryName(_reader.Resolve(destination))!;
             var relative = Path.GetRelativePath(parent, _reader.Resolve(newFolder)).Replace('\\', '/');
             var json = JsonNode.Parse(bytes)!.AsObject();
@@ -57,6 +61,19 @@ public sealed partial class ProjectFileOperation
         }
     }
 
+    private void RebaseVariantBuffer(EditorFileDocument file, bool forward)
+    {
+        if (!_variantDescriptors.Contains(file.Path)) return;
+        var source = ImageVariantsCodec.ReadSource(file.Data);
+        var folder = ("Assets/" + LocalAssetCompiler.ResolveFolder(file.Path[7..], source.Folder)).TrimEnd('/');
+        var destination = Map(file.Path, forward);
+        var mappedFolder = Map(folder, forward);
+        if (file.Path == destination && folder == mappedFolder) return;
+        var json = JsonNode.Parse(file.Data)!.AsObject();
+        json["folder"] = Path.GetRelativePath(Path.GetDirectoryName(_reader.Resolve(destination))!, _reader.Resolve(mappedFolder)).Replace('\\', '/');
+        file.Data = Encoding.UTF8.GetBytes(json.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
+
     private bool IsVariants(string path, IReadOnlyDictionary<string, string> files)
     {
         if (path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) return false;
@@ -66,7 +83,7 @@ public sealed partial class ProjectFileOperation
     }
 
     private void ValidateVariants(IReadOnlyDictionary<string, Snapshot> current, IReadOnlyDictionary<string, Snapshot> desired,
-        IReadOnlyCollection<string> currentDirectories, IReadOnlyCollection<string> desiredDirectories)
+        IReadOnlyCollection<string> currentDirectories, IReadOnlyCollection<string> desiredDirectories, EditorProjectDocument document)
     {
         if (!current.Keys.Concat(desired.Keys).Any(path => path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))) return;
         var snapshot = AssetSnapshot();
@@ -77,6 +94,19 @@ public sealed partial class ProjectFileOperation
         snapshot.Directories.UnionWith(desiredDirectories.Where(path => path == "Assets" || path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)));
         var files = snapshot.Files.ToDictionary(pair => pair.Key[7..], pair => pair.Value, StringComparer.OrdinalIgnoreCase);
         var directories = snapshot.Directories.Select(path => path == "Assets" ? "" : path[7..]).ToArray();
-        _ = LocalAssetCompiler.CompileAsync(files, directories, _types).GetAwaiter().GetResult();
+        var temporary = new List<string>();
+        try
+        {
+            foreach (var file in document.Files.Values.Where(file => file.ManagedContent && file.Exists
+                && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && IsVariants(file.Path, snapshot.Files)))
+            {
+                var path = Path.Combine(_retained, "validate-" + Guid.NewGuid().ToString("N"));
+                temporary.Add(path);
+                File.WriteAllBytes(path, file.Data);
+                files[file.Path[7..]] = path;
+            }
+            _ = LocalAssetCompiler.CompileAsync(files, directories, _types).GetAwaiter().GetResult();
+        }
+        finally { foreach (var path in temporary) File.Delete(path); }
     }
 }

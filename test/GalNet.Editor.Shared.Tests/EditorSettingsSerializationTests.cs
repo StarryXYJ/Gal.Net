@@ -1,5 +1,5 @@
 using System.Text.Json;
-using GalNet.Core.Settings;
+using GalNet.Editor.Abstraction.Settings;
 
 namespace GeneralTest.Editor;
 

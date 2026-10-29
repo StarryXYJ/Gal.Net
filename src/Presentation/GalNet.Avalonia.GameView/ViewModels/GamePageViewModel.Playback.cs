@@ -1,15 +1,21 @@
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GalNet.Core.Execution;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
-public sealed partial class GamePageViewModel
+public partial class GamePageViewModel
 {
     public GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input { get; set; }
-    public Task SetQuickHeldAsync(bool held) => RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);
+    public Task SetQuickHeldAsync(bool held)
+    {
+        if (IsHistoryOpen) return Task.CompletedTask;
+        if (held) NotifyStoryContinuing();
+        return RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);
+    }
     private IPlayerPlaybackController? _playback;
     private Task _playbackRequests = Task.CompletedTask;
     private PlaybackMode? _pointerToggle;
@@ -52,7 +58,8 @@ public sealed partial class GamePageViewModel
     [RelayCommand] private Task ToggleAutoAsync() => ToggleAsync(PlaybackMode.Auto);
     private Task ToggleAsync(PlaybackMode target)
     {
-        if (IsSkipConfirmationOpen) return Task.CompletedTask;
+        if (IsSkipConfirmationOpen || IsHistoryOpen) return Task.CompletedTask;
+        NotifyStoryContinuing();
         var selected = _pointerToggle == target ? _pointerWasSelected : PlaybackMode == target;
         _pointerToggle = null;
         return RequestModeAsync(selected ? PlaybackMode.Manual : target);
@@ -86,6 +93,8 @@ public sealed partial class GamePageViewModel
     [RelayCommand]
     private void RequestSkip()
     {
+        if (IsHistoryOpen) return;
+        NotifyStoryContinuing();
         CancelPlayback();
         if (_playback is not null) IsSkipConfirmationOpen = true;
     }
@@ -94,6 +103,7 @@ public sealed partial class GamePageViewModel
     private async Task ConfirmSkipAsync(CancellationToken cancellationToken)
     {
         if (!IsSkipConfirmationOpen) return;
+        NotifyStoryContinuing();
         var controller = _playback;
         IsSkipConfirmationOpen = false;
         await _playbackRequests;
@@ -103,8 +113,8 @@ public sealed partial class GamePageViewModel
         catch (Exception error) { ReportPlaybackFailure(controller, error); }
     }
 
-    public Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default) =>
-        _playback?.RefreshPlaybackSettingsAsync(cancellationToken) ?? Task.CompletedTask;
+    public Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default) =>
+        _playback?.UpdatePlaybackOptionsAsync(options, cancellationToken) ?? Task.CompletedTask;
     private void ReportPlaybackFailure(IPlayerPlaybackController? controller, Exception error)
     {
         if (!ReferenceEquals(controller, _playback)) return;

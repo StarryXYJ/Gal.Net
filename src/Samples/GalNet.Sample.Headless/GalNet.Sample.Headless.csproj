@@ -12,8 +12,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="DynamicLocalization.Core" />
-    <Compile Include="..\Shared\GameLocalizationProvider.cs" Link="Localization\GameLocalizationProvider.cs" />
+    <ProjectReference Include="../../Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj"
+                      OutputItemType="Analyzer" ReferenceOutputAssembly="false"
+                      GlobalPropertiesToRemove="TargetFramework;RuntimeIdentifier;SelfContained;PublishAot" />
   </ItemGroup>
 
   <ItemGroup>

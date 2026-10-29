@@ -5,7 +5,7 @@
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
+    <ProjectReference Include="../../Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir;PublishAot;SelfContained;RuntimeIdentifier" />
     <ProjectReference Include="../../Shared/GalNet.Core/GalNet.Core.csproj" />
     <ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" />
   </ItemGroup>

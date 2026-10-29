@@ -8,6 +8,16 @@ namespace GeneralTest.Entry;
 
 public sealed class ValueDescriptorTests
 {
+    [Test]
+    public void TextChoicesAreNormalizedToOneTypedEnumConstraint()
+    {
+        var numeric = new ValueDescriptor(typeof(int), choices: ["1", "2"]);
+        Assert.That(numeric.TryGetConstraint("enum", out var choices), Is.True);
+        Assert.That(choices[0].GetInt32(), Is.EqualTo(1));
+        Assert.That(numeric.TryGetConstraint("options", out _), Is.False);
+        Assert.That(ValueValidation.Validate(numeric, Json("3"))!.Code, Is.EqualTo("value.option"));
+    }
+
     private static readonly string[] ExpectedNames = ["first", "second"];
     private static readonly int[] ExpectedNumbers = [1, 2];
     [Test]
@@ -89,13 +99,13 @@ public sealed class ValueDescriptorTests
     [Test]
     public void LegacyOptionsDescribeTypedValuesAndNullBypassesNonNullConstraints()
     {
-        var descriptor = new ValueDescriptor(typeof(int), allowNull: true, constraints: Json("""{"options":["1","2"]}"""));
+        var descriptor = new ValueDescriptor(typeof(int), allowNull: true, constraints: Json("""{"enum":[1,2]}"""));
         Assert.That(ValueValidation.Validate(descriptor, Json("null")), Is.Null);
         Assert.That(ValueValidation.Validate(descriptor, Json("3"))!.Code, Is.EqualTo("value.option"));
         var description = ValueCodec.Describe(descriptor);
         Assert.That(description.GetProperty("anyOf")[0].GetProperty("enum")[0].GetInt32(), Is.EqualTo(1));
         Assert.That(description.GetProperty("anyOf")[1].GetProperty("type").GetString(), Is.EqualTo("null"));
-        var array = new ValueDescriptor(typeof(int[]), constraints: Json("""{"options":["[1,2]"]}"""));
+        var array = new ValueDescriptor(typeof(int[]), constraints: Json("""{"enum":[[1,2]]}"""));
         Assert.That(ValueValidation.Validate(array, Json("[1, 2]")), Is.Null);
     }
 
@@ -121,7 +131,7 @@ public sealed class ValueDescriptorTests
     {
         Assert.That(() => new DynamicParameterDescriptor("count", typeof(int), defaultValue: Json("-1"), constraints: Json("""{"minimum":0}""")), Throws.ArgumentException);
         Assert.That(() => new ValueDescriptor(typeof(string), constraints: Json("""{"maxLength":-1}""")), Throws.ArgumentException);
-        Assert.That(() => new ValueDescriptor(typeof(int), constraints: Json("""{"options":[1]}""")), Throws.ArgumentException);
+        Assert.That(() => new ValueDescriptor(typeof(int), constraints: Json("""{"enum":["wrong"]}""")), Throws.ArgumentException);
         Assert.That(() => new ValueDescriptor(typeof(string), constraints: Json("""{"maxLength":"wrong"}""")), Throws.ArgumentException);
         Assert.That(() => new ValueDescriptor(typeof(int), constraints: Json("""{"minimum":3,"maximum":2}""")), Throws.ArgumentException);
     }

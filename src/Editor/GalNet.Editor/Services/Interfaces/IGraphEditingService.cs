@@ -1,9 +1,9 @@
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services.Interfaces;
 
 public interface IGraphEditingService
 {
-    void UpdateConnectorStates(ObservableCollection<GraphNode> nodes, ObservableCollection<GraphEdge> edges);
+    void UpdateConnectorStates(IEnumerable<GraphNode> nodes, IEnumerable<GraphEdge> edges);
 }

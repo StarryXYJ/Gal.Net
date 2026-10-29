@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Text.Json;
 using Avalonia.Threading;
 using GalNet.Core.Parameters;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Game.Controls.Forms;
 
@@ -36,6 +37,9 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
 
     public FieldDescriptor Field { get; }
     public object? HostContext => _binding.HostContext;
+    internal bool AllowsChildReset => _binding.CanReset;
+    internal object? LabelOverride => _binding.IsLabelLiteral ? _binding.Label : null;
+    public IReadOnlyList<string>? PropertySegments => _binding.PropertySegments;
     public EditorRegistry? Registry { get; }
     internal int Depth { get; }
     public bool CanOmit => !Field.IsRequired || Field.DefaultValue is not null;
@@ -43,7 +47,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     public bool HasDefault => Field.DefaultValue is not null;
     public bool CanReset => _binding.CanReset && (HasDefault || CanOmit);
     public Task<bool> OmitAsync() => CommitAsync(default);
-    public Task<bool> SetNullAsync() => CommitAsync(new(JsonSerializer.SerializeToElement<object?>(null)));
+    public Task<bool> SetNullAsync() => CommitAsync(new(JsonCodec.SerializeToElement<object?>(null)));
     public Task<bool> ResetDefaultAsync() => Field.DefaultValue is { } value ? CommitAsync(new(value)) : Task.FromResult(false);
     public Task<bool> ResetAsync() => !CanReset ? Task.FromResult(false) : HasDefault ? ResetDefaultAsync() : OmitAsync();
     public void RevertDraft() { if (_disposed) return; _dirty = false; _pending = null; Issue = null; _draftVersion++; Refresh(); }
@@ -54,6 +58,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
     public object Label => _binding.Label ?? Field.LabelKey ?? Field.Id;
     public IReadOnlyList<FieldEditorOption> Options { get; private set; } = [];
     public ValueIssue? Issue { get; private set; }
+    public string? IssueMessage => Issue is { } issue ? Registry?.FormatIssue?.Invoke(Field, issue) ?? issue.Message : null;
     public bool IsSubmitting => _submitting;
     public bool HasDraft => _dirty;
     public bool IsEnabled => !_disposed && !_submitting && _binding.IsEnabled;
@@ -68,7 +73,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
             _dirty = true;
             _draftVersion++;
             _ = ParseText(out var issue);
-            Issue = issue;
+            Issue = !_jsonText && ValueCodec.IsIncompleteEditorNumber(Field.Value, value) ? null : issue;
             Notify();
         }
     }
@@ -187,7 +192,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         }
         try
         {
-            var json = _jsonText ? JsonSerializer.Deserialize<JsonElement>(Text) : ValueCodec.ParseEditorText(Field.Value, Text);
+            var json = _jsonText ? JsonCodec.Deserialize<JsonElement>(Text) : ValueCodec.ParseEditorText(Field.Value, Text);
             issue = ValueValidation.Validate(Field.Value, json);
             return new(json);
         }
@@ -229,10 +234,9 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
         }
         IEnumerable<JsonElement> values = [];
         if (Field.Value.TryGetConstraint("enum", out var choices)) values = choices.EnumerateArray();
-        else if (Field.Value.TryGetConstraint("options", out choices))
-            values = choices.EnumerateArray().Select(choice => ValueCodec.FromEditorText(Field.Value, choice.GetString()!));
         else if ((Nullable.GetUnderlyingType(Field.Value.ValueType) ?? Field.Value.ValueType) is { IsEnum: true } type)
-            values = Enum.GetValues(type).Cast<object>().Select(value => ValueCodec.Serialize(Field.Value, value));
+            values = Enum.GetValuesAsUnderlyingType(type).Cast<object>()
+                .Select(value => ValueCodec.Serialize(Field.Value, Enum.ToObject(type, value)));
         return Array.AsReadOnly(values.Select((value, index) => new FieldEditorOption(index.ToString(CultureInfo.InvariantCulture),
             value.ValueKind == JsonValueKind.String ? value.GetString()! : value.GetRawText(), value)).ToArray());
     }

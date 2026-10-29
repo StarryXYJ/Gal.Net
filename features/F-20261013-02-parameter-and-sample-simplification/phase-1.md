@@ -47,7 +47,7 @@
 
 用户实际运行发现 GameTestCase/Contracts 仍保留旧构建，引用已变更的 DynamicParameterDescriptor 五参数构造函数，导致 Method not found。前述测试使用新编译契约，未覆盖仓库内容项目的已部署产物，属于本阶段验证遗漏。
 
-使用 scripts/build-project-contracts.ps1 重新构建 Sample.Contracts 并整体替换 GameTestCase/Contracts（含 Core、Builtin.Contracts）；构建零警告、零错误。随后运行 Headless 的 `build GameTestCase`，返回 operationId=project.build、success=true、compiledGroupCount=4、diagnostics=[]。未添加旧构造函数兼容重载。部署 DLL 与 Output 属于忽略的生成产物；README 补充 API 改动后必须重新部署的说明。
+使用 scripts/contracts/build-project-contracts.ps1 重新构建 Sample.Contracts 并整体替换 GameTestCase/Contracts（含 Core、Builtin.Contracts）；构建零警告、零错误。随后运行 Headless 的 `build GameTestCase`，返回 operationId=project.build、success=true、compiledGroupCount=4、diagnostics=[]。未添加旧构造函数兼容重载。部署 DLL 与 Output 属于忽略的生成产物；README 补充 API 改动后必须重新部署的说明。
 
 ## 下一阶段
 

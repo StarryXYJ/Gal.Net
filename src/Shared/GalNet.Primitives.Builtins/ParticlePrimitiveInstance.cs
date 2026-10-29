@@ -1,12 +1,12 @@
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
 using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class PlayParticlePrimitiveInstance(IGameRuntime runtime, IParticlePresenter? presenter,
+public sealed class PlayParticlePrimitiveInstance(IGameContext runtime, IParticlePresenter? presenter,
     ParticleEmitterRequest request, string? batchId, CancellationToken scopeCancellation)
     : BuiltinPresentationPrimitiveInstance(batchId, scopeCancellation)
 {
@@ -18,7 +18,7 @@ public sealed class PlayParticlePrimitiveInstance(IGameRuntime runtime, IParticl
         presenter?.StartParticleEmitterAsync(request, token) ?? Task.CompletedTask;
 }
 
-public sealed class StopParticlePrimitiveInstance(IGameRuntime runtime, IParticlePresenter? presenter,
+public sealed class StopParticlePrimitiveInstance(IGameContext runtime, IParticlePresenter? presenter,
     string instanceId, string? batchId, CancellationToken scopeCancellation)
     : BuiltinPresentationPrimitiveInstance(batchId, scopeCancellation)
 {

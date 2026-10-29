@@ -4,9 +4,10 @@ using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Assets.Variants;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
@@ -36,11 +37,11 @@ public sealed class ImageVariantsResourceTests
         File.WriteAllText(full + ".meta", JsonSerializer.Serialize(new { id = Guid.NewGuid().ToString(), type }));
     }
 
-    private string Id(string path) => new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Deserialize(File.ReadAllText(Path.Combine(_root, "Assets", path + ".meta")), path).Id;
+    private string Id(string path) => JsonDocument.Parse(File.ReadAllText(Path.Combine(_root, "Assets", path + ".meta"))).RootElement.GetProperty("id").GetString()!;
 
     private async Task<byte[]> Compiled(string descriptor, IResourceTypeCatalog? resourceTypes = null)
     {
-        using var provider = new LocalFileProvider(Path.Combine(_root, "Assets"), resourceTypes);
+        using var provider = new LocalFileProvider(Path.Combine(_root, "Assets"), resourceTypes ?? BuiltinResourceTypes.CreateCatalog());
         using var archive = await provider.OpenArchiveAsync("assets");
         return archive.GetAssetByPath(descriptor)!.ReadAllBytes();
     }
@@ -154,17 +155,23 @@ public sealed class ImageVariantsResourceTests
     {
         var types = new ResourceTypeCatalogBuilder()
             .Add<SpriteAssetMeta>("sprite", ".png")
-            .Add<AudioAssetMeta>("audio", ".ogg")
-            .Add<VideoAssetMeta>("video", ".mp4")
-            .Add<ImageVariantsAssetMeta>("image-variants", ".variants")
-            .Add<CustomMeta>("custom-test", ".customtest").Build();
+            .Add<AssetMeta>("audio", ".ogg")
+            .Add<AssetMeta>("video", ".mp4")
+            .Add<DependentAssetMeta>("image-variants", ".variants")
+            .Add<DependentAssetMeta>("graph", ".galgraph")
+            .Add<DependentAssetMeta>("group", ".galgroup")
+            .Add<CustomMeta>("custom-test", ".customtest").WithoutDependencies("sprite", "audio", "video", "custom-test").Build();
         PutAsset("extra.customtest", "custom-test", "custom");
+        var configuration = DirectProjectPersistence.LoadSettings(_root);
+        configuration.Set(GalNet.Core.Configuration.ContentPackagingOptions.Section,
+            new GalNet.Core.Configuration.ContentPackagingOptions { IncludeResources = [Id("alice.variants"), Id("extra.customtest")] });
+        File.WriteAllText(Path.Combine(_root, "settings.json"), JsonSerializer.Serialize(configuration));
         var before = await Compiled("alice.variants", types);
         var result = await GamePackageExporter.ExportAsync("variants", "Variants", _root, Path.Combine(_root, "Output"), types, BuiltinGalleryTypes.CreateCatalog(types), _catalog);
         Assert.That(result.Success, Is.True, result.Error);
         using var zip = ZipFile.OpenRead(result.PackagePath!);
         using var memory = new MemoryStream();
-        using (var stream = zip.GetEntry("Assets/Paks/000-base.pak")!.Open()) await stream.CopyToAsync(memory);
+        using (var stream = zip.GetEntry("pak/Assets/Paks/000-base.pak")!.Open()) await stream.CopyToAsync(memory);
         using var archive = Archive.Deserialize("assets", memory.ToArray(), types);
         Assert.That(archive.GetAssetByPath("alice.variants")!.ReadAllBytes(), Is.EqualTo(before));
         Assert.That(archive.GetAssetByPath("extra.customtest")!.Metadata, Is.TypeOf<CustomMeta>());

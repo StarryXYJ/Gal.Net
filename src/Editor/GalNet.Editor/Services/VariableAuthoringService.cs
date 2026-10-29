@@ -2,10 +2,11 @@ using System.Globalization;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
 using GalNet.Core.Variable;
 using GalNet.Editor.Abstraction.Documents;
+using GalNet.Editor.Abstraction.Schemas;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 
@@ -108,7 +109,8 @@ public sealed class VariableAuthoringService(IEditorDocumentService documents, I
                 catalog.TryGet(entry.Type, out var schema);
                 foreach (var pair in entry.Parameters)
                 {
-                    var kind = schema?.Parameters.GetValueOrDefault(pair.Key);
+                    var kind = schema?.DynamicParameters.TryGetValue(pair.Key, out var descriptor) == true
+                        ? EntrySchema.GetEditorType(descriptor) : (EntryParameterType?)null;
                     var text = pair.Value.ValueKind == JsonValueKind.String ? pair.Value.GetString()! : pair.Value.GetRawText();
                     Add(new(node.Id, entry.StableId, null, "parameter:" + pair.Key), text,
                         pair.Value.ValueKind == JsonValueKind.String && kind == EntryParameterType.Expression,

@@ -6,6 +6,7 @@
              x:Name="Root">
     <Grid RowDefinitions="Auto,Auto">
         <TextBox x:Name="EditorBox"
+                 MinHeight="32" VerticalContentAlignment="Center"
                  Text="{Binding Text, ElementName=Root, Mode=TwoWay}"
                  PlaceholderText="{loc:Localize Condition.Placeholder}" />
         <Border x:Name="ValidationBorder"

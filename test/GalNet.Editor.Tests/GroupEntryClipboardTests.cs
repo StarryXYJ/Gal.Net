@@ -23,38 +23,45 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
-    public async Task EntryBatchFailuresRestoreContentAndHistoryOrRequireRepair()
+    public async Task EntryProjectionObserversCannotRollbackCommittedAuthorChanges()
     {
         using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
         var project = await projects.CreateAsync(Path.Combine(_root, "EntryBatchFailure"), "Entries", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
         var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
         workspace.InsertEntriesInto(group, 0, 3, BuiltinEntryIds.Wait);
         var author = project.Services.GetRequiredService<GroupEntryAuthoringService>(); var history = project.Services.GetRequiredService<EditorHistories>().Content;
+        var documents = project.Services.GetRequiredService<IEditorDocumentService>();
+        var projections = project.Services.GetRequiredService<EditorGroupProjectionStore>();
         var original = group.Entries.ToArray(); var clip = author.Copy(group.Id, original.Select(entry => entry.StableId)); history.Clear();
-        var shouldFail = false;
-        NotifyCollectionChangedEventHandler failOnce = (_, _) => { if (shouldFail) { shouldFail = false; throw new IOException("collection observer failure"); } };
-        group.Entries.CollectionChanged += failOnce;
+        var expectedCount = 6; var notifications = 0; var sawPartialAuthor = false; var sawBusyHistory = false;
+        NotifyCollectionChangedEventHandler failAlways = (_, _) => throw new IOException("persistent observer failure");
+        NotifyCollectionChangedEventHandler later = (_, _) =>
+        {
+            notifications++;
+            sawPartialAuthor |= documents.Groups[group.Id].Entries.Count != expectedCount;
+            sawBusyHistory |= history.IsBusy;
+        };
+        group.Entries.CollectionChanged += failAlways; group.Entries.CollectionChanged += later;
         try
         {
-            shouldFail = true; Assert.ThrowsAsync<IOException>(async () => await author.PasteAsync(group.Id, clip, null)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            shouldFail = true; Assert.Throws<IOException>(() => author.Delete(group.Id, [original[0].StableId, original[2].StableId])); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            shouldFail = true; Assert.Throws<IOException>(() => author.Move(group.Id, [original[0].StableId], original[0].StableId, 2)); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
-            var inserted = await author.PasteAsync(group.Id, clip, null); var withPaste = group.Entries.ToArray(); shouldFail = true;
-            try { await history.UndoAsync(); Assert.Fail("Expected observer failure."); } catch (IOException) { }
-            Assert.That(group.Entries, Is.EqualTo(withPaste)); Assert.That(history.CanUndo, Is.True); Assert.That(history.CanRedo, Is.False);
-            await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original)); shouldFail = true;
-            try { await history.RedoAsync(); Assert.Fail("Expected observer failure."); } catch (IOException) { }
-            Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanRedo, Is.True); Assert.That(history.CanUndo, Is.False);
-            await history.RedoAsync(); Assert.That(group.Entries.Skip(3).Select(entry => entry.StableId), Is.EqualTo(inserted.Select(entry => entry.StableId)));
+            var inserted = (await author.PasteAsync(group.Id, clip, null)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
+            Assert.That(group.Entries, Has.Count.EqualTo(6)); Assert.That(history.CanUndo, Is.True);
+            expectedCount = 3; await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original));
+            expectedCount = 6; await history.RedoAsync(); Assert.That(group.Entries.Skip(3).Select(entry => entry.StableId), Is.EqualTo(inserted.Select(entry => entry.StableId)));
+            expectedCount = 4; author.Delete(group.Id, [original[0].StableId, original[2].StableId]); Assert.That(group.Entries, Has.Count.EqualTo(4));
+            expectedCount = 6; await history.UndoAsync();
+            author.Move(group.Id, [original[0].StableId], original[0].StableId, 2);
+            Assert.That(group.Entries[2], Is.SameAs(original[0])); await history.UndoAsync();
+            Assert.That(group.Entries.Take(3), Is.EqualTo(original));
+            Assert.That(notifications, Is.GreaterThan(0), "A failed subscriber must not suppress later subscribers.");
+            Assert.That(sawPartialAuthor, Is.False); Assert.That(sawBusyHistory, Is.False);
+            Assert.That(projections.LastNotificationError, Is.TypeOf<IOException>());
+            Assert.That(history.RepairRequired, Is.False); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().RepairRequired, Is.False);
+            Assert.Throws<InvalidOperationException>(() => group.Entries.Clear());
+            Assert.That(documents.Groups[group.Id].Entries, Has.Count.EqualTo(6));
         }
-        finally { group.Entries.CollectionChanged -= failOnce; }
-        history.Clear();
-        NotifyCollectionChangedEventHandler failAlways = (_, _) => throw new IOException("persistent observer failure");
-        group.Entries.CollectionChanged += failAlways;
-        try { Assert.ThrowsAsync<HistoryRepairRequiredException>(async () => await author.PasteAsync(group.Id, clip, null)); Assert.That(history.RepairRequired, Is.True); Assert.That(project.Services.GetRequiredService<IProjectContentSession>().RepairRequired, Is.True); }
-        finally { group.Entries.CollectionChanged -= failAlways; await projects.CloseAsync(); }
+        finally { group.Entries.CollectionChanged -= failAlways; group.Entries.CollectionChanged -= later; await projects.CloseAsync(); }
     }
-
     [Test]
     public async Task EntryClipboardPreservesDraftJsonAndBatchHistoryAcrossGroupsAndPageClose()
     {
@@ -75,7 +82,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var clip = author.Copy(source.Id, [effect.StableId, original[0].StableId]);
         original[0].Condition = "changed";
         history.Clear();
-        var pasted = await author.PasteAsync(target.Id, clip, null);
+        var pasted = (await author.PasteAsync(target.Id, clip, null)).Select(id => target.Entries.Single(entry => entry.StableId == id)).ToArray();
         Assert.That(pasted.Select(entry => entry.Type), Is.EqualTo(new[] { BuiltinEntryIds.Wait, BuiltinEntryIds.ApplyEffect }));
         Assert.That(pasted[0].Condition, Is.EqualTo("score > 1"));
         Assert.That(pasted[0].Source.Parameters.ContainsKey("duration"), Is.False);
@@ -120,10 +127,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }
         Assert.ThrowsAsync<EditorOperationException>(async () => await author.PasteAsync(group.Id, clip, "deleted-anchor"));
         Assert.That(history.CanUndo, Is.False);
-        var pasted = await author.PasteAsync(group.Id, unsupported.ToJsonString(), null);
+        var pasted = (await author.PasteAsync(group.Id, unsupported.ToJsonString(), null)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
         Assert.That(pasted[^1].Type, Is.EqualTo("unavailable.custom")); Assert.That(pasted[^1].IsUnknownType, Is.True);
         await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
-        pasted = await author.PasteAsync(group.Id, unknownField.ToJsonString(), null);
+        pasted = (await author.PasteAsync(group.Id, unknownField.ToJsonString(), null)).Select(id => group.Entries.Single(entry => entry.StableId == id)).ToArray();
         Assert.That(pasted.Single().Source.Parameters["newField"].GetInt32(), Is.EqualTo(1)); Assert.That(pasted.Single().HasUnknownParameters, Is.True);
         await history.UndoAsync(); Assert.That(group.Entries.Single(), Is.SameAs(entry));
         await projects.CloseAsync();
@@ -132,7 +139,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task EntryNativeMultiSelectionKeyboardClipboardAndContextMenuRespectInputs()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -175,7 +182,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task EntryCutAndPasteIgnoreFailedStaleAndClosedPageClipboardCompletions()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -191,7 +198,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var pending = new TaskCompletionSource(); view.Write = _ => pending.Task;
                 var cut = view.CopySelectionAsync(cut: true); original[0].Condition = "changed while copying"; pending.SetResult(); await cut;
                 Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(vm.ErrorText, Is.Not.Empty); history.Clear();
-                view.Write = _ => Task.CompletedTask; await view.CopySelectionAsync(cut: true); Assert.That(group.Entries, Has.Count.EqualTo(1)); await history.UndoAsync(); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(history.CanUndo, Is.False);
+                view.Write = _ => Task.CompletedTask; await view.CopySelectionAsync(cut: true); Assert.That(group.Entries, Is.EqualTo(original)); Assert.That(vm.HasPendingMove, Is.True); Assert.That(vm.SelectedEntries.All(entry => entry.IsPendingMove), Is.True); Assert.That(history.CanUndo, Is.False); vm.CancelPendingMove(); Assert.That(vm.HasPendingMove, Is.False);
                 vm.SelectedEntry = original[0]; var clip = vm.CopySelection(); var read = new TaskCompletionSource<string?>(); view.Read = () => read.Task; var paste = view.PasteSelectionAsync();
                 vm.SelectedEntry = original[2]; read.SetResult(clip); await paste; Assert.That(group.Entries[1].StableId, Is.Not.EqualTo(original[1].StableId), "Paste uses the captured anchor, not the later selection.");
                 await history.UndoAsync(); history.Clear(); vm.SelectedEntry = original[0]; read = new(); view.Read = () => read.Task; paste = view.PasteSelectionAsync();
@@ -208,7 +215,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task EntryMultiDragPreservesOrderFoldingAndOneHistoryStep()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();

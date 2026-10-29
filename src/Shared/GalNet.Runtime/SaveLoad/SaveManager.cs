@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Core.Runtime;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Runtime.SaveLoad;
 
@@ -18,7 +19,7 @@ public static class SaveManager
     /// <summary>序列化存档到 JSON 字符串。</summary>
     public static string Serialize(GameSnapshot data)
     {
-        return JsonSerializer.Serialize(data, Options);
+        return JsonCodec.Serialize(data, Options);
     }
 
     /// <summary>从 JSON 字符串反序列化。</summary>
@@ -31,7 +32,7 @@ public static class SaveManager
             formatVersion != GameSnapshot.CurrentFormatVersion)
             return null;
 
-        var snapshot = JsonSerializer.Deserialize<GameSnapshot>(document.RootElement.GetRawText(), Options);
+        var snapshot = JsonCodec.Deserialize<GameSnapshot>(document.RootElement, Options);
         return snapshot?.Version == GameSnapshot.CurrentFormatVersion ? snapshot : null;
     }
 

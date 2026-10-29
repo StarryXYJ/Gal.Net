@@ -29,8 +29,11 @@ public interface IFieldBinding
     bool IsVisible => true;
     bool CanReset => true;
     object? Label => null;
+    bool IsLabelLiteral => false;
     /// <summary>Optional host metadata, forwarded by scoped decorators without exposing their source binding.</summary>
     object? HostContext => null;
+    /// <summary>Wire segments relative to the root author field, when backed by a shared property view.</summary>
+    IReadOnlyList<string>? PropertySegments => null;
     IReadOnlyList<FieldEditorOption>? Options => null;
 }
 

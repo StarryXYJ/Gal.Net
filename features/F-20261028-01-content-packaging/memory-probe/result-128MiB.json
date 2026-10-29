@@ -1,0 +1,13 @@
+{
+  "inputBytes": 159383552,
+  "targetPakBytes": 134217728,
+  "pakBytes": 146805518,
+  "largestPakBytes": 83888597,
+  "baseParts": 1,
+  "storyParts": 2,
+  "unusedExcluded": true,
+  "sharedDuplicatedInBothStories": true,
+  "peakWorkingSetBytes": 1180585984,
+  "afterGcManagedBytes": 86668648,
+  "elapsedMilliseconds": 3515
+}

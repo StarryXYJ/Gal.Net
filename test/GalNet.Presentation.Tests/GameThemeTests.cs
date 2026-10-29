@@ -20,7 +20,8 @@ using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
-using GalNet.Core.Gallery;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Core.Execution;
 using GalNet.Core.Parameters;
 using GalNet.Core.Primitives;
 using GalNet.Game.Controls;
@@ -33,8 +34,267 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GeneralTest.Presentation;
 
 [NonParallelizable]
-public sealed class GameThemeTests
+public sealed partial class GameThemeTests
 {
+    [TestCase("Mono")]
+    [TestCase("Ocean")]
+    [TestCase("Rose")]
+    public async Task ComboBox_popup_focus_selection_and_disabled_states_use_the_player_palette(string paletteName)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch(() =>
+        {
+            var theme = CreateTheme("Classic", paletteName);
+            var combo = new ComboBox { Width = 300, ItemsSource = new[] { "简体中文", "English", "日本語" }, SelectedIndex = 0 };
+            var root = new Border { Classes = { "galnet-player" }, Child = combo, Padding = new Thickness(40) };
+            root.Styles.Add(theme.CreateStyles());
+            var window = new Window { Width = 460, Height = 320, Content = root };
+            window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var surface = ((ISolidColorBrush)root.FindResource("GalNet.Brush.Surface")!).Color;
+                root.Background = (IBrush)root.FindResource("GalNet.Brush.Background")!;
+                var text = ((ISolidColorBrush)root.FindResource("GalNet.Brush.TextPrimary")!).Color;
+                Assert.That(((ISolidColorBrush)combo.Background!).Color, Is.EqualTo(surface));
+                combo.Focus();
+                window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)combo.Foreground!).Color, Is.EqualTo(text));
+                Capture(window, $"ComboBox-{paletteName}-Focused");
+                combo.IsDropDownOpen = true;
+                window.UpdateLayout();
+                var popup = combo.GetVisualDescendants().OfType<Popup>().Single();
+                var popupBorder = (Border)popup.Child!;
+                Assert.That(((ISolidColorBrush)popupBorder.Background!).Color, Is.EqualTo(surface));
+                Assert.That(combo.ContainerFromIndex(0), Is.Not.Null);
+                var selected = (ComboBoxItem)combo.ContainerFromIndex(0)!;
+                Assert.That(((ISolidColorBrush)selected.Foreground!).Color, Is.EqualTo(text));
+                Assert.That(((ISolidColorBrush)selected.FindResource("ComboBoxItemBackgroundSelected")!).Color,
+                    Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.Selection")!).Color));
+                Capture(window, $"ComboBox-{paletteName}-Open");
+                combo.IsDropDownOpen = false;
+                combo.IsEnabled = false;
+                window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)combo.Foreground!).Color,
+                    Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.TextDisabled")!).Color));
+                Capture(window, $"ComboBox-{paletteName}-Disabled");
+            }
+            finally { window.Close(); }
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task Screenshot_previews_cache_each_ui_mode_retry_failures_and_keep_export_separate()
+    {
+        var calls = new List<bool>();
+        var exports = new List<bool>();
+        var fail = true;
+        var model = new ScreenshotDialogViewModel("directory", "capture.png", includeUi =>
+        {
+            calls.Add(includeUi);
+            if (includeUi && fail) { fail = false; return Task.FromException<byte[]>(new IOException("retry")); }
+            return Task.FromResult<byte[]>(includeUi ? [2] : [1]);
+        }, (_, _, includeUi) => { exports.Add(includeUi); return Task.FromResult<string?>(null); });
+        var first = model.CapturePreviewAsync();
+        Assert.That(model.CapturePreviewAsync(), Is.SameAs(first));
+        model.IncludeUi = true;
+        Assert.ThrowsAsync<IOException>(async () => await model.CapturePreviewAsync());
+        Assert.That(await model.CapturePreviewAsync(), Is.EqualTo(new byte[] { 2 }));
+        model.IncludeUi = false;
+        Assert.That(model.CapturePreviewAsync(), Is.SameAs(first));
+        await model.SaveAsync();
+        Assert.That(calls, Is.EqualTo(new[] { false, true, true }));
+        Assert.That(exports, Is.EqualTo(new[] { false }));
+    }
+
+    [Test]
+    public async Task Saving_one_slot_preserves_the_other_rows_and_decoded_previews()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch(() =>
+        {
+            using var provider = CreateServices(new ClassicTheme()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var fake = (TestSession)scope.ServiceProvider.GetRequiredService<IGameSessionService>();
+            using var artwork = CreateGalleryArtwork();
+            using var stream = new MemoryStream();
+            artwork.Save(stream);
+            var bytes = stream.ToArray();
+            fake.ReplaceSlot(1, fake.SaveSlots[1] with { PreviewImage = bytes });
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            var rows = page.Slots.ToArray();
+            var preview = rows[1].Preview;
+            fake.ReplaceSlot(0, new(0, DateTime.UtcNow, "New save", false, false) { PreviewImage = bytes });
+            Assert.That(page.Slots[0], Is.Not.SameAs(rows[0]));
+            Assert.That(page.Slots[1], Is.SameAs(rows[1]));
+            Assert.That(page.Slots[1].Preview, Is.SameAs(preview));
+            Assert.That(page.Slots[2], Is.SameAs(rows[2]));
+            Assert.That(((Bitmap)page.Slots[0].Preview!).PixelSize.Width, Is.EqualTo(480));
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task SaveNameChangesSurvivePageReactivationWithoutReplacingTheEditingRow()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            using var provider = CreateServices(new ClassicTheme()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            await page.ActivateAsync(SaveSlotsMode.Load);
+            var row = page.Slots[1];
+            await row.RenameCommand.ExecuteAsync("雨中的重逢");
+            Assert.That(page.Slots[1], Is.SameAs(row));
+            Assert.That(row.Description, Is.EqualTo("雨中的重逢"));
+            await page.ActivateAsync(SaveSlotsMode.Load);
+            Assert.That(page.Slots[1].Description, Is.EqualTo("雨中的重逢"));
+            Assert.That(page.Slots[0].CanRename, Is.False);
+            Assert.That(page.Slots[2].CanRename, Is.False);
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task SavingWaitsForRenameAndRenameFailureKeepsTheDraftWithoutLoading()
+    {
+        var finished = new TaskCompletionSource<string>();
+        var saves = 0;
+        using var row = new GameSaveSlotRowViewModel(new(0, DateTime.Now, "Before", false, false), true,
+            _ => { saves++; return Task.CompletedTask; }, _ => Task.CompletedTask, (_, _) => finished.Task);
+        var rename = row.RenameCommand.ExecuteAsync("After");
+        Assert.That(row.CanRename, Is.False);
+        var save = row.SaveCommand.ExecuteAsync(null);
+        Assert.That(saves, Is.Zero);
+        finished.SetResult("After");
+        await Task.WhenAll(rename, save);
+        Assert.That(saves, Is.EqualTo(1));
+        Assert.That(row.Description, Is.EqualTo("After"));
+        using var failed = new GameSaveSlotRowViewModel(new(0, DateTime.Now, "Original", false, false), false,
+            _ => Task.CompletedTask, _ => { saves++; return Task.CompletedTask; }, (_, _) => throw new IOException("Unavailable"));
+        await failed.RenameCommand.ExecuteAsync("Draft");
+        await failed.LoadCommand.ExecuteAsync(null);
+        Assert.That(failed.Description, Is.EqualTo("Original"));
+        Assert.That(failed.RenameError, Is.Not.Empty);
+        Assert.That(saves, Is.EqualTo(1), "A failed metadata edit must not activate the slot.");
+    }
+
+    [TestCase("Classic", "Mono")]
+    [TestCase("Minimal", "Ocean")]
+    [TestCase("Paper", "Rose")]
+    public async Task SaveCardEditsNameWithoutActivatingTheSlotAndHighlightsTheWholePreview(string layout, string palette)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var activations = 0;
+            var renamed = "Before";
+            using var artwork = CreateGalleryArtwork();
+            var card = new SaveSlotCard
+            {
+                Width = 360,
+                Preview = artwork,
+                Description = renamed,
+                Timestamp = "2026/10/29 18:00",
+                CanRename = true,
+                Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => activations++)
+            };
+            card.RenameCommand = new CommunityToolkit.Mvvm.Input.RelayCommand<string>(name => { renamed = name!; card.Description = name; });
+            var root = new StackPanel { Classes = { "galnet-player" }, Margin = new Thickness(36), Spacing = 20 };
+            root.Styles.Add(CreateTheme(layout, palette).CreateStyles());
+            root.Children.Add(card);
+            var other = new Button { Content = "Back" };
+            root.Children.Add(other);
+            var window = new Window { Width = 640, Height = 420, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var name = card.GetVisualDescendants().OfType<TextBox>().Single();
+                var preview = card.GetVisualDescendants().OfType<Image>().Single();
+                Assert.That(preview.Bounds.Height, Is.GreaterThan(200));
+                Assert.That(name.BorderThickness, Is.EqualTo(new Thickness(0)));
+                Assert.That(name.Focus(), Is.True);
+                name.SelectAll();
+                window.KeyTextInput("雨中的重逢");
+                Assert.That(name.Text, Is.EqualTo("雨中的重逢"));
+                window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                window.KeyRelease(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null);
+                Assert.That(renamed, Is.EqualTo("雨中的重逢"));
+                Assert.That(activations, Is.Zero, "Renaming must not load or overwrite a save.");
+                name.Focus();
+                name.Text = "discard";
+                window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
+                Assert.That(renamed, Is.EqualTo("雨中的重逢"));
+                name.Focus();
+                name.Text = "After the rain";
+                other.Focus();
+                await Task.Yield();
+                Assert.That(renamed, Is.EqualTo("After the rain"));
+                name.Focus();
+                var highlight = card.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_Highlight");
+                Assert.That(highlight.Opacity, Is.GreaterThan(0));
+                Assert.That(highlight.Bounds.Size, Is.EqualTo(preview.Bounds.Size));
+                Capture(window, $"{layout}-{palette}-SaveCard");
+                var point = card.TranslatePoint(new Point(180, 50), window)!.Value;
+                window.MouseDown(point, MouseButton.Left);
+                window.MouseUp(point, MouseButton.Left);
+                Assert.That(activations, Is.EqualTo(1));
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [TestCase("Classic", "Mono")]
+    [TestCase("Minimal", "Ocean")]
+    [TestCase("Paper", "Rose")]
+    public async Task AudioSettingsKeepSliderAndAccessibleMuteToggleOnOneRow(string layout, string palette)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var muted = false;
+            var saves = 0;
+            var mute = new BoolSetting("muted", "Mute", false, () => muted, (value, _) => { muted = value; return Task.CompletedTask; });
+            var gain = new DoubleSetting("gain", "Master volume", .6, 0, 1, .01, () => .6, (_, _) => Task.CompletedTask)
+            { EditorKind = NumericEditorKind.Slider, InlineToggle = mute };
+            var flag = new BoolSetting("read", "Read text only", true, () => true, (_, _) => Task.CompletedTask);
+            SettingCategory[] categories = [new("audio", "Audio", [gain, mute, flag])];
+            new SettingsCoordinator { SaveAsync = _ => { saves++; return Task.CompletedTask; } }.Attach(categories);
+            var settings = new GalNet.Avalonia.Themes.Common.SettingsCategories { Categories = categories, Editors = EditorRegistry.CreateDefault() };
+            var root = new Border { Classes = { "galnet-player" }, Padding = new Thickness(32), Child = settings };
+            root.Styles.Add(CreateTheme(layout, palette).CreateStyles());
+            var window = new Window { Width = 1000, Height = 440, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var toggle = settings.GetVisualDescendants().OfType<ToggleButton>().Single(control => control.Classes.Contains("player-mute"));
+                var slider = settings.GetVisualDescendants().OfType<Slider>().Single();
+                var checkbox = settings.GetVisualDescendants().OfType<CheckBox>().Single();
+                Capture(window, $"{layout}-{palette}-AudioBeforeToggle");
+                Assert.That(checkbox.HorizontalAlignment, Is.EqualTo(global::Avalonia.Layout.HorizontalAlignment.Left));
+                Assert.That(BoundsInWindow(toggle, window).Center.Y, Is.EqualTo(BoundsInWindow(slider, window).Center.Y).Within(2));
+                Assert.That(BoundsInWindow(toggle, window).Left, Is.GreaterThan(BoundsInWindow(slider, window).Right));
+                Click(window, toggle);
+                await Task.Delay(80);
+                Assert.That(muted, Is.True);
+                Assert.That(saves, Is.EqualTo(1));
+                Assert.That(toggle.GetVisualDescendants().OfType<global::Avalonia.Controls.Shapes.Path>().Single(path => path.Classes.Contains("mute-slash")).IsVisible, Is.True);
+                Capture(window, $"{layout}-{palette}-AudioMuted");
+                Click(window, toggle);
+                await Task.Delay(80);
+                Assert.That(muted, Is.False);
+                Capture(window, $"{layout}-{palette}-Audio");
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     [TestCase("Classic")]
     [TestCase("Minimal")]
     [TestCase("Paper")]
@@ -292,7 +552,7 @@ public sealed class GameThemeTests
             return Task.CompletedTask;
         }
         public Task SkipToUnreadAsync(CancellationToken cancellationToken = default) { Skips++; return Task.CompletedTask; }
-        public Task RefreshPlaybackSettingsAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task UpdatePlaybackOptionsAsync(PlaybackOptions options, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     [Test]
@@ -355,6 +615,14 @@ public sealed class GameThemeTests
                 Assert.That(title.GetVisualDescendants().OfType<Button>().Count(), Is.GreaterThanOrEqualTo(4));
                 AssertPalette(root, theme.Palette);
                 Capture(window, $"{layout}-{paletteName}-title");
+                root.IsEnabled = false;
+                window.UpdateLayout();
+                var titleText = title.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(block => block.Text == services.GetRequiredService<TitlePageViewModel>().GameTitle);
+                var titleBrush = (ISolidColorBrush)titleText.Foreground!;
+                Assert.That(titleBrush.Color, Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.TextPrimary")!).Color));
+                Assert.That(titleBrush.Opacity, Is.EqualTo(1), "A modal scrim must be the only dimming applied to static title text.");
+                root.IsEnabled = true;
 
                 var state = services.GetRequiredService<GamePageViewModel>();
                 var page = services.GetRequiredService<GamePage>();
@@ -859,25 +1127,34 @@ public sealed class GameThemeTests
     private sealed class HostTitle : Control;
     private sealed class HostGamePage : GamePage;
 
-    private sealed class TestSession : IGameSessionService
+    private sealed class TestSession : IGameSessionService, ISaveSlotNamingSession
     {
         public string GameTitle => "Aster / 星河";
         public string StatusMessage => "A visual novel built with GalNet";
         public bool IsReady => true;
         public bool IsPlaying => false;
         public bool CanContinue => true;
-        public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots { get; } = new(new ObservableCollection<GameSaveSlot>
+        private readonly ObservableCollection<GameSaveSlot> _slots = new()
         {
             new(0, default, "", true, false),
             new(1, new DateTime(2026, 10, 11, 12, 0, 0, DateTimeKind.Utc), "Chapter one / 第一章", false, false),
             new(2, default, "Unavailable save", false, true)
-        });
+        };
+        public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots { get; }
+        public TestSession() => SaveSlots = new(_slots);
+        public void ReplaceSlot(int index, GameSaveSlot slot) => _slots[index] = slot;
         public event PropertyChangedEventHandler? PropertyChanged { add { } remove { } }
         public Task StartNewGameAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ContinueAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public bool CanRenameSlots => true;
+        public Task<string> RenameSlotAsync(int slotIndex, string name, CancellationToken cancellationToken = default)
+        {
+            _slots[slotIndex] = _slots[slotIndex] with { Description = name };
+            return Task.FromResult(name);
+        }
     }
 }
 

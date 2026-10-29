@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Parameters;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Abstraction.Services;
@@ -17,21 +18,21 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
 {
     private GalProject Active()
     { _ = store.CaptureFile(LocalizationJson.MetadataPath); return projects.Current!; }
-    private string Source => content.CaptureWorking().Settings.TargetLocale.Code;
+    private string Source => content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
     private string? Identity => JsonNode.Parse(LocalizationJson.Decode(store.CaptureFile(LocalizationJson.MetadataPath).Data))!["exchangeProjectId"]?.GetValue<string>() is { } identity ? Guid.Parse(identity).ToString("N") : null;
     private string Evidence()
     {
         Active(); var index = query.Get()!; var meta = JsonNode.Parse(LocalizationJson.Decode(store.CaptureFile(LocalizationJson.MetadataPath).Data))!.AsObject();
         meta.Remove("characterHighWater");
-        return LocalizationTextState.Fingerprint(JsonSerializer.Serialize(new { Source, Languages = content.CaptureWorking().Settings.AvailableLocales.Select(locale => locale.Code), index.References, index.Texts, Metadata = meta }));
+        return LocalizationTextState.Fingerprint(JsonSerializer.Serialize(new { Source, Languages = content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Select(locale => locale.Code), index.References, index.Texts, Metadata = meta }));
     }
     public async Task<string> ExportAsync(string culture, string? category, bool runtime)
     {
         Active(); culture = LocalizationExchange.Culture(culture);
         await content.CommitDraftsAsync(); Active();
-        if (!content.CaptureWorking().Settings.AvailableLocales.Any(locale => locale.Code == culture)) throw new EditorOperationException("exchange.language", "Language is not supported.");
+        if (!content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Any(locale => locale.Code == culture)) throw new EditorOperationException("exchange.language", "Language is not supported.");
         var identity = runtime ? "" : await store.EnsureExchangeIdentityAsync(); Active();
-        var snapshot = content.CaptureWorking(); var index = query.Get()!; var sourceLocale = snapshot.Settings.TargetLocale.Code;
+        var snapshot = content.CaptureWorking(); var index = query.Get()!; var sourceLocale = snapshot.Configuration.ReadDefaultOptions().TargetLocale.Code;
         var branches = snapshot.Graph.Nodes.Where(node => node.Type == "Branch").Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
         var references = index.References.Where(reference => reference.Semantic == FieldValueSemantic.LocalizedText &&
             (category is null || (category == "branches" ? branches.Contains(reference.Owner) : reference.Owner == category)));
@@ -39,7 +40,7 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
         {
             var source = index.FindDirect(sourceLocale, group.Key)?.Text;
             return new LocalizationExchangeRow(group.Key, source, source is null ? null : LocalizationTextState.Fingerprint(source),
-                group.Select(reference => $"{reference.Owner}/{reference.EntryId}{reference.JsonPointer}").ToArray(), index.FindDirect(culture, group.Key)?.Text);
+                group.Select(reference => $"{reference.Owner}/{reference.EntryId}{reference.LocationKey}").ToArray(), index.FindDirect(culture, group.Key)?.Text);
         }).ToArray();
         return runtime ? JsonSerializer.Serialize(rows.Where(row => row.Translation is not null).ToDictionary(row => row.Key, row => row.Translation), new JsonSerializerOptions { WriteIndented = true })
             : LocalizationExchange.Write(new(1, identity, sourceLocale, culture, rows, index.Complete));
@@ -48,7 +49,7 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
     {
         var project = Active(); var input = LocalizationExchange.Parse(json, flatLanguage);
         if (input.ProjectId is not null && (input.ProjectId != Identity || input.SourceLocale != Source)) throw new EditorOperationException("exchange.project", "Template project or source language does not match.");
-        if (input.TargetLocale == Source || !content.CaptureWorking().Settings.AvailableLocales.Any(locale => locale.Code == input.TargetLocale))
+        if (input.TargetLocale == Source || !content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Any(locale => locale.Code == input.TargetLocale))
             throw new EditorOperationException("exchange.language", "Import requires a supported translation language other than the development language.");
         var index = query.Get()!; var sourceLocale = Source;
         var known = index.References.Where(reference => reference.Semantic == FieldValueSemantic.LocalizedText).Select(reference => reference.Key).ToHashSet(StringComparer.Ordinal);
@@ -62,7 +63,7 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
         => Check(preview.Project, preview.Culture, preview.SourceLocale, preview.Evidence);
     private void Check(GalProject project, string culture, string sourceLocale, string evidence)
     {
-        if (!ReferenceEquals(Active(), project) || sourceLocale != Source || culture == Source || !content.CaptureWorking().Settings.AvailableLocales.Any(locale => locale.Code == culture) || Evidence() != evidence)
+        if (!ReferenceEquals(Active(), project) || sourceLocale != Source || culture == Source || !content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Any(locale => locale.Code == culture) || Evidence() != evidence)
             throw new EditorOperationException("exchange.stale", "Import preview changed. Preview the file again.");
     }
     public async Task ApplyAsync(LocalizationImportPreview preview, IReadOnlyCollection<string> selected, bool allowEmpty)

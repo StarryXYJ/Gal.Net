@@ -1,0 +1,66 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer
+
+@param progress
+  uniform: progress
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param softness
+  uniform: softness
+  type: float
+  default: 0.05
+  range: 0.001..1
+  animatable: true
+
+@param mode
+  uniform: mode
+  type: enum
+  default: Wipe
+  options: Wipe,Radial,Noise,Blinds
+  animatable: false
+
+@param angle
+  uniform: angle
+  type: float
+  default: 0
+  range: -360..360
+  animatable: true
+
+@param count
+  uniform: count
+  type: float
+  default: 12
+  range: 1..256
+  animatable: true
+
+@param center
+  uniform: center
+  type: vector2
+  default: [0.5,0.5]
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size, center;
+uniform float progress, softness, mode, angle, count;
+float hash(float2 v) { return fract(sin(dot(v,float2(127.1,311.7)))*43758.5453); }
+half4 main(float2 p) {
+    if (progress <= 0.0) return half4(0);
+    if (progress >= 1.0) return source.eval(p);
+    float2 uv = p/max(size,float2(1));
+    float a = angle*0.01745329252;
+    float2 axis = float2(cos(a),sin(a));
+    float value = dot(uv-0.5,axis)/max(abs(axis.x)+abs(axis.y),0.001)+0.5;
+    if (mode > 0.5 && mode < 1.5) {
+        float farthest = length(max(center,1.0-center));
+        value = length(uv-center)/max(farthest,0.001);
+    } else if (mode > 1.5 && mode < 2.5) value = hash(floor(uv*160.0));
+    else if (mode > 2.5) value = fract(value*count);
+    float edge = mix(-softness,1.0+softness,progress);
+    float alpha = 1.0-smoothstep(edge-softness,edge+softness,value);
+    return source.eval(p)*half(alpha);
+}

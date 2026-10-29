@@ -6,7 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="..\..\..\skills\galnet-project-authoring\**\*" Link="Skills\galnet-project-authoring\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <ProjectReference Include="..\GalNet.Editor.Abstraction\GalNet.Editor.Abstraction.csproj" />
     <ProjectReference Include="..\GalNet.Editor.Shared\GalNet.Editor.Shared.csproj" />
+    <ProjectReference Include="..\..\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
 </Project>

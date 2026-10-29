@@ -12,7 +12,8 @@ namespace GalNet.Editor.Controls;
 
 internal static class ColorFieldEditor
 {
-    public static FieldEditorLease Create(FieldEditorContext context)
+    public static FieldEditorLease Create(FieldEditorContext context) => Create(context, false);
+    public static FieldEditorLease Create(FieldEditorContext context, bool rgba)
     {
         var panel = new Grid { Name = "ColorEditor", ColumnDefinitions = new("Auto,*"), RowDefinitions = new("Auto,Auto"), ColumnSpacing = 8 };
         var swatch = new Border { Width = 24, Height = 18, BorderThickness = new(1), BorderBrush = Brushes.Gray };
@@ -37,7 +38,7 @@ internal static class ColorFieldEditor
             try
             {
                 input.Text = context.Text;
-                var valid = Color.TryParse(context.Text, out var color);
+                var valid = TryHex(context.Text, rgba, out var color);
                 swatch.Background = valid ? new SolidColorBrush(color) : Brushes.Transparent;
                 panel.IsEnabled = context.IsEnabled;
                 ShowError(context.Text.Length > 0 && !valid ? PropertyEditorSupport.Text("Form.ColorInvalid") : context.Issue?.Message);
@@ -48,8 +49,8 @@ internal static class ColorFieldEditor
         {
             if (disposed || opened || !context.HasDraft) return;
             if (context.Text.Length == 0 && context.CanOmit) { await context.OmitAsync(); return; }
-            if (!TryHex(context.Text, out var color)) { ShowError(PropertyEditorSupport.Text("Form.ColorInvalid")); return; }
-            await context.CommitValueAsync(Hex(color)); Refresh();
+            if (!TryHex(context.Text, rgba, out var color)) { ShowError(PropertyEditorSupport.Text("Form.ColorInvalid")); return; }
+            await context.CommitValueAsync(Hex(color, rgba)); Refresh();
         }
         void Changed(object? sender, PropertyChangedEventArgs args) => Refresh();
         input.TextChanged += (_, _) => { if (!syncing) { context.Text = input.Text ?? ""; } };
@@ -62,14 +63,14 @@ internal static class ColorFieldEditor
         flyout.Opened += (_, _) =>
         {
             context.RevertDraft(); baseline = context.Value; opened = true;
-            picker.Color = Color.TryParse(context.Text, out var color) ? color : Colors.Transparent;
+            picker.Color = TryHex(context.Text, rgba, out var color) ? color : Colors.Transparent;
         };
         flyout.Closed += (_, _) => { opened = false; Refresh(); };
         apply.Click += async (_, _) =>
         {
             if (!opened || disposed || !context.IsEnabled || !Same(baseline, context.Value)) { flyout.Hide(); return; }
             ownCommit = true;
-            try { if (await context.CommitValueAsync(Hex(picker.Color))) flyout.Hide(); }
+            try { if (await context.CommitValueAsync(Hex(picker.Color, rgba))) flyout.Hide(); }
             finally { ownCommit = false; Refresh(); }
         };
         cancel.Click += (_, _) => flyout.Hide();
@@ -83,10 +84,13 @@ internal static class ColorFieldEditor
         return new(panel, () => { disposed = true; flyout.Hide(); context.PropertyChanged -= Changed; locale.Dispose(); });
     }
     private static bool Same(FieldValue a, FieldValue b) => a.IsProvided == b.IsProvided && (!a.IsProvided || JsonElement.DeepEquals(a.Json!.Value, b.Json!.Value));
-    private static bool TryHex(string text, out Color color)
+    private static bool TryHex(string text, bool rgba, out Color color)
     {
         color = default;
-        return text.Length is 7 or 9 && text[0] == '#' && uint.TryParse(text.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _) && Color.TryParse(text, out color);
+        if (text.Length is not (7 or 9) || text[0] != '#' || !uint.TryParse(text.AsSpan(1), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out _)) return false;
+        var value = rgba && text.Length == 9 ? "#" + text[7..9] + text[1..7] : text;
+        return Color.TryParse(value, out color);
     }
-    private static string Hex(Color color) => color.A == 255 ? $"#{color.R:X2}{color.G:X2}{color.B:X2}" : $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
+    private static string Hex(Color color, bool rgba) => color.A == 255 ? $"#{color.R:X2}{color.G:X2}{color.B:X2}"
+        : rgba ? $"#{color.R:X2}{color.G:X2}{color.B:X2}{color.A:X2}" : $"#{color.A:X2}{color.R:X2}{color.G:X2}{color.B:X2}";
 }

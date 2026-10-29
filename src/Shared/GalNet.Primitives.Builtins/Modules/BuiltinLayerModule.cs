@@ -1,7 +1,7 @@
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
-using GalNet.Core.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -15,7 +15,7 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null, ImageV
         {
             foreach (var layer in state.Table<Layer>().Values) LayerVariantsRuntime.ValidateContent(layer, variants);
         });
-        registry.State<Layer>("builtin.layers", value => value.Id, context =>
+        registry.State<Layer>(BuiltinJson.StateTypeInfo<Layer>(), "builtin.layers", value => value.Id, context =>
         {
             foreach (var layer in context.Runtime.State.Table<Layer>().Values) LayerVariantsRuntime.ValidateContent(layer, variants);
             if (presenter is null) return Task.CompletedTask;
@@ -25,7 +25,7 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null, ImageV
                 presenter.ShowLayer(Request(layer));
             }
             return Task.CompletedTask;
-        }, validate: LayerVariantsRuntime.ValidateShape, version: 2);
+        }, validate: LayerVariantsRuntime.ValidateShape, version: 2, keySpace: BuiltinScene.KeySpace);
         registry.Register<VariantsShowOptions>(BuiltinEntryIds.ShowVariants, (context, options) => Immediate(context, presenter,
             target => LayerVariantsRuntime.Show(context, options, variants, target)));
         registry.Register<VariantsSelectOptions>(BuiltinEntryIds.SelectVariants, (context, options) => Immediate(context, presenter,

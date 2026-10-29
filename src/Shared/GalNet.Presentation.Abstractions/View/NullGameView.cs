@@ -1,11 +1,12 @@
 using GalNet.Core.Entry;
+using GalNet.Core.Execution;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
 
 namespace GalNet.Presentation.Abstractions.View;
 
 /// <summary>An empty view with no registered contracts or executable instructions.</summary>
-public sealed class NullGameView : IGameView
+public sealed class NullGameView : IPrimitiveDispatcher
 {
     public IReadOnlyCollection<EntryDefinition> Primitives => [];
     public bool CanExecute(string primitiveType) => false;
@@ -14,7 +15,7 @@ public sealed class NullGameView : IGameView
         entry = null;
         return false;
     }
-    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameRuntime runtime, CancellationToken cancellationToken,
+    public PrimitiveInstance Dispatch(PrimitiveEntry entry, IGameContext runtime, CancellationToken cancellationToken,
         PrimitiveInvocationMode mode = PrimitiveInvocationMode.Normal) =>
         throw new InvalidOperationException($"Instruction '{entry.Type}' has no registered implementation.");
     public void Dispose() => GC.SuppressFinalize(this);

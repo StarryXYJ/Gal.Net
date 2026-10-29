@@ -1,0 +1,42 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param radius
+  uniform: radius
+  type: float
+  default: 0.45
+  range: 0..2
+  animatable: true
+
+@param softness
+  uniform: softness
+  type: float
+  default: 0.4
+  range: 0.001..2
+  animatable: true
+
+@param center
+  uniform: center
+  type: vector2
+  default: [0.5,0.5]
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength, radius, softness;
+uniform float2 center;
+half4 main(float2 p) {
+    half4 c = source.eval(p);
+    float d = length((p / max(size,float2(1))) - center);
+    float fade = smoothstep(radius, radius + max(softness,0.001), d);
+    return half4(c.rgb * half(1.0 - strength * fade), c.a);
+}

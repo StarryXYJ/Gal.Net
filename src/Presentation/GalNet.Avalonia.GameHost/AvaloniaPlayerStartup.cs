@@ -4,7 +4,7 @@ using GalNet.Runtime.Variables;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Connects the default player localization adapter to neutral onboarding.</summary>
-public sealed class AvaloniaPlayerStartup(IPlayerLocalization localization)
+public sealed class AvaloniaPlayerStartup(IPlayerLocalization localization) : IPlayerStartup
 {
     public const string LaunchCountVariable = PlayerStartup.LaunchCountVariable;
     public async Task<bool> InitializeAsync(PlayerVariableService variables, string defaultCulture,

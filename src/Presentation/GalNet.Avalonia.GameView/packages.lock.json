@@ -147,6 +147,7 @@
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -154,6 +155,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia": "[12.0.5, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -162,6 +164,13 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "Avalonia.Skia": "[12.0.5, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
+        }
+      },
+      "galnet.contracts.builtins": {
+        "type": "Project",
+        "dependencies": {
           "GalNet.Core": "[1.0.0, )"
         }
       },
@@ -171,6 +180,7 @@
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
         }
       },

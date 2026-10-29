@@ -82,10 +82,11 @@ public sealed partial class GameEngine
                     foreach (var item in _engine._active.SkipCandidates(blocker).ToArray()) item.Instance.Skip();
                 _engine.RemoveCompleted();
                 _engine._advanceBoundary = false;
-                _engine.ContinueUntilBlocked();
+                await _engine.ContinueUntilBlockedAsync(token).ConfigureAwait(false);
                 _engine.ThrowFlowError();
                 _engine.UpdateLastStableSnapshot();
             }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { throw; }
             catch (Exception error) when (stepping)
             {
                 _engine._flowError = error;
@@ -96,9 +97,7 @@ public sealed partial class GameEngine
             {
                 if (stepping) Paused = true;
                 _stepBoundary = null;
-                _engine.CaptureStateChange();
-                _engine._dispatchGate.Release();
-                _engine.PublishStateChanges();
+                _engine.FinishDispatch();
             }
         }
     }

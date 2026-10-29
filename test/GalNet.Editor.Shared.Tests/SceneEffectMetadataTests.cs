@@ -1,6 +1,6 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
 
@@ -48,6 +48,7 @@ public sealed partial class SceneTargetAnalysisTests
         var result = analysis.Before("g", null); Assert.That(result.Complete, Is.True);
         Assert.That(result.Targets.Single().Resource, Is.EqualTo("legacy")); Assert.That(result.Targets.Single().Values["strength"], Is.EqualTo(-.75f));
         fx.Parameters["parameters"] = JsonSerializer.SerializeToElement(new { strength = "invalid" });
+        analysis = new SceneTargetAnalysis(Graph("g"), new Dictionary<string, List<EditorEntryData>> { ["g"] = [fx] }, effects: catalog);
         result = analysis.Before("g", null); Assert.That(result.Complete, Is.False);
         Assert.That(result.Targets.Single().Properties.Any(property => property.Name == "strength"), Is.True); Assert.That(result.Targets.Single().Values.ContainsKey("strength"), Is.False);
     }

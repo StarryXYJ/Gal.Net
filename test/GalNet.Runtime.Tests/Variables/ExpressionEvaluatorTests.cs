@@ -4,6 +4,43 @@ namespace GeneralTest.Runtime;
 
 public class ExpressionEvaluatorTests
 {
+    [TestCase("O'Brien")]
+    [TestCase("a\"b")]
+    [TestCase("a\\b\n\t中")]
+    public void JsonStringLiteralsPreserveContent(string value)
+    {
+        var store = new VariableStore();
+        store.Set("name", value);
+        var evaluator = new ExpressionEvaluator(store);
+        Assert.That(evaluator.EvaluateCondition($"[name] == {System.Text.Json.JsonSerializer.Serialize(value)}"), Is.True);
+        Assert.That(evaluator.Evaluate("'double\"quote'"), Is.EqualTo("double\"quote"));
+    }
+
+    [Test]
+    public void BoundLiteralsDoNotShadowUserVariables()
+    {
+        var store = new VariableStore();
+        store.Set("__gal_literal_0", "user");
+        var evaluator = new ExpressionEvaluator(store);
+        Assert.That(evaluator.EvaluateCondition("[__gal_literal_0] == \"user\" && \"a\" != \"b\""), Is.True);
+        Assert.That(evaluator.Evaluate("[unknown]"), Is.Null);
+    }
+
+    [Test]
+    public void InvalidConditionsReportOnceAndDiagnosticFailureDoesNotEscape()
+    {
+        var reports = 0;
+        var evaluator = new ExpressionEvaluator(new VariableStore(), (_, _) =>
+        {
+            reports++;
+            throw new IOException("diagnostic failed");
+        });
+        Assert.That(evaluator.EvaluateCondition("1 +"), Is.False);
+        Assert.That(evaluator.EvaluateCondition("1 +"), Is.False);
+        Assert.That(reports, Is.EqualTo(1));
+        Assert.That(() => evaluator.Evaluate("\"unfinished"), Throws.TypeOf<FormatException>());
+    }
+
     [Test]
     public void Empty_Condition_Should_Be_True()
     {

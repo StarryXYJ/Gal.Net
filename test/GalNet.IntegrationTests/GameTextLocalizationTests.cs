@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Compilation;
@@ -8,6 +9,7 @@ using GalNet.Core.Serialization;
 using GalNet.Core.Services;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
+using GalNet.Runtime.I18n;
 using GalNet.Runtime.Loader;
 using GalNet.Runtime.Runtime;
 
@@ -29,6 +31,7 @@ public class GameTextLocalizationTests
                     Parameters = new()
                     {
                         ["content"] = JsonSerializer.SerializeToElement(key),
+                        ["trackId"] = JsonSerializer.SerializeToElement("vocal"),
                         ["asset"] = JsonSerializer.SerializeToElement("voice")
                     }
                 }
@@ -83,11 +86,32 @@ public class GameTextLocalizationTests
         };
     }
 
+    [TestCase("")]
+    [TestCase(" \t")]
+    public void EmptyDialogueAndNvlReferencesPresentEmptyText(string empty)
+    {
+        var presenter = new TextPresenter();
+        using var view = new GameRegistration().AddBuiltinSchemas()
+            .AddBuiltinDialogue(presenter).AddBuiltinNvl(presenter).BuildView();
+        var culture = CultureInfo.GetCultureInfo("en-US");
+        var runtime = new GameRuntime(new GameTextResolver([], culture, () => culture));
+        view.Dispatch(new PrimitiveEntry(BuiltinEntryIds.Text,
+            JsonSerializer.SerializeToElement(new { speaker = empty, content = empty })), runtime, CancellationToken.None);
+        view.Dispatch(new PrimitiveEntry(BuiltinEntryIds.AppendNvl,
+            JsonSerializer.SerializeToElement(new { content = empty })), runtime, CancellationToken.None);
+        Assert.Multiple(() =>
+        {
+            Assert.That(presenter.Speaker, Is.Empty);
+            Assert.That(presenter.Dialogue, Is.Empty);
+            Assert.That(presenter.Nvl, Is.Empty);
+        });
+    }
+
     private sealed class TextPresenter : IDialoguePresenter, INvlPresenter
     {
-        public string Speaker { get; private set; } = "";
-        public string Dialogue { get; private set; } = "";
-        public string Nvl { get; private set; } = "";
+        public string Speaker { get; private set; } = "not presented";
+        public string Dialogue { get; private set; } = "not presented";
+        public string Nvl { get; private set; } = "not presented";
         public Task PresentTextAsync(string speaker, string text, CancellationToken cancellationToken)
         {
             Speaker = speaker;

@@ -9,4 +9,6 @@
     <ProjectReference Include="..\..\src\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
     <ProjectReference Include="..\..\src\Infrastructure\GalNet.Storage.FileSystem\GalNet.Storage.FileSystem.csproj" />
   </ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
+  <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" /></ItemGroup>
 </Project>

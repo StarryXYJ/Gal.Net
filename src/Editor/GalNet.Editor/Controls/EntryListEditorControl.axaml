@@ -10,16 +10,25 @@
              MoveCommand="{Binding ReorderEntryCommand}" Focusable="True">
     <controls:ReorderableListControl.Styles>
         <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
+        <Style Selector="controls|EntryTypePicker">
+            <Setter Property="MinWidth" Value="140" />
+        </Style>
         <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
         <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
+        <Style Selector="Border.pendingMove"><Setter Property="Opacity" Value="0.65"/></Style>
+        <Style Selector="Button.entryProblems"><Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}"/></Style>
+        <Style Selector="Button.entryProblems.error"><Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}"/></Style>
     </controls:ReorderableListControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto">
         <WrapPanel x:Name="EntryToolbar" Orientation="Horizontal">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding MoveStatus}" VerticalAlignment="Center" Margin="0,0,6,0" TextWrapping="Wrap"/>
+                <Button Name="CancelEntryMove" Content="{loc:Localize Entry.MoveCancel}" Command="{Binding CancelPendingMoveCommand}" IsVisible="{Binding HasPendingMove}" Margin="0,0,6,0"/>
+            </StackPanel>
             <TextBox Width="170" Text="{Binding SearchText}" PlaceholderText="{loc:Localize Uiux.Entry.Search}" Margin="0,0,6,0" />
-            <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Entry.Add}" AutomationProperties.Name="{loc:Localize Entry.Add}" Command="{Binding AddEntryCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
-            <Button Content="{loc:Localize Entry.AppendBatch}" Command="{Binding AppendEntriesCommand}" Margin="0,0,6,0" />
+            <controls:EntryTypePicker x:Name="InsertPicker" ButtonLabel="{loc:Localize Entry.Add}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" Margin="0,0,6,0" />
+            <controls:EntryTypePicker x:Name="AppendPicker" ButtonLabel="{loc:Localize Entry.AppendBatch}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" TypeConfirmed="OnAppendTypeConfirmed" Margin="0,0,6,0" />
             <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
-            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="180" MinHeight="32" VerticalAlignment="Center" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" SelectedValue="{Binding InsertionType,Mode=OneWay}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" />
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.ExpandAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.ExpandAll}" Command="{Binding ExpandAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronDownRegular}"/></Button>
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.CollapseAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.CollapseAll}" Command="{Binding CollapseAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronUpRegular}"/></Button>
         </WrapPanel>
@@ -36,12 +45,14 @@
                 <DataTemplate x:DataType="models:EntryEditorItemViewModel">
                     <Border Margin="0,3"
                             Classes="debugEntry"
+                            Classes.pendingMove="{Binding IsPendingMove}"
                             Classes.debugCurrent="{Binding IsDebugCurrent}"
                             Padding="6"
                             Background="{DynamicResource SemiColorBackground1}"
                             CornerRadius="6">
                         <StackPanel>
-                        <Grid ColumnDefinitions="Auto,48,140,*,Auto,Auto"
+                        <!-- Match the field editors' 130-DIP label column plus 8-DIP spacing. -->
+                        <Grid ColumnDefinitions="24,98,Auto,*,Auto,Auto"
                               ColumnSpacing="8">
                             <Border Padding="6,0"
                                     VerticalAlignment="Center"
@@ -57,7 +68,7 @@
                                                       Options="{Binding #Root.DataContext.EntryTypes}"
                                                       ShortcutService="{Binding #Root.DataContext.ShortcutService}"
                                                       SelectedValue="{Binding Type, Mode=OneWay}" TypeConfirmed="OnEntryTypeConfirmed"
-                                                      MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Stretch" />
+                                                      MinWidth="140" MinHeight="32" VerticalAlignment="Center" HorizontalAlignment="Left" />
                             <controls:ConditionEditorControl Grid.Column="3"
                                                              IsVisible="{Binding !#Root.UseCommonFields}"
                                                              Text="{Binding Condition}"
@@ -67,7 +78,7 @@
                                 <TextBlock Text="{Binding Summary}" Margin="0,0,32,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}" />
                                 <TextBlock Text="{Binding Condition}" IsVisible="{Binding HasCondition}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
-                            <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Foreground="{DynamicResource SemiColorDanger}"
+                            <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Classes="entryProblems" Classes.error="{Binding HasProblemErrors}"
                                     ToolTip.Tip="{loc:Localize Uiux.Problems}" Command="{Binding #Root.DataContext.ShowEntryProblemsCommand}" CommandParameter="{Binding}"/>
                             <ToggleButton Name="ParametersToggle" Grid.Column="4"
                                           Theme="{DynamicResource EditorIconToggleButton}"
@@ -93,6 +104,8 @@
                                     CommandParameter="{Binding}"><PathIcon Width="16" Height="16" Data="{StaticResource DeleteRegularIcon}" /></Button>
                         </Grid>
                         <StackPanel Margin="0,6,0,0" Spacing="4" IsVisible="{Binding #ParametersToggle.IsChecked}">
+                            <forms:DtoEditorHost Item="{Binding EffectInlineForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" IsVisible="{Binding IsEffectApply}" />
+                            <StackPanel IsVisible="{Binding !IsEffectApply}">
                             <forms:DtoEditorHost Item="{Binding DetailForm.Item}" Registry="{Binding #Root.DataContext.FieldEditors}" DisplayMode="Common" IsVisible="{Binding #Root.UseCommonFields}" />
                             <StackPanel IsVisible="{Binding !#Root.UseCommonFields}">
                             <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding IsUnknownType}" TextWrapping="Wrap" />
@@ -118,6 +131,7 @@
                             </ItemsControl>
                             <TextBlock Text="{Binding EffectHint}" Opacity="0.72" TextWrapping="Wrap" IsVisible="{Binding !HasEffectDiagnostic}" />
                             <TextBlock Text="{Binding EffectDiagnostic}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" IsVisible="{Binding HasEffectDiagnostic}" />
+                            </StackPanel>
                             </StackPanel>
 
                         </StackPanel>

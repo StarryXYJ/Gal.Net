@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <DefineConstants Condition="'$(GalNetMiniaudioStaticLink)' == 'true'">$(DefineConstants);GALNET_MINIAUDIO_STATIC</DefineConstants>
+    <GalNetMiniaudioRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</GalNetMiniaudioRid>
+    <GalNetMiniaudioRid Condition="'$(GalNetMiniaudioRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</GalNetMiniaudioRid>
+    <GalNetBuildMiniaudio Condition="'$(GalNetBuildMiniaudio)' == '' And '$(GalNetMiniaudioNativePath)' == '' And $([MSBuild]::IsOSPlatform('Windows')) And ('$(GalNetMiniaudioRid)' == 'win-x64' Or '$(GalNetMiniaudioRid)' == 'win-arm64')">true</GalNetBuildMiniaudio>
+    <GalNetMiniaudioArchitecture Condition="'$(GalNetMiniaudioRid)' == 'win-x64'">x64</GalNetMiniaudioArchitecture>
+    <GalNetMiniaudioArchitecture Condition="'$(GalNetMiniaudioRid)' == 'win-arm64'">arm64</GalNetMiniaudioArchitecture>
+    <GalNetMiniaudioNativePath Condition="'$(GalNetMiniaudioNativePath)' == '' And '$(GalNetBuildMiniaudio)' == 'true'">$(MSBuildProjectDirectory)/obj/native/$(GalNetMiniaudioRid)/galnet_miniaudio.dll</GalNetMiniaudioNativePath>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" />
+    <ProjectReference Include="../../Shared/GalNet.Core/GalNet.Core.csproj" />
+    <ProjectReference Include="../GalNet.Media.Audio/GalNet.Media.Audio.csproj" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(GalNetMiniaudioNativePath)' != '' And '$(GalNetMiniaudioStaticLink)' != 'true'">
+    <Content Include="$(GalNetMiniaudioNativePath)" Link="$([System.IO.Path]::GetFileName('$(GalNetMiniaudioNativePath)'))" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <Target Name="BuildMiniaudio" BeforeTargets="PrepareForBuild" Condition="'$(GalNetBuildMiniaudio)' == 'true'" Inputs="native/miniaudio.h;native/stb_vorbis.c;native/galnet_miniaudio.c;native/build.ps1" Outputs="$(GalNetMiniaudioNativePath)">
+    <Error Condition="'$(GalNetMiniaudioArchitecture)' == ''" Text="The automatic miniaudio build supports win-x64/win-arm64. Supply GalNetMiniaudioNativePath for other targets." />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)/native/build.ps1&quot; -OutputDirectory &quot;$([System.IO.Path]::GetDirectoryName('$(GalNetMiniaudioNativePath)'))&quot; -Architecture $(GalNetMiniaudioArchitecture)" />
+  </Target>
+</Project>

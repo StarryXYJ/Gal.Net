@@ -151,7 +151,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task BranchInspectorTextAndGraphKeyboardUseTheCorrectEditingTarget()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -326,7 +326,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
 
     private sealed class FaultRepository(IEditorDocumentRepository inner, AuthorFileTransaction transaction) : IEditorDocumentRepository
     {
-        public LoadedEditorProjectDocument Load(string path, string name, GalNet.Core.Settings.ProjectSettings settings) => inner.Load(path, name, settings);
+        public LoadedEditorProjectDocument Load(string path) => inner.Load(path);
         public ProjectSavePlan PrepareSave(string path, EditorGraphDocument document, IReadOnlyDictionary<string, IReadOnlyList<EditorEntryData>> groups) => inner.PrepareSave(path, document, groups);
         public void ApplySave(string path, ProjectSavePlan plan, CancellationToken cancellationToken = default)
         {

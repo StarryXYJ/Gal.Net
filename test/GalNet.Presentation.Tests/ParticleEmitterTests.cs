@@ -1,7 +1,7 @@
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Media;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Rendering.Scene;
 using SkiaSharp;
 using RenderParticleEmitter = GalNet.Rendering.Scene.ParticleEmitter;

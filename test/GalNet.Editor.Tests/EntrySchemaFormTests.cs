@@ -17,6 +17,8 @@ using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Shared.Services;
 using GalNet.Game.Controls.Forms;
 
+[assembly: AvaloniaTestApplication(typeof(GeneralTest.Editor.EditorFormTestApplication))]
+
 namespace GeneralTest.Editor;
 
 [NonParallelizable]
@@ -36,11 +38,11 @@ public sealed class EntrySchemaFormTests
         var second = payloadFirst ? id : payload;
         Assert.That(await first.CommitAsync(new(payloadFirst ? Json("{\"particleTexture\":\"snow\"}") : Json("\"snow\"")), default), Is.Null);
         var incomplete = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
-        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(incomplete.Parameters)),
+        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters, JsonSerializer.SerializeToElement(incomplete.Parameters)),
             Throws.TypeOf<InvalidDataException>());
         Assert.That(await second.CommitAsync(new(payloadFirst ? Json("\"snow\"") : Json("{\"particleTexture\":\"snow\"}")), default), Is.Null);
         var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
-        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters!, JsonSerializer.SerializeToElement(saved.Parameters)), Throws.Nothing);
+        Assert.That(() => PrimitiveArgumentHelper.Normalize(catalog.Get(entry.Type).DynamicParameters, JsonSerializer.SerializeToElement(saved.Parameters)), Throws.Nothing);
     }
 
     [Test]
@@ -87,7 +89,7 @@ public sealed class EntrySchemaFormTests
     [Test]
     public async Task ProjectMetadataPreservesLargeIntegersConvertersAndTypedJsonOnSave()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var options = new JsonSerializerOptions { Converters = { new JsonStringEnumConverter() } };
@@ -119,7 +121,10 @@ public sealed class EntrySchemaFormTests
                 Assert.That(entry.Parameters["count"], Is.EqualTo("9007199254740993"));
                 input.Text = "9007199254740995";
                 Assert.That(await form.Contexts[0].CommitTextAsync(), Is.True);
-                ((CheckBox)form.Editors[2].Control).IsChecked = false;
+                var checkbox = (CheckBox)form.Editors[2].Control;
+                Assert.That(checkbox.VerticalAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center));
+                Assert.That(checkbox.VerticalContentAlignment, Is.EqualTo(Avalonia.Layout.VerticalAlignment.Center));
+                checkbox.IsChecked = false;
                 ((ComboBox)form.Editors[1].Control).SelectedItem = form.Contexts[1].Options.Single(item => item.Value.GetString() == "Friday");
                 var saved = new EditorDocumentRepository(catalog).SerializeEntry(new EditorEntryData
                 { StableId = entry.StableId, Type = entry.Type, Parameters = entry.Source.Parameters });
@@ -136,7 +141,7 @@ public sealed class EntrySchemaFormTests
     [Test]
     public async Task OmittedDefaultAndExplicitNullableNumberStayDistinctAndOldSchemaCannotCommit()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             var table = new DynamicParameterTable([new("count", typeof(int), defaultValue: Json("5")), new("optional", typeof(int?), allowNull: true)]);
@@ -149,7 +154,7 @@ public sealed class EntrySchemaFormTests
             try
             {
                 Assert.That(form.Contexts[0].Value.IsProvided, Is.False);
-                Assert.That(((TextBox)form.Editors[0].Control).Text, Is.EqualTo("5"));
+                Assert.That(NumericControlTestSupport.Input(form.Editors[0].Control).Text, Is.EqualTo("5"));
                 Assert.That(form.Contexts[1].Value.Json!.Value.ValueKind, Is.EqualTo(JsonValueKind.Null));
                 Assert.That(entry.Parameters.ContainsKey("count"), Is.False);
                 form.Contexts[0].Text = "7";

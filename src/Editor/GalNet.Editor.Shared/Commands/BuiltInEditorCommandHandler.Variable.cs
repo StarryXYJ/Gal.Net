@@ -35,7 +35,6 @@ public sealed partial class BuiltInEditorCommandHandler
         if (command.DefaultValue is { } value && !TrySetVariableValue(variable, value, out var message))
             return Error("variable.invalidDefault", message!);
         list.Insert(index, variable);
-        SyncSettingsVariables(document);
         return Success($"Added {command.Scope.ToString().ToLowerInvariant()} variable '{command.Name}'.", "History.Variable.Add", VariableResource(command.Scope, command.Name), command.Name);
     }
 
@@ -46,7 +45,6 @@ public sealed partial class BuiltInEditorCommandHandler
         if (variable is null)
             return NotFound("variable.notFound", "Variable", command.Name, VariableResource(command.Scope, command.Name));
         list.Remove(variable);
-        SyncSettingsVariables(document);
         return Success($"Deleted {command.Scope.ToString().ToLowerInvariant()} variable '{command.Name}'.", "History.Variable.Delete", VariableResource(command.Scope, command.Name), command.Name);
     }
 
@@ -60,7 +58,6 @@ public sealed partial class BuiltInEditorCommandHandler
             return InvalidIndex("variable", command.Index, list.Count);
         list.Remove(variable);
         list.Insert(command.Index, variable);
-        SyncSettingsVariables(document);
         return Success($"Moved variable '{command.Name}' to index {command.Index}.", "History.Variable.Move", VariableResource(command.Scope, command.Name), command.Name, command.Index);
     }
 
@@ -78,7 +75,6 @@ public sealed partial class BuiltInEditorCommandHandler
             ReplaceVariableReferences(document, command.Name, command.NewName);
         variable.Name = command.NewName;
         variable.DefaultValue.Name = command.NewName;
-        SyncSettingsVariables(document);
         return Success($"Renamed variable '{command.Name}' to '{command.NewName}'.", "History.Variable.Rename", VariableResource(command.Scope, command.NewName), command.Name, command.NewName);
     }
 
@@ -88,7 +84,6 @@ public sealed partial class BuiltInEditorCommandHandler
         if (variable is null)
             return NotFound("variable.notFound", "Variable", command.Name, VariableResource(command.Scope, command.Name));
         variable.Type = command.Type;
-        SyncSettingsVariables(document);
         return Success($"Set variable '{command.Name}' type to {command.Type}.", "History.Variable.SetType", VariableResource(command.Scope, command.Name), command.Name, command.Type);
     }
 
@@ -99,7 +94,6 @@ public sealed partial class BuiltInEditorCommandHandler
             return NotFound("variable.notFound", "Variable", command.Name, VariableResource(command.Scope, command.Name));
         if (!TrySetVariableValue(variable, command.Value, out var message))
             return Error("variable.invalidDefault", message!);
-        SyncSettingsVariables(document);
         return Success($"Updated default value for variable '{command.Name}'.", "History.Variable.SetDefault", VariableResource(command.Scope, command.Name), command.Name);
     }
 
@@ -148,12 +142,6 @@ public sealed partial class BuiltInEditorCommandHandler
             foreach (var condition in node.Conditions ?? [])
                 condition.Expression = Regex.Replace(condition.Expression, pattern, newName);
         }
-    }
-
-    private static void SyncSettingsVariables(EditorProjectDocument document)
-    {
-        document.Settings.PlayerVariables = document.Graph.PlayerVariables.Select(item => item.Clone()).ToList();
-        document.Settings.SaveVariables = document.Graph.SaveVariables.Select(item => item.Clone()).ToList();
     }
 
     private static List<ProjectVariableDefinition> Variables(EditorProjectDocument document, VariableScope scope) =>

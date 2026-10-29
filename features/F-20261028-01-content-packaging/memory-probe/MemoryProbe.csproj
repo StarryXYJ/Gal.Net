@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../../src/Editor/GalNet.Editor.Shared/GalNet.Editor.Shared.csproj" />
+    <ProjectReference Include="../../../src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
+  </ItemGroup>
+</Project>

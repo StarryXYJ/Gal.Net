@@ -1,0 +1,15 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.MergedDictionaries>
+    <ResourceInclude Source="avares://GalNet.Editor/Themes/EditorButtons.axaml"/>
+    <ResourceInclude Source="avares://GalNet.Editor/Assets/icons.axaml"/>
+  </ResourceDictionary.MergedDictionaries>
+  <StreamGeometry x:Key="PanelApplyIcon">M3 12L5 10L10 15L19 5L21 7L10 19Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelCancelIcon">M6 4L12 10L18 4L20 6L14 12L20 18L18 20L12 14L6 20L4 18L10 12L4 6Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelNavigateIcon">M4 4H11V6H6V18H18V13H20V20H4Z M13 3H22V12H20V6.5L11 15.5L9.5 14L18.5 5H13Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelImportIcon">M11 2H13V10L16 7L18 9L12 15L6 9L8 7L11 10Z M3 15H5V20H19V15H21V22H3Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelExportIcon">M11 14H13V6L16 9L18 7L12 1L6 7L8 9L11 6Z M3 15H5V20H19V15H21V22H3Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelLanguageIcon">M12 2A10 10 0 1 0 12 22A10 10 0 0 0 12 2Z M11 4.3V8H8.3C8.9 6.1 9.9 4.8 11 4.3Z M13 4.3C14.1 4.8 15.1 6.1 15.7 8H13Z M6.2 6.5C5.7 7 5.3 7.5 5 8H6.2C6.4 7.4 6.6 6.9 6.8 6.3Z M17.2 6.3C17.4 6.9 17.6 7.4 17.8 8H19C18.5 7.3 17.9 6.7 17.2 6.3Z M4.3 10H5.8A17 17 0 0 0 5.8 14H4.3A8 8 0 0 1 4.3 10Z M7.8 10H11V14H7.8A15 15 0 0 1 7.8 10Z M13 10H16.2A15 15 0 0 1 16.2 14H13Z M18.2 10H19.7A8 8 0 0 1 19.7 14H18.2A17 17 0 0 0 18.2 10Z M5 16H6.2C6.4 16.6 6.6 17.1 6.8 17.7C6.1 17.3 5.5 16.7 5 16Z M8.3 16H11V19.7C9.9 19.2 8.9 17.9 8.3 16Z M13 16H15.7C15.1 17.9 14.1 19.2 13 19.7Z M17.8 16H19C18.5 16.7 17.9 17.3 17.2 17.7C17.4 17.1 17.6 16.6 17.8 16Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelMoreIcon">M4 10A2 2 0 1 0 4 14A2 2 0 0 0 4 10Z M12 10A2 2 0 1 0 12 14A2 2 0 0 0 12 10Z M20 10A2 2 0 1 0 20 14A2 2 0 0 0 20 10Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelLeftIcon">M14 4L6 12L14 20L16 18L10 12L16 6Z</StreamGeometry>
+  <StreamGeometry x:Key="PanelRightIcon">M8 4L16 12L8 20L6 18L12 12L6 6Z</StreamGeometry>
+</ResourceDictionary>

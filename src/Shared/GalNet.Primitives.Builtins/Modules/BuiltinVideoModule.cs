@@ -1,5 +1,5 @@
 using GalNet.Contracts.Builtins;
-using GalNet.Core.Scene;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -19,8 +19,8 @@ public sealed class BuiltinVideoModule(IVideoPresenter? presenter = null) : Prim
         registry.Immediate<VideoStopOptions>(BuiltinEntryIds.StopVideo, (context, options) =>
             {
                 var handleId = options.HandleId ?? "";
-                if (context.Runtime.SceneInstances.TryGet<Layer>(handleId, out var layer) && layer.IsVideo)
-                    context.Runtime.SceneInstances.Remove<Layer>(handleId, out _);
+                if (context.Runtime.Scene().TryGet<Layer>(handleId, out var layer) && layer.IsVideo)
+                    context.Runtime.Scene().Remove<Layer>(handleId, out _);
                 presenter?.StopVideo(handleId);
             });
     })

@@ -1,10 +1,10 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Entry;
-using GalNet.Core.Gallery;
 using GalNet.Core.Primitives;
-using GalNet.Core.Scene;
 using GalNet.Core.Variable;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
@@ -15,6 +15,41 @@ namespace GeneralTest.Runtime;
 
 public class BuiltinPrimitiveInstanceTests
 {
+    [TestCase(PrimitiveInvocationMode.Normal)]
+    [TestCase(PrimitiveInvocationMode.Quick)]
+    [TestCase(PrimitiveInvocationMode.CatchUp)]
+    public void Compiled_impact_keeps_terminal_state_clean_during_playback_and_snapshot_restore(PrimitiveInvocationMode mode)
+    {
+        using var view = new GameRegistration().AddBuiltins().BuildView();
+        var runtime = new GameRuntime(null, stateCatalog: view.StateCatalog);
+        runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id, AssetId = "image", Transform = new LayerTransform { X = 37 } });
+        var timeline = GeneralTest.Entry.VisualPresetTests.Compile(BuiltinEntryIds.ImpactPreset,
+            new { playbackHandleId = "impact", program = "shader-id", handleId = "hero" });
+        var primitive = Primitive(BuiltinEntryIds.PlayTimeline, new { timeline });
+        var instance = view.Dispatch(primitive, runtime, CancellationToken.None)!;
+        instance.ApplyPlaybackMode(mode);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(runtime.State.Table<Layer>().Values.Select(layer => layer.Id), Is.EqualTo(new[] { "hero" }));
+        Assert.That(runtime.State.Table<EffectInstance>().Values, Is.Empty);
+        Assert.That(runtime.State.Table<Layer>().Values.Single().Transform.X, Is.EqualTo(37));
+        var restored = GalNet.Core.Runtime.GameState.Restore(view.StateCatalog, runtime.State.Capture());
+        Assert.That(restored.Table<Layer>().Values.Single().Transform.X, Is.EqualTo(37));
+        Assert.That(restored.Table<EffectInstance>().Values, Is.Empty);
+    }
+
+    [TestCase("1 +")]
+    [TestCase("[unknown]")]
+    public void FailedVariableExpressionPreservesExistingValue(string expression)
+    {
+        using var view = new GameRegistration().AddBuiltins().BuildView();
+        var runtime = new GameRuntime(null);
+        runtime.SetVariable("score", 42);
+        var instance = view.Dispatch(Primitive(BuiltinEntryIds.SetVariable,
+            new Dictionary<string, object?> { ["target"] = "score", ["expression"] = expression }), runtime, default);
+        Assert.That(instance.IsCompleted, Is.True);
+        Assert.That(runtime.GetVariable("score")!.AsInt(), Is.EqualTo(42));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public void AnimationStateVersionTwoRoundTripsAnimateAndTimelineAndRejectsVersionOne(bool timeline)
@@ -96,7 +131,7 @@ public class BuiltinPrimitiveInstanceTests
         var presenter = new RecordingAnimationPresenter();
         using var view = new GameRegistration().AddBuiltins(animationPresenter: presenter).BuildView();
         var runtime = BuiltinTestRuntime.Create(null);
-        var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, Opacity = .2f });
+        var layer = runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id, Opacity = .2f });
         var instance = view.Dispatch(Primitive(BuiltinEntryIds.Animate, new
         {
             playbackHandleId = "fade",
@@ -134,7 +169,7 @@ public class BuiltinPrimitiveInstanceTests
         var presenter = new RecordingAnimationPresenter();
         using var view = new GameRegistration().AddBuiltins(animationPresenter: presenter).BuildView();
         var runtime = BuiltinTestRuntime.Create(null);
-        var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id, Opacity = 0 });
+        var layer = runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id, Opacity = 0 });
 
         var instance = view.Dispatch(Primitive(BuiltinEntryIds.Animate, new
         {
@@ -175,7 +210,7 @@ public class BuiltinPrimitiveInstanceTests
         var presenter = new RecordingEffectPresenter();
         using var view = new GameRegistration().AddBuiltins(effectPresenter: presenter).BuildView();
         var runtime = BuiltinTestRuntime.Create(null);
-        var layer = runtime.SceneInstances.GetOrAdd("hero", id => new Layer { Id = id });
+        var layer = runtime.Scene().GetOrAdd("hero", id => new Layer { Id = id });
 
         var apply = view.Dispatch(Primitive(BuiltinEntryIds.ApplyEffect, new
         {
@@ -244,7 +279,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values[0].Definition.MotionModule.GravityY, Is.EqualTo(12));
             Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values[0].Definition.InitialModule.VelocityX, Is.EqualTo(new ParticleFloatRange(-28, -16)));
             Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values[0].Definition.Flipbook?.FramesPerSecond, Is.EqualTo(new ParticleFloatRange(10, 14)));
-            Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.True);
+            Assert.That(runtime.Scene().TryGet<ParticleEmitterInstance>("snow", out _), Is.True);
             Assert.That(presenter.Started.Single().InstanceId, Is.EqualTo("snow"));
             Assert.That(presenter.Started.Single().Z, Is.EqualTo(42));
         });
@@ -279,7 +314,7 @@ public class BuiltinPrimitiveInstanceTests
         Assert.Multiple(() =>
         {
             Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values, Is.Empty);
-            Assert.That(runtime.SceneInstances.TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
+            Assert.That(runtime.Scene().TryGet<ParticleEmitterInstance>("snow", out _), Is.False);
             Assert.That(presenter.Stopped, Is.EqualTo(SnowStopped));
         });
     }
@@ -613,7 +648,7 @@ public class BuiltinPrimitiveInstanceTests
     {
         using var view = new GameRegistration().AddBuiltins().BuildView();
         var runtime = BuiltinTestRuntime.Create(null);
-        runtime.SceneInstances.GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
+        runtime.Scene().GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
         var timeline = new TimelineDefinition
         {
             PlaybackHandleId = "ambient-loop",
@@ -637,7 +672,7 @@ public class BuiltinPrimitiveInstanceTests
         var replayedTimeline = active.Timeline!;
         Assert.Multiple(() =>
         {
-            Assert.That(runtime.SceneInstances.TryGet<Layer>("old", out var old), Is.True);
+            Assert.That(runtime.Scene().TryGet<Layer>("old", out var old), Is.True);
             Assert.That(old.Opacity, Is.EqualTo(0.25f));
             Assert.That(active.Timeline!.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
             Assert.That(replayedTimeline.PlaybackHandleId, Is.EqualTo("ambient-loop"));
@@ -655,7 +690,7 @@ public class BuiltinPrimitiveInstanceTests
             layerPresenter: layers,
             animationPresenter: animation).BuildView();
         var runtime = BuiltinTestRuntime.Create(null);
-        var oldLayer = runtime.SceneInstances.GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
+        var oldLayer = runtime.Scene().GetOrAdd("old", id => new Layer { Id = id, AssetId = "old.png", Opacity = 1 });
         var timeline = new TimelineDefinition
         {
             PlaybackHandleId = "crossfade",
@@ -696,8 +731,8 @@ public class BuiltinPrimitiveInstanceTests
 
         Assert.Multiple(() =>
         {
-            Assert.That(runtime.SceneInstances.TryGet<Layer>("old", out _), Is.False);
-            Assert.That(runtime.SceneInstances.TryGet<Layer>("new", out var newLayer), Is.True);
+            Assert.That(runtime.Scene().TryGet<Layer>("old", out _), Is.False);
+            Assert.That(runtime.Scene().TryGet<Layer>("new", out var newLayer), Is.True);
             Assert.That(newLayer.Opacity, Is.EqualTo(1));
             Assert.That(runtime.State.Table<Layer>().Values.Select(layer => layer.Id), Is.EqualTo(NewLayerIds));
             Assert.That(instance, Is.TypeOf<TimelinePrimitiveInstance>());

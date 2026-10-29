@@ -7,15 +7,27 @@
   <Style Selector="TextBlock.severity.warning"><Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}"/></Style>
  </UserControl.Styles>
  <Grid RowDefinitions="Auto,*" Margin="8" RowSpacing="6">
-  <WrapPanel><Button Content="{loc:Localize Uiux.Validation.Check}" Command="{Binding ValidateCommand}" Margin="0,0,8,0"/><TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="0,0,8,0"/><CheckBox Content="{loc:Localize Log.ErrorsOnly}" IsChecked="{Binding OnlyErrors}"/></WrapPanel>
+  <WrapPanel>
+   <Button Content="{loc:Localize Uiux.Validation.Check}" Command="{Binding ValidateCommand}" Margin="0,0,8,0"/><TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="0,0,8,0"/>
+   <CheckBox VerticalAlignment="Center" Content="{loc:Localize Log.ErrorsOnly}" IsChecked="{Binding OnlyErrors}"/>
+  </WrapPanel>
   <ListBox Grid.Row="1" ItemsSource="{Binding VisibleProblems}">
    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AuthorProblem">
-    <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+    <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
      <TextBlock Text="{loc:Localize SeverityKey}" Classes="severity" Classes.error="{Binding IsError}" Classes.warning="{Binding IsWarning}"/>
-     <Button Grid.Column="1" Command="{Binding #Root.DataContext.NavigateCommand}" CommandParameter="{Binding}" HorizontalContentAlignment="Left" Background="Transparent">
-      <StackPanel><TextBlock Text="{Binding Message}" TextWrapping="Wrap"/><TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}"/></StackPanel>
-     </Button>
-     <Button Grid.Column="2" Content="{loc:Localize Files.CancelDraft}" Command="{Binding #Root.DataContext.DiscardCommand}" CommandParameter="{Binding}" IsVisible="{Binding HasDiscard}"/>
+     <StackPanel Grid.Column="1" Spacing="4">
+      <Button Command="{Binding #Root.DataContext.NavigateCommand}" CommandParameter="{Binding}" IsVisible="{Binding CanNavigate}" ToolTip.Tip="{Binding NavigationHint}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="Transparent">
+       <StackPanel Spacing="4" HorizontalAlignment="Stretch"><TextBlock Text="{Binding Message}" TextWrapping="Wrap" TextAlignment="Left"/><TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" TextAlignment="Left"/></StackPanel>
+      </Button>
+      <TextBlock Text="{Binding Message}" TextWrapping="Wrap" IsVisible="{Binding !CanNavigate}" ToolTip.Tip="{Binding NavigationHint}"/>
+      <TextBlock Text="{Binding Source}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" IsVisible="{Binding !CanNavigate}"/>
+      <Expander Header="{loc:Localize Problem.Details}" IsVisible="{Binding HasDetails}"><SelectableTextBlock Text="{Binding Details}" TextWrapping="Wrap"/></Expander>
+     </StackPanel>
+     <StackPanel Grid.Column="2" Spacing="4">
+      <Button Content="{loc:Localize Uiux.Draft.Restore}" Command="{Binding #Root.DataContext.RestoreCommand}" CommandParameter="{Binding}" IsVisible="{Binding HasRestore}"/>
+      <Button Content="{loc:Localize Files.CancelDraft}" Command="{Binding #Root.DataContext.DiscardCommand}" CommandParameter="{Binding}" IsVisible="{Binding HasDiscard}"/>
+     </StackPanel>
+     <TextBox Grid.Row="1" Grid.ColumnSpan="3" Text="{Binding InputText, Mode=OneWay}" IsReadOnly="True" IsVisible="{Binding HasInputText}" AcceptsReturn="True" MaxHeight="120" TextWrapping="Wrap"/>
     </Grid>
    </DataTemplate></ListBox.ItemTemplate>
   </ListBox>

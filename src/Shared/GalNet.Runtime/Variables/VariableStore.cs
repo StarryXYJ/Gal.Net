@@ -17,8 +17,8 @@ public sealed class VariableStore
         _onVariableChanged = onVariableChanged;
     }
 
-    public IReadOnlyDictionary<string, Variable> PlayerSnapshot => _playerVariables;
-    public IReadOnlyDictionary<string, Variable> SaveSnapshot => _saveVariables;
+    public IReadOnlyDictionary<string, Variable> PlayerSnapshot => GetSnapshot(VariableScope.Player);
+    public IReadOnlyDictionary<string, Variable> SaveSnapshot => GetSnapshot(VariableScope.Save);
 
     public void Set(string name, object value)
     {
@@ -49,12 +49,14 @@ public sealed class VariableStore
     public bool TryGet(string name, out Variable variable)
     {
         var normalized = NormalizeName(name);
-        return _playerVariables.TryGetValue(normalized, out variable!)
-            || _saveVariables.TryGetValue(normalized, out variable!);
+        var found = _playerVariables.TryGetValue(normalized, out var current) || _saveVariables.TryGetValue(normalized, out current);
+        variable = found ? current!.Clone() : null!;
+        return found;
     }
 
     public IReadOnlyDictionary<string, Variable> GetSnapshot(VariableScope scope) =>
-        scope == VariableScope.Player ? _playerVariables : _saveVariables;
+        (scope == VariableScope.Player ? _playerVariables : _saveVariables)
+            .ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
 
     public void RestorePlayerFrom(IReadOnlyDictionary<string, Variable> snapshot)
     {

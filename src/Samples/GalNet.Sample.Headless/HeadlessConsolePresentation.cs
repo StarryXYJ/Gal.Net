@@ -1,5 +1,5 @@
-using GalNet.Core.Scene;
-using GalNet.Core.Settings;
+using GalNet.Contracts.Builtins.Scene;
+using GalNet.Core.Execution;
 using GalNet.Core.Text;
 using GalNet.Presentation.Abstractions.View;
 
@@ -8,13 +8,15 @@ namespace GalNet.Sample.Headless;
 /// <summary>Basic interactive console adapters used by the official sample player.</summary>
 internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IEffectPresenter
 {
-    private readonly GameSettings _settings;
+    private readonly float _textSpeed;
     private volatile bool _skipCurrentTypewriter;
     private volatile bool _instantTypewriter;
     private int _advancePromptActive;
 
-    public ConsolePresentation(GameSettings settings) => _settings = settings;
+    public ConsolePresentation(float textSpeed = 30f) => _textSpeed = textSpeed;
 
+    private readonly TaskCompletionSource<Exception> _inputFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    public Task<Exception> InputFailure => _inputFailure.Task;
     public event Action? AdvanceRequested;
 
     public void ShowLayer(LayerRenderRequest request) =>
@@ -81,8 +83,8 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
                         {
                             ct.ThrowIfCancellationRequested();
                             Console.Write(character);
-                            if (!_skipCurrentTypewriter && !_instantTypewriter && _settings.TextSpeed > 0)
-                                await Task.Delay(TimeSpan.FromSeconds(1d / _settings.TextSpeed), ct);
+                            if (!_skipCurrentTypewriter && !_instantTypewriter && _textSpeed > 0)
+                                await Task.Delay(TimeSpan.FromSeconds(1d / _textSpeed), ct);
                         }
                         break;
                     case RichTypewriterTokenKind.LineBreak:
@@ -117,7 +119,7 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         while (true)
         {
             Console.Write("  Select: ");
-            var input = await Task.Run(Console.ReadLine, ct);
+            var input = await Task.Run(Console.ReadLine).WaitAsync(ct);
             if (input is null)
                 throw new EndOfStreamException("Console input closed while waiting for a choice.");
             if (int.TryParse(input, out var selected) && selected >= 1 && selected <= options.Length) return selected - 1;
@@ -158,11 +160,12 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         try
         {
             Console.Write("  >> ");
-            if (await Task.Run(Console.ReadLine, cancellationToken) is null)
+            if (await Task.Run(Console.ReadLine).WaitAsync(cancellationToken) is null)
                 throw new EndOfStreamException("Console input closed while waiting to advance.");
             AdvanceRequested?.Invoke();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception error) { _inputFailure.TrySetResult(error); }
         finally
         {
             Interlocked.Exchange(ref _advancePromptActive, 0);

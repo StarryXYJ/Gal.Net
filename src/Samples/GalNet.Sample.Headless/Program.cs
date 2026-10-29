@@ -1,17 +1,22 @@
+using System.Globalization;
 using GalNet.Assets;
 using GalNet.Assets.Variants;
+using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
-using GalNet.Core.Settings;
 using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
+using GalNet.Runtime.Engine;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Runtime;
 using GalNet.Runtime.Variables;
 using GalNet.Sample.Headless;
-using GalNet.Sample.Localization;
 using GalNet.Storage.FileSystem;
+
+if (args.Contains("--aot-self-test"))
+    return await GalNet.Sample.Headless.Acceptance.AotAcceptance.RunAsync(args);
 
 if (!HeadlessOptions.TryParse(args, out var options, out var error))
 {
@@ -25,38 +30,41 @@ try
     var installation = await GameInstallation.OpenAsync(options!.GameDirectory);
     var resourceTypes = BuiltinResourceTypes.CreateCatalog();
     var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
-    var content = await installation.CreateContentProvider(resourceTypes, galleryTypes).LoadAsync();
+    var content = await installation.CreateContentProvider(resourceTypes, galleryTypes, new()
+    {
+        Configurations = GalNet.Project.Contracts.ProjectSchemas.Configurations,
+        SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
+    }).LoadAsync();
     using var assets = new AssetManager(installation.CreateAssetProviders(resourceTypes));
     assets.RegisterImageVariantsDecoder();
     var imageVariants = await assets.LoadImageVariantsCatalogAsync();
     foreach (var diagnostic in content.Localization.Diagnostics)
         Console.Error.WriteLine($"Skipped localization source '{diagnostic.RelativePath}': {diagnostic.Message}");
-    var textResolver = new GameLocalizationProvider(content, () => content.Settings.TargetLocale.ToCultureInfo());
-    var settings = new SettingsContainer();
-    settings.Set(content.Settings);
-    settings.Set(new GameSettings());
+    var culture = CultureInfo.GetCultureInfo(content.Localization.DefaultCulture);
+    var textResolver = content.Localization.CreateResolver(() => culture);
 
-    var saves = new FileSaveService(options.ProfileDirectory);
-    var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(options.ProfileDirectory));
-    variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(content.Gallery));
-    await using var progress = new FileGameProgressService(options.ProfileDirectory);
+    using var player = await FilePlayerSession.OpenAsync(options.ProfileDirectory, content.Gallery,
+        content.Configuration.ReadDefaultOptions().SaveSlotCount);
+    var variables = player.Variables;
+    var progress = player.Progress;
 
-    var presentation = new ConsolePresentation(settings.Get<GameSettings>());
+    var presentation = new ConsolePresentation();
     using var registration = new GameRegistration();
     registration.UseCatalog(GalNet.Project.Contracts.ProjectSchemas.CreateCatalog());
     await using var view = registration.AddBuiltinImplementations(registration.BuildCatalog(),
         presentation, presentation, presentation, presentation, content.Gallery, nvlPresenter: presentation,
-        characters: content.Localization.Characters, imageVariants: imageVariants).BuildView();
+        characters: content.Localization.Characters, imageVariants: imageVariants, audioConfiguration: new GalNet.Contracts.Builtins.Audio.AudioConfiguration(content.Configuration.ReadDefaultOptions().AudioTracks, content.Configuration.ReadDefaultOptions().AudioBuses)).BuildView();
     view.RequireInstructions(content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>().SelectMany(group => group.Entries).Select(entry => entry.Type));
 
-    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, settings, variables);
+    var runtime = new GameRuntime(textResolver, content.Graph.RootNodeId, variables,
+        saveDefaults: content.Graph.SaveVariables, playerDefaults: content.Graph.PlayerVariables);
     await using var run = new GameRun(content.Graph, runtime, view, progress, presentation);
     var engine = run.Engine;
 
     GalNet.Core.Runtime.GameSnapshot? initialSnapshot = null;
     if (options.LoadSlot is { } loadSlot)
     {
-        var snapshot = await saves.LoadAsync(loadSlot)
+        var snapshot = await player.LoadAsync(loadSlot, CancellationToken.None)
             ?? throw new InvalidOperationException($"Save slot {loadSlot} is empty or invalid.");
         initialSnapshot = snapshot;
         Console.WriteLine($"[Save] loaded slot {loadSlot}");
@@ -65,8 +73,13 @@ try
     Task latestCheckpointSave = Task.CompletedTask;
     if (options.SaveSlot is { } saveSlot)
     {
-        if (saveSlot >= saves.MaxSlots) throw new InvalidDataException($"Save slot must be below {saves.MaxSlots}.");
-        engine.CheckpointCreated += snapshot => latestCheckpointSave = saves.SaveAsync(saveSlot, new SaveRequest { Snapshot = snapshot });
+        if (saveSlot >= content.Configuration.ReadDefaultOptions().SaveSlotCount) throw new InvalidDataException($"Save slot must be below {content.Configuration.ReadDefaultOptions().SaveSlotCount}.");
+        engine.CheckpointCreated += snapshot => latestCheckpointSave = SaveCheckpointAsync(latestCheckpointSave, snapshot);
+        async Task SaveCheckpointAsync(Task previous, GalNet.Core.Runtime.GameSnapshot snapshot)
+        {
+            await previous;
+            await player.SaveAsync(saveSlot, snapshot, CancellationToken.None);
+        }
     }
 
     var advanceFailure = new TaskCompletionSource<Exception>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -79,21 +92,29 @@ try
         catch (Exception exception) { advanceFailure.TrySetResult(exception); }
     }
 
-    await run.PrepareAsync(initialSnapshot);
-    await run.StartPreparedAsync();
-    while (engine.IsRunning)
+    var terminal = new TaskCompletionSource<GameEngineStateChange>(TaskCreationOptions.RunContinuationsAsynchronously);
+    engine.StateChanged += change =>
     {
-        var completed = await Task.WhenAny(Task.Delay(25), advanceFailure.Task);
-        if (completed == advanceFailure.Task)
-            throw await advanceFailure.Task;
+        if (change.State is GameEngineState.Completed or GameEngineState.Faulted or GameEngineState.Stopped)
+            terminal.TrySetResult(change);
+    };
+    try
+    {
+        await run.PrepareAsync(initialSnapshot);
+        await run.StartPreparedAsync();
+        var completed = await Task.WhenAny(terminal.Task, presentation.InputFailure, advanceFailure.Task);
+        if (completed == presentation.InputFailure) throw await presentation.InputFailure;
+        if (completed == advanceFailure.Task) throw await advanceFailure.Task;
+        var state = await terminal.Task;
+        if (state.Error is { } failure) throw failure;
+        if (state.State == GameEngineState.Stopped) throw new OperationCanceledException();
     }
-    await latestAdvance;
-    await latestCheckpointSave;
+    finally { await Task.WhenAll(latestAdvance, latestCheckpointSave); }
 
     if (options.SaveSlot is { } finalSaveSlot)
     {
         await progress.FlushAsync();
-        await saves.SaveAsync(finalSaveSlot, new SaveRequest { Snapshot = engine.CreateSaveData() });
+        await player.SaveAsync(finalSaveSlot, engine.CreateSaveData(), CancellationToken.None);
         Console.WriteLine($"[Save] wrote slot {finalSaveSlot}");
     }
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Services;
 
 namespace GalNet.Editor.History;
@@ -56,6 +57,7 @@ public interface IUndoRedoTarget
 
 public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L * 1024 * 1024) : IUndoRedoHistory, IDisposable
 {
+    public AuthorChangeJournal AuthorChanges { get; } = new();
     private readonly List<IAsyncUndoableEdit> _edits = [];
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly AsyncLocal<bool> _executing = new();
@@ -82,7 +84,7 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
 
     public void Execute(IUndoableEdit edit)
     {
-        RunSync(() => { edit.Redo(); Append(new SyncEdit(edit)); });
+        RunSync(() => { edit.Redo(); Append(new SyncEdit(edit)); }, AuthorChangeCause.Execute, KnownScope(edit));
     }
 
     public void BindContent(Func<bool> dirty, Func<bool> repair)
@@ -117,24 +119,42 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
     public void Undo()
     {
         if (!CanUndo) return;
-        RunSync(() => { RequireSync(_edits[_position - 1]).Undo(); _position--; });
+        RunSync(() => { RequireSync(_edits[_position - 1]).Undo(); _position--; }, AuthorChangeCause.Undo, KnownScope(_edits[_position - 1]));
     }
 
     public void Redo()
     {
         if (!CanRedo) return;
-        RunSync(() => { RequireSync(_edits[_position]).Redo(); _position++; });
+        RunSync(() => { RequireSync(_edits[_position]).Redo(); _position++; }, AuthorChangeCause.Redo, KnownScope(_edits[_position]));
     }
 
     private static IUndoableEdit RequireSync(IAsyncUndoableEdit edit) => edit is SyncEdit sync
         ? sync.Edit : throw new InvalidOperationException("Use the asynchronous history API for this edit.");
 
-    private void RunSync(Action operation)
+    internal static bool KnownScope(object edit) => edit is IAuthorScopedEdit { HasKnownAuthorScope: true };
+
+    private void RunSync(Action operation, AuthorChangeCause cause, bool knownScope)
     {
         if (!_gate.Wait(0)) throw new InvalidOperationException("An edit is already executing.");
-        try { EnsureWritable(); IsBusy = true; operation(); }
+        AuthorChangeSet? committed = null;
+        try
+        {
+            EnsureWritable(); _executing.Value = true; IsBusy = true; AuthorChanges.Begin();
+            operation(); committed = AuthorChanges.Complete(cause, knownScope);
+        }
         catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
-        finally { IsBusy = false; _gate.Release(); NotifyChanged(); }
+        finally
+        {
+            try { AuthorChanges.Cancel(); }
+            catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
+            finally
+            {
+                IsBusy = false;
+                // Publish with the new history cursor, while reentrant edits are still excluded.
+                if (committed is not null) AuthorChanges.Publish(committed);
+                _executing.Value = false; _gate.Release(); NotifyChanged();
+            }
+        }
     }
 
     private void EnsureWritable()
@@ -148,42 +168,59 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
     {
         await edit.RedoAsync();
         Append(edit);
-    });
+        return true;
+    }, AuthorChangeCause.Execute, () => KnownScope(edit));
 
     public Task ExecuteAsync(IUndoableEdit edit) => ExecuteAsync(new SyncEdit(edit));
 
     public Task UndoAsync() => RunAsync(async () =>
     {
-        if (_position == 0) return;
+        if (_position == 0) return false;
         await _edits[_position - 1].UndoAsync();
         _position--;
-    });
+        return true;
+    }, AuthorChangeCause.Undo, () => _position > 0 && KnownScope(_edits[_position - 1]));
 
     public Task RedoAsync() => RunAsync(async () =>
     {
-        if (_position == _edits.Count) return;
+        if (_position == _edits.Count) return false;
         await _edits[_position].RedoAsync();
         _position++;
-    });
+        return true;
+    }, AuthorChangeCause.Redo, () => _position < _edits.Count && KnownScope(_edits[_position]));
 
-    private async Task RunAsync(Func<Task> operation)
+    private async Task RunAsync(Func<Task<bool>> operation, AuthorChangeCause cause, Func<bool> scope)
     {
         if (_executing.Value) throw new InvalidOperationException("History operations cannot reenter history.");
         await _gate.WaitAsync();
+        AuthorChangeSet? committed = null;
         try
         {
             EnsureWritable();
             _executing.Value = true;
             IsBusy = true;
+            AuthorChanges.Begin();
+            var knownScope = scope();
             NotifyChanged();
-            await operation();
+            if (await operation()) committed = AuthorChanges.Complete(cause, knownScope);
         }
         catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
-        finally { _executing.Value = false; IsBusy = false; _gate.Release(); NotifyChanged(); }
+        finally
+        {
+            try { AuthorChanges.Cancel(); }
+            catch (HistoryRepairRequiredException) { RepairRequired = true; throw; }
+            finally
+            {
+                IsBusy = false;
+                if (committed is not null) AuthorChanges.Publish(committed);
+                _executing.Value = false; _gate.Release(); NotifyChanged();
+            }
+        }
     }
 
-    private sealed record SyncEdit(IUndoableEdit Edit) : IAsyncUndoableEdit, IDisposable
+    private sealed record SyncEdit(IUndoableEdit Edit) : IAsyncUndoableEdit, IDisposable, IAuthorScopedEdit
     {
+        public bool HasKnownAuthorScope => KnownScope(Edit);
         public string Description => Edit.Description;
         public EditorText DisplayText => Edit.DisplayText;
         public long RetainedBytes => Edit.RetainedBytes;
@@ -231,7 +268,7 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
 
     public void Clear()
     {
-        if (IsBusy) throw new InvalidOperationException("Cannot clear executing history.");
+        if (IsBusy || _executing.Value) throw new InvalidOperationException("Cannot clear executing history.");
         foreach (var edit in _edits) Release(edit);
         _edits.Clear();
         _position = 0;
@@ -264,8 +301,9 @@ public sealed class UndoRedoHistory(int capacity = 200, long byteBudget = 1024L 
 
 public sealed class HistoryRepairRequiredException(string message, Exception innerException) : Exception(message, innerException);
 
-public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncUndoableEdit> edits, EditorText? display = null) : IAsyncUndoableEdit, IDisposable
+public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncUndoableEdit> edits, EditorText? display = null) : IAsyncUndoableEdit, IDisposable, IAuthorScopedEdit
 {
+    public bool HasKnownAuthorScope => edits.All(UndoRedoHistory.KnownScope);
     public string Description { get; } = description;
     public EditorText DisplayText => display ?? EditorText.History(Description);
     public long RetainedBytes => edits.Sum(edit => edit.RetainedBytes);
@@ -303,8 +341,9 @@ public sealed class AsyncCompositeEdit(string description, IReadOnlyList<IAsyncU
     }
 }
 
-public sealed class AsyncEditAdapter(IUndoableEdit edit) : IAsyncUndoableEdit
+public sealed class AsyncEditAdapter(IUndoableEdit edit) : IAsyncUndoableEdit, IAuthorScopedEdit
 {
+    public bool HasKnownAuthorScope => UndoRedoHistory.KnownScope(edit);
     public string Description => edit.Description;
     public EditorText DisplayText => edit.DisplayText;
     public long RetainedBytes => edit.RetainedBytes;
@@ -347,8 +386,9 @@ public sealed class CollectionMoveEdit<T>(string description, ObservableCollecti
     public void Redo() => collection.Move(before, after);
 }
 
-public sealed class CompositeEdit(string description, IReadOnlyList<IUndoableEdit> edits) : IUndoableEdit, IDisposable
+public sealed class CompositeEdit(string description, IReadOnlyList<IUndoableEdit> edits) : IUndoableEdit, IDisposable, IAuthorScopedEdit
 {
+    public bool HasKnownAuthorScope => edits.All(UndoRedoHistory.KnownScope);
     public string Description { get; } = description;
     public long RetainedBytes => edits.Sum(edit => edit.RetainedBytes);
     public void Dispose()

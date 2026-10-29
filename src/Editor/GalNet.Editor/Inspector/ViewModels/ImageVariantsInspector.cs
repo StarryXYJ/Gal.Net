@@ -7,8 +7,8 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Assets.Variants;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
-using GalNet.Core.Variants;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
@@ -16,11 +16,11 @@ using GalNet.Editor.Shared.Services;
 
 namespace GalNet.Editor.Inspector.ViewModels;
 
-public sealed partial class VariantDimensionRow(Action changed) : ObservableObject
+public sealed partial class VariantDimensionRow(string key, Action changed) : ObservableObject
 {
-    [ObservableProperty] private string _key = "";
+    public string Key { get; } = key;
+    [ObservableProperty] private string _heading = "";
     [ObservableProperty] private string _label = "";
-    partial void OnKeyChanged(string value) => changed();
     partial void OnLabelChanged(string value) => changed();
 }
 
@@ -48,9 +48,9 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
     private IReadOnlyList<string> _protected = [];
     private bool _refreshing, _disposed;
     private int _generation, _imageGeneration;
-    private string? _originalKeys;
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
     public ProjectTextBuffer Buffer { get; }
+    public Task ConfigurationSaving { get; private set; } = Task.CompletedTask;
     public Task PreviewLoading { get; private set; } = Task.CompletedTask;
     public ObservableCollection<VariantDimensionRow> Dimensions { get; } = [];
     public ObservableCollection<VariantPreviewRow> PreviewRows { get; } = [];
@@ -60,7 +60,6 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
     [ObservableProperty] private string _default = "";
     [ObservableProperty] private IReadOnlyList<string> _variantKeys = [];
     [ObservableProperty] private string _diagnostics = "";
-    [ObservableProperty] private string _impact = "";
     [ObservableProperty] private string _requested = "";
     [ObservableProperty] private string _actual = "";
     [ObservableProperty] private string _fallback = "";
@@ -75,12 +74,23 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
     private bool Current => !_disposed && _projects.Current?.RootPath == _root && !Buffer.IsReadOnly;
     partial void OnFolderChanged(string value) { if (!_refreshing && CanConfigure) { _source!.Folder = value; Write(); } }
     partial void OnDefaultChanged(string value) { OnPropertyChanged(nameof(DefaultChoice)); if (!_refreshing && CanConfigure && value is not null) { _source!.Default = value; Write(); } }
-    partial void OnVariantKeysChanged(IReadOnlyList<string> value) => OnPropertyChanged(nameof(DefaultChoice));
-    private void Write() { if (Current && _source is not null) Buffer.Text = JsonSerializer.Serialize(_source, Json); }
+    partial void OnVariantKeysChanged(IReadOnlyList<string> value) { OnPropertyChanged(nameof(DefaultChoice)); }
+    private void Write()
+    {
+        if (!Current || _source is null) return;
+        Buffer.Text = JsonSerializer.Serialize(_source, Json);
+        ConfigurationSaving = CommitConfigurationAsync(ConfigurationSaving);
+    }
+    private async Task CommitConfigurationAsync(Task previous)
+    {
+        await previous;
+        if (!Current) return;
+        try { await Buffer.CommitAsync(); }
+        catch (Exception error) { if (Current) Diagnostics = error.Message; }
+    }
     private void BufferChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName is nameof(ProjectTextBuffer.Text) or nameof(ProjectTextBuffer.Path) or nameof(ProjectTextBuffer.IsReadOnly)) Refresh(); }
     private void ResourcesChanged() => Dispatcher.UIThread.Post(() => { if (Current) Refresh(); });
     private void LocaleChanged(object? sender, PropertyChangedEventArgs args) { if (args.PropertyName == "Item[]" && Current) Refresh(); }
-    [RelayCommand]
     public void Refresh()
     {
         if (!Current) { OnPropertyChanged(nameof(CanConfigure)); return; }
@@ -98,19 +108,36 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
                 Diagnostics = string.Join("\n", _snapshot.Build.Diagnostics.Select(item => $"{item.Path} [{item.Code}]: {item.Message}"));
                 Dimensions.Clear(); _source = null; return;
             }
-            var dimensions = _source.Dimensions ?? _snapshot.Build.Definition?.Dimensions.Select(item => new ImageVariantDimensionSource { Key = item.Key, Label = item.Label }).ToList() ?? [];
-            while (Dimensions.Count > dimensions.Count) Dimensions.RemoveAt(Dimensions.Count - 1);
-            while (Dimensions.Count < dimensions.Count) Dimensions.Add(new(DimensionsChanged));
-            for (var i = 0; i < dimensions.Count; i++) { Dimensions[i].Key = dimensions[i].Key; Dimensions[i].Label = dimensions[i].Label ?? ""; }
-            var keys = string.Join("\n", dimensions.Select(item => item.Key)); _originalKeys ??= keys;
-            Impact = keys == _originalKeys ? "" : _text["Variants.IdentityWarning"];
+            // Even a missing default must leave the default picker and names editable.
+            var definitionForNames = _snapshot.Build.Definition ?? ImageVariantsBuilder.Build(new ImageVariantsSource
+            {
+                Folder = _source.Folder,
+                Default = VariantKeys.FirstOrDefault() ?? "",
+                Dimensions = _source.Dimensions
+            }, _snapshot.Files).Definition;
+            var dimensions = definitionForNames?.Dimensions ?? [];
+            if (!Dimensions.Select(row => row.Key).SequenceEqual(dimensions.Select(item => item.Key)))
+            {
+                Dimensions.Clear();
+                foreach (var item in dimensions) Dimensions.Add(new(item.Key, DimensionsChanged));
+            }
+            for (var i = 0; i < dimensions.Count; i++)
+            {
+                Dimensions[i].Heading = _text.Format("Variants.Dimension", i + 1);
+                Dimensions[i].Label = ConfiguredLabel(i) ?? "";
+            }
             Diagnostics = string.Join("\n", _snapshot.Build.Diagnostics.Select(item => $"{item.Path} [{item.Code}]: {item.Message}"));
             if (_snapshot.Build.Definition is { } definition)
             {
                 _selection = _request is null ? ImageVariantsResolver.Initialize(definition) : ImageVariantsResolver.Resolve(definition, _request, _protected);
                 _request = _selection.Request;
-                foreach (var dimension in definition.Dimensions)
-                    PreviewRows.Add(new(dimension.Key, dimension.Label ?? dimension.Key, dimension.Options, _request.GetValueOrDefault(dimension.Key), (key, value) => { if (generation == _generation && Current) Select(key, value); }));
+                for (var i = 0; i < definition.Dimensions.Count; i++)
+                {
+                    var dimension = definition.Dimensions[i];
+                    var label = ConfiguredLabel(i);
+                    PreviewRows.Add(new(dimension.Key, string.IsNullOrWhiteSpace(label) ? _text.Format("Variants.Dimension", i + 1) : label,
+                        dimension.Options, _request.GetValueOrDefault(dimension.Key), (key, value) => { if (generation == _generation && Current) Select(key, value); }));
+                }
                 ShowResult();
             }
         }
@@ -118,15 +145,36 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
         { Diagnostics = error.Message; }
         finally { _refreshing = false; OnPropertyChanged(nameof(CanConfigure)); }
     }
+    private string? ConfiguredLabel(int position) => _source?.Dimensions is { } names && position < names.Count ? names[position]?.Label : null;
     private void DimensionsChanged()
     {
         if (_refreshing || !CanConfigure) return;
-        _source!.Dimensions = Dimensions.Select(row => new ImageVariantDimensionSource { Key = row.Key, Label = row.Label }).ToList(); Write();
+        // Preserve dormant position names so temporarily removing the longest file is reversible.
+        _source!.Dimensions = Dimensions.Select(row => new ImageVariantDimensionSource { Key = row.Key, Label = string.IsNullOrWhiteSpace(row.Label) ? null : row.Label })
+            .Concat(_source.Dimensions?.Skip(Dimensions.Count) ?? []).ToList();
+        Write();
     }
-    [RelayCommand] private void AddDimension() { if (!CanConfigure) return; var index = 1; while (Dimensions.Any(row => row.Key == "d" + index)) index++; _refreshing = true; Dimensions.Add(new(DimensionsChanged) { Key = "d" + index }); _refreshing = false; DimensionsChanged(); }
-    [RelayCommand] private void RemoveDimension(VariantDimensionRow row) { if (CanConfigure && Dimensions.Remove(row)) DimensionsChanged(); }
-    [RelayCommand] private void MoveUp(VariantDimensionRow row) { var index = Dimensions.IndexOf(row); if (CanConfigure && index > 0) { Dimensions.Move(index, index - 1); DimensionsChanged(); } }
-    [RelayCommand] private void InferDimensions() { if (CanConfigure) { _source!.Dimensions = null; Write(); } }
+    [RelayCommand]
+    private async Task BrowseFolderAsync()
+    {
+        if (!CanConfigure || _projects.Current?.Services.GetService(typeof(IFileDialogService)) is not IFileDialogService dialogs) return;
+        var generation = _generation;
+        var selected = await dialogs.OpenFolderPickerAsync(_text["Variants.Folder"]);
+        if (!Current || generation != _generation || string.IsNullOrWhiteSpace(selected)) return;
+        try
+        {
+            var reader = new ProjectRawReader(_root);
+            var relative = reader.Relative(selected);
+            if (relative != "Assets" && !relative.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Image folder must be inside Assets.");
+            _ = reader.Resolve(relative);
+            var folder = Path.GetRelativePath(Path.GetDirectoryName(Path.Combine(_root, Buffer.Path))!, selected).Replace('\\', '/');
+            if (folder == Folder) Refresh(); else Folder = folder;
+            await ConfigurationSaving;
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or ArgumentException or UnauthorizedAccessException)
+        { if (Current) Diagnostics = error.Message; }
+    }
     [RelayCommand] private void ResetPreview() { if (Current) { _request = null; _protected = []; Refresh(); } }
     public void Select(string key, string value)
     {
@@ -134,13 +182,14 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
         try { _selection = ImageVariantsResolver.Select(definition, _request, key, value); _request = _selection.Request; _protected = _selection.ProtectedDimensions; ShowResult(); }
         catch (ArgumentException error) { Diagnostics = error.Message; }
     }
+    private string DisplayDimension(string key) => PreviewRows.FirstOrDefault(row => row.Key == key)?.Label ?? key;
     private void ShowResult()
     {
         if (_selection is not { } result) return;
         var previous = Preview; Preview = null; previous?.Dispose();
-        Requested = string.Join(" · ", result.Request.Select(pair => pair.Key + "=" + pair.Value));
+        Requested = string.Join(" · ", result.Request.Select(pair => DisplayDimension(pair.Key) + "=" + pair.Value));
         Actual = result.Variant.Key + " · " + _text["Variants.Reason." + result.Reason];
-        Fallback = string.Join("\n", result.Candidates.Select(item => string.Join(" · ", item.Selection.Select(pair => pair.Key + "=" + pair.Value)) + " → " + (item.Match?.Key ?? "∅")));
+        Fallback = string.Join("\n", result.Candidates.Select(item => string.Join(" · ", item.Selection.Select(pair => DisplayDimension(pair.Key) + "=" + pair.Value)) + " → " + (item.Match?.Key ?? "∅")));
         if (_snapshot!.ImagePaths.TryGetValue(result.Variant.AssetId, out var path)) PreviewLoading = LoadPreviewAsync(path, ++_imageGeneration);
     }
     private async Task LoadPreviewAsync(string path, int generation)
@@ -155,7 +204,6 @@ public sealed partial class ImageVariantsInspector : ObservableObject, IDisposab
         catch (Exception error) when (error is IOException or ArgumentException or InvalidDataException or UnauthorizedAccessException)
         { if (Current && generation == _imageGeneration) Diagnostics = error.Message; }
     }
-    [RelayCommand] private async Task ApplyAsync() { if (!Current) return; try { await Buffer.CommitAsync(); Refresh(); } catch (Exception error) { Diagnostics = error.Message; } }
     public void Dispose()
     {
         if (_disposed) return; _disposed = true; _generation++; _imageGeneration++;

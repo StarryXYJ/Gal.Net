@@ -13,6 +13,7 @@ public interface IEditorDocumentService
     event Action? DocumentChanged;
 
     void Load(LoadedEditorProjectDocument loadedDocument);
+    void Reload(LoadedEditorProjectDocument loadedDocument) => throw new NotSupportedException();
     void Unload();
     void SynchronizeGroups();
     EditorGroupDocument GetOrCreateGroup(string groupId, string relativePath);

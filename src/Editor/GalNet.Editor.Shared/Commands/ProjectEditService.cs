@@ -8,7 +8,7 @@ using GalNet.Editor.Shared.Services;
 namespace GalNet.Editor.Shared.Commands;
 
 /// <summary>Shared disk-operation boundary. CLI parsing and editor presentation stay outside it.</summary>
-public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog)
+public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog, GalNet.Core.Configuration.ProjectConfigurationSchema? configurations = null)
 {
     public Task<ToolResult> ExecuteGroupAsync(IProjectEditCommand command, bool dryRun = false, CancellationToken cancellationToken = default)
     {
@@ -37,13 +37,13 @@ public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog
         try
         {
             if (commands.Count == 0) throw new ArgumentException("At least one command is required.");
-            var persistence = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(catalog));
+            var persistence = new DirectProjectPersistence(projectPath, new EditorDocumentRepository(catalog), configurations);
             var document = persistence.Load();
             var reader = new ProjectRawReader(projectPath);
             var pathComparer = OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal;
             var ownedFiles = document.Graph.Nodes.Where(node => node.Type == "Group")
                 .Select(node => reader.Relative(reader.Resolve("Graph/" + node.File))).Append("Graph/graph.json").ToHashSet(pathComparer);
-            var handler = new BuiltInEditorCommandHandler(catalog);
+            var handler = new BuiltInEditorCommandHandler(catalog, configurations);
             var descriptions = new List<string>();
             var changed = new List<string>();
             var references = new List<ProjectReferenceItem>();
@@ -122,7 +122,7 @@ public sealed class ProjectEditService(string projectPath, IEntryCatalog catalog
                 if (dryRun) throw new JsonException("File operations do not support dryRun; no files were changed.");
                 var payload = Payload(elements[0], !batch);
                 var command = files.Deserialize(CommandId(payload), payload, CommandJson.Options);
-                var result = await new AssetFileCommandExecutor(catalog).ExecuteAsync(projectPath, command, cancellationToken);
+                var result = await new AssetFileCommandExecutor(catalog, configurations: configurations).ExecuteAsync(projectPath, command, cancellationToken);
                 return new(operationId, result.Success, result,
                     result.Diagnostics.Select(item => new ToolDiagnostic(item.Code, item.Severity.ToString().ToLowerInvariant(), item.Message, item.Resource)).ToArray());
             }

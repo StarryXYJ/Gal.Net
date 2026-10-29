@@ -1,13 +1,20 @@
 using System.Collections.Frozen;
 using System.Collections.ObjectModel;
+using System.Text.Json.Serialization.Metadata;
 
 namespace GalNet.Core.Assets;
 
-public sealed record ResourceTypeRegistration(string TypeId, Type MetaDtoType, IReadOnlyList<string> Extensions);
+public sealed record ResourceTypeRegistration(string TypeId, Type MetaDtoType, IReadOnlyList<string> Extensions)
+{
+    public IJsonTypeInfoResolver? JsonResolver { get; init; }
+    public Func<AssetMeta>? Create { get; init; }
+    public bool HasNoDependencies { get; init; }
+}
 
 public interface IResourceTypeCatalog
 {
     IReadOnlyList<ResourceTypeRegistration> Types { get; }
+    string? DefaultTypeId { get; }
     ResourceTypeRegistration Get(string typeId);
     bool TryGet(string? typeId, out ResourceTypeRegistration registration);
     bool TryGetByExtension(string? extension, out ResourceTypeRegistration registration);
@@ -16,11 +23,22 @@ public interface IResourceTypeCatalog
 
 public sealed class ResourceTypeCatalogBuilder
 {
-    private readonly Dictionary<string, Type> _registrations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, (Type Type, IJsonTypeInfoResolver? Resolver, Func<AssetMeta> Create)> _registrations = new(StringComparer.Ordinal);
     private readonly List<(string TypeId, string Extension)> _extensions = [];
+    private string? _defaultTypeId;
+    private readonly HashSet<string> _leafTypes = new(StringComparer.Ordinal);
+    public ResourceTypeCatalogBuilder WithoutDependencies(params string[] typeIds)
+    {
+        foreach (var id in typeIds) _leafTypes.Add(ResourceTypeCatalog.NormalizeTypeIdCore(id));
+        return this;
+    }
+    public ResourceTypeCatalogBuilder DefaultType(string typeId)
+    { _defaultTypeId = ResourceTypeCatalog.NormalizeTypeIdCore(typeId); return this; }
 
-    public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta => Add(typeId, typeof(TMeta), false, extensions);
-    public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta => Add(typeId, typeof(TMeta), true, extensions);
+    public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), false, extensions, null, static () => new TMeta());
+    public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), true, extensions, null, static () => new TMeta());
+    public ResourceTypeCatalogBuilder Add<TMeta>(string typeId, IJsonTypeInfoResolver resolver, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), false, extensions, resolver, static () => new TMeta());
+    public ResourceTypeCatalogBuilder Replace<TMeta>(string typeId, IJsonTypeInfoResolver resolver, params string[] extensions) where TMeta : AssetMeta, new() => Add(typeId, typeof(TMeta), true, extensions, resolver, static () => new TMeta());
     public ResourceTypeCatalogBuilder AddExtensions(string typeId, params string[] extensions)
     {
         var normalizedType = ResourceTypeCatalog.NormalizeTypeIdCore(typeId);
@@ -30,6 +48,8 @@ public sealed class ResourceTypeCatalogBuilder
 
     public IResourceTypeCatalog Build()
     {
+        foreach (var id in _leafTypes)
+            if (!_registrations.ContainsKey(id)) throw new InvalidOperationException($"Leaf resource type '{id}' is not registered.");
         var owners = new Dictionary<string, string>(StringComparer.Ordinal);
         var byType = _registrations.Keys.ToDictionary(key => key, _ => new List<string>(), StringComparer.Ordinal);
         foreach (var (typeId, extension) in _extensions)
@@ -39,16 +59,20 @@ public sealed class ResourceTypeCatalogBuilder
             owners[extension] = typeId;
             if (!values.Contains(extension, StringComparer.Ordinal)) values.Add(extension);
         }
+        if (_defaultTypeId is not null && !_registrations.ContainsKey(_defaultTypeId))
+            throw new InvalidOperationException($"Default resource type '{_defaultTypeId}' must be registered.");
         return new ResourceTypeCatalog(_registrations.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair =>
-            new ResourceTypeRegistration(pair.Key, pair.Value, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))).ToList());
+            new ResourceTypeRegistration(pair.Key, pair.Value.Type, new ReadOnlyCollection<string>(byType[pair.Key].OrderBy(item => item, StringComparer.Ordinal).ToList()))
+            { JsonResolver = pair.Value.Resolver, Create = pair.Value.Create, HasNoDependencies = _leafTypes.Contains(pair.Key) }).ToList(), _defaultTypeId);
     }
 
-    private ResourceTypeCatalogBuilder Add(string typeId, Type metaType, bool replace, IEnumerable<string> extensions)
+    private ResourceTypeCatalogBuilder Add(string typeId, Type metaType, bool replace, IEnumerable<string> extensions,
+        IJsonTypeInfoResolver? resolver, Func<AssetMeta> create)
     {
         var normalized = ResourceTypeCatalog.NormalizeTypeIdCore(typeId);
-        if (!typeof(AssetMeta).IsAssignableFrom(metaType) || metaType.IsAbstract || metaType.GetConstructor(Type.EmptyTypes) is null) throw new ArgumentException($"'{metaType}' must be a concrete AssetMeta DTO with a parameterless constructor.", nameof(metaType));
         if (_registrations.ContainsKey(normalized) && !replace) throw new InvalidOperationException($"Resource type '{normalized}' is already fully registered. Use Replace explicitly.");
-        _registrations[normalized] = metaType;
+        if (replace) _leafTypes.Remove(normalized);
+        _registrations[normalized] = (metaType, resolver, create);
         return AddExtensions(normalized, extensions.ToArray());
     }
 }
@@ -57,13 +81,15 @@ public sealed class ResourceTypeCatalog : IResourceTypeCatalog
 {
     private readonly FrozenDictionary<string, ResourceTypeRegistration> _byType;
     private readonly FrozenDictionary<string, ResourceTypeRegistration> _byExtension;
-    internal ResourceTypeCatalog(IReadOnlyList<ResourceTypeRegistration> types)
+    internal ResourceTypeCatalog(IReadOnlyList<ResourceTypeRegistration> types, string? defaultTypeId)
     {
+        DefaultTypeId = defaultTypeId;
         Types = new ReadOnlyCollection<ResourceTypeRegistration>(types.ToList());
         _byType = types.ToFrozenDictionary(type => type.TypeId, StringComparer.Ordinal);
         _byExtension = types.SelectMany(type => type.Extensions.Select(extension => (extension, type))).ToFrozenDictionary(pair => pair.extension, pair => pair.type, StringComparer.Ordinal);
     }
     public IReadOnlyList<ResourceTypeRegistration> Types { get; }
+    public string? DefaultTypeId { get; }
     public ResourceTypeRegistration Get(string typeId) => TryGet(typeId, out var result) ? result : throw new KeyNotFoundException($"Resource type '{typeId}' is not registered.");
     public bool TryGet(string? typeId, out ResourceTypeRegistration registration)
     {

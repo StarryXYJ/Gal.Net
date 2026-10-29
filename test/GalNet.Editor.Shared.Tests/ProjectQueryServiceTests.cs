@@ -1,4 +1,5 @@
 using System.Text.Json;
+using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Services;
@@ -26,7 +27,7 @@ public sealed class ProjectQueryServiceTests
         Put("Graph/groups/b.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"same","type":"unknown.other","parameters":{}}]}""");
         Put("Graph/groups/orphan.rawgalgroup", """{"version":2,"kind":"Raw","entries":[]} """);
         Put("Assets/picture.bin", "asset");
-        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Serialize(new BinaryAssetMeta
+        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog()).Serialize(new AssetMeta
         { Id = "f2700971-d36e-4be4-94dd-a5c282861c57", TypeId = "data", Path = "picture.bin" }));
         Put("Output/ignored.json", "{}");
         Put("Contracts/placeholder.txt", "not a schema");
@@ -75,7 +76,7 @@ public sealed class ProjectQueryServiceTests
     {
         var resourceId = usePascalCase ? "f2700971-d36e-4be4-94dd-a5c282861c57" : "f2700971d36e4be494dda5c282861c57";
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { PropertyNamingPolicy = usePascalCase ? null : JsonNamingPolicy.CamelCase };
-        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog(), options).Serialize(new BinaryAssetMeta
+        Put("Assets/picture.bin.meta", new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog(), options).Serialize(new AssetMeta
         { Id = resourceId, TypeId = "data", Path = "picture.bin" }));
         var query = new ProjectQueryService(_root);
         var files = query.Files(new(Kind: "resource"));
@@ -182,9 +183,7 @@ public sealed class ProjectQueryServiceTests
         var link = Path.Combine(_root, "linked");
         try
         {
-            try { Directory.CreateSymbolicLink(link, outside); }
-            catch (Exception exception) when (exception is UnauthorizedAccessException or IOException)
-            { Assert.Ignore($"Creating a directory link is unavailable: {exception.Message}"); }
+            DirectoryLinks.Create(link, outside);
             var result = new ProjectQueryService(_root).Files(new());
             Assert.That(result.Diagnostics.Any(item => item.Code == "file.linkSkipped"), Is.True);
             Assert.Throws<InvalidDataException>(() => new ProjectQueryService(_root).Files(new(Root: "linked")));

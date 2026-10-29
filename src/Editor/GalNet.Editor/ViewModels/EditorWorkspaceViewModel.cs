@@ -27,6 +27,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private readonly GraphSelectionState _selection;
     private readonly EditorWorkspacePersistence _persistence;
     private readonly IEditorSettingsService _editorSettings;
+    public bool ExpandNewEntries => _editorSettings.GetSettings().ExpandNewEntries;
     private readonly IEditorLocalizationService _localization;
     private readonly IVariableDefinitionService _variableDefinitionService;
     private readonly Action<GalProject?> _projectChangedHandler;
@@ -52,17 +53,16 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     private GraphEdge? _selectedEdge;
 
     [ObservableProperty]
-    private GamePreviewPanelViewModel? _activePreview;
-
-    [ObservableProperty]
     private AssetEntry? _selectedAsset;
 
     [ObservableProperty]
     private string _statusText = "Ready";
 
-    public ObservableCollection<GraphNode> Nodes { get; } = [];
+    private readonly ObservableCollection<GraphNode> _nodes = [];
+    public ReadOnlyObservableCollection<GraphNode> Nodes { get; }
     public ExternalDebugPanelViewModel? ExternalDebug => _projectService.Current?.Services.GetService<ExternalDebugPanelViewModel>();
-    public ObservableCollection<GraphEdge> Edges { get; } = [];
+    private readonly ObservableCollection<GraphEdge> _edges = [];
+    public ReadOnlyObservableCollection<GraphEdge> Edges { get; }
     public ObservableCollection<GraphNode> SelectedNodes => _selection.SelectedNodes;
     public GraphViewportState GraphViewport => _projectService.Current?.EditorState.GraphViewport ?? _fallbackViewport;
     public bool HasMultipleNodeSelection => _selection.HasMultipleNodes;
@@ -83,6 +83,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         GraphSelectionState selection,
         EditorWorkspacePersistence persistence, GraphAuthoringService graphAuthoring, GroupEntryAuthoringService entryAuthoring)
     {
+        Nodes = new(_nodes);
+        Edges = new(_edges);
         _projectService = projectService;
         _histories = histories;
         _dockFactory = dockFactory;
@@ -106,8 +108,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _projectService.CurrentChanged += _projectChangedHandler;
         _variableDefinitionService.DefinitionsChanged += _definitionsChangedHandler;
         _histories.Changed += OnHistoryChanged;
-        Nodes.CollectionChanged += OnGraphCollectionChanged;
-        Edges.CollectionChanged += OnGraphCollectionChanged;
         SetStatus(_statusMessage);
         LoadCurrentProjectGraph();
         _documentService.DocumentChanged += SynchronizeGraph;
@@ -123,10 +123,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         _variableDefinitionService.DefinitionsChanged -= _definitionsChangedHandler;
         _histories.Changed -= OnHistoryChanged;
         _documentService.DocumentChanged -= SynchronizeGraph;
-        foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
+        foreach (var node in Nodes) { node.RenameRequested = null; node.StoryPackageRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
-        Nodes.CollectionChanged -= OnGraphCollectionChanged;
-        Edges.CollectionChanged -= OnGraphCollectionChanged;
         GC.SuppressFinalize(this);
     }
 
@@ -305,10 +303,10 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     {
         _isLoadingGraph = true;
         ClearSelection();
-        foreach (var node in Nodes) { node.RenameRequested = null; node.BranchValueRequested = null; }
+        foreach (var node in Nodes) { node.RenameRequested = null; node.StoryPackageRequested = null; node.BranchValueRequested = null; }
         foreach (var edge in Edges) edge.Dispose();
-        Nodes.Clear();
-        Edges.Clear();
+        _nodes.Clear();
+        _edges.Clear();
 
         try
         {
@@ -323,10 +321,10 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             {
                 node.IsRoot = node.NodeKind == GraphNodeKind.Entry;
                 TrackNode(node);
-                Nodes.Add(node);
+                _nodes.Add(node);
             }
             foreach (var edge in graph.Edges)
-                Edges.Add(edge);
+                _edges.Add(edge);
 
             UpdateConnectorStates();
             SelectNode(EntryNode ?? Nodes.FirstOrDefault());
@@ -335,8 +333,8 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         {
             Log.Error(ex, "Failed to load project graph");
             ClearSelection();
-            Nodes.Clear();
-            Edges.Clear();
+            _nodes.Clear();
+            _edges.Clear();
             SetStatus(new("Status.GraphLoadFailed", EditorText.Error(ex)));
             throw;
         }
@@ -358,22 +356,22 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             foreach (var node in Nodes.ToArray())
                 if (!source.Nodes.Any(dto => ReferenceEquals(dto, node.Source)))
                 {
-                    node.RenameRequested = null; node.BranchValueRequested = null;
-                    Nodes.Remove(node);
+                    node.RenameRequested = null; node.StoryPackageRequested = null; node.BranchValueRequested = null;
+                    _nodes.Remove(node);
                     if (node.NodeKind == GraphNodeKind.LinearGroup) _dockFactory.CloseGroupEditor(node.Id);
                 }
             for (var index = 0; index < source.Nodes.Count; index++)
             {
                 var dto = source.Nodes[index];
                 var node = Nodes.FirstOrDefault(node => ReferenceEquals(node.Source, dto));
-                if (node is null) { node = _persistence.ProjectNode(dto); Nodes.Insert(index, node); }
-                else if (Nodes.IndexOf(node) != index) Nodes.Move(Nodes.IndexOf(node), index);
+                if (node is null) { node = _persistence.ProjectNode(dto); _nodes.Insert(index, node); }
+                else if (Nodes.IndexOf(node) != index) _nodes.Move(Nodes.IndexOf(node), index);
                 node.RefreshAuthorValues();
                 TrackNode(node);
             }
             foreach (var edge in Edges.ToArray())
                 if (!source.Edges.Any(dto => ReferenceEquals(dto, edge.Source)) || !Nodes.Contains(edge.From) || !Nodes.Contains(edge.To))
-                { Edges.Remove(edge); edge.Dispose(); }
+                { _edges.Remove(edge); edge.Dispose(); }
             for (var index = 0; index < source.Edges.Count; index++)
             {
                 var dto = source.Edges[index];
@@ -381,9 +379,9 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
                 if (edge is null)
                 {
                     edge = new GraphEdge(Nodes.Single(node => node.Id == dto.FromNodeId), Nodes.Single(node => node.Id == dto.ToNodeId), dto);
-                    Edges.Insert(index, edge);
+                    _edges.Insert(index, edge);
                 }
-                else if (Edges.IndexOf(edge) != index) Edges.Move(Edges.IndexOf(edge), index);
+                else if (Edges.IndexOf(edge) != index) _edges.Move(Edges.IndexOf(edge), index);
                 edge.Outlet = dto.FromOutlet;
             }
             UpdateConnectorStates();
@@ -392,13 +390,6 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
             SyncSelectionProperties();
         }
         finally { _isLoadingGraph = false; }
-    }
-
-    private void OnGraphCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs args)
-    {
-        if (_isLoadingGraph) return;
-        _documentService.CurrentDocument.Nodes = Nodes.Select(node => node.Source).ToList();
-        _documentService.CurrentDocument.Edges = Edges.Select(edge => edge.Source).ToList();
     }
 
     private void ScheduleAutoSave()
@@ -421,7 +412,11 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
     }
 
     public IReadOnlyList<EntryEditorItemViewModel> InsertEntriesInto(GraphNode groupNode, int index, int count, string? type = null) =>
-        groupNode.NodeKind == GraphNodeKind.LinearGroup ? _entryAuthoring.Insert(groupNode.Id, index, count, type) : [];
+        groupNode.NodeKind == GraphNodeKind.LinearGroup
+            ? ResolveEntries(groupNode, _entryAuthoring.Insert(groupNode.Id, index, count, type)) : [];
+
+    private static IReadOnlyList<EntryEditorItemViewModel> ResolveEntries(GraphNode group, IReadOnlyList<string> ids) =>
+        group.Entries.Where(entry => ids.Contains(entry.StableId)).ToArray();
 
     public bool RemoveEntryFrom(GraphNode groupNode, EntryEditorItemViewModel entry)
     {
@@ -430,7 +425,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         return true;
     }
 
-    public void ChangeEntryType(GraphNode groupNode, EntryEditorItemViewModel entry, string type, IReadOnlyDictionary<string, string> parameters)
+    public void ChangeEntryType(GraphNode groupNode, EntryEditorItemViewModel entry, string type, IReadOnlyDictionary<string, System.Text.Json.JsonElement> parameters)
     {
         if (!groupNode.Entries.Contains(entry) || entry.Type == type) return;
         entry.ChangeAuthorType(type, parameters);
@@ -441,6 +436,7 @@ public partial class EditorWorkspaceViewModel : ObservableObject, IDisposable, I
         node.GameTexts = _projectService.Current?.Services.GetService<GameTextAuthoringService>();
         foreach (var option in node.Options) option.BindText(node.GameTexts, node.Id);
         node.RenameRequested = value => { try { _graphAuthoring.Rename(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
+        node.StoryPackageRequested = value => { try { _graphAuthoring.SetStoryPackage(node.Id, value); } catch (Exception failure) { ReportGraphError(failure); } };
         node.BranchValueRequested = (itemId, field, value) => EditBranch(() => _graphAuthoring.SetBranchValue(node.Id, itemId, field, value));
     }
 

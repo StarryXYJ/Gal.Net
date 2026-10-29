@@ -20,6 +20,12 @@
                 <Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseProjectRootCommand}" Margin="8,0,0,0" />
             </Grid>
 
+            <TextBlock Text="{loc:Localize NewProject.Application}" />
+            <Grid ColumnDefinitions="*,Auto">
+                <TextBox Name="ApplicationPathInput" Text="{Binding ApplicationPath}" PlaceholderText="{loc:Localize NewProject.ApplicationHint}" />
+                <Button Name="BrowseApplicationButton" Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseApplicationCommand}" Margin="8,0,0,0" />
+            </Grid>
+
             <TextBlock Text="{loc:Localize NewProject.Contracts}" />
             <Grid ColumnDefinitions="*,Auto">
                 <TextBox Name="ContractsDirectoryInput" Text="{Binding ContractsDirectory}" PlaceholderText="{loc:Localize NewProject.ContractsHint}" />

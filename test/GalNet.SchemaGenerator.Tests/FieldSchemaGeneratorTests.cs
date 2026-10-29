@@ -8,6 +8,83 @@ namespace GeneralTest.Schema;
 public sealed class FieldSchemaGeneratorTests
 {
     [Test]
+    public void AConsumerCompiledAgainstTheOldDescriptorApiLoadsAgainstCurrentCore()
+    {
+        var platform = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)
+            .Where(path => Path.GetFileName(path) != "GalNet.Core.dll").Distinct(StringComparer.Ordinal)
+            .Select(path => MetadataReference.CreateFromFile(path)).ToArray();
+        var version = typeof(FieldDescriptor).Assembly.GetName().Version;
+        var oldSource = """
+            using System;
+            using System.Collections.Generic;
+            using System.Text.Json;
+            namespace GalNet.Core.Parameters {
+                public enum FieldValueSemantic { None, LocalizedText, CharacterReference }
+                public sealed class EditorHints {}
+                public sealed class ValueDescriptor {
+                    public ValueDescriptor(Type type, bool? allowNull = null, JsonElement? constraints = null,
+                        JsonSerializerOptions jsonOptions = null, IReadOnlyList<string> choices = null) {}
+                    public Type ValueType => null;
+                }
+                public sealed class FieldDescriptor {
+                    public FieldDescriptor(string id, ValueDescriptor value, bool isRequired = false, JsonElement? defaultValue = null,
+                        EditorHints editor = null, string labelKey = null, string descriptionKey = null, FieldValueSemantic semantic = FieldValueSemantic.None) {}
+                    public ValueDescriptor Value => null;
+                }
+            }
+            """;
+        var oldCore = CSharpCompilation.Create("GalNet.Core",
+            [CSharpSyntaxTree.ParseText("[assembly: System.Reflection.AssemblyVersion(\"" + version + "\")]"), CSharpSyntaxTree.ParseText(oldSource)], platform,
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var oldBytes = new MemoryStream();
+        var oldResult = oldCore.Emit(oldBytes);
+        Assert.That(oldResult.Success, Is.True, string.Join("\n", oldResult.Diagnostics));
+        var consumer = CSharpCompilation.Create("OldDescriptorConsumer",
+            [CSharpSyntaxTree.ParseText("""
+                public static class OldContract {
+                    public static string Read() => new GalNet.Core.Parameters.FieldDescriptor("x",
+                        new GalNet.Core.Parameters.ValueDescriptor(typeof(int))).Value.ValueType.FullName;
+                }
+                """)], platform.Append(MetadataReference.CreateFromImage(oldBytes.ToArray())),
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        using var bytes = new MemoryStream();
+        var result = consumer.Emit(bytes);
+        Assert.That(result.Success, Is.True, string.Join("\n", result.Diagnostics));
+        bytes.Position = 0;
+        var context = new System.Runtime.Loader.AssemblyLoadContext("OldDescriptorApi", isCollectible: true);
+        context.Resolving += (_, name) => name.Name == "GalNet.Core" ? typeof(FieldDescriptor).Assembly : null;
+        try
+        {
+            var assembly = context.LoadFromStream(bytes);
+            Assert.That(assembly.GetType("OldContract")!.GetMethod("Read")!.Invoke(null, null), Is.EqualTo("System.Int32"));
+        }
+        finally { context.Unload(); }
+    }
+
+    [Test]
+    public void FixedJsonStructuresGenerateLazyTypeReferencesAndKeepTheirWireType()
+    {
+        const string source = """
+            using GalNet.Core.Parameters;
+            [GenerateFieldSchema] public partial class Child {
+                [Field(0)] public Child Next {get;set;}
+            }
+            [GenerateFieldSchema] public partial class Options {
+                [Field(0, StructureType = typeof(Child), StructureAllowsJsonString = true, StructureIgnoresCase = true)]
+                public System.Text.Json.JsonElement Transform {get;set;}
+            }
+            """;
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out var diagnostics);
+        Assert.That(diagnostics, Is.Empty);
+        Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
+        var code = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
+        Assert.That(code, Does.Contain("ValueStructure.ForType(typeof(global::Child)").And.Contain("allowsJsonString: true").And.Contain("ignoresCase: true"));
+        Assert.That(code, Does.Contain("typeof(global::System.Text.Json.JsonElement)"));
+        Assert.That(code, Does.Contain("WithSchemaProvider(static () => global::Child.Schema)"), "Recursive child schemas must be deferred through a static delegate.");
+    }
+
+    [Test]
     public void GameTextSemanticsAreInheritedAndIndependentOfEditorHints()
     {
         const string source = """
@@ -60,7 +137,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
         Assert.That(code, Does.Contain("this.@Data").And.Contains("this.@Enabled").And.Contains("StringBooleanValueConverter").And.Contains("ValueCodec.ParseDefault"));
-        Assert.That(code.IndexOf("new(\"enabled\"", StringComparison.Ordinal), Is.LessThan(code.IndexOf("new(\"count\"", StringComparison.Ordinal)));
+        Assert.That(code.IndexOf("(\"enabled\"", StringComparison.Ordinal), Is.LessThan(code.IndexOf("(\"count\"", StringComparison.Ordinal)));
     }
 
     [TestCase("public new int Value {get;set;}")]
@@ -91,7 +168,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(diagnostics, Is.Empty);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
-        Assert.That(code, Does.Contain("ValueCodec.ParseDefault").And.Contains("[1,2]").And.Contains("[\"options\"] = new string[]"));
+        Assert.That(code, Does.Contain("ValueCodec.ParseDefault").And.Contains("[1,2]").And.Contains("choices: new string[]"));
     }
 
     [Test]
@@ -109,7 +186,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(diagnostics, Is.Empty);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var code = driver.GetRunResult().GeneratedTrees.Single().ToString();
-        Assert.That(code, Does.Contain("new(\"urlValue\"").And.Contains("new(\"asset-id\""));
+        Assert.That(code, Does.Contain("(\"urlValue\"").And.Contains("(\"asset-id\""));
     }
     [Test]
     public void ConstantDefaultsAndMemberChangesGenerateCompilableOrderedAccessors()
@@ -127,7 +204,7 @@ public sealed class FieldSchemaGeneratorTests
         Assert.That(diagnostics, Is.Empty);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var generated = driver.GetRunResult().GeneratedTrees.Single().ToString();
-        Assert.That(generated.IndexOf("new(\"number\"", StringComparison.Ordinal), Is.LessThan(generated.IndexOf("new(\"text\"", StringComparison.Ordinal)));
+        Assert.That(generated.IndexOf("(\"number\"", StringComparison.Ordinal), Is.LessThan(generated.IndexOf("(\"text\"", StringComparison.Ordinal)));
         driver = driver.RunGeneratorsAndUpdateCompilation(Compile(source.Replace("Number", "Amount").Replace("2.5", "3.5")), out output, out diagnostics);
         Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
         var changed = driver.GetRunResult().GeneratedTrees.Single().ToString();

@@ -16,36 +16,61 @@ sealed class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Console(
-                formatProvider: CultureInfo.InvariantCulture,
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.Debug(
-                formatProvider: CultureInfo.InvariantCulture,
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .WriteTo.Sink(EditorLogSink.Instance)
-            .CreateLogger();
+#if BENCHMARK
+        GalNet.Diagnostics.StartupBenchmark.Start();
+#endif
+        {
+#if BENCHMARK
+            using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.Logging");
+#endif
+            Log.Logger = new LoggerConfiguration()
+                .MinimumLevel.Debug()
+                .WriteTo.Console(
+                    formatProvider: CultureInfo.InvariantCulture,
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Debug(
+                    formatProvider: CultureInfo.InvariantCulture,
+                    outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .WriteTo.Sink(EditorLogSink.Instance)
+                .CreateLogger();
+        }
 
         try
         {
             Log.Information("GalNet Editor starting");
-            BuildAvaloniaApp()
-                .StartWithClassicDesktopLifetime(args);
+            using var preparation = new EditorStartupPreparation();
+            AppBuilder app;
+#if BENCHMARK
+            using (GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.ConfigureAvalonia"))
+#endif
+            app = ConfigureApp(AppBuilder.Configure(() => new App { Preparation = preparation }));
+#if BENCHMARK
+            GalNet.Diagnostics.CpuProfiler.Shared.Mark("Editor.RunAvalonia");
+#endif
+            app.StartWithClassicDesktopLifetime(args);
         }
         catch (Exception ex)
         {
             Log.Fatal(ex, "Application terminated unexpectedly");
+#if BENCHMARK
+            GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
         }
         finally
         {
             Log.CloseAndFlush();
+#if BENCHMARK
+            if (GalNet.Diagnostics.StartupBenchmark.Failed) Environment.ExitCode = 1;
+#endif
         }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
-        => AppBuilder.Configure<App>()
+        => ConfigureApp(AppBuilder.Configure<App>());
+
+    private static AppBuilder ConfigureApp(AppBuilder builder)
+        => builder
             .UsePlatformDetect()
             .UseManagedWindows(false)
             .UseFloatingWindowHostMode(DockFloatingWindowHostMode.Native)

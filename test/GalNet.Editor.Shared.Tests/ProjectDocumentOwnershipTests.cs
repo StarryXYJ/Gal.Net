@@ -1,6 +1,7 @@
 using System.Text.Json;
-using GalNet.Core.Audio;
-using GalNet.Core.Settings;
+using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Audio;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Services;
@@ -39,32 +40,38 @@ public sealed class ProjectDocumentOwnershipTests
     {
         var project = new EditorProjectDocument
         {
-            Settings = new ProjectSettings
+            Configuration = new DefaultProjectOptions
             {
                 AvailableLocales = [new("en-US")],
+                AudioBuses = [new() { Id = "ambience", Name = "Environment" }],
                 AudioTracks = [new AudioTrackDefinition
                 {
-                    Id = "custom", Name = "Custom", Bus = AudioBuses.Sfx, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
+                    Id = "custom", Name = "Custom", BusId = "ambience", PreserveDuringCatchUp = true, DefaultGain = .4f, MaxVoices = 3, MaxQueuedItems = 4,
                     OverflowPolicy = AudioOverflowPolicy.StopOldest, QueueOverflowPolicy = AudioQueueOverflowPolicy.DropOldest
                 }]
-            },
+            }.ToConfiguration(),
             GroupEntries = { ["opening"] = [new() { StableId = "line", Type = "custom.line" }] }
         };
         using (var json = JsonDocument.Parse("""{"payload":{"items":[9007199254740993,null,{"enabled":true}]},"explicitNull":null}"""))
             project.GroupEntries["opening"][0].Parameters = json.RootElement.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone());
         var clone = EditorDocumentCloner.Clone(project);
-        project.Settings.AvailableLocales.Clear();
-        project.Settings.AudioTracks[0].Name = "Changed";
+        var options = project.Configuration.ReadDefaultOptions();
+        options.AvailableLocales.Clear();
+        options.AudioBuses[0] = options.AudioBuses[0] with { Name = "Changed group" };
+        options.AudioTracks[0] = options.AudioTracks[0] with { Name = "Changed" };
+        project.Configuration.Set(DefaultProjectConfiguration.Section, options);
         project.GroupEntries["opening"][0].Parameters.Clear();
         var values = clone.GroupEntries["opening"].Single().Parameters;
         Assert.That(values["payload"].GetProperty("items")[0].GetInt64(), Is.EqualTo(9007199254740993L));
         Assert.That(values["explicitNull"].ValueKind, Is.EqualTo(JsonValueKind.Null));
         Assert.That(values.ContainsKey("omitted"), Is.False);
-        Assert.That(clone.Settings.AvailableLocales.Single().Code, Is.EqualTo("en-US"));
-        Assert.That(clone.Settings.AudioTracks[0].Name, Is.EqualTo("Custom"));
-        Assert.That(clone.Settings.AudioTracks[0].DefaultGain, Is.EqualTo(.4f));
-        Assert.That(clone.Settings.AudioTracks[0].MaxQueuedItems, Is.EqualTo(4));
-        Assert.That(clone.Settings.AudioTracks[0].OverflowPolicy, Is.EqualTo(AudioOverflowPolicy.StopOldest));
-        Assert.That(clone.Settings.AudioTracks[0].QueueOverflowPolicy, Is.EqualTo(AudioQueueOverflowPolicy.DropOldest));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AvailableLocales.Single().Code, Is.EqualTo("en-US"));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].Name, Is.EqualTo("Custom"));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioBuses.Single().Id, Is.EqualTo("ambience"));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].PreserveDuringCatchUp, Is.True);
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].DefaultGain, Is.EqualTo(.4f));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].MaxQueuedItems, Is.EqualTo(4));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].OverflowPolicy, Is.EqualTo(AudioOverflowPolicy.StopOldest));
+        Assert.That(clone.Configuration.ReadDefaultOptions().AudioTracks[0].QueueOverflowPolicy, Is.EqualTo(AudioQueueOverflowPolicy.DropOldest));
     }
 }

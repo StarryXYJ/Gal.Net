@@ -1,12 +1,12 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Scene;
+using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.Primitives;
 using GalNet.Core.Runtime;
-using GalNet.Core.Scene;
-using GalNet.Core.Variants;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -127,7 +127,7 @@ public sealed class ImageVariantsRuntimeTests
         Execute(view, runtime, BuiltinEntryIds.SelectVariants, new { handleId = "hero", dimension = "expression", value = "weap" });
         Assert.That(instance.IsCompleted, Is.False);
         Assert.That(runtime.State.Table<LoopAnimationState>().Get("loop"), Is.SameAs(loop));
-        Assert.That(runtime.SceneInstances.TryGet<AnimationPlaybackInstance>("loop", out _), Is.True);
+        Assert.That(runtime.Scene().TryGet<AnimationPlaybackInstance>("loop", out _), Is.True);
         animations.Completion.SetResult(AnimationOutcome.Completed);
         await instance.PresentationCompletion;
     }
@@ -184,7 +184,7 @@ public sealed class ImageVariantsRuntimeTests
         Assert.That(runtime.State.Table<Layer>().Get("hero").Variants!.Reason, Is.EqualTo(ImageVariantResolutionReason.Default));
         var saved = runtime.CreateSnapshot();
         await using var engine = new GameEngine(new Graph { RootNodeId = "root", Nodes = [new Group { Id = "root" }] }, runtime, view);
-        engine.RestoreFrom(saved);
+        await engine.RestoreFromAsync(saved);
         var restored = runtime.State.Table<Layer>().Get("hero");
         Assert.That(restored.Variants!.ProtectedDimensions, Is.EqualTo(new[] { "outfit" }));
         Assert.That(restored.AssetId, Is.EqualTo("sprite-idle_coat"));
@@ -229,7 +229,7 @@ public sealed class ImageVariantsRuntimeTests
         var runtime = new GameRuntime(null, "root", stateCatalog: targetView.StateCatalog);
         var root = runtime.State;
         await using var engine = new GameEngine(new Graph { RootNodeId = "root", Nodes = [new Group { Id = "root" }] }, runtime, targetView);
-        Assert.Throws<InvalidDataException>(() => engine.RestoreFrom(snapshot));
+        Assert.ThrowsAsync<InvalidDataException>(() => engine.RestoreFromAsync(snapshot));
         Assert.That(runtime.State, Is.SameAs(root));
         Assert.That(runtime.State.Table<Layer>().Values, Is.Empty);
     }

@@ -16,4 +16,9 @@
   <ItemGroup>
     <Using Include="NUnit.Framework" />
   </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'GalNet.Assets.Tests' Or '$(MSBuildProjectName)' == 'GalNet.Editor.Shared.Tests' Or '$(MSBuildProjectName)' == 'GalNet.IntegrationTests'">
+    <Compile Include="$(MSBuildThisFileDirectory)Support/DirectoryLinks.cs" Link="Support/DirectoryLinks.cs" />
+    <Using Include="GalNet.TestSupport" />
+  </ItemGroup>
 </Project>

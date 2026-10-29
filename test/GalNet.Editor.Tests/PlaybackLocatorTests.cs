@@ -20,7 +20,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task PlaybackLocatorUsesRealSharedPickerFourLocalesHistoryStaleLeasesAndReopen()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -81,7 +81,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(stop.Source.Parameters["playbackHandleId"].GetString(), Is.Empty); await history.UndoAsync(); Assert.That(history.CanUndo, Is.False); TimelinePump(window);
                 // A live popup cannot write after its source author snapshot changes.
                 (flyout, picker) = OpenPicker(); var stalePicker = picker;
-                var author = scope.GetRequiredService<EntryFieldAuthoringService>(); author.SetCondition(group.Id, animate.Source, "save.optional");
+                var author = scope.GetRequiredService<EntryFieldAuthoringService>(); author.SetCondition(group.Id, animate.Source, "false");
                 Assert.That(lease.TryResolve(out _), Is.False); var before = JsonSerializer.Serialize(stop.Source.Parameters);
                 stalePicker.ResourcePanel.Search.Text = text["Entry.Type.animation.animate"]; TimelinePump(window); PressGroupKey(stalePicker.ResourcePanel.Search, Key.Down); PressGroupKey(stalePicker.ResourcePanel.Search, Key.Enter); TimelinePump(window);
                 Assert.That(JsonSerializer.Serialize(stop.Source.Parameters), Is.EqualTo(before)); flyout.Hide();

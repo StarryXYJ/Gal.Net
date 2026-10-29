@@ -1,4 +1,4 @@
-using GalNet.Core.Settings;
+using GalNet.Core.Configuration;
 using GalNet.Editor.Abstraction.Project;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -10,7 +10,7 @@ public sealed class ProjectLifecycleTests
     public async Task ProjectWaitsForRegisteredCleanupBeforeDisposingScope()
     {
         using var scope = new TestScope();
-        var project = new GalProject("test", "test", Path.GetTempPath(), new ProjectSettings(), new EditorProjectState(), scope);
+        var project = new GalProject("test", "test", Path.GetTempPath(), new ProjectConfiguration(), new EditorProjectState(), scope);
         var cleanupFinished = false;
         project.RegisterClosingCallback(async () =>
         {

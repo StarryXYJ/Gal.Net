@@ -1,5 +1,3 @@
-using GalNet.Core.Gallery;
-
 namespace GalNet.Core.Assets;
 
 /// <summary>Common, portable metadata written beside every asset.</summary>
@@ -19,10 +17,6 @@ public class AssetMeta
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? Compress { get; set; }
 
-    [System.Text.Json.Serialization.JsonPropertyName("gallery")]
-    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    public List<GalleryAnnotation>? Gallery { get; set; }
-
     /// <summary>Fields not understood by the current DTO are retained when metadata is rewritten.</summary>
     [System.Text.Json.Serialization.JsonExtensionData]
     public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
@@ -36,17 +30,3 @@ public class AssetMeta
         _ => CompressionMode.None,
     };
 }
-
-public sealed class SpriteAssetMeta : AssetMeta
-{
-    [System.Text.Json.Serialization.JsonPropertyName("filter")]
-    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    public string? Filter { get; set; }
-}
-
-public sealed class AudioAssetMeta : AssetMeta;
-public sealed class VideoAssetMeta : AssetMeta;
-public sealed class ImageVariantsAssetMeta : AssetMeta;
-public sealed class FontAssetMeta : AssetMeta;
-public sealed class EffectProgramAssetMeta : AssetMeta;
-public sealed class BinaryAssetMeta : AssetMeta;

@@ -7,6 +7,8 @@ using Avalonia.Input.Raw;
 using Avalonia.VisualTree;
 using Dock.Model.Controls;
 using Dock.Model.Core;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Dock;
 using GalNet.Editor.History;
@@ -24,7 +26,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task DirectoryExpandersAreKnownWhenTheirParentOpensAndRefreshAfterChanges()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -63,7 +65,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task BrowserAddressBlocksDropAndGlobalSearchExitFollowSelection()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -193,7 +195,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task ProjectFileBrowserMountedControlsNavigateSelectRenameCopyAndConfirmDelete()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -264,7 +266,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task TextPageBindsRealInputAndDockTitleFollowsTheSameBuffer()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             Application.Current!.Styles.Add(new Semi.Avalonia.SemiTheme());
@@ -321,11 +323,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "Assets/image.png", Content: [1, 2]));
             File.WriteAllText(Path.Combine(project.RootPath, "Assets/image.png.meta"), """{"id":"original","type":"sprite","path":"image.png","gallery":[{"id":17,"typeId":"cg","title":"Picture"}],"custom":"retained"}""");
             await files.ExecuteAsync(new(ProjectFileAction.Copy, ["Assets/image.png"], "Assets", UniqueNames: true));
-            var codec = new GalNet.Core.Assets.AssetMetaCodec(GalNet.Core.Assets.BuiltinResourceTypes.CreateCatalog());
+            var codec = new GalNet.Core.Assets.AssetMetaCodec(GalNet.Contracts.Builtins.Assets.BuiltinResourceTypes.CreateCatalog());
             var original = codec.Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/image.png.meta")));
             var copy = codec.Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/image 1.png.meta")));
             Assert.That(copy.Id, Is.Not.EqualTo(original.Id)); Assert.That(copy.Path, Is.EqualTo("image 1.png"));
-            Assert.That(copy.Gallery!.Single().Id, Is.Not.EqualTo(original.Gallery!.Single().Id)); Assert.That(copy.Gallery!.Single().Title, Is.EqualTo("Picture")); Assert.That(copy.ExtensionData!["custom"].GetString(), Is.EqualTo("retained"));
+            Assert.That(copy.ReadGallery().Single().Id, Is.Not.EqualTo(original.ReadGallery().Single().Id)); Assert.That(copy.ReadGallery().Single().Title, Is.EqualTo("Picture")); Assert.That(copy.ExtensionData!["custom"].GetString(), Is.EqualTo("retained"));
             await project.Services.GetRequiredService<EditorHistories>().Content.UndoAsync(); Assert.That(File.Exists(Path.Combine(project.RootPath, "Assets/image 1.png")), Is.False);
         }
         finally { await projects.CloseAsync(); }
@@ -371,7 +373,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task SelectedAndLockedAssetInspectorFollowIdentityThroughRenameDeleteAndUndo()
     {
-        await using var session = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -412,7 +414,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         {
             var files = project.Services.GetRequiredService<ProjectFileAuthoringService>();
             await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "Assets/image.png", Content: [1, 2]));
-            var meta = new GalNet.Core.Assets.AssetMetaCodec(GalNet.Core.Assets.BuiltinResourceTypes.CreateCatalog()).Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/image.png.meta")));
+            var meta = new GalNet.Core.Assets.AssetMetaCodec(GalNet.Contracts.Builtins.Assets.BuiltinResourceTypes.CreateCatalog()).Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/image.png.meta")));
             Encoding encoding = utf16 ? new UnicodeEncoding(true, true, true) : new UTF8Encoding(false, true);
             var original = encoding.GetPreamble().Concat(encoding.GetBytes("{}")).ToArray();
             await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "UI/ui.json", Content: original));

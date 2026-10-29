@@ -4,10 +4,23 @@ title: Editor 创作工作区重构
 type: refactor
 status: in-progress
 created: 2026-10-15
-updated: 2026-10-21
+updated: 2026-10-26
 ---
 
+Group 一致性补充改造 GC1–GC5 已完成并验证：删除引用影响、移动身份、输入归档（含整 Group/文件删除）、局部查询、实时搜索/友好摘要及对象释放已收口。最终 926 项回归通过，当前源码解决方案构建、格式与指纹核对通过；四项原生 GUI 及人工 IME/剪贴板流程未验收。详见 [阶段记录](phase-group-consistency.md)、[实现后复核](review.md) 和 [摘要](summary.md)。整个 feature 的其他 P6/P7 计划继续分别追踪，status 保持 in-progress。
+
 # Editor 创作工作区重构
+
+2026-10-26 Group 交互简化 verified：删除、换类型、移动直接执行，引用问题在 Problems 自动更新，无需影响确认或先点击检查；保留严格编译/构建错误门禁。Editor 325 项与 Shared 相关 34 项通过，详见 [直接编辑修订](group-direct-editing.md)。此修订替代下文历史记录中的 Group 影响弹窗行为。
+
+2026-10-26 GC3 Entry 身份与输入生命周期 verified：待移动剪切、相容输出身份迁移、删除输入持久归档和新绑定显式恢复已接通；四项目 918 项执行通过，4 项 Explicit 原生 GUI 未执行，四语/格式/32 文件指纹通过，见 [阶段记录](phase-group-consistency.md#gc3身份与输入生命周期)。GC4/GC5 和整 Group/文件结构删除的独立输入协调验收保留。
+
+
+2026-10-26 用户要求继续，GC2 语义与引用诊断 verified：统一声明/索引、位置影响、Group 删除与换类型确认、Problems 警告已接通；四项目 909 项执行通过，4 项 Explicit 原生 GUI 未运行，四语/格式/指纹通过。GC1 提交为 `1496e0c`，本阶段证据见 [实施记录](phase-group-consistency.md#gc2语义引用诊断与操作影响)。剪切身份、删除输入、局部失效及释放仍按 GC3–GC5 保留。
+
+2026-10-26 用户授权开始 Group 一致性重构，按 [补充阶段](phase-plan.md#group-一致性补充阶段2026-10-26) 推进；GC1 作者提交边界 verified，四项目 900 项执行通过、4 项 Explicit 原生 GUI 未执行，格式与源码指纹通过，见 [阶段记录](phase-group-consistency.md)。后续引用、身份/草稿、依赖缓存和释放分阶段验证。授权覆盖设计推荐方向，具体行为与偏差随阶段记录；此前 proposed 表示设计形成时的状态。
+
+2026-10-26：用户要求分析 Group 删除、引用、场景推断更新及相关异常，形成 [专项审核](review.md)；随后要求更统一、模块化的处理设计，补充 [Group 一致性设计](group-authoring-consistency-design.md)。当前状态为 proposed，只有设计与审核文档；剪切和草稿交互取舍尚待确认，未开始本方案业务实现，也未将本轮建议同步为正式 spec。
 
 ## 用户原始目标与澄清
 

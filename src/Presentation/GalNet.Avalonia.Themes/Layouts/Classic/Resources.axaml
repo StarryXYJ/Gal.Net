@@ -23,6 +23,7 @@
               <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" Margin="64,0,64,70" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" ZIndex="13" />
               <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50" />
               <common:GameToolbar HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" />
+              <ContentPresenter Name="PART_History" Content="{TemplateBinding History}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ZIndex="100" />
             </Grid>
       </ControlTemplate>
     </Setter>

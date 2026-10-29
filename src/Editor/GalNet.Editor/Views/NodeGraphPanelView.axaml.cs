@@ -600,7 +600,7 @@ public partial class NodeGraphPanelView : UserControl
     public void FrameNodes(bool selectionOnly)
     {
         if (Workspace is not { } workspace) return;
-        var nodes = (selectionOnly && workspace.SelectedNodes.Count > 0 ? workspace.SelectedNodes : workspace.Nodes).ToArray();
+        var nodes = (selectionOnly && workspace.SelectedNodes.Count > 0 ? workspace.SelectedNodes.AsEnumerable() : workspace.Nodes).ToArray();
         if (nodes.Length == 0) return;
         var left = nodes.Min(node => node.X); var top = nodes.Min(node => node.Y);
         var right = nodes.Max(node => node.X + GraphLayoutMetrics.NodeWidth); var bottom = nodes.Max(node => node.Y + node.LayoutHeight);

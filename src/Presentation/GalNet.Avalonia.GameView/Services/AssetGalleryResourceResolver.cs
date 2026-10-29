@@ -1,6 +1,6 @@
 using GalNet.Assets;
+using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
-using GalNet.Core.Gallery;
 
 namespace GalNet.Avalonia.GameView.Services;
 

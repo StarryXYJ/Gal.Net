@@ -29,7 +29,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxVariableEditorsMountCompletionControlsAndSaveOtherValidDrafts()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -60,7 +60,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxNestedDraftCreatesAnOmittedObjectAndRejectsLaterSourceChanges()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -98,7 +98,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxProjectOwnedPanelsRemainLiveAfterClosingAndReopeningTheirDocks()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -127,7 +127,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxRealViewsMountAtSmallSizesAndIconThemesKeepKeyboardAndCheckedFeedback()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme();
@@ -170,7 +170,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     foreach (var animated in window.GetVisualDescendants().OfType<Avalonia.Animation.Animatable>()) animated.ClearValue(Avalonia.Animation.Animatable.TransitionsProperty);
                     app.RequestedThemeVariant = theme; window.RequestedThemeVariant = theme;
                     await Task.Delay(200); TimelinePump(window);
-                    var add = groupView.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, page.AddEntryCommand));
+                    var add = groupView.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, page.ExpandAllCommand));
                     Assert.That(add.Bounds.Width, Is.EqualTo(32)); Assert.That(add.Bounds.Height, Is.EqualTo(32));
                     var surface = add.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "ButtonSurface");
                     Assert.That((surface.Background as ISolidColorBrush)?.Color.A ?? 0, Is.Zero, "Icon buttons keep a transparent normal surface.");
@@ -205,7 +205,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var timelineEntry = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.PlayTimeline).Single();
                 timelineEntry.Source.Parameters["timeline"] = TimelineFixture(); page.SelectedEntry = timelineEntry;
                 var timelineView = new TimelinePanelView { DataContext = timeline }; window.Content = timelineView; TimelinePump(window);
-                Assert.That(timelineView.GetVisualDescendants().OfType<GridSplitter>().Count(), Is.EqualTo(2));
+                Assert.That(timelineView.GetVisualDescendants().OfType<GridSplitter>().Count(), Is.EqualTo(3));
                 Assert.That(timelineView.TreeColumnWidth.Value, Is.EqualTo(320)); timelineView.TreeColumnWidth = new GridLength(260); TimelinePump(window);
                 Assert.That(timelineView.FindControl<GalNet.Game.Controls.Timeline.TimelineCanvas>("TimelineKeys")!.Bounds.Width, Is.GreaterThan(300));
                 Capture("uiux-timeline-960.png");
@@ -218,7 +218,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxLocalizedDraftsSynchronizeAndSaveAfterEveryViewCloses()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -259,7 +259,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxCommonAndFullEditorsShareDraftsAcrossDockClosureAndSave()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -307,7 +307,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxPresetsRetainDocumentsSelectionAndHistoryAndRestoreMaximization()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
@@ -334,7 +334,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [Test]
     public async Task UiuxProblemsValidateUnsavedAuthorValuesAndKeepStableEntryNavigation()
     {
-        await using var ui = HeadlessUnitTestSession.StartNew(typeof(EditorFormTestApplication));
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
