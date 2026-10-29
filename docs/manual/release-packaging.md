@@ -67,7 +67,7 @@ Windows x64 应用提供两种部署方式，均保留 R2R：默认完整版附�
 
 默认应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试与启动参数。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
 
-整合 GameTestCase 经过 `project export-directory` 编译：Graph、Group 和资源均在 `pak/Assets/Paks/*.pak`，可选剧情分片位于 `pak/StoryPatches/<buildId>/`；内部清单、配置、人物和 Gallery 封装为 `pak/game.pak`，内置文本为 `pak/localization.pak`。验收通过分发 CLI 的 `game inspect <content-directory>` 读取版本 3 身份，并拒绝散装 JSON、loose Graph、散装素材、rawgalgroup 和作者 Contracts 目录。`-Galpak` 安装到同一 `pak/`，同时收集归档旁当前 buildId 的剧情包及 ResourcePatches。
+整合 GameTestCase 经过 `project export-directory` 编译：Graph、Group 和资源均在 `pak/Assets/Paks/*.pak`，剧情分片位于 `pak/StoryPatches/<buildId>/`；内部清单、配置、人物和 Gallery 封装为 `pak/game.pak`，内置文本为 `pak/localization.pak`。验收通过分发 CLI 的 `game inspect <content-directory>` 读取 content 版本 3 身份，并拒绝散装 JSON、loose Graph、散装素材、rawgalgroup 和作者 Contracts 目录。`-Galpak` 仅接受内置全部剧情分片的完整 v4 包，安装到同一 `pak/`，不再收集归档旁的剧情目录或资源补丁。资源覆盖补丁需要显式部署到安装内容的 ResourcePatches。
 
 完整组合目录如下；没有补丁时仍保留扩展目录，纯 Sample 也提供空 pak/I18n、pak/ResourcePatches、pak/StoryPatches（没有游戏就没有 buildId 子目录）：
 
@@ -131,6 +131,6 @@ pwsh -File scripts/release/Push.ps1 -Index out/release/1.2.3/release-index.json
 
 Push 先检查索引、全部文件哈希、版本和消费者验收状态；GitHub 目标还在创建 draft 前检查七个发行 ZIP 是否齐全。随后创建 GitHub draft，按依赖顺序上传 NuGet、上传 ZIP，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
 
-## 兼容原有本地应用入口
+## 维护者本地应用入口
 
-`Publish.ps1 -Package Editor/Sample/SampleIntegrated/All -Version 1.2.3` 继续可用，默认仍生成旧式 ZIP 文件名，供 Editor 的仓库内导出窗口使用。可选 `-Deployment FrameworkDependent` 生成精简版，名称追加 `-framework-dependent`；默认 `SelfContained`。整合自定义目录或 galpak 的参数保持原语义；完整五包与新索引流程使用 Release.ps1，默认同时生成两种部署。直接运行旧入口不会产生可供 Push.ps1 使用的封存索引。`Test-Release.ps1 -Deployments SelfContained` 可单独验收完整版，默认验收两种部署。
+`Publish.ps1 -Package Editor/Sample/SampleIntegrated/All -Version 1.2.3` 用于维护者本地应用构建，不再从 Editor 内容导出窗口调用。可选 `-Deployment FrameworkDependent` 生成精简版，名称追加 `-framework-dependent`；默认 `SelfContained`。`-Galpak` 使用完整 v4 归档。完整 NuGet/应用组合与索引流程使用 Release.ps1，默认同时生成两种部署。直接运行 Publish.ps1 不会产生可供 Push.ps1 使用的封存索引。`Test-Release.ps1 -Deployments SelfContained` 可单独验收完整版，默认验收两种部署。

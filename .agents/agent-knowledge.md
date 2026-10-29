@@ -1,5 +1,8 @@
 # GalNet Agent Knowledge
 
+- 2026-10-29 跨平台 feature P1：用户明确不考虑向后兼容；galpak/目录统一包含全部剧情分片，installation.json v4 索引基础 PAK、localization.pak 和剧情 PAK，content/GPAK 仍 v3。安装器只接受完整 v4，不再提供旧归档安装或旁置剧情导出。Editor 仅提供 galpak/内容文件夹，目录模式在所选输出目录创建 pak；资源覆盖补丁显式独立导出。早期 v3 封装记录中的旧归档兼容与旁置剧情规则已被本项取代。见 features/F-20261029-05-cross-platform-applications。
+- [重复安装的源完整性](lessons/L-20261029-11-reinstall-source-integrity.md)：命中正确安装目录仍须验证本次归档 payload hash，不能以目标缓存命中替代源完整性校验。
+
 - [模态背景静态标题](lessons/L-20261029-10-disabled-title-foreground.md)：禁用背景容器会改变标题继承的前景画刷；静态标题显式绑定 TextPrimary，弹窗验证须挂载真实主页并检查 Color/Opacity，不能只截空背景。
 
 - 2026-10-29 CI 发布门禁：release.yml 的 validate-source 在 tag push 后先 fetch master，Test-ReleaseRef.ps1 校验规范版本 tag、checkout HEAD 和 origin/master 祖先归属；build 依赖门禁，publish 只允许 tag push 且 build 成功。主分支普通 push 只跑 CI，手动运行只生成候选。Test-ReleaseGuards.ps1 的 17 项用例覆盖真实临时 Git 图和模拟七 ZIP 上传；Push 在创建 draft 前检查七 ZIP。见 docs/manual/release-packaging.md。

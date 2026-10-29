@@ -63,13 +63,13 @@ public static class GamePackageExporter
         finally { Cleanup(stage); Cleanup(publish); }
     }
 
+    /// <summary>Exports a standalone archive containing the base game and all declared story parts.</summary>
     public static async Task<GamePackageExportResult> ExportAsync(string projectId, string projectName, string projectRoot,
         string outputDirectory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
         ProjectConfigurationSchema? configurations = null, CancellationToken cancellationToken = default)
     {
         string? stage = null;
         string? temporary = null;
-        string? storyStage = null;
         try
         {
             var source = Path.GetFullPath(projectRoot);
@@ -80,10 +80,11 @@ public static class GamePackageExporter
             var target = Path.Combine(output, SafeName(projectName) + ".galpak");
             temporary = target + ".export-" + Guid.NewGuid().ToString("N") + ".tmp";
             var prepared = await PrepareAsync(projectId, projectName, source, stage, resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken);
+            var payloads = prepared.Base.Concat(prepared.Stories).ToArray();
             await using (var file = File.Create(temporary))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
             {
-                foreach (var payload in prepared.Base)
+                foreach (var payload in payloads)
                 {
                     var entry = zip.CreateEntry("pak/" + payload.Path, CompressionLevel.NoCompression);
                     await using var input = File.OpenRead(Safe(stage, payload.StagedPath));
@@ -94,28 +95,7 @@ public static class GamePackageExporter
                 foreach (var directory in PackedGameDocuments.ExtensionDirectories(prepared.BuildId))
                     zip.CreateEntry("pak/" + directory + "/");
             }
-            await VerifyZipAsync(temporary, prepared.Base, resourceTypes, cancellationToken);
-            if (prepared.Stories.Length > 0)
-            {
-                var stories = Path.Combine(output, "StoryPatches");
-                Directory.CreateDirectory(stories);
-                var destination = Path.Combine(stories, prepared.BuildId);
-                if (!Directory.Exists(destination))
-                {
-                    storyStage = Path.Combine(stories, ".export-" + Guid.NewGuid().ToString("N"));
-                    Directory.CreateDirectory(storyStage);
-                    foreach (var payload in prepared.Stories)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        File.Copy(Safe(stage, payload.StagedPath), Path.Combine(storyStage, Path.GetFileName(payload.Path)));
-                    }
-                    Directory.Move(storyStage, destination);
-                    storyStage = null;
-                }
-                foreach (var payload in prepared.Stories)
-                    await VerifyFileAsync(Safe(output, payload.Path), payload, resourceTypes, cancellationToken);
-            }
-            Directory.CreateDirectory(Path.Combine(output, "StoryPatches", prepared.BuildId));
+            await VerifyZipAsync(temporary, payloads, resourceTypes, cancellationToken);
             await File.WriteAllBytesAsync(Path.Combine(output, SafeName(projectName) + ".layout.json"), prepared.Layout, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporary, target, true);
@@ -124,7 +104,7 @@ public static class GamePackageExporter
         }
         catch (OperationCanceledException) { return GamePackageExportResult.Failed("Export canceled."); }
         catch (Exception error) when (ExportError(error)) { return GamePackageExportResult.Failed(error.Message); }
-        finally { Cleanup(stage); Cleanup(storyStage); if (temporary is not null && File.Exists(temporary)) File.Delete(temporary); }
+        finally { Cleanup(stage); if (temporary is not null && File.Exists(temporary)) File.Delete(temporary); }
     }
 
     private static async Task<Prepared> PrepareAsync(string projectId, string projectName, string source, string stage,
@@ -232,7 +212,7 @@ public static class GamePackageExporter
                 LocalizationPak = languagePayload.Entry
             };
             baseline.Add(languagePayload);
-            var manifest = new GalpakManifest(3, projectId, projectName, DateTimeOffset.UnixEpoch, baseline.Select(file => file.Entry).ToArray());
+            var manifest = new GalpakManifest(4, projectId, projectName, DateTimeOffset.UnixEpoch, baseline.Concat(stories).Select(file => file.Entry).ToArray());
             var report = JsonSerializer.SerializeToUtf8Bytes(new { buildId, resources = layout, unused = plan.Unused.Select(file => new { file.Id, file.Path, file.TypeId }) }, JsonOptions);
             var documents = new Dictionary<string, byte[]>(StringComparer.Ordinal)
             {

@@ -255,10 +255,6 @@ function Add-GameContent([string]$Stage, [string]$PackageRoot, [string]$Contract
         $inspection = Invoke-DotNet @('run', '--project', $headlessProject, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore', '--', 'game', 'inspect', $contentRoot) -JsonOutput
         $buildId = $inspection.data.buildId
         if ($buildId -cnotmatch '^[a-f0-9]{64}$') { throw 'Integrated content has an invalid buildId.' }
-        foreach ($patches in @("StoryPatches/$buildId", 'ResourcePatches')) {
-            $patchSource = Join-Path (Split-Path -Parent $Galpak) $patches
-            if (Test-Path -LiteralPath $patchSource) { Copy-ContentTree (Split-Path -Parent $Galpak) $contentRoot @($patches) }
-        }
         return
     }
     if ([string]::IsNullOrWhiteSpace($ProjectDirectory)) { throw 'Pass either -ProjectDirectory or -Galpak for SampleIntegrated.' }

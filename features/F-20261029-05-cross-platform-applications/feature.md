@@ -2,8 +2,8 @@
 
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
-- 状态：design-draft
-- 当前进度：用户已确认目标与范围，并要求继续设计；已形成 [设计草案](design.md)，尚未开展 Phase 规划或代码实现。
+- 状态：in-progress
+- 当前进度：P0 内容/本机环境检查已记录；P1 导出改造与自动化验证完成，分发 Editor 的原生无 SDK 烟测待补。跨平台项目未同步，结果与限制见 [执行记录](execution.md)。
 
 ## 用户目标与已确认决策
 
@@ -18,6 +18,9 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 5. 桌面先采用普通自包含发布，AOT 不作为桌面支持前置条件；iOS 的 AOT 发布风险提前验证。
 6. 本次授权先整理待办、准备开始；实现细节与代码变更进入后续步骤。
 7. 2026-10-29 用户要求继续，并指出 VLC 的跨平台能力。设计继续采用 VLC 作为视频首选，区分上游能力与当前原生部署、展示及发布验证缺口，不预设移动必须更换播放器。
+8. 2026-10-29 用户已初始化 `src/Samples/GalNet.Sample.CrossPlatform/`，要求最后再同步现有 Sample 内容，避免同一改动更新两份。桌面阶段以现有 `GalNet.Sample.Avalonia` 和公共库为功能主线，新项目先保留骨架；桌面功能稳定后在 P6 集中接入，平台原生差异再由 P7 完成。
+9. 2026-10-29 用户明确“不考虑向后兼容”。本次新导出/安装链路仅采用完整 galpak v4（包含所有剧情分片），不保留 v1/v2/v3 安装分支或旧式旁置剧情导出。旧游戏内容需重新导出；不为本 feature 维护旧发行兼容或旧 API 转发。
+10. 2026-10-29 用户要求提交当前改动并持续开发，每完成一个可验证阶段提交一次；只提交本 feature 所属变更，不混入并行进行的 CI/release 优化。
 
 ## 范围
 
@@ -50,6 +53,8 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 以下来自源码和现有文档检查，不等同于跨平台实测结果。
 
+跨平台项目骨架已存在：共享 net10.0 项目，以及 Desktop、net10.0-android、net10.0-ios 与 Browser 工程；App 已有 desktop/activity/single-view lifetime 分支，但尚未接入游戏会话。Browser 的存在不扩大本 feature 的五平台验收范围；保留现有工程，不删除、不承诺浏览器媒体/输入支持。此处只确认源码结构，未执行移动工作负载恢复或运行验证。
+
 | 领域 | 现状与缺口 |
 | --- | --- |
 | 桌面发布 | Publish.ps1、WindowsReadyToRun profiles、包名与验收固定 win-x64；需扩展目标矩阵 |
@@ -72,8 +77,8 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 - [ ] 确定桌面各平台 CPU 架构、Linux 最低基线、媒体部署及运行包形式。
 - [ ] 明确三平台应用根、lib、pak、profile 与 macOS bundle 的定位规则。
-- [ ] 隐藏 Editor 应用组合包导出，明确保留 galpak/内容目录入口与对应说明。
-- [ ] 核对两种内容导出的交付完整性和补丁收集行为。
+- [x] 隐藏 Editor 应用组合包导出，明确保留 galpak/内容目录入口与对应说明。
+- [x] 核对两种内容导出的交付完整性和补丁收集行为，完整 v4 归档包含全部剧情，资源补丁显式独立交付。
 - [ ] 接入 Linux/macOS 原生音频构建和媒体依赖部署。
 - [ ] 打通 Editor、Sample 与分发 CLI 的桌面三平台构建发布。
 - [ ] 建设预编译合包与源码构建合包两种工具模式，统一 sh/ps1 参数语义。
@@ -81,7 +86,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 - [ ] 接入统一手柄接口与 SDL 后端，完成原生依赖部署及设备验证。
 - [ ] 建设三平台 CI、分发验收与 GUI 验收矩阵。
 - [ ] 提前验证 iOS 最小 Avalonia + 会话 + 音频的 AOT 发布闭包。
-- [ ] 为五平台模板提取共享会话启动，适配移动 lifetime、内容入口与沙盒目录。
+- [ ] 桌面功能稳定后，将 Sample 内容集中接入已初始化的 CrossPlatform 工程，优先复用共享会话/页面，适配移动 lifetime、内容入口与沙盒目录，避免长期复制维护。
 - [ ] 适配移动显示/触摸/返回键、安全区域、横竖屏和系统生命周期。
 - [ ] 完成移动音频、视频与 Gallery 后端及原生打包。
 - [ ] 提供可生成、可独立构建的五平台模板并完成设备验收。
@@ -105,7 +110,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 - 首期高级手柄能力：震动、陀螺仪、自适应扳机。
 - 用此次工作强制完成桌面 NativeAOT。
 - 支持所有 Linux 发行版、全部 CPU 架构或任意宿主交叉编译。
-- 为准备需求擅自更改现有内容格式、严格契约规则或其他 feature 的实现。
+- 放宽严格契约规则，或修改与本 feature 无关的其他功能；galpak v4 是用户“不考虑向后兼容”修订后的明确格式变更。
 
 ## 约束、假设与开放事项
 
