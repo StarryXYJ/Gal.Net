@@ -191,6 +191,8 @@ function Complete-Package([string]$Kind, [string]$PackageRoot) {
         New-Item -ItemType Directory -Path $composeTools -Force | Out-Null
         Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/distribution/compose.ps1') -Destination $composeTools
         Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/distribution/compose.sh') -Destination $composeTools
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/distribution/build-compose.ps1') -Destination $composeTools
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/distribution/build-compose.sh') -Destination $composeTools
     }
     $applicationLayout = [ordered]@{
         schemaVersion = 1

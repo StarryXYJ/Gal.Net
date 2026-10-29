@@ -2,7 +2,7 @@
 
 - 更新：2026-10-29；整体 in-progress。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：P4 源码 `build-compose`；其余平台验收按可用环境独立推进。
+- 下一段：P0/P5 SDL3 探针及统一手柄；其余平台验收按可用环境独立推进。
 
 ## 阶段状态与依赖
 
@@ -12,7 +12,7 @@
 | P1 | in-progress | 原生分发 Editor UI 的两种无 SDK 内容导出验收；实现和自动化已总结 |
 | P2 | verified | Windows 布局/严格合包已总结，无待办 |
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
-| P4 | in-progress | 源码 build-compose、macOS 归档与签名；Windows/Linux 预编译合包已总结，按 P3 平台规则推进 |
+| P4 | in-progress | Linux 宿主 SDK/定制工程矩阵、macOS 归档与签名；Windows 宿主的 Windows/Linux 源码及预编译合包已总结 |
 | P5 | planned | SDL 与完整桌面验收；依赖 P0 SDL 探针、P3，最终发行使用 P4 产物 |
 | P6 | planned | 桌面稳定后集中接入 CrossPlatform；依赖 P1–P5 及移动探针结论 |
 | P7 | planned | 移动媒体、生命周期和真机；依赖 P6，复用 P5 动作层 |
@@ -34,10 +34,11 @@
 - macOS：两架构 native 部署、.app/loader 路径、同级 pak、契约发现、分发 CLI/Editor/Sample 和完整媒体；内容合包不改已签名 bundle。
 - 退出条件：各声明平台实际发布/完整运行有匹配证据，Windows 回归通过；WSLg 和原生桌面、未测架构分别记录。
 
-## P4 — 源码构建合包与剩余归档能力
+## P4 — 剩余构建矩阵与归档能力
 
-- `build-compose` 接收应用 csproj、内容、RID、配置及受控参数，区分宿主/目标并早期拒绝不支持组合；检查精确 SDK/原生工具，保留结构化退出码和日志。
-- 自定义应用通过显式布局/清单协议适配，不猜测入口；sh/ps1 保持薄入口和退出/取消行为，预编译模式继续无需 SDK。
+Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消清理及真实 Sample 启动退出已归入[阶段总结](progress-summary.md)。
+
+- 补 Linux 宿主原生 SDK 实跑和定制工程兼容矩阵；只声明满足显式 apphost、契约与布局协议的工程，不推断任意 csproj 均可用。
 - 补 macOS 归档及合法 bundle 内部链接；构建模式在最终修改后签名，合包保持既有签名，显式记录签名/公证状态。
 - 验证两种模式重新解包运行、缺 SDK、错误输入/失败清理/原输入保护、权限与链接恢复及 bundle 签名；无凭据仅生成候选。
 - 退出条件：声明矩阵内两种模式可复现，归档恢复后布局和功能正确；同步工具与定制宿主文档，不将未公证产物标为已公证。

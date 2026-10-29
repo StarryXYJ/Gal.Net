@@ -259,4 +259,153 @@ public sealed class DistributionComposeTests
         if (OperatingSystem.IsWindows())
             Assert.ThrowsAsync<InvalidDataException>(() => GameDistributionComposer.ComposeAsync(Runtime, Content, Path.Combine(_root, "game.tar.gz")));
     }
+
+    private sealed class BuildRunner(Func<IReadOnlyList<string>, CancellationToken, Task<BuildProcessResult>> publish) : IBuildComposeProcessRunner
+    {
+        public List<IReadOnlyList<string>> Calls { get; } = [];
+        public bool MissingSdk { get; init; }
+        public int RestoreExitCode { get; init; }
+        public async Task<BuildProcessResult> RunAsync(string directory, IReadOnlyList<string> arguments, string stdout, string stderr, CancellationToken ct)
+        {
+            Calls.Add(arguments);
+            await File.WriteAllTextAsync(stdout, "stdout", ct); await File.WriteAllTextAsync(stderr, "stderr", ct);
+            if (MissingSdk) throw new System.ComponentModel.Win32Exception(2, "SDK executable was not found");
+            if (arguments[0] == "restore") return new(RestoreExitCode, "", "restore");
+            return arguments[0] == "--version" ? new(0, "10.0.401\n", "") : await publish(arguments, ct);
+        }
+    }
+
+    private BuildComposeRequest BuildRequest()
+    {
+        var project = Path.Combine(_root, "app project", "App.csproj");
+        Directory.CreateDirectory(Path.GetDirectoryName(project)!); File.WriteAllText(project, "<Project />");
+        return new(project, Content, Output, "win-x64", "Player.exe", "1.0.0", SdkVersion: "10.0.401");
+    }
+
+    private void FakePublish(IReadOnlyList<string> args, bool corruptContract = false)
+    {
+        var output = args[args.ToList().IndexOf("-o") + 1];
+        Directory.CreateDirectory(output);
+        foreach (var file in Directory.GetFiles(Path.Combine(Runtime, "lib"))) File.Copy(file, Path.Combine(output, Path.GetFileName(file)));
+        File.Copy(Path.Combine(Runtime, "Player.exe"), Path.Combine(output, "Player.exe"));
+        File.WriteAllText(Path.Combine(output, "coreclr.dll"), "fixture, not executed");
+        if (corruptContract) File.AppendAllText(Path.Combine(output, "GalNet.Project.Contracts.dll"), "mismatch");
+    }
+
+    [Test]
+    public async Task SourceBuildPublishesThenReusesStrictCompositionAndEscapesNativeProperty()
+    {
+        var native = Path.Combine(_root, "native;$().dll"); File.WriteAllText(native, "fixture");
+        var request = BuildRequest() with { MiniaudioNativePath = native };
+        var runner = new BuildRunner((args, _) => { FakePublish(args); return Task.FromResult(new BuildProcessResult(0, "", "")); });
+        var result = await new BuildComposeService(runner).BuildAsync(request);
+        Assert.That(result.Success, Is.True, JsonSerializer.Serialize(result));
+        var report = (BuildComposeReport)result.Data!;
+        Assert.That(report.SdkVersion, Is.EqualTo("10.0.401"));
+        Assert.That(report.Steps.Select(step => step.ExitCode), Is.EqualTo(new[] { 0, 0, 0 }));
+        Assert.That(File.Exists(Output), Is.True);
+        Assert.That(runner.Calls[2], Does.Contain("--no-restore"));
+        Assert.That(runner.Calls[1], Does.Contain("-p:RuntimeIdentifier=win-x64"));
+        Assert.That(runner.Calls[2].Single(arg => arg.StartsWith("-p:GalNetMiniaudioNativePath=")), Does.Contain("%3B%24%28%29"));
+        using var zip = ZipFile.OpenRead(Output);
+        Assert.That(zip.GetEntry("lib/Player.exe"), Is.Not.Null);
+        Assert.That(zip.GetEntry("pak/game.pak"), Is.Not.Null);
+        Assert.That(Directory.GetDirectories(_root, ".build-compose-*"), Is.Empty);
+    }
+
+    [TestCase("sdk")]
+    [TestCase("publish")]
+    [TestCase("restore")]
+    [TestCase("contract")]
+    public async Task SourceBuildPreservesLogsExitCodesAndInputsOnFailure(string failure)
+    {
+        var request = BuildRequest();
+        if (failure == "sdk") request = request with { SdkVersion = "10.0.999" };
+        var before = File.ReadAllBytes(Path.Combine(Content, "game.pak"));
+        var runner = new BuildRunner((args, _) =>
+        {
+            FakePublish(args, failure == "contract");
+            return Task.FromResult(new BuildProcessResult(failure == "publish" ? 23 : 0, "", "failure"));
+        }) { RestoreExitCode = failure == "restore" ? 17 : 0 };
+        var result = await new BuildComposeService(runner).BuildAsync(request);
+        Assert.That(result.Success, Is.False);
+        var report = (BuildComposeReport)result.Data!;
+        Assert.That(result.Diagnostics.Single().Code, Is.EqualTo(failure switch { "sdk" => "build.sdkMismatch", "publish" => "build.publishFailed", "restore" => "build.restoreFailed", _ => "build.failed" }));
+        Assert.That(report.Steps.Last().ExitCode, Is.EqualTo(failure == "publish" ? 23 : failure == "restore" ? 17 : 0));
+        Assert.That(report.Steps.All(step => File.Exists(step.StandardOutputLog) && File.Exists(step.StandardErrorLog)), Is.True);
+        Assert.That(File.Exists(Output), Is.False);
+        Assert.That(File.ReadAllBytes(Path.Combine(Content, "game.pak")), Is.EqualTo(before));
+        Assert.That(Directory.GetDirectories(_root, ".build-compose-*"), Is.Empty);
+    }
+
+    [Test]
+    public async Task SourceBuildRejectsConflictsUnsupportedRidAndPropertyInjectionBeforeSdk()
+    {
+        var request = BuildRequest();
+        var runner = new BuildRunner((_, _) => throw new AssertionException("Must not publish"));
+        var service = new BuildComposeService(runner);
+        Assert.ThrowsAsync<ArgumentException>(() => service.BuildAsync(request with { RuntimeIdentifier = "osx-arm64" }));
+        Assert.ThrowsAsync<ArgumentException>(() => service.BuildAsync(request with { Version = "1.0.0;Injected=true" }));
+        Assert.ThrowsAsync<InvalidDataException>(() => service.BuildAsync(request with { Output = Path.Combine(Content, "game.zip") }));
+        Directory.CreateDirectory(Path.GetDirectoryName(Output)!); File.WriteAllText(Output, "keep");
+        Assert.ThrowsAsync<IOException>(() => service.BuildAsync(request));
+        Assert.That(runner.Calls, Is.Empty);
+        Assert.That(await File.ReadAllTextAsync(Output), Is.EqualTo("keep"));
+    }
+
+    [Test]
+    public async Task SourceBuildCancellationRemovesOnlyOwnedStage()
+    {
+        var request = BuildRequest();
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var runner = new BuildRunner(async (args, ct) =>
+        {
+            FakePublish(args); entered.SetResult(); await Task.Delay(Timeout.Infinite, ct); return new(0, "", "");
+        });
+        using var cancellation = new CancellationTokenSource();
+        var operation = new BuildComposeService(runner).BuildAsync(request, cancellation.Token);
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(5)); cancellation.Cancel();
+        var error = Assert.CatchAsync<OperationCanceledException>(async () => await operation);
+        Assert.That(error!.Data["buildReport"], Is.TypeOf<BuildComposeReport>());
+        Assert.That(File.Exists(Output), Is.False);
+        Assert.That(Directory.GetDirectories(_root, ".build-compose-*"), Is.Empty);
+        Assert.That(File.Exists(Path.Combine(Content, "game.pak")), Is.True);
+    }
+
+    [Test]
+    public async Task SourceBuildReportsMissingSdkWithoutPublishing()
+    {
+        var runner = new BuildRunner((_, _) => throw new AssertionException("Must not publish")) { MissingSdk = true };
+        var result = await new BuildComposeService(runner).BuildAsync(BuildRequest());
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Diagnostics.Single().Code, Is.EqualTo("build.sdkUnavailable"));
+        Assert.That(((BuildComposeReport)result.Data!).Steps.Single().ExitCode, Is.Null);
+        Assert.That(File.Exists(Output), Is.False);
+    }
+
+    [Test]
+    public async Task LinuxPublishDoesNotTreatManagedSocketsDllAsASharedObjectOnWindows()
+    {
+        await LinuxRuntime();
+        var published = Path.Combine(_root, "published"); Directory.CreateDirectory(published);
+        foreach (var file in Directory.GetFiles(Path.Combine(Runtime, "lib"), "*.dll")) File.Copy(file, Path.Combine(published, Path.GetFileName(file)));
+        File.Copy(Path.Combine(Runtime, "lib/player"), Path.Combine(published, "Player"));
+        File.Copy(Path.Combine(Runtime, "lib/player"), Path.Combine(published, "libcoreclr.so"));
+        File.WriteAllText(Path.Combine(published, "System.Net.Sockets.dll"), "Managed PE, not ELF");
+        var media = Path.Combine(_root, "media");
+        foreach (var name in new[] { "libvlc.so.5", "libvlccore.so.9", "vlc/plugins/codec/libavcodec_plugin.so" })
+        {
+            var target = Path.Combine(media, "native", name); Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(Path.Combine(Runtime, "lib/player"), target);
+        }
+        Directory.CreateDirectory(Path.Combine(media, "licenses"));
+        File.WriteAllText(Path.Combine(media, "licenses/fixture.txt"), "fixture");
+        File.WriteAllText(Path.Combine(media, "media-manifest.json"), "{}");
+        var runtime = Path.Combine(_root, "published-runtime.tar.gz");
+        await GameDistributionComposer.PreparePublishedRuntimeAsync(published, runtime, new("linux-x64", "Player", "1.0.0", MediaDirectory: media));
+        var output = Path.Combine(_root, "game.tar.gz");
+        await GameDistributionComposer.ComposeAsync(runtime, Content, output);
+        Assert.That(File.Exists(output), Is.True);
+        Assert.That(Directory.GetDirectories(_root, ".prepare-runtime-*"), Is.Empty);
+    }
 }

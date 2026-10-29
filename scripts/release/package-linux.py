@@ -152,8 +152,9 @@ def package(raw, media, output, content):
         if kind == "Editor":
             merge_publish(raw / "CLI", root, "CLI")
             (root / "Tools").mkdir()
-            shutil.copyfile(REPO / "scripts/distribution/compose.sh", root / "Tools/compose.sh")
-            (root / "Tools/compose.sh").chmod(0o755)
+            for script in ("compose.sh", "compose.ps1", "build-compose.sh", "build-compose.ps1"):
+                shutil.copyfile(REPO / "scripts/distribution" / script, root / "Tools" / script)
+                (root / "Tools" / script).chmod(0o755 if script.endswith(".sh") else 0o644)
         copy_tree(media / "native", root / "lib/native")
         copy_tree(media / "licenses", root / "docs/licenses")
         shutil.copyfile(media / "media-manifest.json", root / "docs/native-media.json")
@@ -171,7 +172,7 @@ def package(raw, media, output, content):
             "Private media libraries and package copyright notices are in lib/native and docs/licenses.\n"
             "Exact Ubuntu source packages are recorded in native-media.json; source availability/licensing must be reviewed before public redistribution.\n"
             "WSLg selects d3d12 only when /dev/dxg exists and GALLIUM_DRIVER is unset.\n"
-            "compose accepts Windows ZIP and Linux tar.gz runtimes; source build-compose remains planned.\n")
+            "compose accepts Windows ZIP and Linux tar.gz runtimes; build-compose publishes explicitly selected application projects with an SDK.\n")
         print(f"Checking native closure: {kind}", flush=True)
         verify_native(root)
     if content:

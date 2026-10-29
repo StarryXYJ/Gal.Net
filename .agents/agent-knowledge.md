@@ -1,4 +1,6 @@
 # GalNet Agent Knowledge
+- [源码发布的 profile 还原图](lessons/L-20261029-16-source-build-restore-graphs.md)：SDK/restore/publish 分步记录；Desktop 使用单数 RuntimeIdentifier，现有 WindowsReadyToRun 沿用 -r 锁图，不关闭 locked restore。
+- [跨主机 so 筛选](lessons/L-20261029-17-cross-host-shared-object-filter.md)：Windows 的 *.so* 会误匹配 System.Net.Sockets.dll；用 Ordinal 的 .so/.so. 文件名规则再验 ELF。
 
 - [Windows 原子发布句柄冲突](lessons/L-20261029-15-windows-publication-sharing.md)：独立 Move 探针确认短暂冲突；FilePublication 仅 Windows 5/32/33 有界重试，保持原子性与取消，回滚不继承取消。真实句柄回归及两种分发 40 次导出通过。
 
@@ -10,7 +12,7 @@
 
 - 2026-10-29 跨平台 P3a：剧情像素视频、Gallery 播放/缩略图、Editor 音频预览均通过 Media.LibVlc.LibVlcFactory 初始化；singleton 配置冻结 native/plugin 路径，各播放器仍独立释放。Windows 私有 VLC 已原生验证；Linux 默认 system loader 仅为开发基线，Core.Initialize(directory) 不支持 Linux，不能据此声称私有部署成功。Editor 默认契约目录须显式部署 Core、Builtins、Project.Contracts 完整闭包。
 
-- 2026-10-29 跨平台发行工具：docs/application-layout.json v1 与严格 contractFiles 不变；compose 现已支持纯 win-x64 ZIP/目录、linux-x64 tar.gz/Unix 目录与完整内容（galpak/目录），分别输出 ZIP/tar.gz。tar 模式独立保存，拒绝链接/特殊条目/特权位；Windows 主机用 tar 输入保留 Linux 执行位。504 项回归、WSL 两种真实合包和合成 Sample 启动退出通过；dev.10 CLI 本地候选，未重写 dev.9 应用包。源码 build-compose/macOS 仍待后续。
+- 2026-10-29 跨平台发行工具：compose 支持 win-x64 ZIP/目录、linux-x64 tar.gz/Unix 目录与完整内容，保持布局 v1 和严格契约；build-compose 显式 csproj/apphost/版本，经 SDK、锁定还原和普通自包含发布封装后复用 compose。Windows 宿主到 Windows/Linux 目标的真实 Sample 均已解包、验 hash、启动并正常退出；Editor.Shared 515 项通过，取消会停止自有 SDK 进程树。Linux 宿主 SDK、定制工程矩阵和 macOS 仍待验收；旧 dev.9/dev.10 候选未更新。已完成总结和剩余计划见 features/F-20261029-05-cross-platform-applications/。
 - [SkiaSharp 与 R2R 原生字体验收](lessons/L-20261029-12-skia-r2r-native-fonts.md)：当前 win-x64/.NET 10/SkiaSharp 3.119.4 发布仅将 SkiaSharp 保持 IL，应用继续 R2R；真实窗口连续启动/正常退出不能由 PE 头检查替代。
 
 - 2026-10-29 跨平台 feature P1：用户明确不考虑向后兼容；galpak/目录统一包含全部剧情分片，installation.json v4 索引基础 PAK、localization.pak 和剧情 PAK，content/GPAK 仍 v3。安装器只接受完整 v4，不再提供旧归档安装或旁置剧情导出。Editor 仅提供 galpak/内容文件夹，目录模式在所选输出目录创建 pak；资源覆盖补丁显式独立导出。早期 v3 封装记录中的旧归档兼容与旁置剧情规则已被本项取代。见 features/F-20261029-05-cross-platform-applications。

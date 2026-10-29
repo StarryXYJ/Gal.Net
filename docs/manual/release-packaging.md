@@ -114,7 +114,25 @@ Linux tar 可包含一个顶层应用目录，也可直接使用应用根；输�
 
 内容导出的 `contractFiles` 记录加载该项目 schema 时的完整契约闭包字节身份，并参与 buildId。重新导出前若磁盘契约与已加载 catalog 不一致则拒绝，需重新加载项目；合包逐项核对运行包中同名 DLL 的大小/hash。普通编辑器默认契约和 Sample 契约并不相同，创作项目应使用目标运行包的契约。低层 API 手工构造且没有契约身份的 catalog 可以导出，但其内容不能用于严格合包。
 
-Linux 本地候选归档见下文；macOS `compose`、源码 `build-compose` 与签名仍在后续阶段。旧候选中的 CLI 不自动更新，使用包含上述 Linux 支持的新构建。
+Linux 本地候选归档见下文；macOS `compose` 与签名仍在后续阶段。旧候选中的 CLI 不自动更新，使用包含上述能力的新构建。
+
+## 从应用源码构建并合包
+
+`build-compose` 对显式选择的应用 `.csproj` 执行 SDK 检查、锁定还原、普通自包含发布，再封装标准布局并调用相同的严格 `compose`。它不编译作者项目内容，也不修改旧运行包。需要项目要求的 .NET SDK、原生工具及锁文件；`global.json` 在应用项目目录生效，`--sdk-version` 可额外要求解析结果精确匹配。
+
+```powershell
+./Tools/build-compose.ps1 --app-project 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj' `
+  --content '导出的pak目录' --runtime-id win-x64 --entry-point GalNet.Sample.Avalonia.exe `
+  --version 1.0.0 --configuration Release --publish-profile WindowsReadyToRun --output MyGame.zip
+```
+
+也可直接运行 `GalNet.Editor.Headless[.exe] build-compose ...` 或 `Tools/build-compose.sh`。只接受 win-x64/linux-x64；配置默认 Release，flavor 默认 Player，可传 `--sample-flavor Developer`。`--publish-profile` 是应用项目中已存在的 profile 名称，不接受路径；构建统一关闭 AOT、单文件、裁剪和 R2R，使用普通自包含 apphost。
+
+应用发布输出必须包含显式 `--entry-point` 文件、对应自包含运行时及 Core/Builtins/Project.Contracts 三份契约。封装统一使用 `lib/docs/pak`；Windows 入口为 `lib/<apphost.exe>`，保持 SDK apphost 与托管程序集相邻，Linux 根目录的 sh 入口设置自己的 loader 路径并调用 `lib/<apphost>`。应用需按 application-layout.json 定位内容和可写用户目录，不能硬编码工作目录。不同布局的定制宿主需自行适配后使用预编译 compose，不猜测任意 csproj 的入口。
+
+Linux 另需 `--media-directory <准备好的目录>`，其中包含 native、licenses、media-manifest.json，格式来自 prepare-linux-media.py；`--miniaudio-native <目标动态库>` 可把已编译的音频库交给项目。Windows 构建 Linux 时必须提供目标库，不能使用 Windows native。示例使用 `--runtime-id linux-x64 --entry-point GalNet.Sample.Avalonia --publish-profile Desktop --miniaudio-native libgalnet_miniaudio.so --media-directory linux-media --output MyGame.tar.gz`。媒体库核对 ELF x64，完整目标系统加载仍需 Linux 实跑。
+
+`--version` 必须与内容导出所用契约版本匹配；修改契约或其版本后需重建契约、重新导出内容，不能通过放宽 hash 校验沿用旧内容。SDK、还原、发布分别保留 stdout/stderr 和退出码，日志目录随 JSON 结果返回；失败不发布最终游戏包，清理自有暂存目录，保留诊断日志。Ctrl+C 停止本次 SDK 进程树并返回 130，普通构建失败返回 5，参数错误返回 2。构建可能产生应用项目正常的 bin/obj 和原生编译缓存，不清除这些项目缓存。
 
 需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，保留 PDB，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
 

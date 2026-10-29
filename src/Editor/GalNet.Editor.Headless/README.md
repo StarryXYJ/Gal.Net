@@ -29,6 +29,8 @@ help --search group --json
 
 普通 help 输出文字；其他结果及错误在 stdout 输出协议版本 1 的 JSON `{ protocolVersion, operationId, success, data, diagnostics }`。操作失败返回非零退出码。`help --search` 没有匹配时正常返回空列表。
 
+发行工具入口：`compose` 使用预编译运行包，无需 SDK；`build-compose` 指定应用 csproj、内容、RID、apphost 文件名与版本，检查 SDK 后锁定还原、发布和严格合包。源码模式支持 Windows/Linux x64，Linux 需要显式的目标音频库和私有媒体闭包；参数见 `help build-compose`，完整流程见 [发行打包](../../../docs/manual/release-packaging.md)。失败保留结构化步骤、退出码及日志位置；取消停止自有构建进程树。旧内容的契约身份不匹配时必须重新导出。
+
 项目概况和查询采用 `project info`、`graph nodes`、`graph node`、`group entries` 等分组入口。旧 commands、summary、create、nodes、node、entries 扁平命令已删除，不提供兼容别名。可调用的入口以 `help --json` 为准，尚未实现的阶段不提前公开。
 
 execute 支持文档操作批次；独立资源文件操作一次只执行一条，不可与文档操作混合。文档 dry-run 在 JSON 的 `dryRun` 设置，文件操作暂不支持 dry-run，传入时在修改文件前明确拒绝。

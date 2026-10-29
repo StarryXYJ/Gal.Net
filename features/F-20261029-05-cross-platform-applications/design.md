@@ -119,6 +119,8 @@ build-compose --app-project <csproj> --content <galpak或目录>
 - 最终验证成功后再发布最终输出；拒绝非空输出冲突，失败清理只针对本次自有暂存目录。
 - ZIP 的 Unix mode 与 tar 的权限、符号链接分别处理；拒绝不安全归档路径和逃逸符号链接，合法 bundle 链接保留结构。归档恢复后再次验收入口可执行、动态库加载与许可完整性。
 
+源码模式已落地的首个协议要求显式 apphost 文件名和版本，并将普通自包含 publish 包装为 lib/docs/pak。Windows entryPoint 位于 lib，避免猜测/重写任意 SDK apphost 的程序集相对路径；Linux 用根 sh 入口设置私有 loader 并调用 lib 中的 ELF。SDK/锁定还原/发布分步执行，额外参数受控，不开放任意 MSBuild 属性拼接；原生工具由项目构建或显式目标库满足。Windows 宿主到 Windows/Linux 已实跑，Linux 宿主 SDK、其他定制布局及 macOS 不由此推定可用。
+
 ## 6. 音频、VLC 与展示集成
 
 ### P2 已落地的发行边界

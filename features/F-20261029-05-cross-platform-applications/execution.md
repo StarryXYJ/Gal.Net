@@ -229,3 +229,31 @@ CLI help 与打包 README 同步；PowerShell 薄入口增加无扩展名 CLI �
 - 本次 `/tmp/galnet compose linux ...` 下的原运行包/Editor、CLI 副本、两份合包归档及重复解包均已清理，共 3,151,046,488 字节，保留精简证据和 CLI 候选；原 manual-profile、手测安装、dev.9 发行包及用户 iOS lock 改动未动。见 cleanup.json。
 
 P4 Linux compose 子范围通过，P4 整体仍 in-progress。下一段可推进源码 build-compose；原生 Editor UI/完整 Linux 媒体、原生 Linux 桌面、公开分发审查、macOS/签名、SDL 和移动模板/真机仍独立追踪。
+
+## 2026-10-29：源码 build-compose
+
+新增 CLI/薄脚本入口 `build-compose`：显式应用 csproj、apphost、版本、RID/配置/flavor，检查实际 SDK，按匹配的锁图分别 restore 与 publish --no-restore，普通自包含输出封装为 lib/docs/pak 后复用严格 compose。只接受 Windows/Linux x64，不开放任意 MSBuild 参数拼接；文件路径中的 MSBuild 特殊字符转义。Windows 入口放在 lib 内以保持正常 SDK apphost 的程序集相邻规则，Linux 根 sh 入口设置包内 loader 后调用 lib ELF；内容契约必须与构建后的 DLL 字节匹配。
+
+每一步保存独立 stdout/stderr 和退出码，JSON 返回实际 SDK 与日志目录。还原、发布或合包失败不留下最终游戏包，日志保留，自有 staging 清理；Ctrl+C 终止本次 SDK 进程树并返回 130，不结束其他构建。Windows/Linux 工具包发布脚本包含两种 build-compose 薄入口；没有重写已有 dev.9/dev.10 候选。
+
+证据在 `out/cross-platform-validation/20261029-build-compose/`：
+
+| 验证 | 结果/证据 |
+| --- | --- |
+| Editor.Shared 完整回归 | 515/515，build-compose-all-final.trx；覆盖 SDK 缺失/版本不匹配、还原/发布退出码、契约拒绝、冲突/输入保护、转义、取消和跨主机封装 |
+| 真实子进程取消 | 上述全量中的 BuildComposeProcessTests 启动真实 MSBuild/PowerShell 等待子进程后取消，确认整个自有树退出；另验证 SDK 解析和两路日志 |
+| Windows 源码发布合包 | SDK 10.0.401，真实 Sample、Developer、Version 1.0.0、WindowsReadyToRun 隔离图（实际 R2R=false）；SDK/还原/发布均 exit 0，合包及解包逐文件 hash 通过，actual-windows-result.json |
+| Windows 原生运行 | source-windows-native.trx，1/1；含空格解包路径、独立 profile、无 SDK 搜索，包内 coreclr/VLC、会话就绪及正常退出 0；日志归档 windows-native/ |
+| Windows 构建 Linux | Desktop/linux-x64 隔离图，显式 miniaudio .so 和从已验 hash 的 dev.9 包恢复的私有媒体闭包；三步 exit 0，严格契约/合包通过，actual-linux-build.json |
+| Linux 解包及原生运行 | source-linux-extraction.json 核对归档/逐文件 hash、权限和空目录；linux-smoke/db2ed1bada8a4ed287a10f9755a431f1/result.json：窗口/会话/确认退出 0，包内 coreclr/Skia/VLC 和宿主 D3D12 |
+| 薄脚本 | PowerShell 和 WSL sh 实际转发含空格参数，已有输出拒绝和 exit 1 保留；ps-wrapper.json、sh-wrapper.json。脚本 AST/语法与 Python 打包保护 8/8 通过 |
+
+保留的失败与修正：
+
+- Windows publish 隐式还原使可移植分析器 RID 与 WindowsReadyToRun 锁图不匹配；改为明确 restore 后 no-restore 发布，保持锁定校验。Desktop 还原必须有单数 RuntimeIdentifier 满足应用 RID 检查，而 restore -r 引入的复数 RuntimeIdentifiers 会污染分析器空 RID 图；Desktop 不使用 -r，现有 WindowsReadyToRun 则按既有 Publish.ps1 保留 -r。SDK/所有包版本未放宽，锁文件未修改。详见实际失败 JSON、归档 SDK stdout 和 L-20261029-16。
+- Windows 的 *.so* 把 System.Net.Sockets.dll 误送入 ELF 校验；改为 Ordinal 的 .so/.so. 文件名规则，仍严格检查 ELF64/小端/x64。补完整准备/合包回归，详见 actual-linux-before-so-fix.json 和 L-20261029-17。
+- 首次 no-build 原生测试使用旧测试 DLL，匹配 0 项，未计作通过；重新编译后明确执行 1 项通过。
+
+清理自有 Windows fixture、SDK 发布副本、媒体缓存、两份测试游戏归档/重复解包、包装脚本夹具和临时 ext4 解包，共约 1.84 GiB；精确路径/大小见 cleanup-windows.json、cleanup-linux.json。完整 SDK 日志复制到 sdk-logs/，retained-log-index.json 对照原路径与保留路径；用户 manual-profile、手测安装、旧候选和 iOS lock 改动未触碰。项目正常 bin/obj 缓存不作为临时 fixture 删除。
+
+本阶段完成的是 Windows 宿主到 Windows/Linux 目标的源码合包切片。Linux 宿主 SDK、其他定制工程、macOS/签名和完整媒体仍有独立验收缺口；P4 整体保持 in-progress。已完成步骤归入 progress-summary.md，剩余计划转向 SDL 探针与桌面验收。
