@@ -17,6 +17,52 @@ namespace GalNet.IntegrationTests;
 [NonParallelizable]
 public sealed class SampleWindowThemeTests
 {
+#if GALNET_GAME_DEBUG
+    [Test]
+    public async Task DebugMenuRendersItsHeaderAndPopupUsingTheHostMenuTheme()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var services = new ServiceCollection();
+            SampleCustomization.ConfigureServices(services);
+            await using var provider = services.BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var localization = scope.ServiceProvider.GetRequiredService<IPlayerLocalization>();
+            localization.CultureService.SetCulture("zh-CN");
+            PlayerTextExtension.Resolve = localization.GetString;
+            var semi = new Semi.Avalonia.SemiTheme();
+            Application.Current!.Styles.Add(semi);
+            var menu = new DebugMenuView
+            {
+                DataContext = scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.Debug.SampleDebugViewModel>()
+            };
+            var window = new Window { Width = 640, Height = 400, Content = menu };
+            window.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+            try
+            {
+                window.Show();
+                window.UpdateLayout();
+                Assert.That(menu.GetVisualDescendants().OfType<global::Avalonia.Controls.Presenters.ItemsPresenter>(), Is.Not.Empty,
+                    "The debug menu needs a real Menu template, not only IsVisible=true.");
+                var header = (MenuItem)menu.Items[0]!;
+                Assert.That(header.Header, Is.EqualTo("调试"));
+                Assert.That(((ISolidColorBrush)header.Foreground!).Color,
+                    Is.EqualTo(((ISolidColorBrush)window.FindResource("GalNet.Brush.TextPrimary")!).Color));
+                Assert.That(header.Bounds.Width, Is.GreaterThan(0));
+                Assert.That(header.Bounds.Height, Is.GreaterThan(0));
+                header.IsSubMenuOpen = true;
+                window.UpdateLayout();
+                var popup = header.GetVisualDescendants().OfType<global::Avalonia.Controls.Primitives.Popup>().Single();
+                Assert.That(popup.IsOpen, Is.True);
+                Assert.That(popup.Child!.GetVisualDescendants().OfType<MenuItem>(), Is.Not.Empty);
+            }
+            finally { window.Close(); Application.Current.Styles.Remove(semi); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+#endif
+
     [Test]
     public async Task CaptionResourcesAndExitConfirmationUseThePlayerPaletteAndKeepCancelKeyboardSafe()
     {

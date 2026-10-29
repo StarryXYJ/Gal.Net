@@ -4,7 +4,7 @@
       xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
       x:Class="GalNet.Sample.Avalonia.Views.DebugMenuView"
       x:DataType="debug:SampleDebugViewModel">
-  <MenuItem Header="{loc:Localize Debug.Menu}">
+  <MenuItem Header="{loc:Localize Debug.Menu}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
     <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" />
     <MenuItem Header="{loc:Localize Debug.ReloadGameResources}" Command="{Binding ReloadGameResourcesCommand}" />
     <Separator />
