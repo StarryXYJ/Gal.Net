@@ -109,6 +109,17 @@ intro group executes `gallery.unlock(100)`, making that item viewable after the 
 
 Build and run from the repository root:
 
+The Sample launch scripts build and deploy Sample.Contracts before compiling this
+fixture, including on a fresh checkout:
+
+```powershell
+./scripts/samples/run-avalonia-sample.ps1
+./scripts/samples/run-headless-sample.ps1
+```
+
+`-SkipBuild` skips both contract deployment and content compilation. For direct
+CLI use, deploy the contracts as shown above before running:
+
 ```text
 dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build

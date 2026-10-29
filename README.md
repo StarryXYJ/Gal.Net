@@ -67,6 +67,8 @@ dotnet format style GalNet.slnx --no-restore --verify-no-changes --diagnostics I
 
 Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两个脚本都支持通过 `-Project`、`-BuildOutput` 和 `-SkipBuild` 指定已有内容。
 
+构建仓库自带的 `GameTestCase` 时，脚本会先构建并部署 Sample.Contracts，再编译剧情；`-SkipBuild` 跳过这两步。通过 `-Project` 指向其他内容项目时，需先按 [Sample.Contracts 说明](src/Samples/GalNet.Sample.Contracts/README.md) 部署与玩家匹配的项目契约。
+
 统计项目代码量可以运行：
 
 ```powershell
