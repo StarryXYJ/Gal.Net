@@ -24,7 +24,13 @@
 - 精简验证与清理清单：`out/cross-platform-validation/20261029/`、`out/cross-platform-validation/20261029-compose/`；两次清理约 21.1 GiB、2.9 GiB，保留用户存档、手测安装和最新候选。
 - 以上均为本地候选，不宣称精确 tag 的公开发行。操作见 [发行打包说明](../../docs/manual/release-packaging.md)，媒体边界见 [跨平台后端说明](../../docs/manual/cross-platform-backends.md)。
 
-## 仍须保留的边界
+## P0 — SDL3 共存探针（Windows/WSLg 切片）
+
+固定 SDL 3.4.18 及官方归档 SHA256，独立 Avalonia 自包含探针使用源生成窄绑定。Windows 官方 x64 DLL 与 WSL 输入专用源构建均完成 3 次 × 52 项检查、坏 native 哈希拒绝 exit 1 和正常退出 0；初始化/事件泵在 UI 主线程，仅 gamepad 及隐式 joystick/events，未启用 SDL video/audio。虚拟设备按键/轴、释放、断连、重新初始化与真实 Avalonia 焦点切换通过。源码/构建临时目录与运行副本自动清理，保留 native/许可/精简证据。
+
+入口：[探针说明](probes/sdl3/README.md)；证据：`out/cross-platform-validation/20261029-sdl3/`。这是共存可行性结果，正式适配仍待 P5 替换，真实设备、macOS、移动与 AOT 不在本切片验收内。
+
+## 仍须保留的边界（继续追踪）
 
 P1 原生 Editor UI 两种导出、P0 移动风险探针、完整 Linux 媒体/Gallery/调试及原生桌面、公开再分发许可和对应源码可用性、Linux 宿主 SDK/定制工程矩阵、macOS/签名、SDL、跨平台模板与移动真机均未因此完成；具体待办在剩余计划中。
 

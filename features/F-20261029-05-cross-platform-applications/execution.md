@@ -257,3 +257,23 @@ P4 Linux compose 子范围通过，P4 整体仍 in-progress。下一段可推进
 清理自有 Windows fixture、SDK 发布副本、媒体缓存、两份测试游戏归档/重复解包、包装脚本夹具和临时 ext4 解包，共约 1.84 GiB；精确路径/大小见 cleanup-windows.json、cleanup-linux.json。完整 SDK 日志复制到 sdk-logs/，retained-log-index.json 对照原路径与保留路径；用户 manual-profile、手测安装、旧候选和 iOS lock 改动未触碰。项目正常 bin/obj 缓存不作为临时 fixture 删除。
 
 本阶段完成的是 Windows 宿主到 Windows/Linux 目标的源码合包切片。Linux 宿主 SDK、其他定制工程、macOS/签名和完整媒体仍有独立验收缺口；P4 整体保持 in-progress。已完成步骤归入 progress-summary.md，剩余计划转向 SDL 探针与桌面验收。
+
+## 2026-10-29：P0 SDL3 与 Avalonia 共存探针
+
+用户进一步要求连续推进整个 feature；每个可验证阶段提交 Git 并简化计划，环境缺失保留明确验收边界，不在每个切片完成后暂停等待“继续”。
+
+新增 `probes/sdl3/`，固定 SDL 3.4.18 官方发行归档及 GitHub release asset digest，使用 SDL 官方镜像下载。Windows 采用官方 x64 DLL；Linux 从同源归档在临时 ext4 目录构建输入专用库，CMake 完整选项与实际功能探测保留。源生成 LibraryImport 窄绑定检查 SDL3 的一字节 bool、四字节枚举/ID，以及 size-versioned 136 字节虚拟设备描述符。只初始化 gamepad，SDL 自动带起 joystick/events；整个测试 video/audio 均未启用。SDL 明确允许状态采集，Avalonia 焦点 gate 抑制后台输出；正式动作取消/重新武装与多 scope SDL 所有权仍待 P5 实现。
+
+证据根：`out/cross-platform-validation/20261029-sdl3/`。
+
+| 检查 | 结果/证据 |
+| --- | --- |
+| 原生来源/许可 | native-win/native.json、native-linux/native.json；归档/库 SHA256、SDL zlib 许可、Linux configure/build/ldd.log。Linux HIDAPI/virtual 开启，libudev/libusb 关闭；不可据此声明完整物理设备兼容 |
+| Windows 最终自包含运行 | windows-font-fixed/verification.json：含空格隔离目录，3 次 exit 0，每次 52 项，包括两次初始化周期、按键/轴、释放、按住时断连、新连接 ID、真实 Avalonia 焦点切换；运行副本自动清理 |
+| WSLg 最终自包含运行 | linux-fixed/verification.json：同样 3 次 × 52 项及 exit 0，/tmp 含空格目录，私有 SDL 与自包含 .NET，未从系统加载 SDL，副本自动清理 |
+| 错误 native 拒绝 | 上述两组 bad-hash.json，均在 UI 启动前 exit 1；运行器同时检查进程退出码与 JSON passed，不仅看日志 |
+| 环境边界 | 当前两端探测不到实际标准手柄；虚拟设备不计为实机通过。macOS、移动/AOT、正式 GameHost 动作/部署仍待后续 |
+
+保留两次失败：首次 Windows 在 Opened 同步完成所有检查后直接 Shutdown，使 Avalonia lifetime StartCore 重入空引用（windows-before-refinement.log）；修正为 Opened 先让出启动调用栈，并修正外层异常必须返回非零。Linux 首次独立探针未注册字体，启动布局时找不到默认 Inter（linux-final/）；按已有字体 lesson 显式打包并注册开源 Inter，最终两端均重建复核。没有修改已修好的正式 Sample 字体策略。
+
+准备脚本在 Windows sandbox 临时目录结束时曾遇 ACL 拒绝；Windows 工作目录改放显式输出的父目录并验证生成路径，Linux 仍用独立 /tmp。原始失败临时目录及自有下载/发布副本在阶段清理时移除，原有手测安装、profile、旧候选和用户 iOS lock 改动保留。P0 Windows/WSLg SDL 子范围完成，P0 整体与 P5 仍 in-progress；接下来替换正式输入适配。

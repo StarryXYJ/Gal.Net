@@ -9,7 +9,7 @@
 
 ## 用户目标与已确认决策
 
-最新增量：源码 `build-compose` 已在 Windows 宿主实际生成 Windows/Linux 包并完成解包、hash、启动和正常退出，Editor.Shared 515 项通过。结果已归入阶段总结；旧 dev.9 应用包与 dev.10 compose CLI 候选未重写。Linux 宿主 SDK/定制工程矩阵、macOS 与完整媒体/移动验收继续保留。
+最新增量：源码 `build-compose` 的 Windows/Linux 切片已总结；SDL3 3.4.18 的 Windows/WSLg 共存探针各完成 3 次 × 52 项及正常退出，继续 P5 正式适配/部署。探针使用虚拟设备，不替代真实手柄、macOS 或移动验收；旧 dev.9 应用包与 dev.10 compose CLI 候选未重写。
 
 Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供额外支持 Android、iOS 的 Avalonia 跨平台模板。普通剧情开发者能够在没有 .NET SDK 或原生编译工具的环境中导出内容，使用预编译运行包完成游戏发行。修改应用源码的开发者可指定工程路径和内容包，通过独立工具构建、合并并打包。
 

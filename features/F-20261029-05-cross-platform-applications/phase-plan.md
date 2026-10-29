@@ -2,18 +2,18 @@
 
 - 更新：2026-10-29；整体 in-progress。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：P0/P5 SDL3 探针及统一手柄；其余平台验收按可用环境独立推进。
+- 下一段：P5 正式 SDL 手柄适配/原生部署；P0 Windows/WSLg SDL 共存探针已总结，其余平台验收按可用环境独立推进。
 
 ## 阶段状态与依赖
 
 | 阶段 | 状态 | 剩余范围/依赖 |
 | --- | --- | --- |
-| P0 | in-progress | macOS/移动工具链与 iOS/Android 风险探针、SDL 探针；内容闭包已总结 |
+| P0 | in-progress | macOS/移动工具链与 iOS/Android 风险探针、macOS SDL 探针；Windows/WSLg SDL 与内容闭包已总结 |
 | P1 | in-progress | 原生分发 Editor UI 的两种无 SDK 内容导出验收；实现和自动化已总结 |
 | P2 | verified | Windows 布局/严格合包已总结，无待办 |
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
 | P4 | in-progress | Linux 宿主 SDK/定制工程矩阵、macOS 归档与签名；Windows 宿主的 Windows/Linux 源码及预编译合包已总结 |
-| P5 | planned | SDL 与完整桌面验收；依赖 P0 SDL 探针、P3，最终发行使用 P4 产物 |
+| P5 | in-progress | 正式 SDL 适配/部署、真实设备与完整桌面验收；Windows/WSLg 共存探针已总结，最终发行使用 P4 产物 |
 | P6 | planned | 桌面稳定后集中接入 CrossPlatform；依赖 P1–P5 及移动探针结论 |
 | P7 | planned | 移动媒体、生命周期和真机；依赖 P6，复用 P5 动作层 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
@@ -23,7 +23,7 @@
 ## P0/P1 — 剩余探针与原生导出验收
 
 - 补齐 macOS 两架构环境/最低版本与原生依赖来源；在隔离工程验证 iOS 静态音频、VLC 回调/AOT 和 Android 当前目标框架/原生绑定，分别记录编译、模拟器与真机证据。
-- SDL3 探测 Avalonia 主线程中的初始化、事件更新及所需子系统，记录绑定/native 版本来源。
+- macOS 补 SDL3 与 Avalonia 主线程共存探针；Windows/WSLg 已有固定版本/来源、虚拟设备、焦点与释放证据，不替代真实手柄。
 - 使用无 SDK 的原生分发 Editor UI，分别导出 galpak/内容文件夹、安装并运行；确认应用组合选项不可见，取消/冲突不破坏已有输出、不启动应用构建。
 - 退出条件：P0 的必要平台探针有结果；P1 两种原生 UI 导出通过。缺项继续保留，不用已有 CLI/挂载测试替代。
 
