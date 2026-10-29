@@ -10,6 +10,7 @@ public sealed class NvlPresenter : TemplatedControl
     private StackPanel? _lines;
     private ScrollViewer? _scrollViewer;
     private NvlLinePresenter? _latestLine;
+    public bool NextLineWasRead { get; set; }
 
     /// <summary>Adds a line and completes after its rich text/typewriter presentation finishes.</summary>
     public Task AppendAsync(string text, double charactersPerSecond, CancellationToken cancellationToken = default)
@@ -21,6 +22,7 @@ public sealed class NvlPresenter : TemplatedControl
             Text = text,
             CharactersPerSecond = charactersPerSecond
         };
+        ReadTextStyle.SetWasRead(line, NextLineWasRead);
         lines.Children.Add(line);
         _latestLine = line;
         line.ApplyTemplate();

@@ -34,7 +34,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GeneralTest.Presentation;
 
 [NonParallelizable]
-public sealed class GameThemeTests
+public sealed partial class GameThemeTests
 {
     [TestCase("Mono")]
     [TestCase("Ocean")]

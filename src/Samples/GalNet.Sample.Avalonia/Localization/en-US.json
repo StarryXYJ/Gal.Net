@@ -132,5 +132,11 @@
   "DebugLog.Title": "Debug log",
   "DebugLog.Clear": "Clear log",
   "DebugLog.OpenDirectory": "Open log directory",
-  "Settings.Muted": "Muted"
+  "Settings.Muted": "Muted",
+  "History.Title": "History",
+  "History.ReplayVoice": "Replay voice",
+  "History.Empty": "No dialogue yet.",
+  "Settings.ReadTextColor": "Read text color",
+  "Settings.EnableReadTextColor": "Enable",
+  "Settings.InvalidColor": "Choose a valid color."
 }

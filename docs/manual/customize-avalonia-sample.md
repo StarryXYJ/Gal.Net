@@ -157,3 +157,14 @@ MyOptions 代表项目自己的 schema DTO 类型；真实业务提交仍由宿�
 共享默认样式中的 FieldEditorActions 提供显式默认值/null/缺省/恢复草稿。缺省提交需要宿主保存 presence，普通 CLR DtoBinding 没有这种能力时返回 dto.presence，不能把删除字段等同于 CLR 赋 null；Sample 的设置应用/保存规则保持由原宿主管理。
 
 具体生命周期、冻结、错误及当前支持范围见[Schema 字段表单](../spec/control.md#schema-字段表单)。
+
+
+## 对白历史与重播
+
+默认宿主提供从当前路线新游戏开始的历史；存读档通过宿主会话 API 一并保存/恢复。GamePageViewModel.OpenHistoryCommand 和输入 open.history（默认 WheelUp）打开覆盖层，CloseHistoryCommand 返回。自定义 GamePage 模板可增加 PART_History ContentPresenter，并以 TemplateBinding History 承载共享面板；原有四个必需承载点仍保持兼容。
+
+历史 journal 在 GameHost，实际文本/音频执行观察在 Avalonia.GameHost。默认组合注册 host.dialogue.history 计数状态；实际保存时才附加完整历史前缀到 GameSnapshot.Attachments，不应把正文复制到每次稳定快照。直接使用 Engine 的项目若需要完整历史，应自行接入对应宿主保存/恢复，而非期待 Engine 解释附加数据。
+
+同源相邻 audio.play 和文本以 rawId#n 的稳定编译身份关联；手写不同源音频不会自动变为对白语音。重播借用后端及原 track 的混音，以独立临时 voice 播放，不重新执行剧情。有效推进包括补全文字都会停止；单纯滚动历史或调整音量不会停止。
+
+默认设置增加 enableReadTextColor 与 readTextColor 玩家偏好，初始关闭、颜色 #A8B8C8。ReadTextStyle 的可继承 Foreground/WasRead 只作用于 TypewriterTextBlock 普通色片段；自定义布局无需改写富文本内容。ColorView 的 Fluent 样式由设置编辑器在自身作用域加载。

@@ -10,7 +10,12 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 public partial class GamePageViewModel
 {
     public GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input { get; set; }
-    public Task SetQuickHeldAsync(bool held) => RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);
+    public Task SetQuickHeldAsync(bool held)
+    {
+        if (IsHistoryOpen) return Task.CompletedTask;
+        if (held) NotifyStoryContinuing();
+        return RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);
+    }
     private IPlayerPlaybackController? _playback;
     private Task _playbackRequests = Task.CompletedTask;
     private PlaybackMode? _pointerToggle;
@@ -53,7 +58,8 @@ public partial class GamePageViewModel
     [RelayCommand] private Task ToggleAutoAsync() => ToggleAsync(PlaybackMode.Auto);
     private Task ToggleAsync(PlaybackMode target)
     {
-        if (IsSkipConfirmationOpen) return Task.CompletedTask;
+        if (IsSkipConfirmationOpen || IsHistoryOpen) return Task.CompletedTask;
+        NotifyStoryContinuing();
         var selected = _pointerToggle == target ? _pointerWasSelected : PlaybackMode == target;
         _pointerToggle = null;
         return RequestModeAsync(selected ? PlaybackMode.Manual : target);
@@ -87,6 +93,8 @@ public partial class GamePageViewModel
     [RelayCommand]
     private void RequestSkip()
     {
+        if (IsHistoryOpen) return;
+        NotifyStoryContinuing();
         CancelPlayback();
         if (_playback is not null) IsSkipConfirmationOpen = true;
     }
@@ -95,6 +103,7 @@ public partial class GamePageViewModel
     private async Task ConfirmSkipAsync(CancellationToken cancellationToken)
     {
         if (!IsSkipConfirmationOpen) return;
+        NotifyStoryContinuing();
         var controller = _playback;
         IsSkipConfirmationOpen = false;
         await _playbackRequests;

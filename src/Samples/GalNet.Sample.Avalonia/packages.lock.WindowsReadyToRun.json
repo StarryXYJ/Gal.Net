@@ -340,6 +340,7 @@
       "galnet.avalonia.gamehost": {
         "type": "Project",
         "dependencies": {
+          "Avalonia.Controls.ColorPicker": "[12.0.5, )",
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
@@ -474,6 +475,16 @@
           "GalNet.Core": "[1.0.0, )",
           "GalNet.GameHost": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
+      "Avalonia.Controls.ColorPicker": {
+        "type": "CentralTransitive",
+        "requested": "[12.0.5, )",
+        "resolved": "12.0.5",
+        "contentHash": "EmYXjNZq5wevvvvbLTNvnDBnZfQ6YuFBPOwDc6IXMFFIFLY4WAfpi3Dr94/qmt55shDcMceogaUiNy0yyLf5NQ==",
+        "dependencies": {
+          "Avalonia": "12.0.5",
+          "Avalonia.Remote.Protocol": "12.0.5"
         }
       },
       "Avalonia.Skia": {

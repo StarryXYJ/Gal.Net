@@ -122,6 +122,8 @@ Choice 节点由 Engine 求值并过滤可见选项，再通过 `IChoicePresente
 
 `CreateSaveData()` 返回 Engine 保存的最后稳定快照。状态表编码共享短同步边界，JSON 载荷和变量与运行对象隔离；不再由中央代码逐类型复制字段。读档先解码/校验候选状态与模块规则，再取消旧 scope 并替换整个 GameState；可选场景模块按新状态根解析独立场景服务。旧回调保留旧状态根，不能清理新代。展示恢复成功前暂停推进，恢复失败进入 Faulted。
 
+`GameSnapshot.Attachments` 为可选的宿主附加 JSON 数据字典；SnapshotCopy 隔离复制，Engine 不解释或导入其内容。默认 Avalonia 宿主实际保存时附加对白历史，运行时快照不携带完整历史正文。`readingBoundaryId` 前导原语到其阅读原语之间不发布新的稳定快照，避免带语音对白读档落在音频和文字之间。`IPrimitiveDispatcher.OnInstructionSkipped` 是条件未执行通知；`OnPlaybackContinuing` 在有效手动推进（含仅补全文字）、自动推进、有效选择及启用自动/快速时通知宿主清理临时交互；`OnCheckpointCreating` 在执行门内提交已完成的宿主观察，随后捕获状态，防止展示完成的异步续体滞后导致游标和剧情位置不一致。这些方法默认空实现，不引入具体媒体依赖。
+
 Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独立持久化，普通读档不得回滚。内置系统可以通过 `SystemVariableDefinition` 注册生成变量。Gallery 为每个 item 注册默认 `false` 的 Player bool `gallery_<item-id>_unlocked`；`gallery.unlock` 校验 item ID 后把该变量设为 `true`。
 
 稳定快照的更新条件：

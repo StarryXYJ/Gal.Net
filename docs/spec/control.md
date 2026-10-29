@@ -78,7 +78,15 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 设置项保持无逐行外框的布局。`InputBindingCapture` 使用 Button 样式键及 `player-input-binding` 类，将当前键值（如 Control）呈现为可点击的输入框：独立 1px 描边、主题底色与圆角、悬停文字/描边变色和键盘焦点提示；修改仅作用绑定控件，不给整行配置项加卡片。设置模板不再创建重复的可用性 Tooltip，避免空说明也弹出空白提示；不可用原因和错误仍以内联文字展示。不改变 SchemaForm 工厂、可用性或提交队列。
 
-`PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 是未来对白历史页的可选入口，无回调时历史动作禁用。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
+`PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 接入默认对白历史覆盖层，无回调时历史动作禁用；默认键鼠绑定为 WheelUp，旧偏好仅在缺少该动作且没有手势冲突时补入，显式清空保持无绑定。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
+
+默认宿主以 `DialogueHistoryJournal` 保存当前路线已完整显示的 ADV/NVL 文本，保留实际语言的姓名、富文本、进入前已读状态及可选语音引用；Quick/CatchUp 记录实际经过文本，调试重建不追加。新游戏清空，存档/读档恢复对应前缀；历史正文只在实际保存时进入 `GameSnapshot.Attachments[host.dialogue.history]`，状态表只编码计数游标。当前句按稳定边界重新执行，避免重复记录。默认三主题承载 GamePage.History（PART_History），列表虚拟化，每次打开定位末尾；打开取消自动/快速并屏蔽剧情输入，Escape/返回按钮关闭，关闭保持手动。
+
+尚未包含历史模块的当前格式旧存档由宿主补入空历史表，从读档后开始记录；无法补回此前没有保存的正文。已存在游标的存档必须具备长度一致的历史正文；其他模块状态校验保持严格。
+
+语音关联使用同 Group、同 raw entry 的紧邻编译原语身份（rawId#n 与 rawId#(n+1)），仅消费该次实际执行的 audio.play；条件跳过清除候选，不跨源或跨执行借用旧语音。对白原语音结束后显示重播按钮；历史行直接使用保存的资源/音轨/增益。`DialogueVoiceReplay` 以独立临时 voice 借用当前后端和轨道混音，不进入剧情音频队列；新的重播替换旧重播，补全文字、推进、选择、开启自动/快速/跳过、关闭历史、读档或结束运行均停止。迟到的音频事件按 voice ID/generation 隔离。
+
+已读正文配色默认关闭，启用后显示颜色选择器，初始 #A8B8C8，经玩家设置队列保存。每次进入文本前捕获 WasRead，首次显示完成不跳色。`ReadTextStyle` 只替换 typewriter 默认色 runs，显式富文本颜色、粗体、斜体和姓名样式保留；修改设置不重启打字，ADV 与每段 NVL 分别保留进入时状态。
 
 `PlayerInputRouter` 组合设备输入与手柄导航；`KeyboardMouseShortcutListener` 是可独立挂载/释放的非视觉监听模块，通过委托查询接收条件、提交动作和释放按住状态。它随播放器根控件 attach/detach 订阅所在 TopLevel 的键盘事件，鼠标事件仅订阅根控件；不要求游戏区域持有焦点，也不抢占焦点。文本、选择、范围编辑器和壳外宿主控件不触发游戏快捷键，工具栏按钮保留 Enter/Space 原生激活及鼠标交互，其余游戏快捷键仍可用。`GameActionDispatcher` 通过现有游戏 VM/会话命令执行设备无关动作，非运行游戏页、绑定捕获、选择和跳过确认期间不分发游戏动作。键鼠、手柄和触屏共用执行器；重置、失焦、窗口失活或卸载会释放键鼠按住状态并取消延迟触发。
 

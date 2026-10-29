@@ -22,4 +22,7 @@ public sealed class GameSnapshot
     /// <summary>Layer, control, effect, and transition state used to rehydrate the presentation.</summary>
     [System.Text.Json.Serialization.JsonRequired]
     public Dictionary<string, StateSection> States { get; init; } = new(StringComparer.Ordinal);
+
+    /// <summary>Optional host-owned save data. Execution does not interpret or restore these attachments.</summary>
+    public Dictionary<string, System.Text.Json.JsonElement> Attachments { get; init; } = new(StringComparer.Ordinal);
 }

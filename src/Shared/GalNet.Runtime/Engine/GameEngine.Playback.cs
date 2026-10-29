@@ -11,6 +11,7 @@ public sealed partial class GameEngine
     private PlaybackMode _playbackMode;
     private PlaybackOptions _playbackOptions;
     private bool _advanceBoundary;
+    private bool _readingPreamble;
     private long _playbackRevision;
     private CancellationTokenSource? _playbackTimer;
 
@@ -37,6 +38,7 @@ public sealed partial class GameEngine
             if (_debugger?.Paused == true) mode = PlaybackMode.Manual;
             if (!IsRunning || _pendingChoice is not null) mode = PlaybackMode.Manual;
             if (mode == PlaybackMode.Quick && IsQuickBlockedByUnreadText()) mode = PlaybackMode.Manual;
+            if (mode != PlaybackMode.Manual) _view.OnPlaybackContinuing();
             SetPlaybackModeCore(mode);
             foreach (var item in _active.ToArray())
                 item.Instance.ApplyPlaybackMode(mode == PlaybackMode.Quick
@@ -91,6 +93,8 @@ public sealed partial class GameEngine
         if (readingId is not null && _playbackMode == PlaybackMode.Quick &&
             _playbackOptions.QuickReadOnly && _progress?.IsRead(group.Id, readingId) != true)
             SetPlaybackModeCore(PlaybackMode.Manual);
+        if (!_catchUpStopAtBoundary && entry.ReadingBoundaryId is { } target && target != entry.StableId)
+            _readingPreamble = true;
     }
 
     private void ReconcileAutoBlocker(ActivePrimitive item)
@@ -154,6 +158,7 @@ public sealed partial class GameEngine
             {
                 if (revision != Volatile.Read(ref _playbackRevision) || !CanSchedulePlayback()) return;
                 _playbackTimer = null;
+                _view.OnPlaybackContinuing();
                 _advanceBoundary = false;
                 foreach (var item in _active.ToArray())
                     if (item.Instance is IAdvanceWaitInstance wait) wait.CompleteAdvance();

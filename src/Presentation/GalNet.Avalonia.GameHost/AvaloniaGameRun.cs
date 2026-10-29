@@ -30,6 +30,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     private bool _disposed;
     private IDisposable? _runBinding;
     private readonly Func<GameEngine, IDisposable>? _attachRun;
+    private DialogueHistoryDispatcher _history = null!;
 
     private AvaloniaGameRun(
         GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, IAvaloniaPlayerSettings playerSettings,
@@ -51,6 +52,12 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _gameplay.AdvanceRequested += OnAdvanceRequested;
         _gameplay.BindPlayback(_engine);
         _engine.StateChanged += OnEngineStateChanged;
+        _gameplay.GetHistoryLines = () => { _history.FlushCompleted(); return _presentation.History.Lines; };
+        _gameplay.PlayVoiceAsync = PlayVoiceAsync;
+        _gameplay.StopVoiceReplayRequested += OnStopVoiceReplay;
+        _presentation.VoiceReplay.Changed += OnVoiceReplayChanged;
+        _presentation.VoiceReplay.Failed += OnVoiceReplayFailed;
+        _presentation.History.Changed += OnHistoryChanged;
     }
 
     public static async Task<AvaloniaGameRun> CreateAsync(
@@ -72,11 +79,16 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         {
             var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, saveSession.Variables,
                 saveDefaults: resources.Content.Graph.SaveVariables, playerDefaults: resources.Content.Graph.PlayerVariables);
-            run = new GameRun(resources.Content.Graph, runtime, presentation.View,
+            var history = new DialogueHistoryDispatcher(presentation.View, presentation.History, saveSession.Progress, resources.Content.Localization.Characters);
+            run = new GameRun(resources.Content.Graph, runtime, history,
                 saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer,
                 playbackOptions: playerSettings.PlaybackOptions);
             adapter = new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
                 updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => saveSession.Variables.FlushPlayerVariablesAsync(), options.AttachRun);
+            adapter._history = history;
+            history.SuppressRecording = () => run.Engine.IsDebugReplaying;
+            history.TextStarting += adapter.OnTextStarting;
+            history.StoryContinuing += adapter.OnStoryContinuing;
             return adapter;
         }
         catch (Exception error)
@@ -98,14 +110,24 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         }
     }
 
-    public GameSnapshot CreateSaveData() => _run.CreateSaveData();
+    public GameSnapshot CreateSaveData()
+    {
+        _history.FlushCompleted();
+        return _presentation.History.Attach(_run.CreateSaveData());
+    }
     public Task InitializeSaveVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken) =>
         _run.InitializeSaveVariablesAsync(variables, cancellationToken);
-    public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken) =>
-        _run.ValidateSnapshotAsync(snapshot, cancellationToken);
+    public Task ValidateSnapshotAsync(GameSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        snapshot = DialogueHistoryJournal.PrepareSnapshot(snapshot);
+        DialogueHistoryJournal.Validate(snapshot);
+        return _run.ValidateSnapshotAsync(snapshot, cancellationToken);
+    }
 
     public async Task PrepareAsync(GameSnapshot? snapshot, CancellationToken cancellationToken)
     {
+        if (snapshot is not null) snapshot = DialogueHistoryJournal.PrepareSnapshot(snapshot);
+        _presentation.History.Restore(snapshot);
         await _run.PrepareAsync(snapshot, cancellationToken);
         _runBinding = _attachRun?.Invoke(_engine);
     }
@@ -120,6 +142,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
 
     public async Task StopAsync()
     {
+        OnStopVoiceReplay();
         var cleanup = new ResourceCleanup();
         await cleanup.RunAsync(() => new(_settingsUpdate));
         await cleanup.RunAsync(() => new(_run.StopAsync()));
@@ -136,6 +159,16 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     {
         if (_disposed) return;
         _disposed = true;
+        OnStopVoiceReplay();
+        _history.TextStarting -= OnTextStarting;
+        _history.StoryContinuing -= OnStoryContinuing;
+        _gameplay.StopVoiceReplayRequested -= OnStopVoiceReplay;
+        _presentation.VoiceReplay.Changed -= OnVoiceReplayChanged;
+        _presentation.VoiceReplay.Failed -= OnVoiceReplayFailed;
+        _presentation.History.Changed -= OnHistoryChanged;
+        _gameplay.GetHistoryLines = null;
+        _gameplay.PlayVoiceAsync = null;
+        await _onUiAsync(_gameplay.ResetDialogueHistory);
         _playerSettings.SettingsChanged -= OnPlayerSettingsChanged;
         var cleanup = new ResourceCleanup();
         cleanup.Run(() => _gameplay.BindPlayback(null));
@@ -169,7 +202,40 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         catch (Exception error) { GameLog.Logger.Debug(error, "Opening presentation did not become interactive"); }
     }
 
-    private void OnAdvanceRequested() => _ = AdvanceAsync();
+    private void OnAdvanceRequested() { OnStopVoiceReplay(); _ = AdvanceAsync(); }
+
+    private GalNet.Primitives.Builtins.Audio.AudioPlaybackTicket? _originalVoice;
+    private void OnStopVoiceReplay() => _presentation.VoiceReplay.Stop();
+    private void OnStoryContinuing()
+    {
+        if (_disposed) return;
+        OnStopVoiceReplay();
+        _ = _onUiAsync(() => { if (!_disposed) _gameplay.CloseHistoryCommand.Execute(null); });
+    }
+    private void OnVoiceReplayChanged() => _ = _onUiAsync(() => { if (!_disposed) _gameplay.IsVoiceReplaying = _presentation.VoiceReplay.IsPlaying; });
+    private void OnVoiceReplayFailed(Exception error) => _ = _onUiAsync(() => { if (!_disposed) _gameplay.StatusMessage = error.Message; });
+    private void OnHistoryChanged() => _ = _onUiAsync(() =>
+    {
+        if (!_disposed && _gameplay.IsHistoryOpen) _gameplay.HistoryLines = _presentation.History.Lines;
+    });
+    private Task PlayVoiceAsync(GalNet.Presentation.Abstractions.Application.DialogueVoice voice)
+    {
+        _originalVoice?.Stop();
+        return _presentation.VoiceReplay.PlayAsync(voice);
+    }
+    private void OnTextStarting(GalNet.Presentation.Abstractions.Application.DialogueHistoryLine line, GalNet.Primitives.Builtins.Audio.AudioPlaybackTicket? ticket)
+    {
+        if (_disposed) return;
+        _originalVoice = ticket;
+        _presentation.Presenters.SetReadingContext(line.WasRead);
+        _ = _onUiAsync(() => { if (!_disposed) _gameplay.SetCurrentDialogue(line, ticket?.IsCompleted != false); });
+        if (ticket is not null) _ = CompleteVoiceAsync(line, ticket.Completion);
+    }
+    private async Task CompleteVoiceAsync(GalNet.Presentation.Abstractions.Application.DialogueHistoryLine line, Task completion)
+    {
+        await completion;
+        await _onUiAsync(() => { if (!_disposed) _gameplay.CompleteDialogueVoice(line); });
+    }
     private void OnPlayerSettingsChanged()
     {
         _presentation.AudioModule.ApplyMix(_playerSettings.AudioMix);
@@ -191,8 +257,11 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         catch (Exception error) { GameLog.Logger.Error(error, "Player advance failed"); }
     }
 
-    private void OnEngineStateChanged(GameEngineStateChange change) =>
+    private void OnEngineStateChanged(GameEngineStateChange change)
+    {
+        if (change.State != GameEngineState.Running) OnStopVoiceReplay();
         _stateUpdate = ApplyStateAsync(_stateUpdate, change);
+    }
 
     private async Task ApplyStateAsync(Task previous, GameEngineStateChange change)
     {

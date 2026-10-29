@@ -16,6 +16,8 @@ public sealed record GameDebugState(long Generation, GameEngineState State, bool
 
 public sealed partial class GameEngine
 {
+    /// <summary>True while debugger reconstruction suppresses player-facing reading side effects.</summary>
+    public bool IsDebugReplaying => _debugger?.SuppressReadProgress == true;
     private DebugSession? _debugger;
 
     /// <summary>Explicit opt-in. The caller owns the binding; no network or platform services are created.</summary>

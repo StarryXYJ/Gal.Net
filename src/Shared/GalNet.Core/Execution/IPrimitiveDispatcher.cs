@@ -16,6 +16,15 @@ public interface IPrimitiveDispatcher : IDisposable, IAsyncDisposable
 
     bool CanExecute(string primitiveType);
 
+    /// <summary>Notifies optional host observers when an instruction's condition excludes its execution.</summary>
+    void OnInstructionSkipped(PrimitiveEntry entry, IGameContext runtime) { }
+
+    /// <summary>Stops transient host interaction before an accepted story advance or playback-mode continuation.</summary>
+    void OnPlaybackContinuing() { }
+
+    /// <summary>Commits completed host observations under the execution gate before capturing persistent state.</summary>
+    void OnCheckpointCreating(IGameContext runtime) { }
+
     PrimitiveInstance Dispatch(
         PrimitiveEntry entry,
         IGameContext runtime,

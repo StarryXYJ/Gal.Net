@@ -20,6 +20,19 @@ namespace GeneralTest.Presentation;
 [NonParallelizable]
 public sealed class PlayerInputTests
 {
+    [Test]
+    public void HistoryDefaultIsAddedToOlderConfigurationsWithoutStealingAnExistingWheelBinding()
+    {
+        using var settings = Settings();
+        var older = settings.Configuration;
+        older.Bindings.Remove("open.history");
+        settings.Restore(System.Text.Json.JsonSerializer.Serialize(older));
+        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
+        older.Bindings["toggle.quick"] = [new(PlayerInputDevice.KeyboardMouse, "WheelUp")];
+        settings.Restore(System.Text.Json.JsonSerializer.Serialize(older));
+        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("toggle.quick"));
+        Assert.That(settings.GetBindings("open.history", PlayerInputDevice.KeyboardMouse), Is.Empty);
+    }
     private static PlayerInputSettings Settings()
     {
         var settings = new PlayerInputSettings();
@@ -229,6 +242,7 @@ public sealed class PlayerInputTests
         await Ui(async () =>
         {
             var settings = Settings();
+            await settings.SetBindingAsync("toggle.ui", PlayerInputDevice.KeyboardMouse, 1, null);
             var capture = new InputBindingCapture(settings, "toggle.auto", PlayerInputDevice.KeyboardMouse, 0);
             var window = new Window { Width = 700, Height = 400, Content = capture };
             window.Show();
@@ -567,6 +581,7 @@ public sealed class PlayerInputTests
         await Ui(async () =>
         {
             using var settings = Settings();
+            await settings.SetBindingAsync("advance", PlayerInputDevice.KeyboardMouse, 1, "MouseMiddle");
             var game = new GamePageViewModel(null!) { Input = settings };
             var page = new GalNet.Avalonia.GameView.Page.GamePage { DataContext = game };
             var root = new Border { Classes = { "galnet-player" }, Child = page };

@@ -27,6 +27,8 @@ public class GamePage : TemplatedControl
         AvaloniaProperty.RegisterDirect<GamePage, NvlPresenter>(nameof(Nvl), page => page.Nvl);
     public static readonly DirectProperty<GamePage, ChoiceList> ChoiceProperty =
         AvaloniaProperty.RegisterDirect<GamePage, ChoiceList>(nameof(Choice), page => page.Choice);
+    public static readonly DirectProperty<GamePage, Control> HistoryProperty =
+        AvaloniaProperty.RegisterDirect<GamePage, Control>(nameof(History), page => page.History);
 
     /// <summary>Marks custom interactive regions that must not advance the story.</summary>
     public static readonly AttachedProperty<bool> IsPlayerInteractionProperty =
@@ -41,6 +43,7 @@ public class GamePage : TemplatedControl
     public DialoguePresenter Dialogue { get; } = new();
     public NvlPresenter Nvl { get; } = new();
     public ChoiceList Choice { get; } = new();
+    public Control History { get; } = new DialogueHistoryOverlay();
 
     public GamePage()
     {
@@ -49,12 +52,25 @@ public class GamePage : TemplatedControl
         BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, page => ((GamePageViewModel)page.DataContext!).TextureEffects);
         BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, page => ((GamePageViewModel)page.DataContext!).SceneRenderables);
         BindContent(Dialogue, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsDialogueOverlayVisible);
+        BindContent(Dialogue, ReadTextStyle.ForegroundProperty, page => ((GamePageViewModel)page.DataContext!).ReadTextBrush);
+        BindContent(Nvl, ReadTextStyle.ForegroundProperty, page => ((GamePageViewModel)page.DataContext!).ReadTextBrush);
+        BindContent(History, ReadTextStyle.ForegroundProperty, page => ((GamePageViewModel)page.DataContext!).ReadTextBrush);
+        BindContent(Dialogue, DialoguePresenter.CanReplayVoiceProperty, page => ((GamePageViewModel)page.DataContext!).CanReplayDialogue);
+        BindContent(Dialogue, DialoguePresenter.ReplayVoiceCommandProperty, page => ((GamePageViewModel)page.DataContext!).ReplayDialogueCommand);
+        BindContent(Dialogue, DialoguePresenter.ReplayIconProperty, page => ((GamePageViewModel)page.DataContext!).ReplayIcon);
+        if (MarkupExtensions.PlayerTextExtension.CreateBinding("History.ReplayVoice", "Replay voice") is ReflectionBinding replayLabel)
+            Dialogue.Bind(DialoguePresenter.ReplayLabelProperty, replayLabel);
         BindContent(Nvl, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsNvlOverlayVisible);
         BindContent(Choice, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsChoiceOverlayVisible);
         BindContent(Choice, ItemsControl.ItemsSourceProperty, page => ((GamePageViewModel)page.DataContext!).Choices);
         BindContent(Choice, ChoiceList.SelectionCommandProperty, page => ((GamePageViewModel)page.DataContext!).CompleteChoiceCommand);
         AddHandler(PointerPressedEvent, OnPagePointerPressed, RoutingStrategies.Tunnel);
-        AddHandler(KeyDownEvent, (_, _) => (DataContext as GamePageViewModel)?.ClearPlaybackPointer(), RoutingStrategies.Tunnel);
+        AddHandler(KeyDownEvent, (_, args) =>
+        {
+            if (DataContext is not GamePageViewModel game) return;
+            game.ClearPlaybackPointer();
+            if (game.IsHistoryOpen && args.Key == Key.Escape) { game.CloseHistoryCommand.Execute(null); args.Handled = true; }
+        }, RoutingStrategies.Tunnel);
     }
 
     public static bool GetIsPlayerInteraction(Control control) => control.GetValue(IsPlayerInteractionProperty);
@@ -77,6 +93,8 @@ public class GamePage : TemplatedControl
         RequirePresenter(e, "PART_Dialogue", Dialogue);
         RequirePresenter(e, "PART_Nvl", Nvl);
         RequirePresenter(e, "PART_Choice", Choice);
+        if (e.NameScope.Find<ContentPresenter>("PART_History") is { } history && !ReferenceEquals(history.Content, History))
+            throw new InvalidOperationException("PART_History must present the owned History content.");
     }
 
     private static void RequirePresenter(TemplateAppliedEventArgs e, string name, Control content)
@@ -101,7 +119,7 @@ public class GamePage : TemplatedControl
         var toggle = (eventArgs.Source as Visual)?.GetSelfAndVisualAncestors().OfType<Control>()
             .Select(GetPlaybackToggle).FirstOrDefault(mode => mode is not null);
         viewModel.CancelPlaybackFromPointer(toggle);
-        if (viewModel.IsSkipConfirmationOpen || IsPlayerControl(eventArgs.Source)) return;
+        if (viewModel.IsSkipConfirmationOpen || viewModel.IsHistoryOpen || IsPlayerControl(eventArgs.Source)) return;
 
         viewModel.ObserveAdvancePointerPressed();
         if (viewModel.AdvanceCommand.CanExecute(null))

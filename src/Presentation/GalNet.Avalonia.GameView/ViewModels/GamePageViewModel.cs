@@ -48,7 +48,8 @@ public partial class GamePageViewModel : PageViewModelBase
     [RelayCommand]
     private void Advance()
     {
-        if (IsSkipConfirmationOpen) return;
+        if (IsSkipConfirmationOpen || IsHistoryOpen) return;
+        NotifyStoryContinuing();
         if (IsUiHidden)
         {
             InteractionObserved?.Invoke("advance.restore-ui");
@@ -70,7 +71,7 @@ public partial class GamePageViewModel : PageViewModelBase
 
     [RelayCommand] private void ToggleNvlMode() => IsNvlMode = !IsNvlMode;
     [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
-    [RelayCommand] private void ReturnToTitle() => ReturnToTitleRequested?.Invoke();
+    [RelayCommand] private void ReturnToTitle() { CloseHistory(); NotifyStoryContinuing(); ReturnToTitleRequested?.Invoke(); }
     [RelayCommand] private void RequestScreenshot() => ScreenshotRequested?.Invoke();
     [RelayCommand] private void HideUi() => IsUiHidden = true;
     [RelayCommand] private void ReturnToGame() => _navigation.GoBack();
@@ -119,6 +120,8 @@ public partial class GamePageViewModel : PageViewModelBase
     [RelayCommand]
     private void CompleteChoice(int selectedIndex)
     {
+        if (IsHistoryOpen) return;
+        NotifyStoryContinuing();
         InteractionObserved?.Invoke($"choice.selected:{selectedIndex}");
         _choiceWaiter?.TrySetResult(selectedIndex);
     }
@@ -158,6 +161,7 @@ public partial class GamePageViewModel : PageViewModelBase
     /// <summary>Removes all host-owned visuals before a new game session is constructed.</summary>
     public void ResetScenePresentation()
     {
+        ResetDialogueHistory();
         ResetSceneVisuals();
         IsDialogueVisible = false;
         IsNvlMode = false;

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:GalNet.Game.Controls" xmlns:conv="using:Avalonia.Data.Converters">
   <Styles.Resources>
     <ResourceDictionary>
@@ -12,6 +12,7 @@
               <StackPanel Spacing="8">
                 <TextBlock Text="{TemplateBinding Speaker}" FontWeight="SemiBold" FontSize="{DynamicResource GalNet.Theme.SpeakerFontSize}" Foreground="{DynamicResource GalNet.Brush.Primary}" />
                 <local:TypewriterTextBlock Name="PART_Typewriter" SourceText="{TemplateBinding Text}" CharactersPerSecond="{TemplateBinding CharactersPerSecond}" FontSize="{DynamicResource GalNet.Theme.DialogueFontSize}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" />
+                <Button HorizontalAlignment="Right" Content="{TemplateBinding ReplayIcon}" IsVisible="{TemplateBinding CanReplayVoice}" Command="{TemplateBinding ReplayVoiceCommand}" ToolTip.Tip="{TemplateBinding ReplayLabel}" AutomationProperties.Name="{TemplateBinding ReplayLabel}" />
               </StackPanel>
             </Border>
           </ControlTemplate>

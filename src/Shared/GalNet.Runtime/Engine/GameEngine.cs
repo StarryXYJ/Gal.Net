@@ -129,6 +129,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             if (_pendingChoice is not null || !IsRunning)
                 return IsRunning;
 
+            _view.OnPlaybackContinuing();
+
             var blocker = _active.EarliestBlocker();
             if (blocker is not null)
             {
@@ -417,7 +419,9 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
                 instance = Dispatch(group, primitive);
                 Track(instance, group.Id, primitive, wasRead);
             }
-            else if (entry is not PrimitiveEntry)
+            else if (entry is PrimitiveEntry skipped)
+                _view.OnInstructionSkipped(skipped, _dispatchRuntime);
+            else
                 throw new InvalidOperationException($"Runtime cannot execute authoring entry '{entry.Type}'.");
 
             _runtime.SetEntryIndex(_runtime.EntryIndex + 1);
@@ -463,6 +467,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     {
         var active = _active.Track(instance, groupId, entry.StableId, wasRead,
             _view.TryGetEntry(entry.Type, out var definition) && definition!.IsReading);
+        if (active.IsReading) _readingPreamble = false;
         if (instance.IsBlocking && !instance.IsCompleted) _advanceBoundary = true;
         ReconcileAutoBlocker(active);
     }
@@ -565,6 +570,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
                 return;
             }
 
+            _view.OnPlaybackContinuing();
             JumpFrom(pending.BranchId, pending.Options[selected].Outlet);
             UpdateLastStableSnapshot();
             await ContinueUntilBlockedAsync().ConfigureAwait(false);
@@ -667,6 +673,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ClearActive()
     {
+        _readingPreamble = false;
         _active.Clear();
         CancelPlaybackTimer();
     }
@@ -683,8 +690,9 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void UpdateLastStableSnapshot()
     {
-        if (_active.HasBlockingInstance() || _pendingChoice is not null)
+        if (_readingPreamble || _active.HasBlockingInstance() || _pendingChoice is not null)
             return;
+        _view.OnCheckpointCreating(_dispatchRuntime);
         _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
         _notifications.Checkpoint(_lastStableSnapshot);
     }

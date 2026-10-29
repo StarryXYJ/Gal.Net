@@ -64,12 +64,17 @@ public partial class GameShell : UserControl, IDisposable
         if (settings.Input is { } input)
         {
             _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack);
-            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false }, _inputRouter.DispatchAsync);
+            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
         }
     }
 
     private void GoBack()
     {
+        if (_viewModel.CurrentViewModel is GamePageViewModel { IsHistoryOpen: true } game)
+        {
+            game.CloseHistoryCommand.Execute(null);
+            return;
+        }
         if (_viewModel.CurrentViewModel is BackNavigablePageViewModel page)
         {
             if (page.BackCommand.CanExecute(null)) page.BackCommand.Execute(null);

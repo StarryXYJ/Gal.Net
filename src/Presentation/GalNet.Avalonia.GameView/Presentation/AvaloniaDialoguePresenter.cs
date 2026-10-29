@@ -11,7 +11,9 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     private readonly GamePageViewModel _state;
     private readonly GamePage _page;
     private readonly IAvaloniaUiDispatcher _dispatcher;
-    private readonly List<string> _nvlHistory = [];
+    private readonly List<(string Text, bool WasRead)> _nvlHistory = [];
+    private bool _wasRead;
+    private bool _dialogueWasRead;
     private bool _catchUp;
     private bool _dialogueVisible;
     private bool _nvlVisible;
@@ -28,6 +30,8 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
 
     public Task InitialPresentationReady => _initialPresentationReady.Task;
 
+    public void SetReadingContext(bool wasRead) => _dispatcher.Dispatch(() => _wasRead = wasRead);
+
     public void CompleteInitialPresentation() => _initialPresentationReady.TrySetResult();
     public void FailInitialPresentation(Exception exception) => _initialPresentationReady.TrySetException(exception);
     public void ShowDialogue() => _dispatcher.Dispatch(() => { _dialogueVisible = true; if (!_catchUp) _state.IsDialogueVisible = true; });
@@ -40,7 +44,8 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         _dispatcher.InvokeAsync(() =>
         {
             _page.EnsureLayout();
-            _nvlHistory.Add(text);
+            _nvlHistory.Add((text, _wasRead));
+            _page.Nvl.NextLineWasRead = _wasRead;
             return RenderNvlParagraphAsync(text, immediately: false, cancellationToken);
         });
     public void SkipNvlText() => _dispatcher.Dispatch(_page.Nvl.SkipText);
@@ -49,7 +54,8 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         _dispatcher.InvokeAsync(() =>
         {
             _page.EnsureLayout();
-            _nvlHistory.Add(text);
+            _nvlHistory.Add((text, _wasRead));
+            _page.Nvl.NextLineWasRead = _wasRead;
             return RenderNvlParagraphAsync(text, immediately: true, cancellationToken);
         });
 
@@ -62,6 +68,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
             _page.EnsureLayout();
             _speaker = speaker;
             _text = text;
+            _dialogueWasRead = _wasRead;
             _dialogueVisible = true;
             _state.IsDialogueVisible = true;
             return RenderDialogueAsync(speaker, text, immediately, cancellationToken);
@@ -104,10 +111,11 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     {
         _speaker = speaker;
         _text = text;
+        _dialogueWasRead = _wasRead;
         _dialogueVisible = true;
     });
 
-    public void RecordNvlParagraph(string text) => _dispatcher.Dispatch(() => _nvlHistory.Add(text));
+    public void RecordNvlParagraph(string text) => _dispatcher.Dispatch(() => _nvlHistory.Add((text, _wasRead)));
 
     public Task BeginCatchUpAsync() => _dispatcher.InvokeAsync(() =>
     {
@@ -123,7 +131,10 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         _page.EnsureLayout();
         _page.Nvl.Clear();
         foreach (var paragraph in _nvlHistory)
-            await RenderNvlParagraphAsync(paragraph, immediately: true, cancellationToken);
+        {
+            _page.Nvl.NextLineWasRead = paragraph.WasRead;
+            await RenderNvlParagraphAsync(paragraph.Text, immediately: true, cancellationToken);
+        }
         if (_text is not null)
             await RenderDialogueAsync(_speaker, _text, immediately: true, cancellationToken);
         _state.IsDialogueVisible = _dialogueVisible;
@@ -135,6 +146,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     private Task RenderDialogueAsync(string speaker, string text, bool immediately, CancellationToken cancellationToken)
     {
         _page.Dialogue.Speaker = speaker;
+        GalNet.Game.Controls.ReadTextStyle.SetWasRead(_page.Dialogue, _dialogueWasRead);
         _page.Dialogue.Text = text;
         _page.Dialogue.CharactersPerSecond = immediately ? 0 : _state.TextSpeed;
         var completion = _page.Dialogue.StartAsync(cancellationToken);

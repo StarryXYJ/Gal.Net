@@ -42,4 +42,26 @@ public sealed class TypewriterTextBlockTests
         LineBreak => "\n",
         _ => string.Empty
     }));
+
+    [Test]
+    public async Task ReadColorChangesOnlyDefaultRunsWithoutRestartingThePresentation()
+    {
+        var control = new TypewriterTextBlock { Foreground = Brushes.White, CharactersPerSecond = 0 };
+        ReadTextStyle.SetWasRead(control, true);
+        ReadTextStyle.SetForeground(control, Brushes.Cyan);
+        control.SourceText = "<b>default</b><color=#FF0000><i>explicit</i></color>";
+        await control.Completion;
+        var completion = control.Completion;
+        var runs = control.Inlines!.OfType<Run>().ToArray();
+        Assert.That(((ISolidColorBrush)runs[0].Foreground!).Color, Is.EqualTo(Colors.Cyan));
+        Assert.That(((ISolidColorBrush)runs[1].Foreground!).Color, Is.EqualTo(Colors.Red));
+        ReadTextStyle.SetForeground(control, Brushes.Lime);
+        Assert.That(control.Completion, Is.SameAs(completion));
+        Assert.That(((ISolidColorBrush)runs[0].Foreground!).Color, Is.EqualTo(Colors.Lime));
+        Assert.That(((ISolidColorBrush)runs[1].Foreground!).Color, Is.EqualTo(Colors.Red));
+        Assert.That(runs[0].FontWeight, Is.EqualTo(FontWeight.Bold));
+        Assert.That(runs[1].FontStyle, Is.EqualTo(FontStyle.Italic));
+        ReadTextStyle.SetForeground(control, null);
+        Assert.That(((ISolidColorBrush)runs[0].Foreground!).Color, Is.EqualTo(Colors.White));
+    }
 }

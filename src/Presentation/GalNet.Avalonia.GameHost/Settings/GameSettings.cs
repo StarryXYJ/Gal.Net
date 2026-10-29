@@ -12,6 +12,8 @@ public sealed class GameSettings
 
     /// <summary>文本显示速度（字符/秒，0 = 即时）</summary>
     public float TextSpeed { get; set; } = 30f;
+    public bool EnableReadTextColor { get; set; }
+    public string ReadTextColor { get; set; } = "#A8B8C8";
 
     /// <summary>自动推进间隔（整数毫秒）</summary>
     public int AutoAdvanceIntervalMilliseconds { get; set; } = 2000;

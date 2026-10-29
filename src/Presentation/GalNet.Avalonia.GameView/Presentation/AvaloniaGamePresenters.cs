@@ -43,6 +43,7 @@ public sealed class AvaloniaGamePresenters : IDisposable
     public IAnimationPresenter AnimationPresenter { get; }
     public IParticlePresenter ParticlePresenter { get; }
     public Task InitialPresentationReady => _dialogue.InitialPresentationReady;
+    public void SetReadingContext(bool wasRead) => _dialogue.SetReadingContext(wasRead);
 
     public void CompleteInitialPresentation() => _dialogue.CompleteInitialPresentation();
 

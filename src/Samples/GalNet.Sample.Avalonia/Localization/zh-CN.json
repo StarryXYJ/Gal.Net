@@ -132,5 +132,11 @@
   "DebugLog.Title": "调试日志",
   "DebugLog.Clear": "清空日志",
   "DebugLog.OpenDirectory": "打开日志目录",
-  "Settings.Muted": "静音"
+  "Settings.Muted": "静音",
+  "History.Title": "历史",
+  "History.ReplayVoice": "重播语音",
+  "History.Empty": "暂无历史文本。",
+  "Settings.ReadTextColor": "已读文本颜色",
+  "Settings.EnableReadTextColor": "启用",
+  "Settings.InvalidColor": "请选择有效颜色。"
 }

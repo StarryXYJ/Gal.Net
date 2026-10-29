@@ -374,3 +374,5 @@
 - [完整 MSVC 工具集选择](lessons/L-20261027-07-complete-msvc-toolsets.md)：按目标架构检查编译器、头文件和 CRT，再显式选择并存工具集；Windows ARM64 原生库已用 14.44 交叉编译并核对 PE/ABI，x64 保持 14.51。
 - [NativeAOT 与编译工具隔离](lessons/L-20261027-08-aot-build-tool-isolation.md)：标准 PublishAot 不能污染 netstandard 源生成器，restore 图和开发锁需隔离；复用 Headless Sample 自检，见 docs/manual/native-aot.md。
 - [源生成 extension data](lessons/L-20261027-09-sourcegen-extension-data.md)：GalleryAnnotation 的 init 字典触发构造绑定限制，改用 set 并验证未知字段往返。
+
+- 2026-10-29 默认播放器对白历史/重播/已读颜色：历史正文只在实际保存时进入 GameSnapshot.Attachments，host.dialogue.history 状态只保留计数；同 Group、同 rawId 的相邻 audio.play 与文本按本次执行关联，重播使用独立后端 voice，任何有效继续均停止。阅读前导不能成为半句稳定快照，见 [阅读前导快照边界](lessons/L-20261029-09-reading-preamble-checkpoints.md)、docs/spec/control.md、runtime.md 和 features/F-20261029-03-dialogue-history。

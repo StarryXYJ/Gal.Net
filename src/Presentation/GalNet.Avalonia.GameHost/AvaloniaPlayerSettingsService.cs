@@ -54,6 +54,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
         _localization = localization;
         _gameplay = gameplay;
         gameplay.Input = Input;
+        Input.OpenHistoryAsync = () => { gameplay.OpenHistoryCommand.Execute(null); return Task.CompletedTask; };
         _gamepadInput = new AvaloniaGamepadInput(Input);
         _inputSetting = new CustomSetting<PlayerInputConfiguration>("inputBindings", "Settings.Operation", PlayerInputSettings.Defaults(),
             () => Input.Configuration, (value, _) =>
@@ -92,6 +93,20 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
                     ? PlayerDisplayMode.BorderlessFullscreen : PlayerDisplayMode.Window);
         };
         var masterMute = Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value);
+        var readColorEnabled = Boolean("enableReadTextColor", "Settings.EnableReadTextColor", false,
+            () => RuntimeSettings.EnableReadTextColor, value => { RuntimeSettings.EnableReadTextColor = value; ApplyReadTextColor(); });
+        const string readColorVariable = "player.galnet.settings.readTextColor";
+        var readColor = new CustomSetting<string>("readTextColor", "Settings.ReadTextColor", "#A8B8C8",
+            () => RuntimeSettings.ReadTextColor,
+            (value, token) => ApplyRuntimeSettingAsync(readColorVariable, () => { RuntimeSettings.ReadTextColor = value; ApplyReadTextColor(); }, value, token),
+            context => ReadTextColorEditor.Create(context.Setting, readColorEnabled, _localization), _localization.GetString("Settings.ReadTextColor"))
+        { InlineToggle = readColorEnabled, Validator = value => global::Avalonia.Media.Color.TryParse(value, out _) ? null : "Settings.InvalidColor" };
+        _restoreValues.Add(stored =>
+        {
+            RuntimeSettings.ReadTextColor = stored.TryGetValue(readColorVariable, out var color) && color.Type == VariableType.String &&
+                global::Avalonia.Media.Color.TryParse(color.AsString(), out _) ? color.AsString() : "#A8B8C8";
+            ApplyReadTextColor();
+        });
         _categories = new System.Collections.ObjectModel.ObservableCollection<SettingCategory>(new[]
         {
             new SettingCategory("game", "Settings.Game",
@@ -99,6 +114,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
                 _language,
                 Number("textSpeed", "Settings.TextSpeed", 30, 120, 1, () => RuntimeSettings.TextSpeed,
                     value => { RuntimeSettings.TextSpeed = (float)value; gameplay.TextSpeed = value; }, NumericEditorKind.Slider),
+                readColor, readColorEnabled,
                 Boolean("quickReadOnly", "Settings.QuickReadOnly", true, () => RuntimeSettings.QuickReadOnly, value => RuntimeSettings.QuickReadOnly = value),
                 Milliseconds("quickInterval", "Settings.QuickInterval", 50, 5000, 10, () => RuntimeSettings.QuickAdvanceIntervalMilliseconds, value => RuntimeSettings.QuickAdvanceIntervalMilliseconds = value),
                 Milliseconds("autoInterval", "Settings.AutoInterval", 2000, 30000, 100, () => RuntimeSettings.AutoAdvanceIntervalMilliseconds, value => RuntimeSettings.AutoAdvanceIntervalMilliseconds = value)
@@ -270,6 +286,10 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
         return new BoolSetting(id, key, defaultValue, read,
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), value, token), _localization.GetString(key));
     }
+
+    private void ApplyReadTextColor() => _gameplay.ReadTextBrush = RuntimeSettings.EnableReadTextColor &&
+        global::Avalonia.Media.Color.TryParse(RuntimeSettings.ReadTextColor, out var color)
+            ? new global::Avalonia.Media.SolidColorBrush(color) : null;
 
     private async Task ApplyRuntimeSettingAsync(string variable, Action apply, object storedValue, CancellationToken cancellationToken)
     {

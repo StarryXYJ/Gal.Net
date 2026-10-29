@@ -38,6 +38,8 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     public BuiltinAudioModule AudioModule { get; private set; } = null!;
     public StateRestoreSession Restorer { get; private set; } = null!;
     public ImageVariantsCatalog ImageVariants { get; private set; } = ImageVariantsCatalog.Empty;
+    public GalNet.GameHost.DialogueHistoryJournal History { get; } = new();
+    public GalNet.GameHost.DialogueVoiceReplay VoiceReplay { get; private set; } = null!;
 
     public static async Task<AvaloniaGamePresentation> CreateAsync(
         GamePageViewModel gameplay, GamePage page, IAssetManager assets,
@@ -64,12 +66,14 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
                 preload.UsableProgramCount, preload.RequestedProgramCount, preload.Cache.TotalLoadTime.TotalMilliseconds);
             presentation.Effects = new AvaloniaEffectRuntime(gameplay, presentation._programs, assets);
             presentation.Audio = options.CreateAudioHost(assets, files);
+            presentation.VoiceReplay = new(presentation.Audio);
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio, configuration: audioConfiguration);
             presentation.Video = options.CreateVideoPresenter is { } createVideo
                 ? createVideo(assets, gameplay, files) ?? throw new InvalidOperationException("The video presenter factory returned null.")
                 : new AvaloniaVideoPresenter(assets, gameplay, files: files, sharedLibVlc: sharedLibVlc);
             using var registration = new GameRegistration();
             configure(registration, presentation);
+            registration.RegisterImplementation(GalNet.GameHost.DialogueHistoryJournal.CreateModule());
             presentation.View = registration.BuildView();
             presentation.View.RequireInstructions(requiredInstructions);
             presentation.Restorer = new StateRestoreSession(presentation.View);
@@ -112,6 +116,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     private async Task DisposeCoreAsync()
     {
         var cleanup = new GalNet.GameHost.ResourceCleanup();
+        await cleanup.RunAsync(() => VoiceReplay?.DisposeAsync() ?? ValueTask.CompletedTask);
         // Implementations borrow platform ports, so release the view first.
         await cleanup.RunAsync(() => Restorer?.DisposeAsync() ?? ValueTask.CompletedTask);
         await cleanup.RunAsync(() => View?.DisposeAsync() ?? ValueTask.CompletedTask);

@@ -29,11 +29,14 @@ public sealed class TypewriterTextBlock : TextBlock
     private bool _skipRequested;
     private bool _instantMode;
     private readonly object _skipGate = new();
+    private readonly List<Run> _defaultColorRuns = [];
 
     static TypewriterTextBlock()
     {
         SourceTextProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.Restart());
         CharactersPerSecondProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.Restart());
+        ReadTextStyle.ForegroundProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.RefreshReadColor());
+        ReadTextStyle.WasReadProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.RefreshReadColor());
     }
 
     /// <summary>Raw game text, including <c>\d</c> and <c>\n</c> directives.</summary>
@@ -80,6 +83,7 @@ public sealed class TypewriterTextBlock : TextBlock
         IsRunning = true;
         IsCompleted = false;
         Text = null;
+        _defaultColorRuns.Clear();
         (Inlines ?? throw new InvalidOperationException("TextBlock did not provide an inline collection.")).Clear();
         _ = RenderAsync(SourceText, _completion, _skipSignal, _runCancellation.Token);
         return _completion.Task;
@@ -128,6 +132,11 @@ public sealed class TypewriterTextBlock : TextBlock
                         };
                         if (token.Color is { } color && Color.TryParse(color, out var parsed))
                             run.Foreground = new SolidColorBrush(parsed);
+                        else
+                        {
+                            _defaultColorRuns.Add(run);
+                            ApplyReadColor(run);
+                        }
                         inlines.Add(run);
                         foreach (var character in token.Text)
                         {
@@ -191,5 +200,15 @@ public sealed class TypewriterTextBlock : TextBlock
 
         await Task.WhenAny(Task.Delay(duration, cancellationToken), signal);
         cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private void RefreshReadColor()
+    {
+        foreach (var run in _defaultColorRuns) ApplyReadColor(run);
+    }
+    private void ApplyReadColor(Run run)
+    {
+        if (ReadTextStyle.GetWasRead(this) && ReadTextStyle.GetForeground(this) is { } brush) run.Foreground = brush;
+        else run.ClearValue(TextElement.ForegroundProperty);
     }
 }

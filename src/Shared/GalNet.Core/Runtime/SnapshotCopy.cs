@@ -15,7 +15,8 @@ public static class SnapshotCopy
         StoryPackages = (storyPackages ?? snapshot.StoryPackages).ToArray(),
         Variables = snapshot.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value), StringComparer.Ordinal),
         States = snapshot.States.ToDictionary(pair => pair.Key,
-            pair => new StateSection(pair.Value.Version, pair.Value.Payload.Clone()), StringComparer.Ordinal)
+            pair => new StateSection(pair.Value.Version, pair.Value.Payload.Clone()), StringComparer.Ordinal),
+        Attachments = snapshot.Attachments.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
     };
     public static GalVariable CloneVariable(GalVariable variable) => variable.Clone();
 }

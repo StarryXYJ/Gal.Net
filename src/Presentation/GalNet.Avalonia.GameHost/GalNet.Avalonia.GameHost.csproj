@@ -5,6 +5,7 @@
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <ProjectReference Include="../../Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <PackageReference Include="DynamicLocalization.Core" />
+    <PackageReference Include="Avalonia.Controls.ColorPicker" />
     <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
     <ProjectReference Include="../GalNet.Avalonia.GameView/GalNet.Avalonia.GameView.csproj" />
