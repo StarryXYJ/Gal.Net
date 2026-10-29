@@ -3,7 +3,7 @@
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
-- 当前进度：P1 已提交，原生分发 Editor 的无 SDK 导出烟测待补；P2 Windows 布局/严格合包已验证提交；P3a 统一 VLC 工厂通过 Windows 媒体/Editor 预览及分发验证，接着推进 P3b 目标平台部署。跨平台项目仍未同步，结果与限制见 [执行记录](execution.md)。
+- 当前进度：P1 原生分发 Editor 的无 SDK 导出烟测待补；P2 Windows 布局/严格合包、P3a Windows 媒体切片已验证。P3b 已在 Ubuntu 24.04.3 / WSLg 验证普通及 Developer Sample 窗口、会话和正常退出，修正默认字体依赖；最新 Windows 本地候选为 0.1.0-dev.8。Linux 正式媒体闭包仍待完成；macOS 当前无验证环境，明确保留未验收，不阻挡 Windows/Linux 可独立推进的工作。跨平台项目仍未同步，结果与限制见 [执行记录](execution.md)及[交接记录](handoff-20261029.md)。
 
 ## 用户目标与已确认决策
 
@@ -21,6 +21,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 8. 2026-10-29 用户已初始化 `src/Samples/GalNet.Sample.CrossPlatform/`，要求最后再同步现有 Sample 内容，避免同一改动更新两份。桌面阶段以现有 `GalNet.Sample.Avalonia` 和公共库为功能主线，新项目先保留骨架；桌面功能稳定后在 P6 集中接入，平台原生差异再由 P7 完成。
 9. 2026-10-29 用户明确“不考虑向后兼容”。本次新导出/安装链路仅采用完整 galpak v4（包含所有剧情分片），不保留 v1/v2/v3 安装分支或旧式旁置剧情导出。旧游戏内容需重新导出；不为本 feature 维护旧发行兼容或旧 API 转发。
 10. 2026-10-29 用户要求提交当前改动并持续开发，每完成一个可验证阶段提交一次；只提交本 feature 所属变更，不混入并行进行的 CI/release 优化。
+11. 2026-10-29 换设备后用户要求先重新生成 Windows Release，再继续开发；macOS 当前无法验证。用户确认先前 Linux 曾弹出窗口，该观察保留为人工证据，具体程序与会话就绪/正常退出仍通过新设备探针分别确认；不将旧记录中的一次 Sample 未出窗口推断为所有 Linux GUI 不可用。
 
 ## 范围
 

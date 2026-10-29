@@ -119,3 +119,32 @@ Sample 候选为 out/cross-platform-p3a-game.zip，SHA-256 6fbb86990dc8a3adc03d7
 - WSL 复查仍为 Ubuntu 26.04.1：gcc/tar 与 WSLg 可用，dotnet/cmake/pkg-config 未定位；未安装软件。Ubuntu 24.04 最低基线、macOS 两架构及移动设备证据仍缺。
 - P1 的原生分发 Editor UI 两种导出烟测依旧待补；此次实际 Editor 音频使用 headless UI + 真 native 媒体，不能代替原生 Editor 导出操作。
 - SDL、build-compose、移动宿主尚未实现。CrossPlatform 工程仍保留原骨架，待 P6 集中同步。
+
+## 2026-10-29：换设备后 Windows 重导出与 Linux 字体修正
+
+用户要求先重导出 Windows Release，再继续开发；macOS 当前无法验证，不阻挡可独立推进的 Windows/Linux 切片。P3b 检查点已在 54c7fa90 中，不沿用旧交接时“尚未提交”的描述。
+
+### Windows 发行
+
+- `Release.ps1 -Version 0.1.0-dev.7 -Target Apps` 完成：两种部署的 Editor、纯 Sample、整合 Sample 以及共用 Contracts，共七个 ZIP，清单/hash/R2R/严格契约与分发 CLI 验证通过。
+- 产物为 `out/release/0.1.0-dev.7/`。此候选生成于字体修正之前；字体修正后的 Windows 候选另行生成，不修改已封存文件。
+- 字体修正后的 `Release.ps1 -Version 0.1.0-dev.8 -Target Apps` 亦已完成，七个 ZIP 全部通过发行载荷验证；最新可用 Windows 候选为 `out/release/0.1.0-dev.8/`。这是当前工作区的本地候选（dirty=true），不是精确 tag 的公开发行。
+- 额外 DesktopSmoke 发现夹具只复制 lib 和 EXE，漏掉 P2 引入的 docs/application-layout.json，导致玩家查找 lib/pak。已修正夹具以保留 docs；原始失败日志为 `out/release-smoke-v7.log`。
+- 修正夹具后的两次重试在 CLI 内容导出的临时目录操作时报访问拒绝；短输出目录对照仍复现，不能归因于路径长度，也不能记为原生窗口验收成功。日志为 `out/release-smoke-v7-layout-fixed{,-sandbox}.log`。
+- dev.8 的完整 DesktopSmoke 仍遇到导出目录问题（`out/smoke8.log`）。独立诊断宿主捕获 first-chance 异常，将失败定位至 ProjectContentBuilder.BuildPreparedAsync 的 Directory.Move；相同输入六次对照 4 成功、2 失败，见 `out/export-diagnostics/repeat-*.log`，暂未确认具体占用/权限来源，不加入盲目重试掩盖。
+- 使用已成功导出的独立内容检查 dev.8 原生启动，沙箱内已通过字体与内容资源加载，随后 profile 文件替换被权限拒绝，见 `out/fontsmoke8/SelfContained/player-stdout.log`。此与 Linux 字形异常不同；不修改产品存储语义来绕过沙箱。
+- 同一字体/内容夹具在原生用户环境的 dev.8 自包含 Editor、Sample 启动通过；Sample 会话就绪、60 槽，Editor 加载包内 coreclr，见 `out/fontsmoke8-native/SelfContained/`。这是使用已导出内容的启动检查，不能冒充新的 CLI 导出通过；测试结束按既有 smoke 逻辑终止自有进程，不将其记作正常退出。随后 FrameworkDependent 在创建项目的临时目录重命名时失败，见对应 logs，故整轮 DesktopSmoke 仍未通过。
+
+### Linux 字体与原生启动
+
+- 当前环境是 Ubuntu 24.04.3 / WSLg；CMake 构建 miniaudio、Desktop/linux-x64 自包含发布成功。SDK 恢复首轮因沙箱 DNS 失败，获准联网恢复锁定依赖后发布成功，未放宽锁定图。
+- 三份跨平台契约 DLL 与 Windows dev.7 hash 全同，见 `out/cross-platform-p3b-current/contract-identity.json`。首次探针误用默认 Version=1.0.0 的 Linux 构建，已用与 Windows 一致的版本重建，未修改严格校验。
+- 修复前原生 Sample 确实创建 `GalNet Avalonia Sample Player` 窗口，初次布局随后抛 `Could not create glyphTypeface`，没有完成会话；见 `smoke/7906174bbbb84a6282889ee268159d09/`。
+- 共享 UI 改为 FontFamily.Default，CJK 名称只作字符回退；CreateFontManagerOptions 可由宿主指定默认字体。Sample 使用已分发并注册的 `fonts:Inter#Inter`，避免启动依赖系统安装某个特定字体。
+- 同一环境、内容和依赖下，修复后的原生窗口、Session initialized（60 槽）、确认退出及 exit 0 均通过。日志记录完整 scope/root 清理，见 `out/cross-platform-p3b-current/smoke/c889249d038f46f0b57a4cd9113c3e23/`。
+- Windows 字体回归 2/2 通过，见 `results/typography-native.trx`；沙箱内 testhost 无响应，核对自有进程后终止，在支持原生字体/管道的环境以 no-build 重跑成功。
+- Presentation 普通全量 302/302 通过，见 `results/presentation-native.trx`；Explicit 媒体用例未在本次普通回归执行，不将其计作真实媒体回归通过。
+- 启用游戏调试及 DeveloperTools 的 Linux Developer 对照也完成窗口、会话和确认退出 exit 0，见 `smoke/ed4ddb083d4e458abea6e6faa5778cb5/`。当前设备没有重现旧交接中的 Developer 启动阻塞；本次只确认启动，不声称外部调试全流程已经验收。
+- Inter 不含中文字形；本机 CJK 显示、外部调试、视频/Gallery/音频全流程、原生 Linux 桌面与正式媒体闭包仍需独立验收。本次修复不能解释旧设备 Developer Sample 在框架初始化前的具体阻塞。
+
+P3b 启动/字体切片已取得上述证据，P3 整体仍 in-progress。macOS 未验收，CrossPlatform 仍按 P6 集中接入，不维护第二套 Sample。

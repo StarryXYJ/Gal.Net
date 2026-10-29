@@ -149,6 +149,7 @@ foreach ($deployment in $Deployments) {
         $smokeRoot = Join-Path $deploymentWork 'player smoke with spaces'
         New-Item -ItemType Directory -Path $smokeRoot | Out-Null
         Copy-Item -LiteralPath (Join-Path $roots.Sample 'lib') -Destination (Join-Path $smokeRoot 'lib') -Recurse
+        Copy-Item -LiteralPath (Join-Path $roots.Sample 'docs') -Destination (Join-Path $smokeRoot 'docs') -Recurse
         Copy-Item -LiteralPath (Join-Path $roots.Sample 'GalNet.Sample.Avalonia.exe') -Destination $smokeRoot
         Invoke-ReleaseCommand "distributed-cli-export-$deployment" $cli @('project', 'export-directory', $authorProject, '--output', (Join-Path $smokeRoot 'pak'))
         Invoke-ReleaseCommand "distributed-cli-smoke-inspect-$deployment" $cli @('game', 'inspect', (Join-Path $smokeRoot 'pak'))

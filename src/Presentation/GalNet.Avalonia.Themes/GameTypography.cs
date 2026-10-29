@@ -11,13 +11,14 @@ public static class GameTypography
             ? ["Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC", "Noto Sans SC", "PingFang SC"]
             : ["Noto Sans CJK SC", "Noto Sans SC", "WenQuanYi Micro Hei", "Microsoft YaHei UI", "PingFang SC"];
 
-    public static FontFamily UiFontFamily { get; } = new(string.Join(", ", Families));
+    public static FontFamily UiFontFamily { get; } = FontFamily.Default;
 
     /// <summary>Return a fresh options object; do not share mutable font-manager options between hosts.</summary>
-    public static FontManagerOptions CreateFontManagerOptions() => new()
+    public static FontManagerOptions CreateFontManagerOptions(string? defaultFamilyName = null) => new()
     {
-        // Linux distributions choose their own installed default; CJK preferences still apply below.
-        DefaultFamilyName = OperatingSystem.IsWindows() || OperatingSystem.IsMacOS() ? Families[0] : null,
+        // Let the host choose its default, including an embedded font. CJK families
+        // are character fallbacks, not prerequisites for creating the UI typeface.
+        DefaultFamilyName = defaultFamilyName,
         FontFallbacks = Families.Select(name => new FontFallback { FontFamily = new FontFamily(name) }).ToArray()
     };
 }

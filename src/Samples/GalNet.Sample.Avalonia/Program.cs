@@ -83,6 +83,6 @@ sealed class Program
             .WithDeveloperTools()
 #endif
             .WithInterFont()
-            .With(GameTypography.CreateFontManagerOptions())
+            .With(GameTypography.CreateFontManagerOptions("fonts:Inter#Inter"))
             .LogToTrace();
 }

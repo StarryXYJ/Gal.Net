@@ -13,6 +13,18 @@
 
 WSL 发行版查询在受限进程内曾返回访问拒绝；通过获准的 WSL 只读查询成功确认环境。未安装/升级 Linux 软件或修改用户已有 CrossPlatform 工程。
 
+## 换设备后的验证环境（2026-10-29）
+
+本轮设备为 Ubuntu 24.04.3 LTS x64 / WSLg，gcc 13.3、CMake、Python3、X11 工具及 PulseAudio 可用，未发现 Linux dotnet SDK；不沿用上表另一设备 Ubuntu 26.04.1 的环境结论。
+
+- 使用现有 CMake 构建 Linux miniaudio 成功；动态库位于 `out/cross-platform-p3b-current/native/`。
+- Windows SDK 使用 Desktop/linux-x64 隔离图发布自包含 Sample；与 Windows 0.1.0-dev.7 的 Core/Builtins/Project.Contracts 三份 DLL hash 相同。
+- VLC 依赖仅下载并解压至工作区，未安装系统软件。旧 apt 元数据中的 protobuf-lite 包在镜像上返回 404，测试依赖目录不是完整正式发行闭包。
+- 字体修复前 Sample 已出现原生窗口，随后字形创建失败并 exit 1；修复为宿主默认字体、Sample 显式使用已注册的内置 Inter 后，同一环境完成会话初始化、确认退出及 exit 0。
+- 本轮证明 Ubuntu 24.04 WSLg 的此项启动/退出切片；尚未完成原生 Linux 桌面、中文显示、全部媒体流程、手柄及正式依赖归档验收。macOS 当前无验证环境。
+
+证据目录和精确结果见 execution.md。
+
 ## 内容闭包结论与实施选择
 
 原 GamePackageExporter.ExportAsync 仅把 prepared.Base 写入 galpak，把 prepared.Stories 发布到归档旁的 StoryPatches/<buildId>。所以单独移动归档会漏掉剧情。ExportDirectoryAsync 已写入本体和全部剧情，两个交付物原先不等价。

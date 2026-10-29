@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [跨平台默认字体](lessons/L-20261029-13-portable-default-font.md)：UI 跟随宿主默认字体，CJK 名称仅作字符回退；Sample 显式选择已注册的内置 Inter，不能假定 WithInterFont 自动改变默认。Ubuntu 24.04.3 / WSLg 已验证窗口、会话及确认退出；Inter 不含中文，中文显示仍需 CJK 字体。
+
 - 2026-10-29 跨平台 P3a：剧情像素视频、Gallery 播放/缩略图、Editor 音频预览均通过 Media.LibVlc.LibVlcFactory 初始化；singleton 配置冻结 native/plugin 路径，各播放器仍独立释放。Windows 私有 VLC 已原生验证；Linux 默认 system loader 仅为开发基线，Core.Initialize(directory) 不支持 Linux，不能据此声称私有部署成功。Editor 默认契约目录须显式部署 Core、Builtins、Project.Contracts 完整闭包。
 
 - 2026-10-29 跨平台 P2：docs/application-layout.json v1 声明发行布局；自包含 CLI compose 严格组合纯 win-x64 Sample 与完整 galpak/内容目录，不调用 SDK。contractFiles 绑定已加载 catalog 的闭包，磁盘变化须重新加载，合包核对 DLL hash。其他平台发行尚未验收，CrossPlatform 同步仍留 P6。

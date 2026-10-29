@@ -83,9 +83,9 @@ DialoguePresenter 保留 PART_Typewriter，NvlPresenter 保留 PART_Lines 和 PA
 
 ## 统一 UI 字体
 
-内置三布局共用 `GameTypography.UiFontFamily`，由 `GameLayoutTheme.CreateStyles()` 注入 `GalNet.Theme.FontFamily`。Windows 优先微软雅黑 UI / 微软雅黑，macOS 优先苹方简体，其他平台优先 Noto Sans CJK SC / Noto Sans SC / 文泉驿微米黑。Paper 保留自己的布局、字号和配色，但不再单独指定 Georgia。
+内置三布局共用 `GameTypography.UiFontFamily`，由 `GameLayoutTheme.CreateStyles()` 注入 `GalNet.Theme.FontFamily`，使用宿主默认字体。中文字符回退在 Windows 优先微软雅黑 UI / 微软雅黑，macOS 优先苹方简体，其他平台优先 Noto Sans CJK SC / Noto Sans SC / 文泉驿微米黑；这些字体不再是窗口启动的前提。Paper 保留自己的布局、字号和配色，但不再单独指定 Georgia。
 
-宿主可在 AppBuilder 使用 `.With(GameTypography.CreateFontManagerOptions())` 接入相同的中文回退策略。官方 Sample 同时为应用内所有 Window 设置该 FontFamily，覆盖玩家页面以外的窗口；日志等显式设置的等宽字体保留，并可借助字体管理器回退显示中文。
+宿主可在 AppBuilder 使用 `.With(GameTypography.CreateFontManagerOptions())` 接入相同的中文回退策略，默认沿用系统字体；也可传入 `defaultFamilyName` 指定已部署的字体。官方 Sample 配合 `.WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以随应用分发的 Inter 作为默认字体，不依赖系统安装同名字体。Inter 不包含中文字形，中文仍需系统 CJK 字体或宿主部署的中文字体。Sample 同时为应用内所有 Window 设置该 FontFamily，覆盖玩家页面以外的窗口；日志等显式设置的等宽字体保留，并可借助字体管理器回退显示中文。
 
 此配置使用系统已安装字体，不附带字体文件；在无中文字体的 Linux 部署上仍需安装相应字体。当前 Windows 已验证中文、标点和粗体字形及三布局渲染；其他系统需单独验证。Editor 自身的默认字体不由此设置修改。
 
