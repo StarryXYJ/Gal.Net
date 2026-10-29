@@ -53,7 +53,18 @@ public sealed class PlayerSession : IDisposable
     private async Task SaveCoreAsync(int slotIndex, GameSnapshot snapshot, byte[]? preview, CancellationToken cancellationToken)
     {
         await Progress.FlushAsync(cancellationToken);
-        await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot, PreviewImage = preview }, cancellationToken);
+        var previous = (await _saves.ListSlotsAsync(cancellationToken)).FirstOrDefault(slot => slot.SlotIndex == slotIndex);
+        await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot, PreviewImage = preview, Description = previous?.Description }, cancellationToken);
+    }
+
+    public bool CanRenameSlots => _saves is ISaveSlotNamingService;
+
+    public async Task RenameSlotAsync(int slotIndex, string name, CancellationToken cancellationToken = default)
+    {
+        if (_saves is not ISaveSlotNamingService names) throw new NotSupportedException("This save store does not support slot names.");
+        await _writeGate.WaitAsync(cancellationToken);
+        try { await names.RenameAsync(slotIndex, name, cancellationToken); }
+        finally { _writeGate.Release(); }
     }
 
     public Task<GameSnapshot?> LoadAsync(int slotIndex, CancellationToken cancellationToken) =>
@@ -77,8 +88,13 @@ public sealed class PlayerSession : IDisposable
 
     public async Task ClearAsync(CancellationToken cancellationToken)
     {
-        await _clearStorage(cancellationToken);
-        await Variables.ResetPlayerVariablesAsync(cancellationToken);
+        await _writeGate.WaitAsync(cancellationToken);
+        try
+        {
+            await _clearStorage(cancellationToken);
+            await Variables.ResetPlayerVariablesAsync(cancellationToken);
+        }
+        finally { _writeGate.Release(); }
     }
 
     public void Dispose()

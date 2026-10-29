@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:GalNet.Game.Controls">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="using:GalNet.Game.Controls" xmlns:conv="using:Avalonia.Data.Converters">
   <Styles.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
@@ -66,27 +66,49 @@
       <ControlTheme x:Key="{x:Type local:SaveSlotCard}" TargetType="local:SaveSlotCard">
         <Setter Property="Template">
           <ControlTemplate>
-            <Button HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}" Padding="0" Background="Transparent" BorderBrush="Transparent" BorderThickness="0" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
-              <Border MinHeight="{DynamicResource GalNet.Theme.SaveMinHeight}" Padding="16" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
-                <Grid RowDefinitions="Auto,*,Auto" RowSpacing="12">
-                  <Image Source="{TemplateBinding Preview}" Height="100" Stretch="UniformToFill" />
-                  <StackPanel Grid.Row="1" Spacing="4" VerticalAlignment="Top">
-                    <TextBlock FontWeight="SemiBold" FontSize="16" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
-                      <Run Text="Slot " />
-                      <Run Text="{TemplateBinding SlotIndex}" />
-                    </TextBlock>
-                    <TextBlock Text="{TemplateBinding Description}" TextWrapping="Wrap" Opacity="0.75" />
-                  </StackPanel>
-                  <StackPanel Grid.Row="2" Spacing="2">
-                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Opacity="0.74" />
-                    <TextBlock Text="Empty" IsVisible="{TemplateBinding IsEmpty}" FontSize="12" Opacity="0.56" />
-                    <TextBlock Text="Corrupt save" IsVisible="{TemplateBinding IsCorrupt}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.Error}" />
+            <Border Name="PART_Frame" Height="210" Background="{DynamicResource GalNet.Brush.Surface}"
+                    BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1"
+                    CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" ClipToBounds="True">
+              <Grid>
+                <Image Name="PART_Preview" Source="{TemplateBinding Preview}" Stretch="UniformToFill" />
+                <Button Name="PART_Activate" Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}"
+                        Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                        AutomationProperties.Name="{TemplateBinding Description}">
+                  <Button.Template><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Button.Template>
+                </Button>
+                <Grid VerticalAlignment="Bottom" MinHeight="84">
+                  <Border Background="{DynamicResource GalNet.Brush.SaveCaption}" IsHitTestVisible="False" />
+                  <StackPanel Spacing="4" Margin="16,12">
+                    <TextBox Name="PART_Name" Text="{TemplateBinding Description, Mode=OneWay}"
+                             IsReadOnly="{Binding !CanRename, RelativeSource={RelativeSource TemplatedParent}}"
+                             Focusable="{TemplateBinding CanRename}" IsHitTestVisible="{TemplateBinding CanRename}" MaxLength="120" AcceptsReturn="False"
+                             Background="Transparent" BorderThickness="0" Padding="0" MinHeight="26"
+                             FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                             ToolTip.Tip="{TemplateBinding RenameError}">
+                      <TextBox.Template>
+                        <ControlTemplate TargetType="TextBox">
+                          <ScrollViewer Name="PART_ScrollViewer" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                            <TextPresenter Name="PART_TextPresenter" Text="{TemplateBinding Text, Mode=TwoWay}"
+                                           CaretBrush="{DynamicResource GalNet.Brush.TextPrimary}"
+                                           SelectionBrush="{DynamicResource GalNet.Brush.Selection}"
+                                           SelectionForegroundBrush="{DynamicResource GalNet.Brush.TextPrimary}" />
+                          </ScrollViewer>
+                        </ControlTemplate>
+                      </TextBox.Template>
+                    </TextBox>
+                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" IsHitTestVisible="False" />
+                    <TextBlock Text="{TemplateBinding RenameError}" IsVisible="{Binding RenameError, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" IsHitTestVisible="False" />
                   </StackPanel>
                 </Grid>
-              </Border>
-            </Button>
+                <Border Name="PART_Highlight" Background="{DynamicResource GalNet.Brush.Selection}" Opacity="0" IsHitTestVisible="False" />
+              </Grid>
+            </Border>
           </ControlTemplate>
         </Setter>
+        <Style Selector="^:pointerover /template/ Border#PART_Frame"><Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.PrimaryHover}" /></Style>
+        <Style Selector="^:pointerover /template/ Border#PART_Highlight"><Setter Property="Opacity" Value="0.18" /></Style>
+        <Style Selector="^:focus-within /template/ Border#PART_Frame"><Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" /></Style>
+        <Style Selector="^:focus-within /template/ Border#PART_Highlight"><Setter Property="Opacity" Value="0.3" /></Style>
       </ControlTheme>
       <ControlTheme x:Key="{x:Type local:NvlPresenter}" TargetType="local:NvlPresenter">
         <Setter Property="Template">

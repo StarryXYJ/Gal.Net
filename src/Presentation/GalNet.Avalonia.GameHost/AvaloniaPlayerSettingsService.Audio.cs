@@ -25,10 +25,10 @@ public sealed partial class AvaloniaPlayerSettingsService
         {
             var prefix = $"audio.{(isTrack ? "track" : "group")}.{Uri.EscapeDataString(id)}";
             var labelKey = string.IsNullOrWhiteSpace(name) ? id : name;
-            var gain = Number(prefix + ".gain", labelKey, 1, 1, .01,
-                () => Level().Gain, value => Levels()[id] = Level() with { Gain = (float)value }, NumericEditorKind.Slider, livePreview: true);
             var mute = Boolean(prefix + ".muted", "Settings.Muted", false,
                 () => Level().Muted, value => Levels()[id] = Level() with { Muted = value });
+            var gain = Number(prefix + ".gain", labelKey, 1, 1, .01,
+                () => Level().Gain, value => Levels()[id] = Level() with { Gain = (float)value }, NumericEditorKind.Slider, livePreview: true, inlineToggle: mute);
             if (visible) { items.Add(gain); items.Add(mute); }
             Dictionary<string, AudioMixLevel> Levels() => isTrack ? RuntimeSettings.Tracks : RuntimeSettings.Buses;
             AudioMixLevel Level() => Levels().GetValueOrDefault(id) ?? NeutralMix;

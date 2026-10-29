@@ -1,8 +1,25 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:settings="using:GalNet.Avalonia.GameView.Settings"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
-             xmlns:common="using:GalNet.Avalonia.Themes.Common"
+             xmlns:common="using:GalNet.Avalonia.Themes.Common" xmlns:conv="using:Avalonia.Data.Converters"
              x:Class="GalNet.Avalonia.Themes.Common.SettingsCategories" x:CompileBindings="False">
+  <UserControl.Resources>
+    <DataTemplate x:Key="MuteEditor" DataType="settings:BoolSetting">
+      <StackPanel Spacing="3" IsVisible="{Binding IsVisible}">
+        <ToggleButton Classes="player-mute" IsChecked="{Binding Value, Mode=TwoWay}" IsEnabled="{Binding IsEnabled}"
+                      ToolTip.Tip="{Binding Label}" AutomationProperties.Name="{Binding Label}">
+          <Viewbox Width="22" Height="22">
+            <Canvas Width="24" Height="24">
+              <Path Classes="speaker" Data="M 3,9 L 7,9 L 12,5 L 12,19 L 7,15 L 3,15 Z" Stroke="{Binding $parent[ToggleButton].Foreground}" StrokeThickness="1.6" StrokeJoin="Round" />
+              <Path Classes="sound-waves" Data="M 16,8 C 19,10 19,14 16,16 M 19,5 C 24,9 24,15 19,19" Stroke="{Binding $parent[ToggleButton].Foreground}" StrokeThickness="1.6" StrokeLineCap="Round" />
+              <Path Classes="mute-slash" Data="M 3,3 L 21,21" Stroke="{Binding $parent[ToggleButton].Foreground}" StrokeThickness="2" StrokeLineCap="Round" />
+            </Canvas>
+          </Viewbox>
+        </ToggleButton>
+        <text:PlayerTextBlock Key="{Binding ErrorKey}" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
   <TabControl x:Name="CategoryTabs" ItemsSource="{Binding VisibleCategories, RelativeSource={RelativeSource AncestorType=UserControl}}">
     <TabControl.ItemTemplate>
       <DataTemplate DataType="settings:SettingCategory"><ContentControl Content="{Binding Label}" /></DataTemplate>
@@ -10,7 +27,7 @@
     <TabControl.ContentTemplate>
       <DataTemplate DataType="settings:SettingCategory">
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding Items}" Margin="0,20,0,0">
+          <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,20,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="settings:SettingItem">
                 <Grid ColumnDefinitions="180,*" ColumnSpacing="22" Margin="0,0,0,24" IsVisible="{Binding IsVisible}">
@@ -19,7 +36,7 @@
                     <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
                   </StackPanel>
                   <StackPanel Grid.Column="{Binding EditorColumn}" Grid.ColumnSpan="{Binding EditorColumnSpan}" Spacing="4">
-                    <ContentControl Content="{Binding}" IsEnabled="{Binding IsEnabled}">
+                    <ContentControl Content="{Binding}" IsEnabled="{Binding IsEnabled}" VerticalAlignment="Center">
                       <ContentControl.DataTemplates>
                         <DataTemplate DataType="settings:ActionSetting"><Button Content="{Binding Label}" Command="{Binding ExecuteCommand}" /></DataTemplate>
                         <DataTemplate DataType="settings:ICustomSetting"><settings:CustomSettingEditor /></DataTemplate>
@@ -33,9 +50,12 @@
                                     <ItemsControl.ItemTemplate>
                                       <DataTemplate>
                                         <StackPanel Spacing="4">
-                                          <ContentControl Content="{Binding Control}" />
+                                          <Grid ColumnDefinitions="*,Auto" ColumnSpacing="14">
+                                            <ContentControl Content="{Binding Control}" VerticalAlignment="Center" />
+                                            <ContentControl Grid.Column="1" Content="{Binding DataContext.InlineToggle, RelativeSource={RelativeSource AncestorType={x:Type forms:DtoEditorHost}}}" ContentTemplate="{StaticResource MuteEditor}" VerticalAlignment="Center" />
+                                          </Grid>
                                           <text:PlayerTextBlock Key="{Binding Context.Field.Editor.UnitKey}" Opacity="0.64" />
-                                          <TextBlock Text="{Binding Context.Issue.Message}" TextWrapping="Wrap" />
+                                          <TextBlock Text="{Binding Context.Issue.Message}" IsVisible="{Binding Context.Issue.Message, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
                                         </StackPanel>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -61,4 +81,25 @@
       </DataTemplate>
     </TabControl.ContentTemplate>
   </TabControl>
+  <UserControl.Styles>
+    <Style Selector="CheckBox"><Setter Property="HorizontalAlignment" Value="Left" /></Style>
+    <Style Selector="ToggleButton.player-mute">
+      <Setter Property="Width" Value="40" /><Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="8" /><Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+      <Setter Property="Background" Value="Transparent" /><Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextSecondary}" />
+      <Setter Property="Template"><ControlTemplate>
+        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}">
+          <ContentPresenter Content="{TemplateBinding Content}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        </Border>
+      </ControlTemplate></Setter>
+    </Style>
+    <Style Selector="ToggleButton.player-mute:checked"><Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.Primary}" /><Setter Property="Background" Value="{DynamicResource GalNet.Brush.Selection}" /></Style>
+    <Style Selector="ToggleButton.player-mute:pointerover"><Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" /><Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" /></Style>
+    <Style Selector="ToggleButton.player-mute:focus-visible"><Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" /></Style>
+    <Style Selector="ToggleButton.player-mute:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+    <Style Selector="ToggleButton.player-mute Path.mute-slash"><Setter Property="IsVisible" Value="False" /></Style>
+    <Style Selector="ToggleButton.player-mute:checked Path.mute-slash"><Setter Property="IsVisible" Value="True" /></Style>
+    <Style Selector="ToggleButton.player-mute:checked Path.sound-waves"><Setter Property="IsVisible" Value="False" /></Style>
+  </UserControl.Styles>
 </UserControl>

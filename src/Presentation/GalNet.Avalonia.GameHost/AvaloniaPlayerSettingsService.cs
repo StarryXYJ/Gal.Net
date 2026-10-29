@@ -91,6 +91,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
                 await _displayMode.TrySetValueAsync(_display.Mode == PlayerDisplayMode.Window
                     ? PlayerDisplayMode.BorderlessFullscreen : PlayerDisplayMode.Window);
         };
+        var masterMute = Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value);
         _categories = new System.Collections.ObjectModel.ObservableCollection<SettingCategory>(new[]
         {
             new SettingCategory("game", "Settings.Game",
@@ -106,8 +107,8 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
             new SettingCategory("graphics", "Settings.Graphics", [_displayMode, _windowSize], localization.GetString("Settings.Graphics")),
             new SettingCategory("audio", "Settings.Audio",
             [
-                Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider, livePreview: true),
-                Boolean("masterMuted", "Settings.MasterMuted", false, () => RuntimeSettings.MasterMuted, value => RuntimeSettings.MasterMuted = value)
+                Number("masterVolume", "Settings.MasterVolume", 1, 1, .01, () => RuntimeSettings.MasterVolume, value => RuntimeSettings.MasterVolume = (float)value, NumericEditorKind.Slider, livePreview: true, inlineToggle: masterMute),
+                masterMute
             ], localization.GetString("Settings.Audio"))
         });
         _coordinator = new SettingsCoordinator { SaveAsync = token => _variables?.FlushPlayerVariablesAsync(token) ?? Task.CompletedTask };
@@ -195,7 +196,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     }
 
     private DoubleSetting Number(string id, string key, double defaultValue, double maximum, double step,
-        Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown, bool livePreview = false)
+        Func<double> read, Action<double> write, NumericEditorKind editor = NumericEditorKind.NumericUpDown, bool livePreview = false, BoolSetting? inlineToggle = null)
     {
         var variable = "player.galnet.settings." + id;
         _restoreValues.Add(_ => write(_preferences!.Number(variable, defaultValue, maximum)));
@@ -203,6 +204,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
             (value, token) => ApplyRuntimeSettingAsync(variable, () => write(value), (float)value, token), _localization.GetString(key))
         {
             EditorKind = editor,
+            InlineToggle = inlineToggle,
             LivePreview = livePreview ? value => PreviewRuntimeSetting(variable, () => write(value), (float)value) : null
         };
     }

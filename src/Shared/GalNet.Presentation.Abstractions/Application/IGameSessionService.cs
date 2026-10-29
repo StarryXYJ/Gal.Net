@@ -50,6 +50,13 @@ public interface IFirstEmptySlotSession
     Task<int?> SaveFirstEmptyAsync(CancellationToken cancellationToken = default);
 }
 
+/// <summary>Optional save-name editing, available even when no story is running.</summary>
+public interface ISaveSlotNamingSession
+{
+    bool CanRenameSlots { get; }
+    Task<string> RenameSlotAsync(int slotIndex, string name, CancellationToken cancellationToken = default);
+}
+
 /// <summary>Presentation-safe save slot data. The host owns loading, writing and preview bytes.</summary>
 public sealed record GameSaveSlot(int SlotIndex, DateTime Timestamp, string Description, bool IsEmpty, bool IsCorrupt)
 {

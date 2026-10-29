@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [窗口装饰与玩家配色](lessons/L-20261029-02-window-decoration-theme-resources.md)：Ursa 2.1 关闭按钮在独立 WindowDrawnDecorations；窗口共享调色板资源，完整 Fluent 样式保留在播放器根。Headless 不生成平台装饰，资源断言不能替代原生截图。
+
 - [持久字段与保存基线](lessons/L-20261029-01-content-baseline-field-completeness.md)：新增字段必须进入手写相等比较；仅改 Group.storyPackage 应 dirty，局部保存其他配置不能抹掉它。
 
 - 2026-10-28 内容打包：项目唯一 Graph，graph/group 为保留 ID 资源；GPAK v3、content v2、save v5。本体闭包先行，各剧情包只减本体；默认 128 MiB 未压缩软阈值（用户后续调大），整片缓冲不保证内存上限。资源矩阵定义在 settings 的 galnet.resourceOverrides，矩阵修改经项目事务即时持久化且撤销/重做落盘，独立导出不 Save All，运行 priority/hash 降序显式映射、会话冻结。图集旧档按覆盖来源重新解析选择意图。文本/人物整体在本体，存档保守要求准备时全部剧情包；Gallery 补丁延期。见 docs/manual/content-packaging.md、features/F-20261028-01-content-packaging/summary.md。

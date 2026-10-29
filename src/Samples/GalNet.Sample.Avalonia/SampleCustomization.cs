@@ -33,7 +33,8 @@ namespace GalNet.Sample.Avalonia;
 /// <summary>Project choices. The host owns services and resources; modules borrow platform ports.</summary>
 internal static class SampleCustomization
 {
-    internal static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(GamePalette.Mono);
+    internal static GamePalette PlayerPalette { get; } = GamePalette.Mono;
+    internal static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(PlayerPalette);
 
     internal static void ConfigureServices(IServiceCollection services, bool enableDebug = true, Action<IPageViewRegistryBuilder>? configureViews = null)
     {

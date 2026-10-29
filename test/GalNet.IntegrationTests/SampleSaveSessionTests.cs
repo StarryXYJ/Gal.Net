@@ -12,6 +12,25 @@ namespace GalNet.IntegrationTests;
 public sealed class SampleSaveSessionTests
 {
     [Test]
+    public async Task CustomSlotNameSurvivesOverwriteAndReopeningThePlayer()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "galnet-save-name-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            using (var player = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery, maxSlots: 1))
+            {
+                await player.SaveAsync(0, new GameSnapshot { NodeId = "before" }, CancellationToken.None);
+                await player.RenameSlotAsync(0, "再次相遇");
+                await player.SaveAsync(0, new GameSnapshot { NodeId = "after" }, CancellationToken.None);
+            }
+            using var reopened = await FilePlayerSession.OpenAsync(directory, new GameContent { Graph = new Graph() }.Gallery, maxSlots: 1);
+            Assert.That((await reopened.ListSlotsAsync(CancellationToken.None))[0].Description, Is.EqualTo("再次相遇"));
+            Assert.That((await reopened.LoadAsync(0, CancellationToken.None))!.NodeId, Is.EqualTo("after"));
+        }
+        finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
+    }
+
+    [Test]
     public async Task SavePreviewIsStoredAndClearedOnOverwriteWithoutPreview()
     {
         var directory = Path.Combine(Path.GetTempPath(), "galnet-preview-" + Guid.NewGuid().ToString("N"));

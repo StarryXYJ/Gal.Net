@@ -6,7 +6,7 @@ using GalNet.Runtime.Persistence;
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>File-backed slot and quick-save store.</summary>
-public sealed class FileSaveService : ISaveService, IDisposable
+public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, IDisposable
 {
     private const int FormatVersion = GameSnapshot.CurrentFormatVersion;
     private static readonly JsonSerializerOptions JsonOptions = JsonMetadata.CreateOptions(resolver: StorageJsonContext.Default);
@@ -29,6 +29,26 @@ public sealed class FileSaveService : ISaveService, IDisposable
     }
 
     public Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default) => WriteAsync(slot, false, request, ct);
+
+    public async Task RenameAsync(int slot, string name, CancellationToken ct = default)
+    {
+        if (slot < 0 || slot >= MaxSlots) throw new ArgumentOutOfRangeException(nameof(slot));
+        ArgumentNullException.ThrowIfNull(name);
+        var normalized = name.Trim();
+        if (normalized.Length > 120 || normalized.Any(char.IsControl))
+            throw new ArgumentException("Save names must contain at most 120 characters and no control characters.", nameof(name));
+        await _gate.WaitAsync(ct);
+        try
+        {
+            var path = GetPath(slot, false);
+            var stored = JsonCodec.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct), JsonOptions);
+            if (stored?.Version != FormatVersion || stored.Snapshot is null)
+                throw new InvalidDataException("Only valid saves can be renamed.");
+            stored.Description = normalized.Length == 0 ? null : normalized;
+            await FileReplacement.WriteTextAsync(path, JsonCodec.Serialize(stored, JsonOptions), ct).ConfigureAwait(false);
+        }
+        finally { _gate.Release(); }
+    }
 
     public async Task<GameSnapshot?> LoadAsync(int slot, CancellationToken ct = default)
     {

@@ -70,7 +70,19 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
         foreach (var row in Slots) row.Dispose();
         Slots.Clear();
     }
-    private void OnSlotsChanged(object? sender, NotifyCollectionChangedEventArgs e) => RebuildRows();
+    private void OnSlotsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.Action == NotifyCollectionChangedAction.Replace && e.NewItems is { Count: 1 } && e.OldItems is { Count: 1 }
+            && e.NewItems[0] is GameSaveSlot next && e.OldItems[0] is GameSaveSlot previous
+            && next with { Description = previous.Description } == previous)
+        {
+            var row = Slots.FirstOrDefault(row => row.SlotIndex == next.SlotIndex);
+            if (row is null) { RebuildRows(); return; }
+            row.UpdateDescription(next.Description);
+            return;
+        }
+        RebuildRows();
+    }
     private void RebuildRows()
     {
         foreach (var row in Slots) row.Dispose();
@@ -81,7 +93,9 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
                 slot,
                 Mode == SaveSlotsMode.Save,
                 SaveSlotAsync,
-                slotIndex => LoadSlotAsync(slotIndex, CancellationToken.None));
+                slotIndex => LoadSlotAsync(slotIndex, CancellationToken.None),
+                _session is ISaveSlotNamingSession { CanRenameSlots: true } naming
+                    ? (slotIndex, name) => naming.RenameSlotAsync(slotIndex, name) : null);
             if (Mode == SaveSlotsMode.Save)
                 row.LoadCommand.NotifyCanExecuteChanged();
             Slots.Add(row);

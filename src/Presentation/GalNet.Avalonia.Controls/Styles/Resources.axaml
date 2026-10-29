@@ -11,6 +11,7 @@
   <SolidColorBrush x:Key="GalNet.Brush.Surface" Color="#242A33" />
   <SolidColorBrush x:Key="GalNet.Brush.SurfaceRaised" Color="#303946" />
   <SolidColorBrush x:Key="GalNet.Brush.Overlay" Color="#D9242A33" />
+  <SolidColorBrush x:Key="GalNet.Brush.SaveCaption" Color="#D9242A33" />
   <SolidColorBrush x:Key="GalNet.Brush.TextPrimary" Color="#F1F3F5" />
   <SolidColorBrush x:Key="GalNet.Brush.TextSecondary" Color="#B8C0CB" />
   <SolidColorBrush x:Key="GalNet.Brush.TextDisabled" Color="#727E8E" />

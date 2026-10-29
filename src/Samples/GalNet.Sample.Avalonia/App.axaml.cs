@@ -109,9 +109,8 @@ public partial class App : Application
 
                 closingInProgress = true;
 #if !BENCHMARK
-                var confirmed = SampleApplicationRestarter.IsRestarting ? Ursa.Controls.MessageBoxResult.OK : await Ursa.Controls.MessageBox.ShowAsync(mainWindow,
-                    localization.CultureService["Exit.Message"], localization.CultureService["Exit.Title"], button: Ursa.Controls.MessageBoxButton.OKCancel);
-                if (confirmed != Ursa.Controls.MessageBoxResult.OK)
+                var confirmed = SampleApplicationRestarter.IsRestarting || await mainWindow.ConfirmExitAsync();
+                if (!confirmed)
                 {
                     closingInProgress = false;
                     return;

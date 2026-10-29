@@ -39,6 +39,7 @@ public sealed class PlayerInputRouter : IDisposable
     }
     private async void Gamepad(IReadOnlySet<string> buttons)
     {
+        if (!_root.IsEffectivelyEnabled || !_root.IsEffectivelyVisible) { ResetInput(); return; }
         if (_settings.IsCapturing) { _gamepadDraft = null; _gamepadPeak = 0; StopNavigationRepeat(); return; }
         var navigation = _activeGame() is null or { IsChoiceVisible: true } or { IsSkipConfirmationOpen: true };
         if (navigation && buttons.Count == 1 && buttons.First() is "Up" or "Down" or "Left" or "Right")
@@ -80,7 +81,7 @@ public sealed class PlayerInputRouter : IDisposable
     private void NavigationRepeat(object? sender, EventArgs e)
     {
         _navigationRepeat.Interval = TimeSpan.FromMilliseconds(100);
-        if (_navigationDirection is { } direction && !_settings.IsCapturing) Navigate(direction);
+        if (_root.IsEffectivelyEnabled && _root.IsEffectivelyVisible && _navigationDirection is { } direction && !_settings.IsCapturing) Navigate(direction);
     }
     private void CloseChoice(bool commit)
     {

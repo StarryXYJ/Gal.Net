@@ -100,6 +100,33 @@ public sealed class PlayerInputTests
         });
     }
 
+    [Test]
+    public async Task DisabledPlayerContentDoesNotReceiveGamepadActionsBehindAModal()
+    {
+        await Ui(() =>
+        {
+            var settings = Settings();
+            var back = 0;
+            var root = new Border { Child = new Button { Content = "Underlying page" } };
+            var window = new Window { Content = root };
+            using var router = new PlayerInputRouter(root, settings, () => null, new Session(), () => back++);
+            window.Show();
+            try
+            {
+                root.IsEnabled = false;
+                settings.ObserveGamepad(new HashSet<string> { "East" });
+                settings.ObserveGamepad(new HashSet<string>());
+                Assert.That(back, Is.Zero);
+                root.IsEnabled = true;
+                settings.ObserveGamepad(new HashSet<string> { "East" });
+                settings.ObserveGamepad(new HashSet<string>());
+                Assert.That(back, Is.EqualTo(1));
+            }
+            finally { window.Close(); }
+            return Task.CompletedTask;
+        });
+    }
+
     [TestCase("Classic")]
     [TestCase("Minimal")]
     [TestCase("Paper")]

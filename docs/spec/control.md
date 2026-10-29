@@ -84,6 +84,12 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 内置主题的 `Common.SettingsCategories.Editors` 接收宿主 EditorRegistry；普通设置通过 `SettingItem<T>` 的 IFieldBinding 调用原有 apply/save 队列，类型化选项使用 ValueCodec 编码，标签与值分开。主题提供单字段表单模板与统一设置行的标签、说明、单位、可用性及错误；工厂注册或替换由宿主组合。旧 EditorTemplates/SettingEditor 和数值/选项 UI 转换代理已移除。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
 
+设置页的 Checkbox 左对齐。音频音量项通过 `SettingItem.InlineToggle` 引用同分类中的静音 BoolSetting；`DisplayItems` 仅负责合并显示，原 `Items`、设置 ID、可用性及 SettingsCoordinator 写入队列保持完整。静音按钮与实际滑块编辑器同行，以喇叭/斜杠喇叭区分状态，保留键盘焦点和无障碍名称。
+
+三套布局共用单外框 `SaveSlotCard`：预览铺满卡片，底部半透明信息区只显示名称和时间；悬停或内部焦点高亮整卡。有效存档的名称支持直接编辑，Enter/失焦提交、Escape 放弃。宿主通过可选 `ISaveSlotNamingSession` 接入；空槽、坏档和不支持改名的宿主保持只读。文件存档沿用原 `Description` 字段保存名称，`ISaveSlotNamingService` 只修改此字段，时间、预览和剧情快照保持原值。默认 PlayerSession 覆盖槽位时保留名称；改名不改变“继续游戏”按时间选择最近存档的顺序。
+
+Sample 的窗口装饰颜色从玩家调色板映射到 CaptionButton/TitleBar 资源，不依赖系统明暗主题推断。退出确认在玩家根控件内显示主题弹窗，默认聚焦取消，Escape 取消并恢复先前焦点；显示时禁用背景内容及其输入，确认后沿用原会话停止和资源释放链。
+
 共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
 
 Sample 在会话初始化后将设置接入 Player 变量存储，恢复语言、文本速度、快速已读限制、快速/自动间隔、音量/静音及显示偏好。等待时间使用整数毫秒：快速默认 50、范围 0–5000、步长 10；自动默认 2000、范围 0–30000、步长 100；旧浮点秒值视为类型无效，回退默认值，不迁移。画面能力由宿主提供，桌面 Sample 支持窗口/无边框全屏与预设窗口尺寸，非独占全屏；全屏时禁用窗口尺寸。语言变更立即刷新绑定并排队持久化；清空玩家状态和销毁会话前等待写入完成。
