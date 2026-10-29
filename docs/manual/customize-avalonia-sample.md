@@ -108,6 +108,10 @@ public IReadOnlyDictionary<string, object> ChapterTwo { get; } =
 
 存档页可直接编辑已有有效存档的名称，Enter 或失焦保存，Escape 放弃。名称保存在原存档 JSON 的 `Description` 字段，最多 120 个字符；清空名称恢复默认槽位名称。重命名不更新存档时间、截图和剧情快照，覆盖保存会保留名称。自定义会话实现可选 `ISaveSlotNamingSession`，自定义存储实现 `ISaveSlotNamingService`；没有该能力的宿主仍可使用只读卡片。
 
+自定义存储可额外实现 `ISaveSlotInfoSource`，避免保存或刷新单个槽位时遍历全部存档。批量更新 `SaveSlots` 时应合并集合通知；单槽保存使用 Replace，以复用其他卡片及缩略图。默认存档缩略图为不超过 480×270 的场景图。
+
+截图弹窗支持可选 `CapturePreviewPngAsync` 小图回调，默认 GameShell 使用不超过 720×405 的预览，包含界面/仅场景分别缓存；`CapturePngAsync` 始终负责正式导出。自定义截图服务保留两者的区别，不能把预览缓存当成正式截图保存。有关控件和场景捕获的边界见 [共享页面规范](../spec/control.md#截图对话框契约)。
+
 音量与静音共用一行：在音量 SettingItem 上设置 `InlineToggle` 指向同分类的 BoolSetting，并仍将两项放在 `Items` 中，以保留应用、恢复与持久化队列。界面通过 `DisplayItems` 合并显示；修改外观无需改变原设置 ID。
 
 `SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，修改配色时保持 `PlayerTheme` 使用同一调色板。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。

@@ -43,7 +43,7 @@
       <StackPanel Grid.Row="4"
                   Spacing="4">
         <CheckBox Name="IncludeUiBox"
-                  Content="{text:PlayerText Screenshot.IncludeUi, 'Include player UI'}" />
+                  Content="{text:PlayerText Screenshot.IncludeUi, 'Include dialogue and controls'}" />
         <TextBlock Name="ErrorBlock"
                    Foreground="{DynamicResource GalNet.Brush.Error}"
                    TextWrapping="Wrap" />

@@ -66,6 +66,8 @@ GamePageViewModel 的自定义 View 必须继承 GamePage；DI 中的 GamePage �
 
 主题把 ScreenshotDialogViewModel 映射到 ScreenshotDialog 派生 View。XAML 加载后调用受保护的 InitializeDialog，布局必须提供 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺失控件明确报错。基类管理选择目录、预览更新、保存、取消和 Bitmap 释放；服务通过 DI 创建独立实例，并加载当前主题样式。宿主可在 configureViews 中覆盖截图 View，构造参数可注入宿主服务。
 
+`GameScreenshotRequest.CapturePreviewPngAsync` 是可选的预览回调，未提供时复用原 `CapturePngAsync`；正式保存始终调用后者。GameShell 的预览按原比例限制到 720×405，不放大；“包含对话框和操作栏”两种状态在当前弹窗内分别缓存，失败可重试。正式导出保持原逻辑分辨率，PNG 编码在后台完成。`SceneLayerHost.CaptureControl` 和有尺寸上限的 `CapturePng` 同时限制场景中间纹理与 CPU 效果处理像素，图层位置和原生图片尺寸仍使用原逻辑坐标；剧情截图入口的无参捕获保持原行为。
+
 ### Gallery 页面
 
 Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映射到页面 ViewModel 和 View。`Add<TViewModel, TView>` 注册新类型，`Replace<TViewModel, TView>` 显式覆盖既有类型；多个 type ID 可以映射到同一页面。该注册同时写入普通 ViewModel→View registry 和 DI，构建后不可修改。
@@ -86,9 +88,15 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 设置页的 Checkbox 左对齐。音频音量项通过 `SettingItem.InlineToggle` 引用同分类中的静音 BoolSetting；`DisplayItems` 仅负责合并显示，原 `Items`、设置 ID、可用性及 SettingsCoordinator 写入队列保持完整。静音按钮与实际滑块编辑器同行，以喇叭/斜杠喇叭区分状态，保留键盘焦点和无障碍名称。
 
+设置和首次语言选择的 ComboBox 沿用 Fluent 模板，默认、悬停、焦点、按下、禁用和弹出列表状态显式映射到玩家配色；弹出列表使用 Surface 底色、Selection 选中底色和 TextPrimary 文字，不依赖系统主题提供文字对比。
+
 三套布局共用单外框 `SaveSlotCard`：预览铺满卡片，底部半透明信息区只显示名称和时间；悬停或内部焦点高亮整卡。有效存档的名称支持直接编辑，Enter/失焦提交、Escape 放弃。宿主通过可选 `ISaveSlotNamingSession` 接入；空槽、坏档和不支持改名的宿主保持只读。文件存档沿用原 `Description` 字段保存名称，`ISaveSlotNamingService` 只修改此字段，时间、预览和剧情快照保持原值。默认 PlayerSession 覆盖槽位时保留名称；改名不改变“继续游戏”按时间选择最近存档的顺序。
 
+GameShell 新生成的存档预览上限为 480×270；旧图按 480 宽度解码展示。默认会话整表刷新只发送一次集合 Reset，普通保存只替换目标槽位，其他行与已解码预览继续复用。`ISaveSlotInfoSource` 是存储的可选单槽元数据查询能力，PlayerSession 对未实现该接口的存储回退整表查询；文件存储实现直接查询并在后台序列化保存数据。
+
 Sample 的窗口装饰颜色从玩家调色板映射到 CaptionButton/TitleBar 资源，不依赖系统明暗主题推断。退出确认在玩家根控件内显示主题弹窗，默认聚焦取消，Escape 取消并恢复先前焦点；显示时禁用背景内容及其输入，确认后沿用原会话停止和资源释放链。
+
+最小化、最大化按钮悬停/按下使用中性灰色叠层；关闭按钮悬停红色、按下深红色，并使用白色图标。
 
 共享页面的静态文案使用 `PlayerTextExtension`，未接入宿主本地化时显示默认英文。官方 Sample 提供 `LocalizedString` 并绑定其 `Value`，沿用 DynamicLocalization 的 Culture/Provider 变更通知机制；宿主设置标签也可以使用同样的动态对象。该绑定不会自动翻译任意业务字符串或剧情内容。
 

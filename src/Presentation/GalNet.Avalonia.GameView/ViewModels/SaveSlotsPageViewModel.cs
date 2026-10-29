@@ -18,6 +18,7 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
     public ObservableCollection<GameSaveSlotRowViewModel> Slots { get; } = [];
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private SaveSlotsMode _mode;
     public string Heading => Mode == SaveSlotsMode.Save ? "Save game" : "Load game";
+    public string HeadingKey => Mode == SaveSlotsMode.Save ? "SaveSlots.SaveTitle" : "SaveSlots.LoadTitle";
     public bool IsSaveMode => Mode == SaveSlotsMode.Save;
 
     public SaveSlotsPageViewModel(
@@ -59,6 +60,7 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
     {
         Mode = mode;
         OnPropertyChanged(nameof(Heading));
+        OnPropertyChanged(nameof(HeadingKey));
         OnPropertyChanged(nameof(IsSaveMode));
         RebuildRows();
         return Task.CompletedTask;
@@ -72,30 +74,33 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
     }
     private void OnSlotsChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.Action == NotifyCollectionChangedAction.Replace && e.NewItems is { Count: 1 } && e.OldItems is { Count: 1 }
-            && e.NewItems[0] is GameSaveSlot next && e.OldItems[0] is GameSaveSlot previous
-            && next with { Description = previous.Description } == previous)
+        if (e.Action == NotifyCollectionChangedAction.Replace && e.NewStartingIndex >= 0 && e.NewItems is { Count: 1 }
+            && e.NewItems[0] is GameSaveSlot replacement && e.NewStartingIndex < Slots.Count)
         {
-            var row = Slots.FirstOrDefault(row => row.SlotIndex == next.SlotIndex);
-            if (row is null) { RebuildRows(); return; }
-            row.UpdateDescription(next.Description);
+            if (e.OldItems?[0] is GameSaveSlot previous && replacement with { Description = previous.Description } == previous)
+                Slots[e.NewStartingIndex].UpdateDescription(replacement.Description);
+            else
+            {
+                var old = Slots[e.NewStartingIndex];
+                Slots[e.NewStartingIndex] = CreateRow(replacement);
+                old.Dispose();
+            }
             return;
         }
         RebuildRows();
     }
+    private GameSaveSlotRowViewModel CreateRow(GameSaveSlot slot) => new(
+        slot, Mode == SaveSlotsMode.Save, SaveSlotAsync,
+        slotIndex => LoadSlotAsync(slotIndex, CancellationToken.None),
+        _session is ISaveSlotNamingSession { CanRenameSlots: true } naming
+            ? (slotIndex, name) => naming.RenameSlotAsync(slotIndex, name) : null);
     private void RebuildRows()
     {
         foreach (var row in Slots) row.Dispose();
         Slots.Clear();
         foreach (var slot in _session.SaveSlots)
         {
-            var row = new GameSaveSlotRowViewModel(
-                slot,
-                Mode == SaveSlotsMode.Save,
-                SaveSlotAsync,
-                slotIndex => LoadSlotAsync(slotIndex, CancellationToken.None),
-                _session is ISaveSlotNamingSession { CanRenameSlots: true } naming
-                    ? (slotIndex, name) => naming.RenameSlotAsync(slotIndex, name) : null);
+            var row = CreateRow(slot);
             if (Mode == SaveSlotsMode.Save)
                 row.LoadCommand.NotifyCanExecuteChanged();
             Slots.Add(row);

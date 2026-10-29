@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
@@ -24,7 +26,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private readonly IPlayerLocalization _localization;
     private readonly IPlayerStartup _startup;
     private readonly LibVlcRuntime _mediaRuntime;
-    private readonly ObservableCollection<GameSaveSlot> _saveSlots = [];
+    private readonly SaveSlotCollection _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
     private AvaloniaProjectOptions _projectOptions = new();
@@ -244,7 +246,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         await _session.WithSnapshotAsync(async (snapshot, token) =>
         {
             await _saveSession!.SaveAsync(slotIndex, snapshot, preview, token);
-            await RefreshSlotsAsync(token);
+            await RefreshSlotAsync(slotIndex, token);
             await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slotIndex}.");
             return true;
         }, cancellationToken);
@@ -261,7 +263,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             var slot = await _saveSession.SaveFirstEmptyAsync(snapshot, preview, token);
             if (slot is not null)
             {
-                await RefreshSlotsAsync(token);
+                await RefreshSlotAsync(slot.Value, token);
                 await OnUiAsync(() => _gameplay.StatusMessage = $"Saved to slot {slot.Value + 1}.");
             }
             return slot;
@@ -360,21 +362,50 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         }
         await OnUiAsync(() =>
         {
-            _saveSlots.Clear();
-            foreach (var slot in slots)
-            {
-                _saveSlots.Add(new GameSaveSlot(
-                    slot.SlotIndex,
-                    slot.Timestamp,
-                    slot.IsCorrupt ? _localization.GetString("SaveSlots.Corrupt").Value
-                        : slot.Timestamp == default ? _localization.GetString("SaveSlots.Empty").Value
-                        : string.IsNullOrWhiteSpace(slot.Description) ? $"{_localization.GetString("SaveSlots.Slot").Value} {slot.SlotIndex + 1:D2}" : slot.Description,
-                    slot.Timestamp == default && !slot.IsCorrupt,
-                    slot.IsCorrupt)
-                { PreviewImage = previews.GetValueOrDefault(slot.SlotIndex) });
-            }
+            _saveSlots.ReplaceAll(slots.Select(slot => CreateSlot(slot, previews.GetValueOrDefault(slot.SlotIndex))));
             CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
         });
+    }
+
+    private GameSaveSlot CreateSlot(GalNet.Runtime.Persistence.SaveSlotInfo slot, byte[]? preview) => new(
+        slot.SlotIndex, slot.Timestamp,
+        slot.IsCorrupt ? _localization.GetString("SaveSlots.Corrupt").Value
+            : slot.Timestamp == default ? _localization.GetString("SaveSlots.Empty").Value
+            : string.IsNullOrWhiteSpace(slot.Description) ? $"{_localization.GetString("SaveSlots.Slot").Value} {slot.SlotIndex + 1:D2}" : slot.Description,
+        slot.Timestamp == default && !slot.IsCorrupt, slot.IsCorrupt)
+    { PreviewImage = preview };
+
+    private async Task RefreshSlotAsync(int slotIndex, CancellationToken cancellationToken)
+    {
+        var slot = await _saveSession!.GetSlotInfoAsync(slotIndex, cancellationToken);
+        if (slot is null) return;
+        byte[]? preview = null;
+        if (slot.PreviewImage is { } path)
+        {
+            try { preview = await File.ReadAllBytesAsync(path, cancellationToken); }
+            catch (IOException) { }
+            catch (UnauthorizedAccessException) { }
+        }
+        await OnUiAsync(() =>
+        {
+            var index = _saveSlots.ToList().FindIndex(item => item.SlotIndex == slotIndex);
+            if (index >= 0) _saveSlots[index] = CreateSlot(slot, preview);
+            else _saveSlots.Add(CreateSlot(slot, preview));
+            CanContinue = _saveSlots.Any(item => !item.IsEmpty && !item.IsCorrupt);
+        });
+    }
+
+    private sealed class SaveSlotCollection : ObservableCollection<GameSaveSlot>
+    {
+        public void ReplaceAll(IEnumerable<GameSaveSlot> slots)
+        {
+            var next = slots.ToArray();
+            Items.Clear();
+            foreach (var slot in next) Items.Add(slot);
+            OnPropertyChanged(new PropertyChangedEventArgs(nameof(Count)));
+            OnPropertyChanged(new PropertyChangedEventArgs("Item[]"));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
+        }
     }
 
     /// <summary>Runs a project-specific save action under the same command gate as normal saves and run replacement.</summary>

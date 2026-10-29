@@ -1,5 +1,8 @@
 # GalNet Agent Knowledge
 
+- [预览效果像素边界](lessons/L-20261029-04-bounded-scene-capture.md)：外层缩图不限制 CPU 效果纹理；逻辑尺寸与像素尺寸分开，正式截图仍保持完整分辨率。
+- [存档缩略图通知](lessons/L-20261029-05-save-thumbnail-notifications.md)：整表一次 Reset，保存单槽 Replace，其他行与 Bitmap 复用；异步 I/O 不会消除重复解码卡顿。
+
 - [PowerShell 宿主 API 兼容](lessons/L-20261029-03-powershell-runtime-api-compatibility.md)：Windows PowerShell 5.1 使用 .NET Framework；现代 System.IO.Path API 不能假定存在，需在 powershell.exe 与 pwsh 分别验证。
 
 - [窗口装饰与玩家配色](lessons/L-20261029-02-window-decoration-theme-resources.md)：Ursa 2.1 关闭按钮在独立 WindowDrawnDecorations；窗口共享调色板资源，完整 Fluent 样式保留在播放器根。Headless 不生成平台装饰，资源断言不能替代原生截图。

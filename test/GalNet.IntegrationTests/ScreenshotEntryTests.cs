@@ -65,6 +65,43 @@ public sealed class ScreenshotEntryTests
     }
 
     [Test]
+    public async Task BoundedCaptureIncludesControlsPreservesSceneAndLeavesFullExportUnchanged()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
+        await DispatchAsync(session, async () =>
+        {
+            var scene = new SceneLayerHost
+            {
+                ItemsSource = new[] { new SceneLayerItem { HandleId = "background", Color = "#203040" } }
+            };
+            var overlay = new Border { Height = 80, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom, Background = Avalonia.Media.Brushes.Gold };
+            var root = new Grid { Children = { scene, overlay } };
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                using var preview = scene.CaptureControl(root, new PixelSize(320, 180));
+                using var previewStream = new MemoryStream();
+                // Match the screenshot path: PNG encoding can finish off the UI thread.
+                await Task.Run(() => preview.Save(previewStream));
+                using var decoded = SKBitmap.Decode(previewStream.ToArray());
+                Assert.That((decoded.Width, decoded.Height), Is.EqualTo((320, 180)));
+                Assert.That(decoded.GetPixel(160, 60), Is.EqualTo(SKColor.Parse("#203040")));
+                Assert.That(decoded.GetPixel(160, 175), Is.EqualTo(SKColors.Gold));
+                using var scenePreview = SKBitmap.Decode(scene.CapturePng(new PixelSize(480, 270)));
+                Assert.That((scenePreview.Width, scenePreview.Height), Is.EqualTo((480, 270)));
+                Assert.That(scenePreview.GetPixel(240, 265), Is.EqualTo(SKColor.Parse("#203040")));
+                using var full = scene.CaptureControl(root);
+                Assert.That(full.PixelSize, Is.EqualTo(new PixelSize(1280, 720)));
+                using var original = SKBitmap.Decode(scene.CapturePng());
+                Assert.That((original.Width, original.Height), Is.EqualTo((1280, 720)));
+            }
+            finally { window.Close(); }
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
     public async Task CompiledSchemaToModuleToEngine_ExecutesAndSurfacesAsyncCaptureFailure()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);

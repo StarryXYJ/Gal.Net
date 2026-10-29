@@ -31,7 +31,7 @@ public sealed class GameSaveSlotRowViewModel : ObservableObject, IDisposable
     {
         if (slot.PreviewImage is { Length: > 0 } bytes)
         {
-            try { using var stream = new MemoryStream(bytes); Preview = new global::Avalonia.Media.Imaging.Bitmap(stream); }
+            try { using var stream = new MemoryStream(bytes); Preview = global::Avalonia.Media.Imaging.Bitmap.DecodeToWidth(stream, 480); }
             catch (Exception) { /* A damaged preview must not make the save unusable. */ }
         }
         SlotIndex = slot.SlotIndex;

@@ -19,6 +19,28 @@ namespace GalNet.IntegrationTests;
 public sealed class SampleLocalizationTests
 {
     [Test]
+    public void SaveHeadingsAndScreenshotOptionFollowLanguageAndModeChanges()
+    {
+        using var localization = CreateLocalization();
+        var previous = PlayerTextExtension.Resolve;
+        try
+        {
+            PlayerTextExtension.Resolve = localization.GetString;
+            var heading = new PlayerTextBlock { Key = "SaveSlots.SaveTitle", Fallback = "Save game" };
+            Assert.That(heading.Text, Is.EqualTo("Save game"));
+            localization.ApplyCulture("zh-CN");
+            Assert.That(heading.Text, Is.EqualTo("保存进度"));
+            heading.Key = "SaveSlots.LoadTitle";
+            Assert.That(heading.Text, Is.EqualTo("读取存档"));
+            Assert.That(localization.GetString("Screenshot.IncludeUi").Value, Is.EqualTo("包含对话框和操作栏"));
+            localization.ApplyCulture("en-US");
+            Assert.That(heading.Text, Is.EqualTo("Load game"));
+            Assert.That(localization.GetString("Screenshot.IncludeUi").Value, Is.EqualTo("Include dialogue and controls"));
+        }
+        finally { PlayerTextExtension.Resolve = previous; }
+    }
+
+    [Test]
     public void SharedLocalizeBindingRefreshesAndPreservesFormatting()
     {
         using var localization = CreateLocalization();

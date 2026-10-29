@@ -8,6 +8,32 @@ namespace GeneralTest.Storage;
 public sealed class FileSaveServiceTests
 {
     [Test]
+    public async Task SingleSlotLookupMatchesListMetadataForOccupiedEmptyAndCorruptSlots()
+    {
+        var directory = CreateProfileDirectory();
+        try
+        {
+            using var saves = new FileSaveService(directory, 3);
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "chapter" }, Description = "Name", PreviewImage = [1, 2] });
+            await File.WriteAllTextAsync(Path.Combine(directory, "saves", "slot-002.json"), "broken");
+            var all = await saves.ListSlotsAsync();
+            for (var slot = 0; slot < 3; slot++)
+            {
+                var single = await saves.GetSlotInfoAsync(slot);
+                Assert.That(single.Description, Is.EqualTo(all[slot].Description));
+                Assert.That(single.Timestamp, Is.EqualTo(all[slot].Timestamp));
+                Assert.That(single.PreviewImage, Is.EqualTo(all[slot].PreviewImage));
+                Assert.That(single.IsCorrupt, Is.EqualTo(all[slot].IsCorrupt));
+            }
+            Assert.That(() => saves.GetSlotInfoAsync(3), Throws.TypeOf<ArgumentOutOfRangeException>());
+            using var canceled = new CancellationTokenSource();
+            canceled.Cancel();
+            Assert.That(async () => await saves.GetSlotInfoAsync(0, canceled.Token), Throws.InstanceOf<OperationCanceledException>());
+        }
+        finally { DeleteProfileDirectory(directory); }
+    }
+
+    [Test]
     public async Task RenamePersistsOnlyTheNameAndRejectsInvalidOrMissingSaves()
     {
         var directory = CreateProfileDirectory();

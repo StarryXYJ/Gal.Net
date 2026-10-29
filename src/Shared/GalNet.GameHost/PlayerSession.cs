@@ -53,7 +53,7 @@ public sealed class PlayerSession : IDisposable
     private async Task SaveCoreAsync(int slotIndex, GameSnapshot snapshot, byte[]? preview, CancellationToken cancellationToken)
     {
         await Progress.FlushAsync(cancellationToken);
-        var previous = (await _saves.ListSlotsAsync(cancellationToken)).FirstOrDefault(slot => slot.SlotIndex == slotIndex);
+        var previous = await GetSlotInfoAsync(slotIndex, cancellationToken);
         await _saves.SaveAsync(slotIndex, new SaveRequest { Snapshot = snapshot, PreviewImage = preview, Description = previous?.Description }, cancellationToken);
     }
 
@@ -72,6 +72,10 @@ public sealed class PlayerSession : IDisposable
 
     public Task<IReadOnlyList<SaveSlotInfo>> ListSlotsAsync(CancellationToken cancellationToken) =>
         _saves.ListSlotsAsync(cancellationToken);
+
+    public async Task<SaveSlotInfo?> GetSlotInfoAsync(int slotIndex, CancellationToken cancellationToken = default) =>
+        _saves is ISaveSlotInfoSource source ? await source.GetSlotInfoAsync(slotIndex, cancellationToken)
+            : (await _saves.ListSlotsAsync(cancellationToken)).FirstOrDefault(slot => slot.SlotIndex == slotIndex);
 
     public async Task<GameSnapshot> LoadLatestAsync(CancellationToken cancellationToken = default)
     {

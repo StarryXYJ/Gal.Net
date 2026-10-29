@@ -279,7 +279,10 @@ public partial class GameShell : UserControl, IDisposable
         await _screenshots.CaptureAsync(new GameScreenshotRequest(
             _session.GameTitle,
             owner,
-            includeUi => Task.FromResult(includeUi ? CapturePng(this) : page.CaptureScenePng())));
+            includeUi => CaptureScreenshotAsync(page, includeUi, null))
+        {
+            CapturePreviewPngAsync = includeUi => CaptureScreenshotAsync(page, includeUi, new PixelSize(720, 405))
+        });
     }
 
     private async void OnReturnToTitleRequested()
@@ -299,18 +302,18 @@ public partial class GameShell : UserControl, IDisposable
 
     private static byte[]? TryCaptureScene(GamePage page)
     {
-        try { return page.CaptureScenePng(); }
+        try { return page.SceneHost.CapturePng(new PixelSize(480, 270)); }
         catch (Exception error) { Log.Logger.Warning(error, "Unable to capture save preview"); return null; }
     }
 
-    private static byte[] CapturePng(Control target)
+    private async Task<byte[]> CaptureScreenshotAsync(GamePage page, bool includeUi, PixelSize? maximumSize)
     {
-        var width = Math.Max(1, (int)Math.Ceiling(target.Bounds.Width));
-        var height = Math.Max(1, (int)Math.Ceiling(target.Bounds.Height));
-        using var bitmap = new RenderTargetBitmap(new PixelSize(width, height));
-        bitmap.Render(target);
-        using var stream = new MemoryStream();
-        bitmap.Save(stream);
-        return stream.ToArray();
+        using var bitmap = page.SceneHost.CaptureControl(includeUi ? this : page.Scene, maximumSize);
+        return await Task.Run(() =>
+        {
+            using var stream = new MemoryStream();
+            bitmap.Save(stream);
+            return stream.ToArray();
+        });
     }
 }

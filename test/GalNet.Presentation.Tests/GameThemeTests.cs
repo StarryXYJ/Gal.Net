@@ -36,6 +36,104 @@ namespace GeneralTest.Presentation;
 [NonParallelizable]
 public sealed class GameThemeTests
 {
+    [TestCase("Mono")]
+    [TestCase("Ocean")]
+    [TestCase("Rose")]
+    public async Task ComboBox_popup_focus_selection_and_disabled_states_use_the_player_palette(string paletteName)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch(() =>
+        {
+            var theme = CreateTheme("Classic", paletteName);
+            var combo = new ComboBox { Width = 300, ItemsSource = new[] { "简体中文", "English", "日本語" }, SelectedIndex = 0 };
+            var root = new Border { Classes = { "galnet-player" }, Child = combo, Padding = new Thickness(40) };
+            root.Styles.Add(theme.CreateStyles());
+            var window = new Window { Width = 460, Height = 320, Content = root };
+            window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var surface = ((ISolidColorBrush)root.FindResource("GalNet.Brush.Surface")!).Color;
+                root.Background = (IBrush)root.FindResource("GalNet.Brush.Background")!;
+                var text = ((ISolidColorBrush)root.FindResource("GalNet.Brush.TextPrimary")!).Color;
+                Assert.That(((ISolidColorBrush)combo.Background!).Color, Is.EqualTo(surface));
+                combo.Focus();
+                window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)combo.Foreground!).Color, Is.EqualTo(text));
+                Capture(window, $"ComboBox-{paletteName}-Focused");
+                combo.IsDropDownOpen = true;
+                window.UpdateLayout();
+                var popup = combo.GetVisualDescendants().OfType<Popup>().Single();
+                var popupBorder = (Border)popup.Child!;
+                Assert.That(((ISolidColorBrush)popupBorder.Background!).Color, Is.EqualTo(surface));
+                Assert.That(combo.ContainerFromIndex(0), Is.Not.Null);
+                var selected = (ComboBoxItem)combo.ContainerFromIndex(0)!;
+                Assert.That(((ISolidColorBrush)selected.Foreground!).Color, Is.EqualTo(text));
+                Assert.That(((ISolidColorBrush)selected.FindResource("ComboBoxItemBackgroundSelected")!).Color,
+                    Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.Selection")!).Color));
+                Capture(window, $"ComboBox-{paletteName}-Open");
+                combo.IsDropDownOpen = false;
+                combo.IsEnabled = false;
+                window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)combo.Foreground!).Color,
+                    Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.TextDisabled")!).Color));
+                Capture(window, $"ComboBox-{paletteName}-Disabled");
+            }
+            finally { window.Close(); }
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task Screenshot_previews_cache_each_ui_mode_retry_failures_and_keep_export_separate()
+    {
+        var calls = new List<bool>();
+        var exports = new List<bool>();
+        var fail = true;
+        var model = new ScreenshotDialogViewModel("directory", "capture.png", includeUi =>
+        {
+            calls.Add(includeUi);
+            if (includeUi && fail) { fail = false; return Task.FromException<byte[]>(new IOException("retry")); }
+            return Task.FromResult<byte[]>(includeUi ? [2] : [1]);
+        }, (_, _, includeUi) => { exports.Add(includeUi); return Task.FromResult<string?>(null); });
+        var first = model.CapturePreviewAsync();
+        Assert.That(model.CapturePreviewAsync(), Is.SameAs(first));
+        model.IncludeUi = true;
+        Assert.ThrowsAsync<IOException>(async () => await model.CapturePreviewAsync());
+        Assert.That(await model.CapturePreviewAsync(), Is.EqualTo(new byte[] { 2 }));
+        model.IncludeUi = false;
+        Assert.That(model.CapturePreviewAsync(), Is.SameAs(first));
+        await model.SaveAsync();
+        Assert.That(calls, Is.EqualTo(new[] { false, true, true }));
+        Assert.That(exports, Is.EqualTo(new[] { false }));
+    }
+
+    [Test]
+    public async Task Saving_one_slot_preserves_the_other_rows_and_decoded_previews()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
+        await session.Dispatch(() =>
+        {
+            using var provider = CreateServices(new ClassicTheme()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var fake = (TestSession)scope.ServiceProvider.GetRequiredService<IGameSessionService>();
+            using var artwork = CreateGalleryArtwork();
+            using var stream = new MemoryStream();
+            artwork.Save(stream);
+            var bytes = stream.ToArray();
+            fake.ReplaceSlot(1, fake.SaveSlots[1] with { PreviewImage = bytes });
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            var rows = page.Slots.ToArray();
+            var preview = rows[1].Preview;
+            fake.ReplaceSlot(0, new(0, DateTime.UtcNow, "New save", false, false) { PreviewImage = bytes });
+            Assert.That(page.Slots[0], Is.Not.SameAs(rows[0]));
+            Assert.That(page.Slots[1], Is.SameAs(rows[1]));
+            Assert.That(page.Slots[1].Preview, Is.SameAs(preview));
+            Assert.That(page.Slots[2], Is.SameAs(rows[2]));
+            Assert.That(((Bitmap)page.Slots[0].Preview!).PixelSize.Width, Is.EqualTo(480));
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     [Test]
     public async Task SaveNameChangesSurvivePageReactivationWithoutReplacingTheEditingRow()
     {
@@ -1036,6 +1134,7 @@ public sealed class GameThemeTests
         };
         public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots { get; }
         public TestSession() => SaveSlots = new(_slots);
+        public void ReplaceSlot(int index, GameSaveSlot slot) => _slots[index] = slot;
         public event PropertyChangedEventHandler? PropertyChanged { add { } remove { } }
         public Task StartNewGameAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ContinueAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

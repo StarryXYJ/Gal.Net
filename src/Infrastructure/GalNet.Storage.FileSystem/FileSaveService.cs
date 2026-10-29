@@ -6,7 +6,7 @@ using GalNet.Runtime.Persistence;
 namespace GalNet.Storage.FileSystem;
 
 /// <summary>File-backed slot and quick-save store.</summary>
-public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, IDisposable
+public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, ISaveSlotInfoSource, IDisposable
 {
     private const int FormatVersion = GameSnapshot.CurrentFormatVersion;
     private static readonly JsonSerializerOptions JsonOptions = JsonMetadata.CreateOptions(resolver: StorageJsonContext.Default);
@@ -29,6 +29,13 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, IDis
     }
 
     public Task SaveAsync(int slot, SaveRequest request, CancellationToken ct = default) => WriteAsync(slot, false, request, ct);
+
+    public Task<SaveSlotInfo> GetSlotInfoAsync(int slot, CancellationToken ct = default)
+    {
+        if (slot < 0 || slot >= MaxSlots) throw new ArgumentOutOfRangeException(nameof(slot));
+        ct.ThrowIfCancellationRequested();
+        return GetInfoAsync(slot, false, ct);
+    }
 
     public async Task RenameAsync(int slot, string name, CancellationToken ct = default)
     {
@@ -103,7 +110,8 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, IDis
         {
             var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot };
             var path = GetPath(slot, quick);
-            await FileReplacement.WriteTextAsync(path, JsonCodec.Serialize(payload, JsonOptions), ct).ConfigureAwait(false);
+            var json = await Task.Run(() => JsonCodec.Serialize(payload, JsonOptions), ct).ConfigureAwait(false);
+            await FileReplacement.WriteTextAsync(path, json, ct).ConfigureAwait(false);
             var previewPath = GetPreviewPath(slot, quick);
             if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(previewPath, request.PreviewImage, ct);
             else if (File.Exists(previewPath)) File.Delete(previewPath);
@@ -117,7 +125,7 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, IDis
         if (!File.Exists(path)) return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick };
         try
         {
-            var json = await File.ReadAllTextAsync(path, ct);
+            var json = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
             var stored = JsonCodec.Deserialize<StoredSave>(json, JsonOptions);
             if (stored?.Version != FormatVersion || stored.Snapshot is null) throw new InvalidDataException();
             var preview = GetPreviewPath(slot, quick);

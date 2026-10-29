@@ -14,7 +14,10 @@ public interface IGameScreenshotService
 public sealed record GameScreenshotRequest(
     string GameTitle,
     TopLevel? Owner,
-    Func<bool, Task<byte[]>> CapturePngAsync);
+    Func<bool, Task<byte[]>> CapturePngAsync)
+{
+    public Func<bool, Task<byte[]>>? CapturePreviewPngAsync { get; init; }
+}
 
 /// <summary>Optional host integration for capturing the scene associated with a save.</summary>
 public interface ISavePreviewSource

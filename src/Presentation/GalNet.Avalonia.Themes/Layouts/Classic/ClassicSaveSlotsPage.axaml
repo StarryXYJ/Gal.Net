@@ -13,7 +13,7 @@
       <Grid RowDefinitions="Auto,Auto,*">
         <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
           <StackPanel Spacing="3">
-            <TextBlock Text="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+            <text:PlayerTextBlock Key="{Binding HeadingKey}" Fallback="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             <TextBlock Text="{text:PlayerText SaveSlots.Choose, 'Choose a slot'}" Opacity="0.64" />
           </StackPanel>
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />

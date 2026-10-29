@@ -42,6 +42,25 @@ public sealed class SampleWindowThemeTests
                 var foreground = (ISolidColorBrush)window.FindResource("CaptionButtonForeground")!;
                 var palette = (ISolidColorBrush)window.FindResource("GalNet.Brush.TextPrimary")!;
                 Assert.That(foreground.Color, Is.EqualTo(palette.Color));
+                var hover = (ISolidColorBrush)window.FindResource("CaptionButtonPointeroverBackground")!;
+                Assert.That(hover.Color, Is.EqualTo(palette.Color));
+                Assert.That(hover.Opacity, Is.EqualTo(.08));
+                Assert.That(((ISolidColorBrush)window.FindResource("CaptionButtonClosePointeroverBackground")!).Color, Is.EqualTo(Color.Parse("#C42B1C")));
+                var selection = window.SelectLanguageAsync("zh-CN", CancellationToken.None);
+                window.UpdateLayout();
+                var languageView = window.FindControl<LanguageSelectionView>("LanguageSelection")!;
+                var picker = languageView.FindControl<ComboBox>("LanguagePicker")!;
+                Assert.That(((ISolidColorBrush)picker.Background!).Color,
+                    Is.EqualTo(((ISolidColorBrush)languageView.FindResource("GalNet.Brush.Surface")!).Color));
+                picker.IsDropDownOpen = true;
+                window.UpdateLayout();
+                var popup = picker.GetVisualDescendants().OfType<global::Avalonia.Controls.Primitives.Popup>().Single();
+                Assert.That(((ISolidColorBrush)((Border)popup.Child!).Background!).Color,
+                    Is.EqualTo(((ISolidColorBrush)picker.Background!).Color));
+                Capture(window, "Sample-LanguagePicker");
+                picker.IsDropDownOpen = false;
+                scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
+                Assert.That(await selection, Is.EqualTo("zh-CN"));
                 var confirmation = window.ConfirmExitAsync();
                 Assert.That(window.ConfirmExitAsync(), Is.SameAs(confirmation));
                 var cancel = window.FindControl<Button>("CancelExitButton")!;
@@ -49,14 +68,7 @@ public sealed class SampleWindowThemeTests
                 Assert.That(content.IsEnabled, Is.False);
                 Assert.That(cancel.IsFocused, Is.True);
                 window.UpdateLayout();
-                AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-                var directory = Environment.GetEnvironmentVariable("GALNET_THEME_CAPTURE_DIR");
-                if (!string.IsNullOrEmpty(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                    using var bitmap = window.CaptureRenderedFrame();
-                    bitmap!.Save(Path.Combine(directory, "Sample-ExitConfirmation.png"));
-                }
+                Capture(window, "Sample-ExitConfirmation");
                 window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
                 window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
                 Assert.That(await confirmation, Is.False);
@@ -68,5 +80,15 @@ public sealed class SampleWindowThemeTests
             finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
             return true;
         }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    private static void Capture(Window window, string name)
+    {
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        var directory = Environment.GetEnvironmentVariable("GALNET_THEME_CAPTURE_DIR");
+        if (string.IsNullOrEmpty(directory)) return;
+        Directory.CreateDirectory(directory);
+        using var bitmap = window.CaptureRenderedFrame();
+        bitmap!.Save(Path.Combine(directory, name + ".png"));
     }
 }
