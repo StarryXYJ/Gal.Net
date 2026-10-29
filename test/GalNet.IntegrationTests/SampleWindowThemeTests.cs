@@ -61,6 +61,7 @@ public sealed class SampleWindowThemeTests
                 picker.IsDropDownOpen = false;
                 scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
                 Assert.That(await selection, Is.EqualTo("zh-CN"));
+                scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("en-US");
                 var confirmation = window.ConfirmExitAsync();
                 Assert.That(window.ConfirmExitAsync(), Is.SameAs(confirmation));
                 var cancel = window.FindControl<Button>("CancelExitButton")!;
@@ -69,6 +70,13 @@ public sealed class SampleWindowThemeTests
                 Assert.That(cancel.IsFocused, Is.True);
                 window.UpdateLayout();
                 Capture(window, "Sample-ExitConfirmation");
+                scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("zh-CN");
+                window.UpdateLayout();
+                Capture(window, "Sample-ExitConfirmation-zh-CN");
+                window.Width = 800;
+                window.Height = 500;
+                window.UpdateLayout();
+                Capture(window, "Sample-ExitConfirmation-zh-CN-compact");
                 window.KeyPress(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
                 window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
                 Assert.That(await confirmation, Is.False);
