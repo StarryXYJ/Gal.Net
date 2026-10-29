@@ -40,6 +40,13 @@
     <Project Path="src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>
+  <Folder Name="/src/Samples/CrossPlatform/">
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Android/GalNet.Sample.CrossPlatform.Android.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Browser/GalNet.Sample.CrossPlatform.Browser.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.iOS/GalNet.Sample.CrossPlatform.iOS.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.csproj" />
+  </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/GalNet.Diagnostics/GalNet.Diagnostics.csproj" />
     <Project Path="src/Shared/GalNet.Debugging/GalNet.Debugging.csproj" />

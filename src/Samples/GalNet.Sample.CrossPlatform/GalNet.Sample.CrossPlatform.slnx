@@ -1,0 +1,11 @@
+﻿<Solution>
+  <Project Path="GalNet.Sample.CrossPlatform.Android/GalNet.Sample.CrossPlatform.Android.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="GalNet.Sample.CrossPlatform.Browser/GalNet.Sample.CrossPlatform.Browser.csproj" />
+  <Project Path="GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj" />
+  <Project Path="GalNet.Sample.CrossPlatform.iOS/GalNet.Sample.CrossPlatform.iOS.csproj">
+    <Deploy />
+  </Project>
+  <Project Path="GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.csproj" />
+</Solution>
