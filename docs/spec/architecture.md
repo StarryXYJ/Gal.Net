@@ -84,11 +84,11 @@ src/
 开发项目 ── ProjectGameContentProvider ── .meta -> GalleryCatalog
            LocalFileProvider(Assets/) ───── GUID -> raw bytes
 
-安装目录 ── InstalledGameContentProvider ─ content/settings/I18n/gallery JSON
+安装目录 ── InstalledGameContentProvider ─ game.pak / localization.pak / 外置 I18n
            PakFileProvider(Assets/Paks/**/*.pak) ─ GUID -> PAK bytes
 ```
 
-`.galpak` 是带 `pak/` 外层的 ZIP 运输容器。`GameInstallation` 验证并安装后，内容 provider 读取 content/settings/I18n/gallery 等特殊文件，Graph/Group 从 PAK 资源加载；只有 PAK 会成为资源 provider。桌面 Sample 默认选择应用同级 `pak/`，应用根与托管依赖所在的 `lib/` 分离；此定位策略属于 Sample 组合根，不进入共享内容加载器。详见 [资源](assets.md) 与 [文件格式](file-formats.md)。
+`.galpak` 是带 `pak/` 外层的 ZIP 运输容器。v3 固定入口 game.pak 包含安装清单、content 描述、设置、人物和 Gallery 等内部文档；localization.pak 每种语言一个逻辑文本条目。`GameInstallation` 验证并安装后，Storage 从文档包构造中立内容对象，Graph/Group 从普通资源 PAK 加载。文档包使用 Assets 的独立固定 document 类型目录，不贡献普通资源 provider，也不受资源补丁替换。旧 v1/v2 galpak 与 content v2 散文档读取保持兼容。桌面 Sample 默认选择应用同级 `pak/`，应用根与托管依赖所在的 `lib/` 分离；此定位策略属于 Sample 组合根，不进入共享内容加载器。详见 [资源](assets.md) 与 [文件格式](file-formats.md)。
 
 ## 游戏运行
 
@@ -120,7 +120,7 @@ Editor 内容历史采用项目单栈，不随 Dock/Inspector 焦点切换；设
 
 CLI 只做参数、结果协议和退出码适配；Shared 提供原始查询、无写回校验、定向编译、严格编辑/保存、项目/Group 生命周期服务。原始访问保留未知内容，不依赖 entry DLL；有语义的操作使用项目 Contracts DLL，不回退内置。Editor 的 ProjectSchemaSession、catalog 及文档消费者由项目 scope 持有。不提供项目目录删除功能；最近项目列表仅支持移除记录。当前接口及范围见 [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)。
 
-`EditorAssetManager`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把资源写入基础 PAK，把 Graph/settings/I18n 和派生 Gallery JSON 写入 `.galpak`。
+`EditorAssetManager`、`AssetCatalogService` 与 `GameExportService` 共享 Editor 组合根的 catalog。导出把 Graph/Group 与资源写入基础/剧情 PAK，把内部 JSON 和内置文本分别封装为 game.pak、localization.pak，再将本体装入 `.galpak`；安装目录的 I18n 仅作为外置翻译入口。
 
 `EditorWorkspaceViewModel` 保留可观察 UI 状态、命令编排、history checkpoint 和自动保存触发。`GraphSelectionState` 维护节点/边选择与 `IsSelected` 一致性；`EditorWorkspacePersistence` 组合 repository、document service、mapper 与 project service 完成图的投影加载和保存。Graph 集合以只读可观察集合公开，只有作者操作可以改变文档成员；Group 作者操作返回稳定 Entry ID，由界面解析投影。字段工厂直接查询变量声明，不通过 Workspace。GUI 与 Headless 共用 `GraphEditRules` 的名称、坐标与连接规则，空分支没有出口。内置 Editor 命令由单一 handler 入口分派，Graph、Entry、Variable 和 Project 实现按领域分文件维护。
 

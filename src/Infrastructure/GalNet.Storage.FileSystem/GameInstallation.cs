@@ -31,7 +31,8 @@ public sealed class GameInstallation
         }
 
         if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"Game directory was not found: {fullPath}");
-        return new GameInstallation(fullPath, Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
+        return new GameInstallation(fullPath, File.Exists(Path.Combine(fullPath, GalNet.Assets.PackedGameDocuments.GameFileName))
+            || Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
     }
 
     public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, GameContentLoadOptions? options = null) => IsPackaged

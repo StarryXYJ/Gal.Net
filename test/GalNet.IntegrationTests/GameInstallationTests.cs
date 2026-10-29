@@ -63,9 +63,10 @@ public sealed class GameInstallationTests
                 Assert.That(packageZip.Entries.Any(entry => entry.FullName.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase)), Is.False);
 
             var installation = await GameInstallation.OpenAsync(export.PackagePath!);
-            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.True);
+            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "gallery.json")), Is.False);
+            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, PackedGameDocuments.GameFileName)), Is.True);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Graph", "graph.json")), Is.False);
-            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, GameContentManifest.FileName)), Is.True);
+            Assert.That(File.Exists(Path.Combine(installation.RootDirectory, GameContentManifest.FileName)), Is.False);
             Assert.That(File.Exists(Path.Combine(installation.RootDirectory, "Assets", "Paks", "000-base.pak")), Is.True);
             var installedContent = await installation.CreateContentProvider(resourceTypes, galleryTypes,
                 new GameContentLoadOptions { Configurations = configurations }).LoadAsync();

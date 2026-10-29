@@ -171,7 +171,7 @@ public sealed class ImageVariantsResourceTests
         Assert.That(result.Success, Is.True, result.Error);
         using var zip = ZipFile.OpenRead(result.PackagePath!);
         using var memory = new MemoryStream();
-        using (var stream = zip.GetEntry("Assets/Paks/000-base.pak")!.Open()) await stream.CopyToAsync(memory);
+        using (var stream = zip.GetEntry("pak/Assets/Paks/000-base.pak")!.Open()) await stream.CopyToAsync(memory);
         using var archive = Archive.Deserialize("assets", memory.ToArray(), types);
         Assert.That(archive.GetAssetByPath("alice.variants")!.ReadAllBytes(), Is.EqualTo(before));
         Assert.That(archive.GetAssetByPath("extra.customtest")!.Metadata, Is.TypeOf<CustomMeta>());

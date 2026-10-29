@@ -93,14 +93,23 @@ foreach ($deployment in $Deployments) {
     Invoke-ReleaseCommand "distributed-cli-create-$deployment" $cli @('project', 'create', $authorProject, '--contracts', $roots['Sample-Contracts'])
     Invoke-ReleaseCommand "distributed-cli-schema-$deployment" $cli @('schema', 'list', $authorProject)
     $game = Join-Path $roots['Sample-GameTestCase'] 'pak'
-    $content = Get-Content (Join-Path $game 'content.json') -Raw | ConvertFrom-Json
-    if ($content.version -ne 2 -or !$content.projectId -or !$content.buildId -or !$content.basePaks.Count) { throw 'Integrated content descriptor is missing or invalid.' }
+    Invoke-ReleaseCommand "distributed-cli-inspect-$deployment" $cli @('game', 'inspect', $game)
+    $content = (Get-Content (Join-Path $logRoot "distributed-cli-inspect-$deployment.log") -Raw | ConvertFrom-Json).data
+    if ($content.version -ne 3 -or !$content.projectId -or !$content.buildId -or !$content.basePaks.Count) { throw 'Integrated content descriptor is missing or invalid.' }
+    foreach ($name in @('game.pak', 'localization.pak')) {
+        if (!(Test-Path (Join-Path $game $name))) { throw "Missing internal document package: $name" }
+    }
+    if (Get-ChildItem -LiteralPath $game -Recurse -File | Where-Object Extension -in @('.json', '.galnet')) { throw 'Integrated content contains loose internal documents.' }
+    foreach ($directory in @('StoryPatches', 'ResourcePatches', 'I18n')) {
+        if (!(Test-Path (Join-Path $game $directory) -PathType Container) -or !(Test-Path (Join-Path $roots.Sample "pak/$directory") -PathType Container)) { throw "Missing extension directory: $directory" }
+    }
+    if (!(Test-Path (Join-Path $game "StoryPatches/$($content.buildId)") -PathType Container)) { throw 'Missing current-build story directory.' }
     $paks = @(Get-ChildItem (Join-Path $game 'Assets/Paks') -Filter '*.pak' -File -ErrorAction SilentlyContinue)
     if (!$paks.Count -or ($paks | Where-Object Length -eq 0)) { throw 'Integrated game resources must be compiled into nonempty PAK files.' }
     if (Get-ChildItem (Join-Path $game 'Assets') -Recurse -File | Where-Object Extension -ne '.pak') { throw 'Integrated game contains loose authoring assets.' }
     if (Test-Path (Join-Path $game 'Graph')) { throw 'Integrated story data must be in PAK resources.' }
     if ((Test-Path (Join-Path $game 'Contracts')) -or (Get-ChildItem $game -Recurse -Filter '*.rawgalgroup')) { throw 'Integrated game contains authoring sources.' }
-    if (Test-Path (Join-Path $roots.Sample 'pak')) { throw 'Pure player contains integrated game content.' }
+    if (Get-ChildItem (Join-Path $roots.Sample 'pak') -Recurse -File) { throw 'Pure player contains integrated game content.' }
 
     if ($DesktopSmoke) {
         $editorOutput = Join-Path $deploymentWork 'editor-stdout.log'
@@ -134,7 +143,8 @@ foreach ($deployment in $Deployments) {
         Copy-Item -LiteralPath (Join-Path $roots.Sample 'lib') -Destination (Join-Path $smokeRoot 'lib') -Recurse
         Copy-Item -LiteralPath (Join-Path $roots.Sample 'GalNet.Sample.Avalonia.exe') -Destination $smokeRoot
         Invoke-ReleaseCommand "distributed-cli-export-$deployment" $cli @('project', 'export-directory', $authorProject, '--output', (Join-Path $smokeRoot 'pak'))
-        $smokeContent = Get-Content (Join-Path $smokeRoot 'pak/content.json') -Raw | ConvertFrom-Json
+        Invoke-ReleaseCommand "distributed-cli-smoke-inspect-$deployment" $cli @('game', 'inspect', (Join-Path $smokeRoot 'pak'))
+        $smokeContent = (Get-Content (Join-Path $logRoot "distributed-cli-smoke-inspect-$deployment.log") -Raw | ConvertFrom-Json).data
         $projectKey = [Convert]::ToHexStringLower([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes("project:$($smokeContent.projectId)")))
         $userDataRoot = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'GalNet'
         $profile = Join-Path $userDataRoot $projectKey
@@ -146,8 +156,11 @@ foreach ($deployment in $Deployments) {
 '@ | Set-Content (Join-Path $profile 'player-variables.json') -Encoding utf8
             $info = [Diagnostics.ProcessStartInfo]::new((Join-Path $smokeRoot 'GalNet.Sample.Avalonia.exe'))
             $info.UseShellExecute = $false; $info.CreateNoWindow = $true
+            $info.RedirectStandardOutput = $true; $info.RedirectStandardError = $true
             $info.WorkingDirectory = $deploymentWork
             $process = [Diagnostics.Process]::Start($info)
+            $playerOutput = $process.StandardOutput.ReadToEndAsync()
+            $playerError = $process.StandardError.ReadToEndAsync()
             try {
                 $deadline = [DateTime]::UtcNow.AddSeconds(45)
                 $ready = $false
@@ -163,6 +176,12 @@ foreach ($deployment in $Deployments) {
             finally {
                 # Terminate only the smoke process we created.
                 if (!$process.HasExited) { $process.Kill($true); $process.WaitForExit() }
+                $playerOutput.GetAwaiter().GetResult() | Set-Content (Join-Path $deploymentWork 'player-stdout.log')
+                $playerError.GetAwaiter().GetResult() | Set-Content (Join-Path $deploymentWork 'player-stderr.log')
+                $profileLogs = Join-Path $profile 'logs'
+                if (Test-Path -LiteralPath $profileLogs) {
+                    Copy-Item -LiteralPath $profileLogs -Destination (Join-Path $deploymentWork 'player-logs') -Recurse
+                }
                 $process.Dispose()
             }
         }

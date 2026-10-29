@@ -1,5 +1,7 @@
 # 项目工具 CLI
 
+`game inspect <content-directory>` 无需作者项目或契约，只读返回安装内容的 projectId、buildId 和分包描述。支持 game.pak 固定入口和旧 content.json；此命令读取描述，不执行全部资源载荷或游戏运行校验。
+
 默认视觉资源可通过 `project visuals install <project> [--dry-run]` 显式补入；保留已有绑定与作者修改，需先部署当前项目契约。使用方式见[默认视觉库](../../../docs/manual/default-visuals.md)。
 
 外部 Agent 创作 Skill 随 CLI 分发在 `Skills/galnet-project-authoring/`，支持文本转 Group、给对白补演出和资源导入。完整使用流程及 Editor 热重载见[外部工具创作](../../../docs/manual/external-project-authoring.md)。

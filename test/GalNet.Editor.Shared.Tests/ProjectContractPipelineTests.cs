@@ -3,6 +3,8 @@ using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
+using GalNet.Core.Configuration;
+using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Commands;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
@@ -56,14 +58,14 @@ public sealed class ProjectContractPipelineTests
         });
         using var result = JsonDocument.Parse(export.Output);
         using var zip = ZipFile.OpenRead(result.RootElement.GetProperty("data").GetProperty("packagePath").GetString()!);
-        Assert.That(zip.Entries.Any(item => item.FullName.StartsWith("Graph/", StringComparison.Ordinal)), Is.False);
-        using var entry = zip.GetEntry("Assets/Paks/000-base.pak")!.Open();
+        Assert.That(zip.Entries.Any(item => item.FullName.StartsWith("pak/Graph/", StringComparison.Ordinal)), Is.False);
+        using var entry = zip.GetEntry("pak/Assets/Paks/000-base.pak")!.Open();
         using var bytes = new MemoryStream();
         await entry.CopyToAsync(bytes);
         using var archive = Archive.Deserialize("assets", bytes.ToArray(), BuiltinResourceTypes.CreateCatalog());
         using var compiled = JsonDocument.Parse(archive.GetAsset(StoryResourceIds.Group("a"))!.ReadAllBytes());
         Assert.That(compiled.RootElement.GetProperty("entries")[0].GetProperty("typeId").GetString(), Is.EqualTo("custom.example"));
-        Assert.That(zip.Entries.Any(item => item.FullName.StartsWith("Contracts/", StringComparison.Ordinal)), Is.False);
+        Assert.That(zip.Entries.Any(item => item.FullName.StartsWith("pak/Contracts/", StringComparison.Ordinal)), Is.False);
     }
 
     [Test]
@@ -81,14 +83,23 @@ public sealed class ProjectContractPipelineTests
         var installed = Path.Combine(_root, "Installed");
         var install = await CliHelpTests.Invoke(["galpak", "install", exported.RootElement.GetProperty("data").GetProperty("packagePath").GetString()!, "--output", installed]);
         Assert.That(install.ExitCode, Is.Zero, install.Output);
-        var restored = DirectProjectPersistence.LoadSettings(installed);
+        var packed = PackedGameDocuments.ReadGame(File.ReadAllBytes(Path.Combine(installed, "game.pak")));
+        var restored = JsonCodec.Deserialize<ProjectConfiguration>(packed.Documents.GetText("settings.json"))!;
         using var schema = ProjectSchemaContext.Load(_root);
         Assert.DoesNotThrow(() => schema.Configurations.Validate(restored));
         Assert.That(JsonSerializer.Serialize(restored), Is.EqualTo(JsonSerializer.Serialize(saved)));
         var distribution = Path.Combine(_root, "Distribution");
         var directoryExport = await CliHelpTests.Invoke(["project", "export-directory", _root, "--output", distribution]);
         Assert.That(directoryExport.ExitCode, Is.Zero, directoryExport.Output);
-        Assert.That(JsonSerializer.Serialize(DirectProjectPersistence.LoadSettings(distribution)), Is.EqualTo(JsonSerializer.Serialize(saved)));
+        var directoryPacked = PackedGameDocuments.ReadGame(File.ReadAllBytes(Path.Combine(distribution, "game.pak")));
+        Assert.That(JsonSerializer.Serialize(JsonCodec.Deserialize<ProjectConfiguration>(directoryPacked.Documents.GetText("settings.json"))), Is.EqualTo(JsonSerializer.Serialize(saved)));
+        var before = File.ReadAllBytes(Path.Combine(distribution, "game.pak"));
+        var inspect = await CliHelpTests.Invoke(["game", "inspect", distribution]);
+        Assert.That(inspect.ExitCode, Is.Zero, inspect.Output);
+        using var inspected = JsonDocument.Parse(inspect.Output);
+        Assert.That(inspected.RootElement.GetProperty("operationId").GetString(), Is.EqualTo("game.inspect"));
+        Assert.That(inspected.RootElement.GetProperty("data").GetProperty("buildId").GetString(), Is.EqualTo(directoryPacked.Manifest.BuildId));
+        Assert.That(File.ReadAllBytes(Path.Combine(distribution, "game.pak")), Is.EqualTo(before));
     }
 
     [Test]

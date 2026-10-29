@@ -24,6 +24,8 @@ foreach ($file in $release.files) {
 }
 $tagCommit = & git -C $repoRoot rev-parse --verify "$($release.tag)^{commit}" 2>$null
 if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $release.sourceCommit) { throw 'Release tag commit does not match the sealed source commit.' }
+$assets = @($release.files | Where-Object { $_.path.StartsWith('assets/') } | ForEach-Object { $paths[$_.path] })
+if ($Destination -contains 'GitHub' -and $assets.Count -ne 7) { throw 'Expected seven verified R2R/Contracts release ZIPs.' }
 $indexHash = (Get-FileHash $Index -Algorithm SHA256).Hash
 $statePath = Join-Path $root 'push-state.json'
 $state = @{ indexHash = $indexHash; completed = @() }
@@ -55,8 +57,6 @@ if ($Destination -contains 'NuGet') {
 }
 if ($Destination -contains 'GitHub') {
     if ($state.completed -notcontains 'github-assets') {
-        $assets = @($release.files | Where-Object { $_.path.StartsWith('assets/') } | ForEach-Object { $paths[$_.path] })
-        if ($assets.Count -ne 4) { throw 'Expected four verified R2R/Contracts release ZIPs.' }
         foreach ($asset in @($assets) + @($Index, (Join-Path $root 'SHA256SUMS'))) {
             $step = 'github-asset-' + [IO.Path]::GetFileName($asset)
             if ($state.completed -contains $step) { continue }

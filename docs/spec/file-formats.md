@@ -19,7 +19,7 @@ Project/
   Output/ Temp/ .galnet/  工作文件，不是游戏内容
 ```
 
-项目根不存在可编辑 `gallery.json`。Gallery 从 `Assets/**/*.meta` 的 `gallery[]` 聚合：类型由宿主代码/插件注册，item ID 为全局唯一正整数，资源 ID 是父 metadata 的 GUID。开发运行在内容加载时聚合一次；发行运行只读取导出生成的 `gallery.json`。
+项目根不存在可编辑 `gallery.json`。Gallery 从 `Assets/**/*.meta` 的 `gallery[]` 聚合：类型由宿主代码/插件注册，item ID 为全局唯一正整数，资源 ID 是父 metadata 的 GUID。开发运行在内容加载时聚合一次；发行运行读取 `game.pak` 内导出生成的 `gallery.json`。
 
 `I18n/` 的人物表、文本源与默认语言完整性检查见 [国际化](i18n.md)。它是特殊内容，不是资源 provider 输入。
 
@@ -70,25 +70,27 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 ```text
 <Project>.galpak
   pak/
-    <Project>.galnet        JSON manifest，版本 2
-    settings.json
-    content.json           唯一 Graph 与分包描述，版本 2
-    I18n/**
-    gallery.json            从 metadata 派生
+    game.pak                固定入口，内部文档 GPAK
+    localization.pak        内置文本，每种语言一个逻辑条目
     Assets/Paks/000-base.pak 基础资源首片，后续为 001-base.pak 等
+    StoryPatches/<buildId>/  即使无剧情包也保留空目录
+    ResourcePatches/         即使无补丁也保留空目录
+    I18n/                    空的外置翻译覆盖入口
 ```
 
-manifest 列出载荷相对内容根的路径、大小和 SHA-256，例如 `Assets/Paks/000-base.pak`；ZIP 条目额外带 `pak/` 前缀。v2 拒绝内容根外条目、重复 ZIP 路径和未声明载荷。导出在临时文件中创建，重新验证 ZIP 条目与 PAK 后才替换目标文件。外层目录不改变 content/PAK/save 格式或构建身份算法。
+新导出为 galpak v3。`game.pak` 内含六个紧凑 JSON 文档：`content.json`、`installation.json`、`settings.json`、`gallery.json`、`characters.json` 和 `packaging-layout.json`。文档容器复用 GPAK v3 的压缩与逐项校验，采用独立固定的 document 类型目录，不加入普通资源 provider。`localization.pak` 使用同一文档容器，每个文化为 `texts/<culture>.json` 平铺字典；作者文件仍可按多个嵌套 JSON 编辑，导出时按原相对路径 ordinal 顺序合并。
 
-传入 `.galpak` 时，`GameInstallation.OpenAsync` 先校验内容根唯一 manifest、声明路径、条目大小与 SHA-256，再原子安装到包文件旁的 `pak/`。`GalpakInstaller.InstallAsync` 显式目标表示实际内容根，目标为 `app/pak` 时不会再追加 `pak`；返回实际内容根。普通解压工具选择解压到应用目录同样得到 `app/pak`。已存在且与 manifest 一致的安装目录可复用；不同或损坏内容不会覆盖现有目录。安装器仍兼容 v1 平铺归档，v1 未显式指定目标时保留原来的包文件同名目录；新导出只生成 v2。
+内部 `installation.json` 为版本 3，列出基础资源 PAK 与 localization.pak 的相对路径、大小和 SHA-256；不包含 game.pak 自身，避免循环哈希。入口文档由 GPAK 逐项校验，并交叉校验项目、构建身份及 content/index 一致性。ZIP 条目额外带 `pak/` 前缀，显式保存空扩展目录。v3 拒绝内容根外条目、重复 ZIP 路径和未声明载荷。导出在临时文件中创建，重新验证 ZIP 条目与 PAK 后才替换目标文件。压缩封装不提供加密或防提取保证。
 
-运行时只装载 content.json 中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。content.json v2 保存固定 graphId、projectId、buildId、basePaks 和 stories；每个分片描述路径、大小、SHA-256。Graph 和编译 Group 经资源 provider 加载，特殊 JSON/I18n 文件仍走内容加载入口。旧内容需重新导出，不回退到 loose Graph。
+传入 `.galpak` 时，`GameInstallation.OpenAsync` 先读取固定 `pak/game.pak` 入口和内部安装清单，校验声明路径、条目大小与 SHA-256，再原子安装到包文件旁的 `pak/`。`GalpakInstaller.InstallAsync` 显式目标表示实际内容根，目标为 `app/pak` 时不会再追加 `pak`；返回实际内容根。普通解压工具选择解压到应用目录同样得到 `app/pak`。相同安装可复用并保留外置翻译/补丁；不同或损坏内容不会覆盖现有目录。安装器仍兼容 v1 平铺归档与 v2 的 `pak/<Project>.galnet` 布局；v1 默认目标保留包文件同名目录，v2/v3 默认目标为 pak。新导出只生成 v3。
+
+运行时只装载 content 描述中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。包内 content.json v3 保存固定 graphId、projectId、buildId、basePaks、stories 和 localizationPak；每个文件描述路径、大小、SHA-256。Graph 和编译 Group 经普通资源 provider 加载，配置/人物/文本从文档包读取。旧 content v2 安装目录仍按散文件读取；发现 game.pak 时优先使用且损坏报错，不回退到散文件。旧 GPAK v2 或 loose Graph 发行内容仍需重新导出。
 
 正常导出还在 galpak 旁生成 `StoryPatches/<buildId>/*.pak`；目录导出则放在目标目录内同一路径。装载同时检查安装根及其父目录下当前 buildId 的剧情目录，以头部而非文件名识别分片。整个剧情包零分片表示未安装；存在部分分片、哈希错误、用途/项目/构建不匹配或依赖缺失都拒绝。缺席 Group 沿正常出口跳过；纯空 Group 推进循环拒绝。剧情目录按构建隔离并整体发布，旧基础包不会采用新构建的剧情片段。
 
 buildId 对资源内容、有效 metadata、特殊内容、格式标记和实际分片布局计算稳定指纹；默认阈值或切片算法改变物理布局时也产生新的构建身份。
 
-导出产生布局报告（galpak 旁 `<Project>.layout.json` 或目录内 packaging-layout.json），列出资源归属、直接依赖和未打包项。settings/I18n/人物数据仍完整留在基础内容，不按剧情拆分；未安装剧情不参与正文文本引用校验。Gallery 保持原基础聚合。
+导出产生布局报告（galpak 旁 `<Project>.layout.json`，以及 game.pak 内 packaging-layout.json），列出资源归属、直接依赖和未打包项。配置、人物、文本完整留在本体的文档包，不按剧情拆分；未安装剧情不参与正文文本引用校验。Gallery 保持原基础聚合。资源补丁不能替换这些内部文档。
 
 GameSnapshot 当前为 v5，记录 ContentBuildId 和 StoryPackages；恢复拒绝不同构建或缺少记录的剧情包。首版保守记录会话准备时已安装的全部剧情包，因此删除当时尚未播放的包也会阻止恢复；不自动降级到跳过剧情。开发目录构建标识为空。
 

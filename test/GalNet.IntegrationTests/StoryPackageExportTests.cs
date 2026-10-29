@@ -83,7 +83,8 @@ public sealed class StoryPackageExportTests
             if ((mask & 2) != 0) expected.Add("b");
             Assert.That(observed, Is.EqualTo(expected), "mask=" + mask);
         }
-        using var layout = JsonDocument.Parse(await File.ReadAllTextAsync(Path.Combine(Installed, "packaging-layout.json")));
+        using var layout = JsonDocument.Parse(PackedGameDocuments.ReadGame(await File.ReadAllBytesAsync(
+            Path.Combine(Installed, PackedGameDocuments.GameFileName))).Documents.GetText("packaging-layout.json"));
         Assert.That(layout.RootElement.GetProperty("unused").EnumerateArray().Select(item => item.GetProperty("id").GetString()), Does.Contain("unused"));
     }
 

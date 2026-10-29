@@ -1,8 +1,11 @@
 # GalNet Agent Knowledge
 
+- 2026-10-29 内置文档封装：新 galpak v3 固定 pak/game.pak 入口，含 content v3、installation 索引、settings、Gallery、characters、layout 六文档；localization.pak 每文化一个平铺文本条目。使用独立 document GPAK catalog，不加入资源覆盖。新安装 I18n/<culture> 仅外置覆盖；作者与 content v2 旧安装仍用 I18n/External。导出/安装保留 I18n、ResourcePatches、StoryPatches/<buildId> 空目录，ZIP 显式保存；兼容 v1/v2 galpak 和 content v2 读取。只读 CLI game inspect 供脚本读取 packed/legacy 描述；Sample profile 身份从 game.pak 读取 projectId。见 docs/spec/file-formats.md、docs/spec/i18n.md、features/F-20261029-02-packed-game-documents。
+- [损坏内容与启动探测](lessons/L-20261029-08-invalid-data-startup-fallback.md)：InvalidDataException 不派生 IOException；profile 身份探测显式回退，正式内容加载仍报错。
+
 - [自包含平台程序集](lessons/L-20261029-07-self-contained-platform-assemblies.md)：自包含 lib 混放 framework 与业务 DLL；契约依赖收集按 runtimepack deps 识别平台归属，不能按 corelib 同目录排除 Core/Builtins。
 
-- 2026-10-29 桌面发行布局：应用根只留入口 EXE 和目录；SDK apphost 直接指向 lib/<app>.dll，运行时与原生依赖都在 lib，清单/说明/许可在 docs。Sample 默认加载同级 pak，用户 profile 按 content.json projectId 的摘要定位；玩家关闭普通参数，EnableLaunchArguments 默认跟随 EnableGameDebugging，开发发行加 -SampleFlavor Developer。galpak v2 为 pak/ 外层、内部清单路径仍相对内容根；安装显式目标不追加第二层 pak，v1 读取兼容。见 docs/manual/release-packaging.md、docs/spec/file-formats.md 与 features/F-20261029-01-desktop-package-layout。
+- 2026-10-29 桌面发行布局：应用根只留入口 EXE 和目录；SDK apphost 直接指向 lib/<app>.dll，运行时与原生依赖都在 lib，清单/说明/许可在 docs。Sample 默认加载同级 pak，用户 profile 按内容 projectId 的摘要定位；玩家关闭普通参数，EnableLaunchArguments 默认跟随 EnableGameDebugging，开发发行加 -SampleFlavor Developer。galpak 统一 pak/ 外层、内部路径相对内容根；安装显式目标不追加第二层 pak。见 docs/manual/release-packaging.md、docs/spec/file-formats.md 与 features/F-20261029-01-desktop-package-layout。
 - [原生退出确认](lessons/L-20261029-06-native-exit-confirmation.md)：WM_CLOSE 只打开确认遮罩；测试须在自有 HWND 确认退出，再验证零退出码和落盘，不能用强杀替代。
 
 - [预览效果像素边界](lessons/L-20261029-04-bounded-scene-capture.md)：外层缩图不限制 CPU 效果纹理；逻辑尺寸与像素尺寸分开，正式截图仍保持完整分辨率。

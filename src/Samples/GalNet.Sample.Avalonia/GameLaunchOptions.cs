@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using GalNet.Assets;
+using GalNet.Storage.FileSystem;
 #if GALNET_GAME_DEBUG
 using GalNet.Debugging;
 #endif
@@ -32,17 +34,22 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
         var identity = "directory:" + Path.GetFullPath(gameDirectory);
         try
         {
-            var descriptor = Path.Combine(gameDirectory, "content.json");
-            if (File.Exists(descriptor))
+            if (File.Exists(Path.Combine(gameDirectory, PackedGameDocuments.GameFileName)))
+                identity = "project:" + InstalledGameDescriptor.Read(gameDirectory).ProjectId;
+            else
             {
-                using var json = JsonDocument.Parse(File.ReadAllBytes(descriptor));
-                if (json.RootElement.ValueKind == JsonValueKind.Object
-                    && json.RootElement.TryGetProperty("projectId", out var id)
-                    && id.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(id.GetString()))
-                    identity = "project:" + id.GetString();
+                var descriptor = Path.Combine(gameDirectory, "content.json");
+                if (File.Exists(descriptor))
+                {
+                    using var json = JsonDocument.Parse(File.ReadAllBytes(descriptor));
+                    if (json.RootElement.ValueKind == JsonValueKind.Object
+                        && json.RootElement.TryGetProperty("projectId", out var id)
+                        && id.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(id.GetString()))
+                        identity = "project:" + id.GetString();
+                }
             }
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
         {
             // Content loading reports the original error in the startup window.
         }

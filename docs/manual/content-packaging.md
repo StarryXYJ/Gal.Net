@@ -8,13 +8,15 @@
 
 正常 galpak 导出会先保存当前项目，再从受保护的作者快照生成本体及全部剧情包。基础 PAK 放入 galpak，剧情 PAK 放在旁边 `StoryPatches/<buildId>/`。目录导出将它们放在输出目录内相同位置。分发时可以不带某个剧情包的所有分片，运行会沿其正常出口跳过；只缺一个分片、损坏或错版会报错。旧构建的剧情包不能配到新构建。
 
-新 galpak 使用 v2 布局，所有归档条目位于 `pak/` 下。使用普通解压工具解压到播放器目录后得到 EXE 同级的 `pak/`，玩家版双击 EXE 自动加载。剧情与资源覆盖包分别放入 `pak/StoryPatches/<buildId>/`、`pak/ResourcePatches/`；整合打包会将 galpak 旁匹配 buildId 的剧情目录与资源覆盖目录一并复制进去。目录导出与 `galpak install --output` 的参数均表示内容根，应指定 `app/pak`，不会生成双层 `pak/pak`。旧 v1 平铺 galpak 仍可用安装器读取。
+新 galpak 使用 v3 布局，所有归档条目位于 `pak/` 下。使用普通解压工具解压到播放器目录后得到 EXE 同级的 `pak/`，玩家版双击 EXE 自动加载。配置/人物/Gallery/清单封装为 `game.pak`，内置文本封装为 `localization.pak`，每种语言合并成一个逻辑条目。玩家目录无需分发这些散装 JSON。`pak/I18n/<culture>/**/*.json` 只用于民间翻译等外置重载，缺省为空，详见[国际化](../spec/i18n.md#外部文本覆盖)。
+
+剧情与资源覆盖包分别放入 `pak/StoryPatches/<buildId>/`、`pak/ResourcePatches/`；即使没有任何补丁，也会保留这两个目录和 I18n 空目录。整合打包会将 galpak 旁匹配 buildId 的剧情目录与资源覆盖目录一并复制进去。目录导出与 `galpak install --output` 的参数均表示内容根，应指定 `app/pak`，不会生成双层 `pak/pak`。旧 v1/v2 galpak 仍可用安装器读取。
 
 本体先对全部普通 Group 和明确的基础根收集依赖。每个剧情包只扣除本体已有资源：A/B 都使用而本体没使用的资源，两包各带一份。条件分支里的静态资源全部计入，图集带齐其声明图片；不会因某次试玩没有走到分支而漏包。
 
 项目设置的 `galnet.packaging` 提供 maxPakBytes（默认 128 MiB）、includeResources 和 declaredCompleteResources。阈值按未压缩编译资源字节计算，单个超大资源独占一片，不拆资源。includeResources 用于 UI、自定义代码等静态剧情外的根；未知/动态引用还需在 declaredCompleteResources 中确认已补全依赖（资源 ID 或 Group 节点 ID）。声明完整不会自动添加资源。
 
-布局报告为 galpak 旁的 `<项目>.layout.json`，目录导出为 packaging-layout.json，可查看每个资源的归属、直接依赖及未打包项。已有 Gallery 和默认视觉程序绑定属于基础根。文本和人物文件完整保留在基础内容，不单独做剧情语言补丁。
+布局报告为 galpak 旁的 `<项目>.layout.json`，目录导出内置于 game.pak 的 packaging-layout.json，可查看每个资源的归属、直接依赖及未打包项。已有 Gallery 和默认视觉程序绑定属于基础根。文本和人物完整保留在本体文档包，不单独做剧情语言补丁。封装复用压缩 JSON，不引入 BSON；封装不是加密。
 
 ## 资源补丁矩阵
 
@@ -35,7 +37,7 @@
 
 ## 存档与格式
 
-存档 v5 校验基础构建和准备时已安装的全部剧情包。删除其中任意剧情包都会阻止恢复，即使当时尚未播放到该包。旧 galpak/PAK 需重新导出；不自动转换旧格式。
+存档 v5 校验基础构建和准备时已安装的全部剧情包。删除其中任意剧情包都会阻止恢复，即使当时尚未播放到该包。文档封装格式参与 buildId，新旧布局不会误用同一构建存档。旧 galpak v1/v2 与 content v2 安装目录保持读取兼容，旧 GPAK v2 需重新导出；不自动转换旧格式。
 
 资源覆盖不改变存档中的逻辑资源 ID。图集替换后，读档会保留差分选择意图，并按当前有效图集重新解析实际图片；移除覆盖后也会重新解析。普通未覆盖图集仍严格校验保存结果与内容是否一致。
 

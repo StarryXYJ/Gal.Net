@@ -43,7 +43,7 @@ public sealed class ExportPreparationTests
         Assert.That(package.Success, Is.True, package.Error);
         using var zip = ZipFile.OpenRead(package.PackagePath!);
         Assert.That(zip.Entries.All(item => item.FullName.StartsWith("pak/", StringComparison.Ordinal)), Is.True);
-        foreach (var item in zip.Entries.Where(item => !item.FullName.EndsWith(".galnet", StringComparison.Ordinal)))
+        foreach (var item in zip.Entries.Where(item => item.Name.Length > 0))
         {
             using var input = item.Open();
             using var bytes = new MemoryStream();
@@ -56,6 +56,13 @@ public sealed class ExportPreparationTests
         Assert.That(Directory.Exists(Path.Combine(installed, "pak")), Is.False);
         var extractedContent = await GameInstallation.OpenAsync(Path.Combine(extracted, "pak"));
         var installedContent = await GameInstallation.OpenAsync(installed);
+        var descriptor = InstalledGameDescriptor.Read(installed);
+        foreach (var root in new[] { directory.ContentDirectory!, Path.Combine(extracted, "pak"), installed })
+        {
+            Assert.That(Directory.GetFiles(root, "*.json", SearchOption.AllDirectories), Is.Empty);
+            foreach (var relative in PackedGameDocuments.ExtensionDirectories(descriptor.BuildId))
+                Assert.That(Directory.Exists(Path.Combine(root, relative)), Is.True, relative);
+        }
         Assert.That((await extractedContent.CreateContentProvider(types, gallery).LoadAsync()).Graph.ContentBuildId,
             Is.EqualTo((await installedContent.CreateContentProvider(types, gallery).LoadAsync()).Graph.ContentBuildId));
         Assert.That(await GalpakInstaller.InstallAsync(package.PackagePath!, installed), Is.EqualTo(installed));
@@ -98,7 +105,7 @@ public sealed class ExportPreparationTests
         Assert.That(directory.Success, Is.True, directory.Error);
         var installed = directory.ContentDirectory!;
         Assert.That(Directory.Exists(Path.Combine(installed, "Graph")), Is.False);
-        Assert.That(File.Exists(Path.Combine(installed, GameContentManifest.FileName)), Is.True);
+        Assert.That(File.Exists(Path.Combine(installed, PackedGameDocuments.GameFileName)), Is.True);
         using (var assets = new AssetManager((await GameInstallation.OpenAsync(installed)).CreateAssetProviders(types)))
         {
             Assert.That((await assets.GetFileAsync(StoryResourceIds.Graph))!.TypeId, Is.EqualTo("graph"));

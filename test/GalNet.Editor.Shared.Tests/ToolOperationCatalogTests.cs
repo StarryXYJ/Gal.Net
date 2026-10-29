@@ -64,6 +64,18 @@ public sealed class ToolOperationCatalogTests
     }
 
     [Test]
+    public void InstalledGameInspection_IsReadOnlyAndRequiresNoAuthoringContract()
+    {
+        var catalog = new ToolOperationCatalog();
+        var invocation = CliInvocation.Parse(catalog, ["game", "inspect", "app/pak"]);
+        var definition = catalog.Find("game.inspect")!;
+        Assert.That(definition.ReadOnly, Is.True);
+        Assert.That(definition.RequiresProject, Is.False);
+        Assert.That(definition.RequiresContract, Is.False);
+        Assert.That(invocation.Positionals, Is.EqualTo(new[] { "app/pak" }));
+    }
+
+    [Test]
     public void FileDryRun_IsNotAdvertised_AndUnknownHelpTargetFails()
     {
         var catalog = new ToolOperationCatalog();

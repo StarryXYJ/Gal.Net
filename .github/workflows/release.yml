@@ -18,7 +18,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-source:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Require the release tag to belong to master
+        if: github.event_name == 'push'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        shell: pwsh
+        run: |
+          git fetch --no-tags origin '+refs/heads/master:refs/remotes/origin/master'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch the release main branch.' }
+          ./scripts/ci/Test-ReleaseRef.ps1 -Tag $env:RELEASE_TAG
+
   build:
+    needs: validate-source
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
@@ -64,7 +81,7 @@ jobs:
           if-no-files-found: warn
 
   publish:
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: build
     runs-on: windows-latest
     permissions:

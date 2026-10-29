@@ -104,6 +104,8 @@ public sealed class ToolOperationCatalog
                 [new CliParameter("package-file", "string", "Input .galpak archive.", true, true),
                  new("--output", "string", "New output directory for installed content.", true)],
                 readOnly: false, requiresProject: false),
+            Route("game.inspect", "game inspect", "Reads the packed or legacy installed content identity and package descriptors.",
+                [new CliParameter("content-directory", "string", "Installed content root (for example app/pak).", true, true)], requiresProject: false),
             Route("execute", "execute", "Executes JSON typed document operations or one asset file operation.",
                 Project(new CliParameter("command-file", "string", "JSON file path, or '-' to read stdin.", true, true)),
                 readOnly: false, requiresContract: true, dryRun: true, batchMode: "Document operations only; one file operation per invocation. File dry-run is unsupported.")
@@ -161,6 +163,7 @@ public sealed class ToolOperationCatalog
             "project.export" => typeof(ProjectExportReport),
             "project.export-directory" => typeof(ProjectExportDirectoryReport),
             "galpak.install" => typeof(GalpakInstallReport),
+            "game.inspect" => typeof(GalNet.Core.Serialization.GameContentManifest),
             "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),
             "files" => typeof(QueryPage<ProjectFileItem>),
             "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),

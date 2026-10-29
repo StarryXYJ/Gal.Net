@@ -54,7 +54,7 @@ if (![string]::IsNullOrWhiteSpace($ProjectDirectory)) {
     }
 }
 
-function Invoke-DotNet([string[]]$Arguments) {
+function Invoke-DotNet([string[]]$Arguments, [switch]$JsonOutput) {
     # Runtime CLI arguments must not receive MSBuild properties.
     $properties = @("-p:Version=$Version", '-p:ContinuousIntegrationBuild=true')
     $separator = [Array]::IndexOf($Arguments, '--')
@@ -71,6 +71,7 @@ function Invoke-DotNet([string[]]$Arguments) {
         throw "dotnet $($Arguments -join ' ') failed with exit code $exitCode. Log: $logPath`n$details"
     }
     Write-Host "[apps] completed; log: $logPath"
+    if ($JsonOutput) { return Get-Content -LiteralPath $logPath -Raw | ConvertFrom-Json }
 }
 
 function Get-RelativePath([string]$BasePath, [string]$Path) {
@@ -251,7 +252,8 @@ function Add-GameContent([string]$Stage, [string]$PackageRoot, [string]$Contract
     $contentRoot = Join-Path $PackageRoot 'pak'
     if (![string]::IsNullOrWhiteSpace($Galpak)) {
         Invoke-DotNet @('run', '--project', $headlessProject, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore', '--', 'galpak', 'install', $Galpak, '--output', $contentRoot)
-        $buildId = (Get-Content (Join-Path $contentRoot 'content.json') -Raw | ConvertFrom-Json).buildId
+        $inspection = Invoke-DotNet @('run', '--project', $headlessProject, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore', '--', 'game', 'inspect', $contentRoot) -JsonOutput
+        $buildId = $inspection.data.buildId
         if ($buildId -cnotmatch '^[a-f0-9]{64}$') { throw 'Integrated content has an invalid buildId.' }
         foreach ($patches in @("StoryPatches/$buildId", 'ResourcePatches')) {
             $patchSource = Join-Path (Split-Path -Parent $Galpak) $patches
@@ -294,6 +296,9 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
         }
 
         if ($IncludePure) {
+            foreach ($directory in @('StoryPatches', 'ResourcePatches', 'I18n')) {
+                New-Item -ItemType Directory -Force -Path (Join-Path $runtimeRoot "pak/$directory") | Out-Null
+            }
             @'
 GalNet Sample
 

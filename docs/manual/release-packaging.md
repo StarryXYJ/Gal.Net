@@ -67,7 +67,23 @@ Windows x64 应用提供两种部署方式，均保留 R2R：默认完整版附�
 
 默认应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试与启动参数。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
 
-整合 GameTestCase 经过 `project export-directory` 编译：Graph、Group 和资源均在 `pak/Assets/Paks/*.pak`，可选剧情分片位于 `pak/StoryPatches/<buildId>/`；content/settings/本地化/gallery JSON 保留为运行时内容。验收要求有效 content.json、非空 PAK，并拒绝 loose Graph、散装素材、rawgalgroup 和作者 Contracts 目录。`-Galpak` 安装到同一 `pak/`，同时收集归档旁当前 buildId 的剧情包及 ResourcePatches。
+整合 GameTestCase 经过 `project export-directory` 编译：Graph、Group 和资源均在 `pak/Assets/Paks/*.pak`，可选剧情分片位于 `pak/StoryPatches/<buildId>/`；内部清单、配置、人物和 Gallery 封装为 `pak/game.pak`，内置文本为 `pak/localization.pak`。验收通过分发 CLI 的 `game inspect <content-directory>` 读取版本 3 身份，并拒绝散装 JSON、loose Graph、散装素材、rawgalgroup 和作者 Contracts 目录。`-Galpak` 安装到同一 `pak/`，同时收集归档旁当前 buildId 的剧情包及 ResourcePatches。
+
+完整组合目录如下；没有补丁时仍保留扩展目录，纯 Sample 也提供空 pak/I18n、pak/ResourcePatches、pak/StoryPatches（没有游戏就没有 buildId 子目录）：
+
+```text
+Game/
+  GalNet.Sample.Avalonia.exe
+  lib/                         DLL、原生依赖与运行时
+  docs/                        说明、许可与发行清单
+  pak/
+    game.pak
+    localization.pak
+    Assets/Paks/*.pak
+    StoryPatches/<buildId>/     可选剧情分片，缺省可为空
+    ResourcePatches/            资源覆盖包，缺省为空
+    I18n/                      外置翻译覆盖，缺省为空
+```
 
 Sample 默认使用用户 `LocalApplicationData/GalNet/<project identity digest>/` 保存玩家数据和日志，安装目录无需可写权限。profile 不随安装目录或 buildId 改变；旧存档位置不自动迁移。开发版可用 `--profile` 显式指定。
 
@@ -97,13 +113,15 @@ pwsh -File scripts/release/Test-DesktopAot.ps1
 
 ## tag、CI 与公开上传
 
-版本 tag 指向已提交 commit：`v1.2.3` 或 `v1.3.0-preview.1`。精确 tag 构建要求工作区干净、tag 指向 HEAD；不会使用最近祖先 tag 给新提交命名。
+版本 tag 指向已提交 commit：`v1.2.3` 或 `v1.3.0-preview.1`。CI 自动发布同时要求 tag 指向的提交已经包含在主分支 `origin/master` 的历史中；允许为主分支历史提交发版，不要求它仍是最新 HEAD。先合并到 master，再推送版本 tag；只推送 master 提交不会发布，在未合并分支上推送 tag 会被门禁拒绝，之后合并不会自动重跑该 tag 的发布。
+
+精确 tag 构建要求工作区干净、tag 指向 HEAD；不会使用最近祖先 tag 给新提交命名。
 
 ```powershell
 pwsh -File scripts/release/Release.ps1 -Tag v1.2.3
 ```
 
-Release workflow 在 tag 上先运行同一套 CI，再调用同一个本地发布入口；build job 上传已经验证的文件，publish job 下载后上传，不重新编译。`workflow_dispatch` 只生成候选文件，不公开上传。
+Release workflow 在 tag push 后先获取 master 并校验 tag 格式、checkout 身份与提交归属；门禁通过后才运行同一套 CI 和本地发布入口。GitHub 的 branch/tag push 过滤器不能表达两者同时满足，因此主分支归属检查由前置 job 执行。build job 上传已经验证的文件，publish job 下载后上传，不重新编译。普通 PR/master CI 保持原有行为；`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
 
 公开上传需要 GitHub 权限和名为 `NUGET_API_KEY` 的 NuGet 发布凭据；可传入 Trusted Publishing 获取的短期 key。当前 workflow 从同名 GitHub secret 读取，首次发布前需配置。在本地也可上传已经验收的精确 tag 索引：
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
@@ -17,11 +18,12 @@ namespace GalNet.Editor.Shared.Services;
 public static class GamePackageExporter
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { WriteIndented = true };
+    private static readonly JsonSerializerOptions CompactOptions = new(JsonSerializerDefaults.Web);
     private sealed record Payload(string Path, string StagedPath, string Sha256, long Size)
     {
         public GalpakFileEntry Entry => new(Path, Sha256, Size);
     }
-    private sealed record Prepared(Payload[] Base, Payload[] Stories, string ManifestPath, byte[] Manifest, byte[] Layout, string BuildId);
+    private sealed record Prepared(Payload[] Base, Payload[] Stories, byte[] Layout, string BuildId);
 
     public static async Task<GameContentExportResult> ExportDirectoryAsync(string projectId, string projectName, string projectRoot,
         string outputDirectory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
@@ -48,9 +50,8 @@ public static class GamePackageExporter
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
                 File.Copy(Safe(stage, file.StagedPath), destination);
             }
-            await File.WriteAllBytesAsync(Safe(publish, prepared.ManifestPath), prepared.Manifest, cancellationToken);
-            await File.WriteAllBytesAsync(Path.Combine(publish, "packaging-layout.json"), prepared.Layout, cancellationToken);
-            Directory.CreateDirectory(Path.Combine(publish, "I18n", "External"));
+            foreach (var directory in PackedGameDocuments.ExtensionDirectories(prepared.BuildId))
+                Directory.CreateDirectory(Safe(publish, directory));
             await VerifyDirectoryAsync(publish, prepared.Base.Concat(prepared.Stories), resourceTypes, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             Directory.Move(publish, target);
@@ -89,9 +90,9 @@ public static class GamePackageExporter
                     await using var destination = entry.Open();
                     await input.CopyToAsync(destination, cancellationToken);
                 }
-                var manifestEntry = zip.CreateEntry("pak/" + prepared.ManifestPath, CompressionLevel.Optimal);
-                await using var manifestStream = manifestEntry.Open();
-                await manifestStream.WriteAsync(prepared.Manifest, cancellationToken);
+                zip.CreateEntry("pak/");
+                foreach (var directory in PackedGameDocuments.ExtensionDirectories(prepared.BuildId))
+                    zip.CreateEntry("pak/" + directory + "/");
             }
             await VerifyZipAsync(temporary, prepared.Base, resourceTypes, cancellationToken);
             if (prepared.Stories.Length > 0)
@@ -114,6 +115,7 @@ public static class GamePackageExporter
                 foreach (var payload in prepared.Stories)
                     await VerifyFileAsync(Safe(output, payload.Path), payload, resourceTypes, cancellationToken);
             }
+            Directory.CreateDirectory(Path.Combine(output, "StoryPatches", prepared.BuildId));
             await File.WriteAllBytesAsync(Path.Combine(output, SafeName(projectName) + ".layout.json"), prepared.Layout, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             File.Move(temporary, target, true);
@@ -152,7 +154,7 @@ public static class GamePackageExporter
             buildHash.AppendData(Encoding.UTF8.GetBytes(projectId + "\n"));
             // The same logical resources can be split differently after a default/algorithm change.
             // Keep immutable story directories distinct for those physical part sets as well.
-            buildHash.AppendData("galnet-content-v2/gpak-v3/brotli\n"u8);
+            buildHash.AppendData("galnet-content-v3/gpak-v3/documents-v1/brotli\n"u8);
             buildHash.AppendData(JsonSerializer.SerializeToUtf8Bytes(plan.Paks.Select(part => new
             {
                 part.PackageId,
@@ -205,22 +207,56 @@ public static class GamePackageExporter
                     root = roots.Contains(file.Id, StringComparer.OrdinalIgnoreCase) || file.Id == StoryResourceIds.Graph
                 });
             }
+            var languageDocuments = new SortedDictionary<string, Dictionary<string, string>>(StringComparer.Ordinal);
+            foreach (var file in content.Where(file => file.Path.StartsWith("I18n/", StringComparison.Ordinal)
+                && !file.Path.StartsWith("I18n/catalog/", StringComparison.OrdinalIgnoreCase)))
+            {
+                var parts = file.Path.Split('/');
+                if (parts.Length < 3) throw new InvalidDataException("Built-in translations must be below a culture directory.");
+                var culture = CultureInfo.GetCultureInfo(parts[1]).Name;
+                if (culture.Length == 0) throw new InvalidDataException("Built-in translations require a named culture.");
+                if (!languageDocuments.TryGetValue(culture, out var text)) languageDocuments.Add(culture, text = new(StringComparer.Ordinal));
+                foreach (var pair in LocalizationJson.Texts(file.Data)) text[pair.Key] = pair.Value;
+            }
+            var languagePayload = Write(privateStage, PackedGameDocuments.LocalizationFileName,
+                PackedGameDocuments.Build(projectId, buildId, languageDocuments.Select(pair => new KeyValuePair<string, byte[]>(
+                    "texts/" + pair.Key + ".json", JsonSerializer.SerializeToUtf8Bytes(pair.Value.OrderBy(text => text.Key, StringComparer.Ordinal)
+                        .ToDictionary(text => text.Key, text => text.Value, StringComparer.Ordinal))))));
             var descriptor = new GameContentManifest
             {
+                Version = 3,
                 ProjectId = projectId,
                 BuildId = buildId,
                 BasePaks = baseline.Select(file => file.Entry).ToList(),
-                Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList()
+                Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList(),
+                LocalizationPak = languagePayload.Entry
             };
-            baseline.Add(Write(privateStage, GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(descriptor, JsonOptions)));
-            foreach (var file in content) baseline.Add(Write(privateStage, file.Path, file.Data));
-            var files = baseline.Select(file => file.Entry).ToArray();
-            var manifest = new GalpakManifest(2, projectId, projectName, DateTimeOffset.UtcNow, files);
+            baseline.Add(languagePayload);
+            var manifest = new GalpakManifest(3, projectId, projectName, DateTimeOffset.UnixEpoch, baseline.Select(file => file.Entry).ToArray());
             var report = JsonSerializer.SerializeToUtf8Bytes(new { buildId, resources = layout, unused = plan.Unused.Select(file => new { file.Id, file.Path, file.TypeId }) }, JsonOptions);
-            return new Prepared(baseline.ToArray(), stories.ToArray(), SafeName(projectName) + ".galnet", JsonSerializer.SerializeToUtf8Bytes(manifest, JsonOptions), report, buildId);
+            var documents = new Dictionary<string, byte[]>(StringComparer.Ordinal)
+            {
+                [GameContentManifest.FileName] = JsonSerializer.SerializeToUtf8Bytes(descriptor, CompactOptions),
+                [PackedGameDocuments.InstallationPath] = JsonSerializer.SerializeToUtf8Bytes(manifest, CompactOptions),
+                ["packaging-layout.json"] = report,
+                ["settings.json"] = content.FirstOrDefault(file => file.Path == "settings.json").Data ?? "{}"u8.ToArray(),
+                ["gallery.json"] = content.Single(file => file.Path == "gallery.json").Data,
+                ["characters.json"] = content.FirstOrDefault(file => file.Path == "I18n/catalog/characters.json").Data ?? "[]"u8.ToArray()
+            };
+            baseline.Add(Write(privateStage, PackedGameDocuments.GameFileName, PackedGameDocuments.Build(projectId, buildId,
+                documents.Select(pair => new KeyValuePair<string, byte[]>(pair.Key, CompactJson(pair.Value))))));
+            return new Prepared(baseline.ToArray(), stories.ToArray(), report, buildId);
         }, ct);
         return prepared;
     }
+
+    private static byte[] CompactJson(byte[] bytes)
+    {
+        using var document = JsonDocument.Parse(DecodeJson(bytes));
+        return JsonSerializer.SerializeToUtf8Bytes(document.RootElement);
+    }
+
+    private static string DecodeJson(byte[] bytes) => LocalizationJson.Decode(bytes);
 
     private static Payload Write(string stage, string path, byte[] data)
     {
@@ -232,7 +268,8 @@ public static class GamePackageExporter
     }
     private static IEnumerable<(string Path, byte[] Data)> ContentFiles(string stage, GalleryCatalog gallery) =>
         Directory.EnumerateFiles(stage, "*", SearchOption.AllDirectories).Select(path => Path.GetRelativePath(stage, path).Replace('\\', '/'))
-            .Where(path => path == "settings.json" || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+            .Where(path => path == "settings.json" || path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase)
+                && path.EndsWith(".json", StringComparison.OrdinalIgnoreCase))
             .Where(path => !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase) && !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
             .Order(StringComparer.Ordinal).Select(path => (path, File.ReadAllBytes(Safe(stage, path))))
             .Append(("gallery.json", JsonSerializer.SerializeToUtf8Bytes(new GalleryConfiguration { Types = gallery.Types.ToList(), Items = gallery.Items.ToList() }, JsonOptions)));
@@ -245,7 +282,7 @@ public static class GamePackageExporter
         if (input.Length != file.Size || Convert.ToHexStringLower(await SHA256.HashDataAsync(input, ct)) != file.Sha256)
             throw new InvalidDataException($"Checksum mismatch for '{file.Path}'.");
         if (file.Path.EndsWith(".pak", StringComparison.OrdinalIgnoreCase))
-        { using var archive = Archive.Deserialize("assets", await File.ReadAllBytesAsync(path, ct), types); }
+            VerifyPak(file.Path, await File.ReadAllBytesAsync(path, ct), types);
     }
     private static async Task VerifyZipAsync(string path, IEnumerable<Payload> files, IResourceTypeCatalog types, CancellationToken ct)
     {
@@ -261,9 +298,15 @@ public static class GamePackageExporter
                 await using var source = entry.Open();
                 using var buffer = new MemoryStream();
                 await source.CopyToAsync(buffer, ct);
-                using var archive = Archive.Deserialize("assets", buffer.ToArray(), types);
+                VerifyPak(file.Path, buffer.ToArray(), types);
             }
         }
+    }
+    private static void VerifyPak(string path, byte[] bytes, IResourceTypeCatalog types)
+    {
+        if (path == PackedGameDocuments.GameFileName) _ = PackedGameDocuments.ReadGame(bytes);
+        else if (path == PackedGameDocuments.LocalizationFileName) _ = PackedGameDocuments.Read(bytes);
+        else { using var archive = Archive.Deserialize("assets", bytes, types); }
     }
     private static bool ExportError(Exception error) => error is IOException or UnauthorizedAccessException or InvalidDataException or JsonException or InvalidOperationException or ArgumentException or KeyNotFoundException;
     private static string Safe(string root, string relative) => FileSystemPaths.ResolveRelativeFile(root, relative);

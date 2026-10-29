@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using GalNet.Assets;
 using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Core.I18n;
@@ -80,8 +81,42 @@ public static class GameLocalizationLoader
         };
     }
 
+    internal static GameLocalizationContent LoadPacked(string directory, Graph graph, PackedDocumentSet documents,
+        PackedDocumentSet languages, string? defaultCulture, CancellationToken cancellationToken)
+    {
+        var definitions = JsonCodec.Deserialize<List<CharacterDefinition>>(documents.GetText("characters.json"), JsonOptions)
+            ?? throw new InvalidDataException("Packed character catalog must be an array.");
+        var characters = new CharacterCatalog(definitions);
+        var sources = new List<GameLocalizationSource>();
+        var cultures = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var defaultKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var path in languages.Documents.Keys.Order(StringComparer.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!path.StartsWith("texts/", StringComparison.Ordinal) || !path.EndsWith(".json", StringComparison.Ordinal)
+                || path.Split('/').Length != 2) throw new InvalidDataException("Invalid packed language entry.");
+            var culture = CultureInfo.GetCultureInfo(path[6..^5]);
+            if (culture.Name.Length == 0 || !cultures.Add(culture.Name)) throw new InvalidDataException("Duplicate or invalid packed culture.");
+            var source = new GameLocalizationSource(culture.Name, path, languages.GetText(path));
+            var text = source.ReadText();
+            if (string.Equals(culture.Name, defaultCulture, StringComparison.OrdinalIgnoreCase)) defaultKeys.UnionWith(text.Keys);
+            sources.Add(source);
+        }
+        if (defaultCulture is not null) ValidateRequiredKeys(graph, characters, defaultKeys, defaultCulture);
+        var diagnostics = new List<GameLocalizationDiagnostic>();
+        var external = LoadExternal(Path.Combine(directory, "I18n"), diagnostics, cancellationToken, "I18n");
+        return new GameLocalizationContent
+        {
+            DefaultCulture = defaultCulture ?? "en-US",
+            Characters = characters,
+            Sources = sources.AsReadOnly(),
+            ExternalSources = external,
+            Diagnostics = diagnostics.AsReadOnly()
+        };
+    }
+
     private static IReadOnlyList<GameLocalizationSource> LoadExternal(string root,
-        List<GameLocalizationDiagnostic> diagnostics, CancellationToken cancellationToken)
+        List<GameLocalizationDiagnostic> diagnostics, CancellationToken cancellationToken, string sourcePrefix = "External")
     {
         var sources = new List<GameLocalizationSource>();
         if (!Directory.Exists(root)) return sources;
@@ -100,17 +135,17 @@ public static class GameLocalizationLoader
                     var culture = CultureInfo.GetCultureInfo(relative.Split('/')[0]);
                     var json = File.ReadAllText(path);
                     _ = new GameLocalizationSource(culture.Name, relative, json).ReadText();
-                    sources.Add(new(culture.Name, $"External/{relative}", json));
+                    sources.Add(new(culture.Name, $"{sourcePrefix}/{relative}", json));
                 }
                 catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException or ArgumentException)
                 {
-                    diagnostics.Add(new($"External/{relative}", error.Message));
+                    diagnostics.Add(new($"{sourcePrefix}/{relative}", error.Message));
                 }
             }
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
         {
-            diagnostics.Add(new("External", error.Message));
+            diagnostics.Add(new(sourcePrefix, error.Message));
         }
         return sources.AsReadOnly();
     }

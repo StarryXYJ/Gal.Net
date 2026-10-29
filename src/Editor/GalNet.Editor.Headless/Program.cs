@@ -42,6 +42,12 @@ internal static class Program
                 WriteJson(new ToolResult(_operationId, true, new GalpakInstallReport(directory), []));
                 return 0;
             }
+            if (_operationId == "game.inspect")
+            {
+                var descriptor = InstalledGameDescriptor.Read(invocation.Positionals[0]);
+                WriteJson(new ToolResult(_operationId, true, descriptor, []));
+                return 0;
+            }
             args = new[] { _operationId }.Concat(invocation.Positionals)
                 .Concat(invocation.Options.SelectMany(pair => new[] { pair.Key, pair.Value })).ToArray();
 

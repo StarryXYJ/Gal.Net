@@ -78,10 +78,10 @@
 | 资源管理器 | `IAssetManager` | 从 provider 按 GUID 定位资源，按 `(GUID, CLR 类型)` 解码/缓存，并以 `AssetHandle<T>` 引用计数释放已解析资源。 |
 | 资源句柄 | `AssetHandle<T>` | 一次成功 acquire 的独立资源引用；幂等 Dispose 只释放该次引用。 |
 | 资源解码器 | `IAssetDecoder<T>` | 将某种资源 type ID 的 `IGameFile` 解码为目标 CLR 类型；由宿主向资源管理器注册，不属于资源 metadata 类型注册。 |
-| 游戏内容提供者 | `IGameContentProvider` | 读取 Graph、设置、I18n 与 Gallery 等特殊内容的边界；`ProjectGameContentProvider` 从开发目录聚合 metadata，`InstalledGameContentProvider` 读取导出生成的 `gallery.json`。 |
+| 游戏内容提供者 | `IGameContentProvider` | 读取 Graph、设置、I18n 与 Gallery 等特殊内容的边界；`ProjectGameContentProvider` 从开发目录聚合 metadata，`InstalledGameContentProvider` 从 game.pak/localization.pak 读取内部文档与文本，兼容旧散文档。 |
 | pak | `.pak` | `PakBuilder` 构建的资源归档，含资源索引和数据。 |
-| 分发包 | `.galpak` | ZIP 分发容器，v2 统一以 `pak/` 为外层，含特殊内容、生成的 Gallery JSON、`Assets/Paks/*-base.pak` 与 JSON manifest；可验证后解压安装。剧情 PAK 随导出生成在外部，资源覆盖 PAK 独立导出。 |
+| 分发包 | `.galpak` | ZIP 分发容器，v3 以 `pak/` 为外层，含 game.pak、localization.pak、`Assets/Paks/*-base.pak` 和空扩展目录；可验证后解压安装。剧情 PAK 随导出生成在外部，资源覆盖 PAK 独立导出。 |
 | 剧情包 | story PAK | 同名 `storyPackage` Group 的独立依赖闭包减去本体资源，可由多个物理 PAK 组成；整体未安装时沿正常出口跳过。 |
 | 资源覆盖包 | override PAK | 携带原资源到替换资源的映射与目标依赖；按 priority、最终 PAK hash 确定覆盖来源。 |
-| manifest | `<项目名>.galnet` | 当前 `.galpak` 的 `pak/` 内容根中唯一的 JSON manifest，载荷路径相对内容根，描述项目与载荷 SHA-256/大小；安装器兼容 v1 ZIP 顶层布局。 |
+| manifest | `installation.json` | galpak v3 的 game.pak 内部安装清单，载荷路径相对内容根，描述项目与其余载荷 SHA-256/大小；兼容 v1/v2 的 `<项目名>.galnet` 外置清单。 |
 | 游戏安装 | `GameInstallation` | 将开发目录或验证并安装后的 `.galpak` 统一为内容 provider 与有序资源 provider 的宿主输入。 |
