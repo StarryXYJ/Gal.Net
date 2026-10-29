@@ -8,6 +8,7 @@
 *.json text
 *.xml text
 *.yml text
+scripts/distribution/*.sh text eol=lf
 
 *.ico binary
 *.png binary

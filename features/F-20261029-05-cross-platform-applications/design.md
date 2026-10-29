@@ -1,7 +1,7 @@
 # 跨平台应用与发行设计
 
 - 日期：2026-10-29
-- 状态：P0/P1 正在实施；桌面三平台及移动端完整发布尚未验收。
+- 状态：P0/P1 仍有平台/原生 Editor 验收待补；P2 Windows 合包已实现，结果见 execution.md；桌面三平台及移动端完整发布尚未验收。
 - 需求：[feature.md](feature.md)
 
 ## 1. 问题与目标
@@ -120,6 +120,14 @@ build-compose --app-project <csproj> --content <galpak或目录>
 - ZIP 的 Unix mode 与 tar 的权限、符号链接分别处理；拒绝不安全归档路径和逃逸符号链接，合法 bundle 链接保留结构。归档恢复后再次验收入口可执行、动态库加载与许可完整性。
 
 ## 6. 音频、VLC 与展示集成
+
+### P2 已落地的发行边界
+
+首个切片采用 docs/application-layout.json v1，声明 RID、入口、托管目录、契约目录及内容目录；原生库与运行时当前位于 lib，部署方式/开发能力复用 release-manifest 的 selfContained/sampleFlavor，不重复建立另一套能力表。compose 仅接受带完整发行清单的纯 win-x64 Sample（ZIP 或目录）、完整内容（galpak 或目录），输出新的 ZIP。其他 RID/归档形式留到 P3/P4；符号链接当前全部拒绝，合法 macOS bundle 链接保留尚未实现。
+
+内容 contractFiles 绑定加载 catalog 时捕获的闭包，导出检测磁盘变化，合包只做元数据/hash 比对，不执行项目代码。所有脚本复用自包含 Editor.Headless；sh/ps1 不承载解析/安装逻辑，也不提供 dotnet 回退。自包含 lib 内的框架依赖先复用默认加载上下文，避免项目 resolver 再加载 System.Text.Json 导致类型身份分裂。
+
+实际 Windows R2R 原生窗口验证发现 SkiaSharp 3.119.4 在合成字体读取中崩溃；选择仅将该 DLL 保持 IL，应用和其余程序集继续 R2R。此为当前版本组合下实测缓解，不推定其他平台也需要同样排除。
 
 ### 6.1 原生音频
 

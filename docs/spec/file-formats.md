@@ -90,6 +90,8 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 
 buildId 对资源内容、有效 metadata、特殊内容、格式标记和实际分片布局计算稳定指纹；默认阈值或切片算法改变物理布局时也产生新的构建身份。
 
+通过项目 schema 上下文导出的 content.json 还记录 `contractFiles`：加载 catalog 时捕获的项目契约及业务依赖闭包，每项为相对文件名、大小与 SHA-256；此身份参与 buildId。导出时磁盘闭包必须与已加载 catalog 一致，不能给旧 schema 结果盖上新 DLL 的身份。严格发行合包要求完整身份，并逐项比对目标运行包契约；手工传入无身份 catalog 的低层导出不满足合包条件。依赖收集仅排除宿主框架程序集，不按自包含 lib 的目录位置排除业务依赖。
+
 导出产生布局报告（galpak 旁 `<Project>.layout.json`，以及 game.pak 内 packaging-layout.json），列出资源归属、直接依赖和未打包项。配置、人物、文本完整留在本体的文档包，不按剧情拆分；未安装剧情不参与正文文本引用校验。Gallery 保持原基础聚合。资源补丁不能替换这些内部文档。
 
 GameSnapshot 当前为 v5，记录 ContentBuildId 和 StoryPackages；恢复拒绝不同构建或缺少记录的剧情包。首版保守记录会话准备时已安装的全部剧情包，因此删除当时尚未播放的包也会阻止恢复；不自动降级到跳过剧情。开发目录构建标识为空。

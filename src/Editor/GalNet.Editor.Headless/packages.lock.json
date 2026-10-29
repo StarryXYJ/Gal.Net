@@ -45,6 +45,7 @@
           "GalNet.Debugging": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },

@@ -160,7 +160,7 @@ function Set-PackageLayout([string]$PackageRoot) {
     $documentsRoot = Join-Path $PackageRoot 'docs'
     New-Item -ItemType Directory -Force -Path $libraryRoot, $documentsRoot | Out-Null
     foreach ($item in Get-ChildItem -LiteralPath $PackageRoot -Force) {
-        if ($item.Name -in @('lib', 'docs', 'pak', 'Skills', 'GalNet.Editor.exe', 'GalNet.Editor.Headless.exe', 'GalNet.Sample.Avalonia.exe')) { continue }
+        if ($item.Name -in @('lib', 'docs', 'pak', 'Skills', 'Tools', 'GalNet.Editor.exe', 'GalNet.Editor.Headless.exe', 'GalNet.Sample.Avalonia.exe')) { continue }
         $destination = Join-Path $(if ($item.Name -in @('README.txt', 'README.md', 'LICENSE')) { $documentsRoot } else { $libraryRoot }) $item.Name
         if (!$item.FullName.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase) -or
             ![IO.Path]::GetFullPath($destination).StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase)) {
@@ -186,6 +186,21 @@ function Complete-Package([string]$Kind, [string]$PackageRoot) {
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $PackageRoot 'LICENSE') -Force
     Set-PackageLayout $PackageRoot
+    if ($Kind -eq 'Editor') {
+        $composeTools = Join-Path $PackageRoot 'Tools'
+        New-Item -ItemType Directory -Path $composeTools -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/distribution/compose.ps1') -Destination $composeTools
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'scripts/distribution/compose.sh') -Destination $composeTools
+    }
+    $applicationLayout = [ordered]@{
+        schemaVersion = 1
+        runtimeIdentifier = 'win-x64'
+        entryPoint = if ($Kind -eq 'Editor') { 'GalNet.Editor.exe' } else { 'GalNet.Sample.Avalonia.exe' }
+        managedDirectory = 'lib'
+        contractsDirectory = if ($Kind -eq 'Editor') { 'lib/DefaultContracts' } else { 'lib' }
+        contentDirectory = 'pak'
+    }
+    $applicationLayout | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $PackageRoot 'docs/application-layout.json') -Encoding utf8
     if (!$selfContained) {
         @'
 

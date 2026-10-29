@@ -15,19 +15,13 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
     public DebugInvitation? DebugInvitation { get; init; }
 #endif
     public string LogDirectory => Path.Combine(ProfileDirectory
-        ?? GetDefaultProfileDirectory(GameDirectory ?? Path.Combine(GetApplicationDirectory(AppContext.BaseDirectory), "pak")), "logs");
+        ?? GetDefaultProfileDirectory(GameDirectory ?? ApplicationPackageLayout.GetContentDirectory(GetApplicationDirectory(AppContext.BaseDirectory))), "logs");
 
     public static GameLaunchOptions Parse(string[] args)
         => Parse(args, GetApplicationDirectory(AppContext.BaseDirectory));
 
     internal static string GetApplicationDirectory(string assemblyDirectory)
-    {
-        var directory = new DirectoryInfo(Path.GetFullPath(assemblyDirectory));
-        return directory.Name.Equals("lib", StringComparison.OrdinalIgnoreCase) && directory.Parent is not null
-            && (File.Exists(Path.Combine(directory.Parent.FullName, "GalNet.Sample.Avalonia.exe"))
-                || File.Exists(Path.Combine(directory.Parent.FullName, "GalNet.Sample.Avalonia")))
-            ? directory.Parent.FullName : directory.FullName;
-    }
+        => ApplicationPackageLayout.FindApplicationRoot(assemblyDirectory);
 
     internal static string GetDefaultProfileDirectory(string gameDirectory)
     {
@@ -59,7 +53,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
 
     internal static GameLaunchOptions Parse(string[] args, string applicationDirectory)
     {
-        var gameDirectory = Path.Combine(Path.GetFullPath(applicationDirectory), "pak");
+        var gameDirectory = ApplicationPackageLayout.GetContentDirectory(Path.GetFullPath(applicationDirectory));
         string? profileDirectory = null;
 #if GALNET_LAUNCH_ARGS
         var hasGameArgument = false;

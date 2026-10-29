@@ -48,6 +48,12 @@ internal static class Program
                 WriteJson(new ToolResult(_operationId, true, descriptor, []));
                 return 0;
             }
+            if (_operationId == "distribution.compose")
+            {
+                var result = await GameDistributionComposer.ComposeAsync(invocation.Get("--runtime")!, invocation.Get("--content")!, invocation.Get("--output")!);
+                WriteJson(new ToolResult(_operationId, true, result, []));
+                return 0;
+            }
             args = new[] { _operationId }.Concat(invocation.Positionals)
                 .Concat(invocation.Options.SelectMany(pair => new[] { pair.Key, pair.Value })).ToArray();
 

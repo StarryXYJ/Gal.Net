@@ -3,7 +3,7 @@
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
-- 当前进度：P0 内容/本机环境检查已记录；P1 导出改造与自动化验证完成，分发 Editor 的原生无 SDK 烟测待补。跨平台项目未同步，结果与限制见 [执行记录](execution.md)。
+- 当前进度：P1 已提交，分发 Editor 的原生无 SDK 烟测待补；P2 Windows 布局/严格合包与 SDK 搜索隔离验证完成，开始 P3 媒体配置。跨平台项目仍未同步，结果与限制见 [执行记录](execution.md)。
 
 ## 用户目标与已确认决策
 

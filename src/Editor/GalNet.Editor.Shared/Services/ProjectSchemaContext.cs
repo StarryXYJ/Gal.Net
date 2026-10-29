@@ -1,15 +1,20 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 using System.Security.Cryptography;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
+using GalNet.Core.Serialization;
 
 namespace GalNet.Editor.Shared.Services;
 
 /// <summary>Owns one project's schema catalog and collectible assembly context.</summary>
 public sealed class ProjectSchemaContext : IDisposable
 {
+    private static readonly ConditionalWeakTable<IEntryCatalog, List<GalpakFileEntry>> CatalogIdentities = new();
+    internal static IReadOnlyList<GalpakFileEntry>? GetContractIdentity(IEntryCatalog catalog) =>
+        CatalogIdentities.TryGetValue(catalog, out var identity) ? identity : null;
     public const string ContractsDirectory = "Contracts";
     public const string AssemblyFileName = "GalNet.Project.Contracts.dll";
     public const string EntryPointTypeName = "GalNet.Project.Contracts.ProjectSchemas";
@@ -50,6 +55,7 @@ public sealed class ProjectSchemaContext : IDisposable
         var context = new SchemaLoadContext(path);
         try
         {
+            var identity = ProjectContractSource.ReadIdentity(contractsDirectory);
             var bytes = File.ReadAllBytes(path);
             using var stream = new MemoryStream(bytes, writable: false);
             var assembly = context.LoadFromStream(stream);
@@ -80,7 +86,11 @@ public sealed class ProjectSchemaContext : IDisposable
                     throw new InvalidDataException("ProjectSchemas.Configurations must return a nonnull ProjectConfigurationSchema.");
                 configurations = declared;
             }
-            return new ProjectSchemaContext(path, fingerprint, context, new TargetProfileEntryCatalog(modules), configurations);
+            if (!identity.SequenceEqual(ProjectContractSource.ReadIdentity(contractsDirectory)))
+                throw new IOException("Project contracts changed while their schemas were being loaded.");
+            var catalog = new TargetProfileEntryCatalog(modules);
+            CatalogIdentities.Add(catalog, identity);
+            return new ProjectSchemaContext(path, fingerprint, context, catalog, configurations);
         }
         catch (Exception exception)
         {
@@ -119,8 +129,14 @@ public sealed class ProjectSchemaContext : IDisposable
             {
                 if (!string.Equals(assemblyName.FullName, shared.GetName().FullName, StringComparison.Ordinal))
                     throw new FileLoadException($"Incompatible shared contract '{assemblyName.FullName}'; tool provides '{shared.GetName().FullName}'.");
+                var source = Path.Combine(_directory, assemblyName.Name + ".dll");
+                if (!SHA256.HashData(File.ReadAllBytes(source)).AsSpan().SequenceEqual(SHA256.HashData(File.ReadAllBytes(shared.Location))))
+                    throw new FileLoadException($"Incompatible shared contract bytes: '{assemblyName.Name}'. Rebuild and deploy matching contracts.");
                 return shared;
             }
+            // A self-contained application directory also contains framework DLLs.
+            // Loading them into this context would split JsonElement/Action type identity.
+            if (ProjectContractSource.IsPlatformAssembly(assemblyName.Name!)) return null;
             var path = _resolver.ResolveAssemblyToPath(assemblyName);
             if (path is null)
             {
@@ -128,17 +144,8 @@ public sealed class ProjectSchemaContext : IDisposable
                 if (File.Exists(adjacent)) path = adjacent;
             }
             if (path is not null) return LoadManagedAssembly(path);
-            // Only platform assemblies may fall back to the default context.
-            if (PlatformAssemblyNames.Contains(assemblyName.Name!)) return null;
             throw new FileNotFoundException($"Contract dependency '{assemblyName.FullName}' is missing from '{_directory}'.");
         }
-
-        private static readonly HashSet<string> PlatformAssemblyNames =
-            ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "")
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            .Where(path => Path.GetDirectoryName(path) == Path.GetDirectoryName(typeof(object).Assembly.Location))
-            .Select(path => Path.GetFileNameWithoutExtension(path))
-            .ToHashSet(StringComparer.Ordinal);
 
         // Stream loading avoids locking project files until a nondeterministic GC unload.
         public Assembly LoadManagedAssembly(string path)

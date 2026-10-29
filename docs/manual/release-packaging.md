@@ -67,6 +67,8 @@ Windows x64 应用提供两种部署方式，均保留 R2R：默认完整版附�
 
 默认应用 ZIP（包括 Editor 内嵌 CLI）不分发 PDB；构建目录仍保留调试符号，运行日志照常输出。仅保留 VLC 的 win-x64 原生文件，过滤原生 NuGet 附带的 win-x86 / win-arm64 文件。玩家关闭外部调试与启动参数。契约闭包排除 R2R 转换；内容编译直接使用这一份玩家契约，不另外重建一份。Editor 自带的默认契约与 Sample 契约不同，分别放置。
 
+win-x64 发布还将 SkiaSharp 3.119.4 保持原始 IL：当前 .NET 10 R2R 组合在合成系统字体时可触发原生读取崩溃。应用及其他依赖仍使用 R2R；发布验收检查此排除项，并要求真实窗口验证，不能仅凭 R2R 头存在判断可运行。
+
 整合 GameTestCase 经过 `project export-directory` 编译：Graph、Group 和资源均在 `pak/Assets/Paks/*.pak`，剧情分片位于 `pak/StoryPatches/<buildId>/`；内部清单、配置、人物和 Gallery 封装为 `pak/game.pak`，内置文本为 `pak/localization.pak`。验收通过分发 CLI 的 `game inspect <content-directory>` 读取 content 版本 3 身份，并拒绝散装 JSON、loose Graph、散装素材、rawgalgroup 和作者 Contracts 目录。`-Galpak` 仅接受内置全部剧情分片的完整 v4 包，安装到同一 `pak/`，不再收集归档旁的剧情目录或资源补丁。资源覆盖补丁需要显式部署到安装内容的 ResourcePatches。
 
 完整组合目录如下；没有补丁时仍保留扩展目录，纯 Sample 也提供空 pak/I18n、pak/ResourcePatches、pak/StoryPatches（没有游戏就没有 buildId 子目录）：
@@ -86,6 +88,24 @@ Game/
 ```
 
 Sample 默认使用用户 `LocalApplicationData/GalNet/<project identity digest>/` 保存玩家数据和日志，安装目录无需可写权限。profile 不随安装目录或 buildId 改变；旧存档位置不自动迁移。开发版可用 `--profile` 显式指定。
+
+## 无 SDK 合并内容与运行包
+
+发行 Editor 的自包含 CLI 提供 `compose`，`Tools/compose.ps1` 和 `Tools/compose.sh` 转发同一组参数。它们通过相邻 CLI 工作，无需源码仓库或 dotnet SDK；脚本需保留在发行包中的原位置。PowerShell 入口支持 Windows PowerShell 5.1 与 PowerShell 7，sh 入口可由 Git Bash 调用。
+
+```powershell
+./Tools/compose.ps1 --runtime 'GalNet-Sample.zip' --content 'MyGame.galpak' --output 'MyGame.zip'
+# 也可直接调用 CLI
+./GalNet.Editor.Headless.exe compose --runtime 'Sample目录' --content '导出的pak目录' --output 'MyGame.zip'
+```
+
+当前仅接受带布局元数据的纯 `win-x64` Sample ZIP/目录与完整 v4 galpak/内容目录，输出新的 ZIP。已有输出、已有游戏内容的运行包、损坏或未声明的文件、越界路径、符号链接、契约不匹配均拒绝。输入不被修改，最终清单重建为 `Sample-Game`，包含内容 projectId/buildId 与所有发行文件 hash。内容目录中显式部署的 I18n JSON 与 ResourcePatches PAK 随包复制；这些覆盖内容仍由运行时执行语义校验。
+
+应用发布生成 `docs/application-layout.json`（schemaVersion 1），记录 runtimeIdentifier、entryPoint、managedDirectory、contractsDirectory、contentDirectory。所有位置相对发行根，内容不得与程序/契约/清单位置重叠。Sample 从此布局定位默认 pak，与工作目录无关。部署方式与开发能力继续由 release-manifest.json 的 selfContained/sampleFlavor 声明。
+
+内容导出的 `contractFiles` 记录加载该项目 schema 时的完整契约闭包字节身份，并参与 buildId。重新导出前若磁盘契约与已加载 catalog 不一致则拒绝，需重新加载项目；合包逐项核对运行包中同名 DLL 的大小/hash。普通编辑器默认契约和 Sample 契约并不相同，创作项目应使用目标运行包的契约。低层 API 手工构造且没有契约身份的 catalog 可以导出，但其内容不能用于严格合包。
+
+Linux/macOS 归档、源码 `build-compose` 与签名仍在后续阶段；当前 sh 入口的 Windows 验证不代表 Linux 运行包已可用。
 
 需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，保留 PDB，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
 

@@ -10,6 +10,12 @@
   <ItemGroup Condition="'$(PublishReadyToRun)' == 'true'">
     <PublishReadyToRunExclude Include="GalNet.Core.dll;GalNet.Contracts.Builtins.dll;GalNet.Project.Contracts.dll" />
   </ItemGroup>
+  <!-- SkiaSharp 3.119.4 R2R can crash in SKStream.Read during synthetic
+       system-font creation on win-x64/.NET 10. Keep its original IL; the
+       application and other dependencies still use ReadyToRun. -->
+  <ItemGroup Condition="'$(PublishReadyToRun)' == 'true' And '$(RuntimeIdentifier)' == 'win-x64'">
+    <PublishReadyToRunExclude Include="SkiaSharp.dll" />
+  </ItemGroup>
   <!-- Generate a normal SDK apphost targeting the packaged managed entry in lib/.
        Ordinary bin/publish apphosts are unaffected unless packaging opts in. -->
   <Target Name="CreatePackageAppHost" AfterTargets="Publish"

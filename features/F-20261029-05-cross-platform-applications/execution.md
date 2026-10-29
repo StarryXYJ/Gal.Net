@@ -43,3 +43,41 @@
 - P1：in-progress。实现和相关自动化验证完成，但尚未在干净无 SDK 机器上通过分发 Editor 原生 UI 操作完成导出。自包含 CLI 工具发现隔离与 headless 面板测试不能冒充此原生端到端烟测。
 - P2–P8：planned；未实现独立 compose/build-compose、三平台完整媒体发行或五平台模板运行。
 - 后续优先补 P1 分发烟测与 P2 布局/无 SDK 合包切片；跨平台项目仍等桌面阶段稳定后在 P6 集中接入。
+
+## 2026-10-29：P2 Windows 布局与严格合包
+
+P1 已提交为 5cc98d23。按用户要求只提交本 feature 内容，CI/release 优化保留在工作区。
+
+### 实现及边界
+
+- docs/application-layout.json v1 声明入口/RID、lib、契约及 pak 位置；发布生成、宿主定位与合包复用，不依赖当前工作目录。部署方式和开发能力复用发行清单。
+- compose 接受纯 win-x64 Sample ZIP/目录与 galpak/内容目录，输出新 ZIP；拒绝覆盖、嵌套输出、已有游戏内容、链接、越界/重复条目、未声明文件、错误 hash 或契约身份。
+- 内容 contractFiles 捕获实际加载 schema 时的完整闭包并参与 buildId；导出时拒绝已变化的磁盘契约。合包不执行项目代码，只比较闭包字节。手工 catalog 缺身份时不能用于严格合包。
+- 自包含契约加载先复用宿主框架程序集；修复 lib 内 System.Text.Json 被私有 resolver 重复加载造成 JsonElement 身份分裂的问题，并严格验证共享 Core/Builtins 字节。
+- Editor 分发 Tools/compose.ps1、compose.sh，通过相邻自包含 CLI 工作，无 SDK/源码/编译器调用；不实现 Linux/macOS 归档或 build-compose。
+- 真实窗口发现原始 R2R Sample 也会在 SkiaSharp.SKStream.Read / 合成系统字体中 0xC0000005。最小缓解为 win-x64 仅将 SkiaSharp.dll 保持 IL，主程序及其他依赖继续 R2R；发布检查防止误转换。见 L-20261029-12。
+
+### 验证
+
+| 检查 | 结果/证据 |
+| --- | --- |
+| Editor.Shared 全量 | 494 项通过；out/cross-platform-p2-results/p2-shared-all.trx |
+| Integration 全量 | 181 项通过；4 个 Explicit case 未执行（另行执行本次新原生 case）；p2-integration-all.trx |
+| Architecture 全量 | 52 项通过；p2-architecture.trx |
+| 输入负向与闭包 | 14 个 compose case 覆盖四种输入组合、坏 hash、契约不匹配、无身份、取消、已有输出、未声明载荷和 ZIP 逃逸/重复/链接；包含在 Shared 全量 |
+| locked restore | Shared、Headless、Editor.Tests、Integration 普通图、Integration NoGameDebugging、Editor win-x64 WindowsReadyToRun 图通过；锁文件仅增加项目依赖，没有第三方版本升级 |
+| SDK 搜索隔离 | 自包含最新 CLI，PATH 仅候选工具/Windows 系统目录；DOTNET_ROOT 指向 bundled runtime；PowerShell 7、Windows PowerShell 5.1 和 Git Bash sh 均合包成功；out/cross-platform-p2-smoke/compose-latest-{ps,ps51,sh}.json |
+| 原生对照 | 原始运行包与合包均重现字体崩溃；禁用 R2R 对照通过；只替换同版本 SkiaSharp IL 的诊断副本连续 3 次通过；p2-native-original-1.trx、p2-native-no-r2r-diagnostic.trx、p2-native-skia-il-{1,2,3}.trx |
+| 最终真实产物 | 正常 Publish + compose + 解包，未手工替换 DLL；SkiaSharp 为 IL、Sample 主程序集仍为 R2R；out/cross-platform-p2-runtime-fixed、compose-final.json |
+| 最终原生启动/退出 | 同一最终包在含空格目录、不同工作目录、SDK 搜索隔离、明确启用 R2R 下连续 3 次通过；核对加载的 coreclr 位于该包 lib，会话初始化后向自有 HWND 正常关闭并得到 exit 0；p2-native-final-{1,2,3}.trx |
+| 脚本/文本 | Publish、Test-Release、compose.ps1 AST 通过；git diff --check 通过 |
+
+最终 ZIP：out/cross-platform-p2-smoke/game final.zip；SHA-256 为 432007addb35e17536ccd26725461b324390f3b611a7cca510a3eab7aa32e5df。未修改运行包/内容输入；验证目录与日志均在 out。测试自身使用共享读取活动日志及每次独立 profile，避免日志文件锁和旧就绪标记误判。
+
+初次 Git Bash 在沙箱内创建 signal pipe 被系统拒绝，获准在受支持环境复验通过；未改变脚本绕过。首次原生失败先按隔离条件诊断，后由原始包同样复现与选择性 R2R 对照确定缓解范围，失败日志保留。
+
+### 阶段状态
+
+- P2 verified：Windows 合包切片通过上述验证；验证机安装了 SDK，使用受控搜索路径隔离，不声称使用了全新无 SDK VM。
+- P0/P1 仍 in-progress：其他平台探针和无 SDK 分发 Editor 原生 UI 导出尚待补齐。P2 的 Sample 启动不能代替 Editor 操作验收；P1 已知两项既有 UI 测试失败仍保留。
+- 开始 P3a 统一 VLC 初始化/会话工厂；P3b 再推进各目标原生部署与完整运行包。P3 整体仍未验收，CrossPlatform 项目继续留待 P6。

@@ -74,6 +74,16 @@ public sealed class ProjectSchemaContextTests
     }
 
     [Test]
+    public void SameVersionCoreWithDifferentBytesIsRejected()
+    {
+        var project = Deploy("SchemaA");
+        var path = Path.Combine(project, "Contracts/GalNet.Core.dll");
+        var bytes = File.ReadAllBytes(path); bytes[^1] ^= 1; File.WriteAllBytes(path, bytes);
+        var error = Assert.Throws<InvalidDataException>(() => ProjectSchemaContext.Load(project));
+        Assert.That(error!.Message, Does.Contain("Incompatible shared contract bytes"));
+    }
+
+    [Test]
     public void IncompatibleCoreVersion_IsRejectedWithoutLoadingDuplicateCore()
     {
         var project = Deploy("SchemaIncompatible");

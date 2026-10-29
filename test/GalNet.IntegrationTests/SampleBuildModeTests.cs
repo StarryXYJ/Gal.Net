@@ -98,6 +98,8 @@ public sealed class SampleBuildModeTests
         try
         {
             File.WriteAllText(Path.Combine(root, "GalNet.Sample.Avalonia.exe"), "apphost marker");
+            Directory.CreateDirectory(Path.Combine(root, "docs"));
+            File.WriteAllText(Path.Combine(root, "docs/application-layout.json"), """{"schemaVersion":1,"runtimeIdentifier":"win-x64","entryPoint":"GalNet.Sample.Avalonia.exe","managedDirectory":"lib","contractsDirectory":"lib","contentDirectory":"pak"}""");
             Assert.That(GameLaunchOptions.GetApplicationDirectory(library), Is.EqualTo(root));
             Assert.That(GameLaunchOptions.GetApplicationDirectory(root), Is.EqualTo(root));
         }

@@ -130,11 +130,13 @@ public static class GamePackageExporter
             var complete = options.DeclaredCompleteResources.Select(id => available.Any(file => StringComparer.OrdinalIgnoreCase.Equals(file.Id, id)) ? id : StoryResourceIds.Group(id)).ToArray();
             var plan = ContentPackagePlanner.Plan(available, roots, types, options.MaxPakBytes, complete, token);
             var content = ContentFiles(privateStage, gallery).ToArray();
+            var contracts = ReadContractIdentity(source, catalog);
             using var buildHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             buildHash.AppendData(Encoding.UTF8.GetBytes(projectId + "\n"));
             // The same logical resources can be split differently after a default/algorithm change.
             // Keep immutable story directories distinct for those physical part sets as well.
             buildHash.AppendData("galnet-content-v3/gpak-v3/documents-v1/brotli\n"u8);
+            buildHash.AppendData(JsonSerializer.SerializeToUtf8Bytes(contracts, CompactOptions));
             buildHash.AppendData(JsonSerializer.SerializeToUtf8Bytes(plan.Paks.Select(part => new
             {
                 part.PackageId,
@@ -209,7 +211,8 @@ public static class GamePackageExporter
                 BuildId = buildId,
                 BasePaks = baseline.Select(file => file.Entry).ToList(),
                 Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList(),
-                LocalizationPak = languagePayload.Entry
+                LocalizationPak = languagePayload.Entry,
+                ContractFiles = contracts
             };
             baseline.Add(languagePayload);
             var manifest = new GalpakManifest(4, projectId, projectName, DateTimeOffset.UnixEpoch, baseline.Concat(stories).Select(file => file.Entry).ToArray());
@@ -234,6 +237,16 @@ public static class GamePackageExporter
     {
         using var document = JsonDocument.Parse(DecodeJson(bytes));
         return JsonSerializer.SerializeToUtf8Bytes(document.RootElement);
+    }
+
+    private static List<GalpakFileEntry> ReadContractIdentity(string projectRoot, IEntryCatalog catalog)
+    {
+        var captured = ProjectSchemaContext.GetContractIdentity(catalog);
+        if (captured is null) return [];
+        var directory = Path.Combine(projectRoot, ProjectSchemaContext.ContractsDirectory);
+        if (!captured.SequenceEqual(ProjectContractSource.ReadIdentity(directory)))
+            throw new InvalidOperationException("Project contracts changed. Reopen the project before exporting.");
+        return captured.ToList();
     }
 
     private static string DecodeJson(byte[] bytes) => LocalizationJson.Decode(bytes);

@@ -1,7 +1,10 @@
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Security.Cryptography;
 using System.Text.Json;
+using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -9,6 +12,7 @@ namespace GalNet.Editor.Shared.Services;
 public sealed class ProjectContractSource : IDisposable
 {
     private static readonly HashSet<string> PlatformAssemblyNames = GetPlatformAssemblyNames();
+    internal static bool IsPlatformAssembly(string name) => PlatformAssemblyNames.Contains(name);
 
     private static HashSet<string> GetPlatformAssemblyNames()
     {
@@ -50,6 +54,17 @@ public sealed class ProjectContractSource : IDisposable
     public static string FindForApplication(string executable)
     {
         var root = Path.GetDirectoryName(RequireApplication(executable))!;
+        if (File.Exists(Path.Combine(root, ApplicationPackageLayout.FileName)))
+        {
+            var layout = ApplicationPackageLayout.Read(root);
+            if (!string.Equals(Path.GetFullPath(Path.Combine(root, layout.EntryPoint)), Path.GetFullPath(executable),
+                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
+                throw new EditorOperationException("project.applicationInvalid", "The selected application does not match its package layout.");
+            var contracts = Path.Combine(root, layout.ContractsDirectory);
+            if (!File.Exists(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName)))
+                throw new EditorOperationException("project.applicationContractMissing", "The application layout declares a missing project contract.");
+            return contracts;
+        }
         var candidates = new[] { root, Path.Combine(root, "lib") }
             .Where(directory => File.Exists(Path.Combine(directory, ProjectSchemaContext.AssemblyFileName))).ToArray();
         return candidates.Length switch
@@ -62,9 +77,7 @@ public sealed class ProjectContractSource : IDisposable
 
     public static ProjectContractSource Prepare(string sourceDirectory)
     {
-        var reader = new ProjectRawReader(sourceDirectory);
-        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-        ReadAssembly(ProjectSchemaContext.AssemblyFileName);
+        var files = ReadClosure(sourceDirectory);
         var snapshot = new ProjectContractSource(Path.Combine(Path.GetTempPath(), "GalNet-contracts-" + Guid.NewGuid().ToString("N")));
         try
         {
@@ -78,6 +91,18 @@ public sealed class ProjectContractSource : IDisposable
             snapshot.Dispose();
             throw;
         }
+    }
+
+    internal static List<GalpakFileEntry> ReadIdentity(string sourceDirectory) => ReadClosure(sourceDirectory)
+        .OrderBy(file => file.Key, StringComparer.Ordinal)
+        .Select(file => new GalpakFileEntry(file.Key, Convert.ToHexStringLower(SHA256.HashData(file.Value)), file.Value.LongLength)).ToList();
+
+    private static Dictionary<string, byte[]> ReadClosure(string sourceDirectory)
+    {
+        var reader = new ProjectRawReader(sourceDirectory);
+        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        ReadAssembly(ProjectSchemaContext.AssemblyFileName);
+        return files;
 
         void ReadAssembly(string fileName)
         {

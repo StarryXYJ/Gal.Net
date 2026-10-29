@@ -60,6 +60,14 @@ foreach ($deployment in $Deployments) {
                 }
                 finally { $reader.Dispose(); $stream.Dispose() }
             }
+            $stream = [IO.File]::OpenRead((Join-Path $root 'lib/SkiaSharp.dll'))
+            $reader = [Reflection.PortableExecutable.PEReader]::new($stream)
+            try {
+                if ($reader.PEHeaders.CorHeader.ManagedNativeHeaderDirectory.Size -ne 0) {
+                    throw 'SkiaSharp must retain original IL: win-x64 R2R can crash while reading synthetic system fonts.'
+                }
+            }
+            finally { $reader.Dispose(); $stream.Dispose() }
             $rootFiles = @(Get-ChildItem -LiteralPath $root -File)
             if ($rootFiles.Count -ne $apps.Count -or ($rootFiles | Where-Object Name -notin @($apps | ForEach-Object { "$_.exe" }))) {
                 throw "Application root must contain only entry executables and directories: $kind"
