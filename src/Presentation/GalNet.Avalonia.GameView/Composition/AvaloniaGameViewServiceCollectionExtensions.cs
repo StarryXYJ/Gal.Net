@@ -2,6 +2,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Media.LibVlc;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -16,6 +17,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         Action<IPageViewRegistryBuilder>? configureViews = null,
         Action<IGalleryPageRegistryBuilder>? configureGalleryPages = null)
     {
+        services.TryAddSingleton(_ => LibVlcFactory.Default);
         var views = new PageViewRegistryBuilder();
         ArgumentNullException.ThrowIfNull(theme);
         services.AddSingleton(theme);

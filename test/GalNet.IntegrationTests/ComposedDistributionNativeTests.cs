@@ -51,6 +51,8 @@ public sealed class ComposedDistributionNativeTests
             Assert.That(ready, Is.True, "Composed Sample did not initialize; inspect native-evidence logs.");
             var runtime = app.Modules.Cast<ProcessModule>().Single(module => module.ModuleName.Equals("coreclr.dll", StringComparison.OrdinalIgnoreCase));
             Assert.That(Path.GetDirectoryName(runtime.FileName), Is.EqualTo(Path.Combine(root, layout.ManagedDirectory)).IgnoreCase);
+            var vlc = app.Modules.Cast<ProcessModule>().Single(module => module.ModuleName.Equals("libvlc.dll", StringComparison.OrdinalIgnoreCase));
+            Assert.That(Path.GetDirectoryName(vlc.FileName), Is.EqualTo(Path.Combine(root, layout.ManagedDirectory, "libvlc", "win-x64")).IgnoreCase);
             NativeSampleWindow.Close(app);
             await app.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(15));
             Assert.That(app.ExitCode, Is.Zero);

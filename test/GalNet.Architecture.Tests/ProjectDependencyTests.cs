@@ -41,6 +41,7 @@ public class ProjectDependencyTests
             ["GalNet.Avalonia.Themes"] = ["GalNet.Contracts.Builtins", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.GameView"] =
             ["GalNet.Contracts.Builtins",
+                "GalNet.Media.LibVlc",
                 "GalNet.Avalonia.Controls", "GalNet.Avalonia.Rendering",
                 "GalNet.Presentation.Abstractions", "GalNet.Core", "GalNet.Assets"
             ],

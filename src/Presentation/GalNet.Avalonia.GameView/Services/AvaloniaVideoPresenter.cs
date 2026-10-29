@@ -4,6 +4,7 @@ using GalNet.Assets;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 using LibVLCSharp.Shared;
@@ -31,7 +32,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private Task? _releaseTask;
 
     public AvaloniaVideoPresenter(IAssetManager assets, GamePageViewModel state, IAvaloniaUiDispatcher? dispatcher = null,
-        IAssetFileMaterializer? files = null, LibVLC? sharedLibVlc = null)
+        IAssetFileMaterializer? files = null, LibVLC? sharedLibVlc = null, LibVlcFactory? mediaFactory = null)
     {
         _files = files ?? new AssetFileMaterializer(assets);
         _ownsFiles = files is null;
@@ -44,8 +45,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
         {
             try
             {
-                LibVLCSharp.Shared.Core.Initialize();
-                _vlc = new LibVLC("--no-video-title-show", "--avcodec-hw=none");
+                _vlc = (mediaFactory ?? LibVlcFactory.Default).Create("--avcodec-hw=none");
             }
             catch (Exception error) { _initializationError = error.Message; }
         }

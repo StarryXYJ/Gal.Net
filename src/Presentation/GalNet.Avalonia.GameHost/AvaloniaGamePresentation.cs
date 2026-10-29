@@ -10,6 +10,7 @@ using GalNet.Contracts.Builtins.Variants;
 using GalNet.Core.Assets;
 using GalNet.Core.Execution;
 using GalNet.Core.Runtime;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
@@ -48,7 +49,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
         Action<GameRegistration, AvaloniaGamePresentation> configure,
         IEnumerable<string> requiredInstructions,
         AvaloniaGamePresentationOptions? options = null, LibVLC? sharedLibVlc = null,
-        AudioConfiguration? audioConfiguration = null, CancellationToken cancellationToken = default)
+        AudioConfiguration? audioConfiguration = null, CancellationToken cancellationToken = default, LibVlcFactory? mediaFactory = null)
     {
         options ??= new AvaloniaGamePresentationOptions();
         var presentation = new AvaloniaGamePresentation();
@@ -70,7 +71,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
             presentation.AudioModule = new BuiltinAudioModule(presentation.Audio, configuration: audioConfiguration);
             presentation.Video = options.CreateVideoPresenter is { } createVideo
                 ? createVideo(assets, gameplay, files) ?? throw new InvalidOperationException("The video presenter factory returned null.")
-                : new AvaloniaVideoPresenter(assets, gameplay, files: files, sharedLibVlc: sharedLibVlc);
+                : new AvaloniaVideoPresenter(assets, gameplay, files: files, sharedLibVlc: sharedLibVlc, mediaFactory: mediaFactory);
             using var registration = new GameRegistration();
             configure(registration, presentation);
             registration.RegisterImplementation(GalNet.GameHost.DialogueHistoryJournal.CreateModule());

@@ -13,7 +13,7 @@ GameHost ───────────────── 游戏会话、内�
 Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
 Media.Audio ─────────────── 跨平台 PCM 混音与 DSP
 Media.Miniaudio ──────────── 原生设备与流式解码适配（当前实机验证 Windows x64）
-Media.LibVlc ────────────── 视频/Gallery 共用的 LibVLC 生命周期
+Media.LibVlc ────────────── 视频/Gallery/Editor 共用的原生初始化、配置与独立媒体会话工厂
 Runtime ────────────────── Graph、Compiled Group、Engine、存档状态与宿主端口
 Assets ─────────────────── Local/PAK provider、Archive、AssetManager
 Storage.FileSystem ─────── 项目/安装内容、保存、变量与进度实现
@@ -47,6 +47,7 @@ flowchart TB
     Media --> Assets
     Media --> Ports[Presentation.Abstractions]
     GameView --> Ports
+    GameView --> Media
     GameView --> Rendering[Avalonia.Rendering]
     Runtime --> Core
     Ports --> Contracts

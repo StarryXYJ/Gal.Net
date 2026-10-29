@@ -122,6 +122,7 @@
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
@@ -147,6 +148,16 @@
       },
       "galnet.core": {
         "type": "Project"
+      },
+      "galnet.media.libvlc": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "LibVLCSharp": "[3.10.0, )"
+        }
       },
       "galnet.presentation.abstractions": {
         "type": "Project",

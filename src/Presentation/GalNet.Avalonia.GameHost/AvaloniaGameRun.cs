@@ -4,11 +4,11 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.GameHost;
+using GalNet.Media.LibVlc;
 using GalNet.Runtime.Engine;
 using GalNet.Runtime.Logging;
 using GalNet.Runtime.Runtime;
 using GalNet.Storage.FileSystem;
-using LibVLCSharp.Shared;
 
 namespace GalNet.Avalonia.GameHost;
 
@@ -63,7 +63,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     public static async Task<AvaloniaGameRun> CreateAsync(
         GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
         PlayerSession saveSession, IAvaloniaPlayerSettings playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
-        GalNet.Contracts.Builtins.Audio.AudioConfiguration audioConfiguration, LibVLC? sharedLibVlc, Func<bool, string?, Task> updateStateAsync,
+        GalNet.Contracts.Builtins.Audio.AudioConfiguration audioConfiguration, LibVlcRuntime mediaRuntime, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
         Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
     {
@@ -71,8 +71,8 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
             visuals.PreloadedTextures, visuals.EffectPrograms, resources.MediaFiles,
             (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
             resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
-                .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, sharedLibVlc,
-            audioConfiguration: audioConfiguration, cancellationToken: cancellationToken);
+                .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, mediaRuntime.Instance,
+            audioConfiguration: audioConfiguration, cancellationToken: cancellationToken, mediaFactory: mediaRuntime.Factory);
         GameRun? run = null;
         AvaloniaGameRun? adapter = null;
         try

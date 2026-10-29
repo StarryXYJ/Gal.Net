@@ -1,10 +1,11 @@
 using LibVLCSharp.Shared;
+using GalNet.Media.LibVlc;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 
 namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>Owns thumbnail extraction and its temporary cache independently of Gallery playback.</summary>
-internal sealed class GalleryThumbnailService : IDisposable
+internal sealed class GalleryThumbnailService(LibVlcFactory mediaFactory) : IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly CancellationTokenSource _lifetime = new();
@@ -25,8 +26,7 @@ internal sealed class GalleryThumbnailService : IDisposable
             var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".png");
             if (_vlc is null)
             {
-                LibVLCSharp.Shared.Core.Initialize();
-                _vlc = new LibVLC("--no-video-title-show");
+                _vlc = mediaFactory.Create();
             }
             using var player = new MediaPlayer(_vlc);
             using var media = new LibVlcMedia(_vlc, sourcePath);

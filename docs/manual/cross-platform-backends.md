@@ -64,6 +64,24 @@ cmake --build out/native-ios --config Release
 
 剧情视频可通过 `AvaloniaGamePresentationOptions.CreateVideoPresenter` 提供任意 `IVideoPresenter`，返回实例由呈现会话拥有并优先异步释放。该 presenter 需要将画面接入宿主场景组合，不能仅创建一个脱离图层的播放器。默认仍为 LibVLC CPU 像素输出，不宣称已经支持移动端硬件解码与零拷贝。需要继续用 LibVLC 时，可用 `LibVlcRuntime(() => CreatePlatformLibVlc())` 完成平台初始化并创建实例；运行时拥有返回值，工厂失败保留 InitializationError。Gallery 当前仍使用默认 LibVLC 服务和控件，不会随剧情视频工厂一起替换。
 
+## 桌面 VLC 配置与会话所有权
+
+剧情视频、Gallery 播放/缩略图和 Editor 音频预览通过 `GalNet.Media.LibVlc.LibVlcFactory` 创建会话。组合根可以在 `AddAvaloniaGameViewPages` / `AddEditorServices` 前注册自己的 singleton factory；默认注册使用 TryAdd，不覆盖宿主选择。工厂只集中原生初始化和加载配置，每个调用方仍释放自己的 LibVLC/MediaPlayer，Gallery 与剧情播放器不互相接管。
+
+```csharp
+services.AddSingleton(new LibVlcFactory(new LibVlcOptions
+{
+    NativeLibraryDirectory = absoluteNativeDirectory,
+    PluginDirectory = Path.Combine(absoluteNativeDirectory, "plugins")
+}));
+```
+
+显式路径必须绝对化；私有目录和 UseSystemLibraries 二选一。Windows 默认使用托管入口目录下的 libvlc/<RID>，不依赖工作目录。缺库、缺插件目录或初始化错误包含 RID、配置路径与原始原因，不自动改用已安装 VLC。工厂暴露 NativeVersion / InitializationError；LibVlcRuntime 保留初始化失败以供宿主报告。
+
+原生库加载和 VLC_PLUGIN_PATH 为进程级配置，首次初始化受锁保护；后续会话必须使用相同配置，禁止运行中切换另一套库/插件。插件目录保留至进程结束，因为 VLC 可能延迟加载插件。剧情像素输出继续使用 --avcodec-hw=none。
+
+Linux 默认明确选择系统 loader，作为开发验证基线。LibVLCSharp 的 Core.Initialize(directory) 参数不支持 Linux；显式私有目录会报错，不能把传路径当成私有部署成功。应用私有 Linux 动态依赖与启动加载路径、macOS 原生部署/.app、移动绑定仍需后续阶段实现和实测。当前只有 Windows 的真实视频、Gallery 与 Editor 预览证据，不据此声明三平台应用可用。
+
 ## AOT 与验证范围
 
 静态音频回调和源生成 P/Invoke 已消除该原生边界的动态委托 thunk；Core/Runtime、内置契约、Assets 和文件持久化的玩家 JSON 路径也已接入源生成元数据。状态数组、自定义资源、配置和字段 schema 均提供显式注册入口，普通 JIT 保留反射兼容路径。现有 Headless Sample 用标准 PublishAot 选项完成 Windows x64 原生发布并运行自检，确认动态代码/反射 JSON 均关闭；最终 ILLink/ILC 警告作为错误处理。操作和验收范围见 [NativeAOT 发布与扩展契约](native-aot.md)。

@@ -16,6 +16,7 @@ using GalNet.Editor.Models;
 using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.ViewModels;
+using GalNet.Media.LibVlc;
 using LibVLCSharp.Shared;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 
@@ -28,6 +29,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private readonly IProjectFileCommandExecutor _fileCommands;
     private readonly IProjectService _projects;
     private readonly IEditorLocalizationService _localization;
+    private readonly LibVlcFactory _mediaFactory;
     private bool _loading;
     private bool _isLocked;
     private LibVLC? _vlc;
@@ -64,13 +66,14 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     [ObservableProperty] private Bitmap? _imagePreview;
     [ObservableProperty] private string _imagePreviewError = "";
 
-    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization, ProjectTextFiles? texts = null, IResourceTypeCatalog? types = null)
+    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization, ProjectTextFiles? texts = null, IResourceTypeCatalog? types = null, LibVlcFactory? mediaFactory = null)
     {
         Workspace = workspace;
         _assets = assets;
         _fileCommands = fileCommands;
         _projects = projects;
         _localization = localization;
+        _mediaFactory = mediaFactory ?? LibVlcFactory.Default;
         _projectRoot = projects.Current?.RootPath;
         _texts = texts; _types = types;
         SyncAsset();
@@ -200,8 +203,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private void EnsureAudioPlayer()
     {
         if (_player is not null) return;
-        LibVLCSharp.Shared.Core.Initialize();
-        _vlc = new LibVLC();
+        _vlc = _mediaFactory.Create();
         _player = new MediaPlayer(_vlc);
         _player.TimeChanged += (_, e) => Dispatcher.UIThread.Post(() => { if (_isSeeking) return; _updating = true; AudioPreviewPosition = e.Time; _updating = false; });
         _player.LengthChanged += (_, e) => Dispatcher.UIThread.Post(() => AudioPreviewDuration = Math.Max(1, e.Length));

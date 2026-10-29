@@ -1,18 +1,19 @@
 using Avalonia.Media.Imaging;
 using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Media.LibVlc;
 using LibVLCSharp.Shared;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 
 namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>Scoped media session used by the default Gallery pages.</summary>
-public sealed class GalleryMediaService(IGameSessionService session) : IDisposable
+public sealed class GalleryMediaService(IGameSessionService session, LibVlcFactory? mediaFactory = null) : IDisposable
 {
     private LibVLC? _libVlc;
     private MediaPlayer? _audioPlayer;
     private MediaPlayer? _videoPlayer;
-    private bool _initializationAttempted;
-    private readonly GalleryThumbnailService _thumbnails = new();
+    private readonly LibVlcFactory _factory = mediaFactory ?? LibVlcFactory.Default;
+    private readonly GalleryThumbnailService _thumbnails = new(mediaFactory ?? LibVlcFactory.Default);
 
     public event Action? PlaybackChanged;
 
@@ -160,12 +161,7 @@ public sealed class GalleryMediaService(IGameSessionService session) : IDisposab
     private LibVLC GetLibVlc()
     {
         if (_libVlc is not null) return _libVlc;
-        if (!_initializationAttempted)
-        {
-            _initializationAttempted = true;
-            LibVLCSharp.Shared.Core.Initialize();
-        }
-        return _libVlc = new LibVLC("--no-video-title-show");
+        return _libVlc = _factory.Create();
     }
 
 }

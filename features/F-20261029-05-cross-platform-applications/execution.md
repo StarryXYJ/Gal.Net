@@ -81,3 +81,41 @@ P1 已提交为 5cc98d23。按用户要求只提交本 feature 内容，CI/relea
 - P2 verified：Windows 合包切片通过上述验证；验证机安装了 SDK，使用受控搜索路径隔离，不声称使用了全新无 SDK VM。
 - P0/P1 仍 in-progress：其他平台探针和无 SDK 分发 Editor 原生 UI 导出尚待补齐。P2 的 Sample 启动不能代替 Editor 操作验收；P1 已知两项既有 UI 测试失败仍保留。
 - 开始 P3a 统一 VLC 初始化/会话工厂；P3b 再推进各目标原生部署与完整运行包。P3 整体仍未验收，CrossPlatform 项目继续留待 P6。
+
+## 2026-10-29：P3a 桌面 VLC 初始化与媒体回归
+
+P2 提交为 3898881。P3a 作为 P3 的独立可验证切片完成；P3 整体仍 in-progress。
+
+### 实现
+
+- Media.LibVlc 的 LibVlcOptions / LibVlcFactory 统一绝对路径、私有/系统加载选择、插件环境及版本/失败诊断；首次 native 初始化受进程级锁保护，后续拒绝不同配置，失败信息含 RID/配置路径。不以缺库后自动使用已安装 VLC 掩盖部署问题。
+- 剧情视频（含共享 runtime 失败后的回退创建）、Gallery 播放、Gallery 缩略图、Editor 音频预览全部接入同一工厂。DI 默认 TryAdd，保留组合根显式注册；各使用方继续拥有并释放自己的 LibVLC/MediaPlayer。
+- Windows 默认从托管入口位置选择 libvlc/<RID>；Linux system loader 仅为开发基线，显式私有目录明确报不支持，等待 P3b 处理启动加载路径。macOS/移动原生部署仍未验收。
+- GameView 在已依赖 LibVLCSharp 的媒体适配边界引用 Media.LibVlc；Core/Runtime 不增加平台依赖，架构图/依赖门禁同步。
+- Editor 全量发现 P2 严格闭包检查暴露 DefaultContracts 仅部署入口 DLL 的旧缺口。补齐构建/发布的 Core/Builtins，不放宽校验；采用显式 Content 路径保证首次干净构建不会因求值时通配符为空而漏 DLL。已更新 L-20261029-07。
+
+### 验证
+
+| 检查 | 结果/证据 |
+| --- | --- |
+| Presentation 普通全量 | 302 通过；out/cross-platform-p3a-results/p3a-presentation.trx |
+| Architecture | 52 通过；p3a-architecture.trx |
+| Integration 普通全量 | 181 通过；p3a-integration.trx |
+| Editor 普通全量 | 修复默认契约部署后 354 通过、原有同两项 UI 失败；p3a-editor.trx，不声明全绿 |
+| Windows 实际媒体 | 5 项通过，LibVLC 3.0.23：真实 1280x738 视频像素进入场景合成、自然结束/跳过、加载期间隐藏/替换、Gallery 播放/缩略图、独立会话释放及拒绝配置切换；p3a-native-media.trx，out/cross-platform-p3a-video.png |
+| Editor 实际音频 | 新建作者项目导入真实 MP3，注入私有工厂，经 Inspector 命令播放、时长回调、暂停、释放通过；p3a-editor-native.trx |
+| Sample 分发 | 正常发布、compose、含空格目录解包；SDK 搜索隔离启动，确认 coreclr 与 libvlc.dll 均来自本包、会话就绪后正常关闭 exit 0；p3a-native-application.trx |
+| Editor 分发 | Windows 自包含 R2R 发布/CLI 合并成功；DefaultContracts 三份 DLL 完整，Core/Builtins 与宿主 hash 一致；分发 CLI 在 SDK 搜索隔离下用默认契约创建项目、schema 查询通过；out/cross-platform-p3a-default-{create,schema}.json |
+| 锁文件 | 普通、Sample NoGameDebugging、Editor WindowsReadyToRun、Sample R2R Player/Developer 图更新并 locked restore 通过；仅项目依赖变化，无第三方升级 |
+| 文本 | git diff --check 通过 |
+
+Sample 候选为 out/cross-platform-p3a-game.zip，SHA-256 6fbb86990dc8a3adc03d73c250af0bf5ff94138e17900cac0281acf3517a43d8。Editor 候选位于 out/cross-platform-p3a-editor-runtime/0.1.0-dev.6。它们是当前工作区候选，不宣称精确已提交 tag 发行。
+
+默认契约缺失的首次 Editor 失败日志保存在 out/cross-platform-p3a-editor-before-default-contract-fix.log。该测试未结束时误启动下一次重建，发生 DLL 文件锁；已核实并停止本次自有旧测试进程，随后串行重建/全量完成。此为验证编排错误，没有修改产品规避文件锁；沿用已有“构建/测试不争用输出”经验。
+
+### 下一步与限制
+
+- P3a verified（Windows 配置/媒体切片）；P3b 推进按目标 RID 选择原生载荷、Linux/macOS 构建/发布、应用选择/调试与内容定位。
+- WSL 复查仍为 Ubuntu 26.04.1：gcc/tar 与 WSLg 可用，dotnet/cmake/pkg-config 未定位；未安装软件。Ubuntu 24.04 最低基线、macOS 两架构及移动设备证据仍缺。
+- P1 的原生分发 Editor UI 两种导出烟测依旧待补；此次实际 Editor 音频使用 headless UI + 真 native 媒体，不能代替原生 Editor 导出操作。
+- SDL、build-compose、移动宿主尚未实现。CrossPlatform 工程仍保留原骨架，待 P6 集中同步。
