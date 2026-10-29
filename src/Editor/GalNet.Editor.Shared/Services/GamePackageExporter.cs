@@ -11,6 +11,7 @@ using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -54,7 +55,7 @@ public static class GamePackageExporter
                 Directory.CreateDirectory(Safe(publish, directory));
             await VerifyDirectoryAsync(publish, prepared.Base.Concat(prepared.Stories), resourceTypes, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            Directory.Move(publish, target);
+            await FilePublication.MoveDirectoryAsync(publish, target, cancellationToken).ConfigureAwait(false);
             publish = null;
             return GameContentExportResult.Succeeded(target);
         }
@@ -98,7 +99,7 @@ public static class GamePackageExporter
             await VerifyZipAsync(temporary, payloads, resourceTypes, cancellationToken);
             await File.WriteAllBytesAsync(Path.Combine(output, SafeName(projectName) + ".layout.json"), prepared.Layout, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, target, true);
+            await FilePublication.MoveFileAsync(temporary, target, overwrite: true, cancellationToken).ConfigureAwait(false);
             temporary = null;
             return GamePackageExportResult.Succeeded(target);
         }

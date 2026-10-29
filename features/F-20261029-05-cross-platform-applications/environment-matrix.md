@@ -25,7 +25,9 @@ WSL 发行版查询在受限进程内曾返回访问拒绝；通过获准的 WSL
 
 证据目录和精确结果见 execution.md。
 
-WSLg 图形对照：本机默认使用 llvmpipe（软件渲染），进程级 `GALLIUM_DRIVER=d3d12` 可启用 Intel UHD 硬件加速。Sample 实际进程加载 D3D12 图形库并完成启动/退出；blur 性能尚待此模式下测量。用户最新反馈为声音已正常，仅保留 blur 等效果卡顿待查。
+WSLg 图形对照：本机默认使用 llvmpipe（软件渲染），进程级 `GALLIUM_DRIVER=d3d12` 可启用 Intel UHD 硬件加速。Sample 实际进程加载 D3D12 图形库并完成启动/退出；用户随后确认新入口 blur 人工复测通过、音频正常，尚无帧耗时测量。
+
+后续 dev.9 已完成 Ubuntu 24.04 apt 索引 SHA256 校验的私有媒体闭包与 tar.gz 本地候选；独立解包的 Editor/Sample 正常启动退出、包内 VLC/FFmpeg 视频帧、CLI 两种导出及安装检查通过。旧手测依赖目录继续保留以免破坏原入口，不把旧 404 状态沿用到新候选。公开再分发许可/源码可用性、完整媒体流程及原生 Linux 桌面仍待验收，见 execution.md。
 
 ## 内容闭包结论与实施选择
 

@@ -108,7 +108,7 @@ Sample 默认使用用户 `LocalApplicationData/GalNet/<project identity digest>
 
 内容导出的 `contractFiles` 记录加载该项目 schema 时的完整契约闭包字节身份，并参与 buildId。重新导出前若磁盘契约与已加载 catalog 不一致则拒绝，需重新加载项目；合包逐项核对运行包中同名 DLL 的大小/hash。普通编辑器默认契约和 Sample 契约并不相同，创作项目应使用目标运行包的契约。低层 API 手工构造且没有契约身份的 catalog 可以导出，但其内容不能用于严格合包。
 
-Linux/macOS 归档、源码 `build-compose` 与签名仍在后续阶段；当前 sh 入口的 Windows 验证不代表 Linux 运行包已可用。
+Linux 本地候选归档见下文；通用 Linux/macOS `compose`、源码 `build-compose` 与签名仍在后续阶段。
 
 需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，保留 PDB，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
 
@@ -123,6 +123,32 @@ pwsh -File scripts/release/Test-Release.ps1 -Version 0.1.0-dev.1 `
 ```
 
 桌面 smoke 使用分发 CLI 创建并导出唯一项目，复制分发玩家到测试目录，通过其真实默认策略创建唯一用户 profile，准备已完成首次启动的计数。检查 session 初始化日志后终止测试自己的进程，保留日志副本并清理该唯一 profile；不借用现有游戏数据。它验证播放器和目录策略，整合内容另作清单/PAK 检查，不证明完整 GameTestCase 剧情、存读档和音视频全流程验收通过。
+
+## Linux 本地候选（Ubuntu 24.04 x64）
+
+在 Windows 构建机上，用预先编译的 Linux miniaudio 动态库发布三个自包含程序；不需要在目标机器安装 .NET：
+
+```powershell
+pwsh -File scripts/release/Publish-Linux.ps1 -Version 0.1.0-dev.9 `
+  -MiniaudioNativePath out/native-linux/libgalnet_miniaudio.so `
+  -OutputDirectory out/linux-raw -SampleFlavor Developer
+```
+
+随后在 Ubuntu 24.04 x64（可用 WSL）运行，路径使用 Linux 形式：
+
+```sh
+python3 scripts/release/prepare-linux-media.py --work-directory out/linux-deps --output-directory out/linux-media
+python3 scripts/release/package-linux.py --publish-directory out/linux-raw --media-directory out/linux-media --output-directory out/linux-candidate
+python3 scripts/release/test-linux-packaging.py
+```
+
+媒体准备使用该 Ubuntu 的 apt 源，在独立目录解析/下载依赖并核对索引中的 SHA256，不安装系统软件；需要网络。打包输出目录必须尚不存在。可选 `--content <完整内容目录>` 生成整合 Sample，核对 PAK 和目标 Sample 的契约字节身份。
+
+输出包含 Editor/CLI、纯 Sample、可选整合 Sample 的 tar.gz、Contracts ZIP、SHA256SUMS 与 linux-release-index.json。用 `tar -xzf` 在 Linux 解包后执行根目录的 `GalNet.Editor`、`GalNet.Editor.Headless` 或 `GalNet.Sample.Avalonia`；启动脚本设置包内媒体 loader/plugin 路径，实际程序位于 lib。保留完整目录及执行权限，不直接启动 lib 中的 apphost。WSLg 检测到 `/dev/dxg` 且调用者没有指定 `GALLIUM_DRIVER` 时选择 d3d12。
+
+这套入口生成本地候选，尚未接入公开 Release/Push。宿主仍需 glibc、ICU、显示/图形驱动、CJK 字体及音频服务；不会打包构建机 GPU 驱动。包内保留 Ubuntu 依赖版本、来源、hash 与版权文件，公开再分发前需审查许可和对应源码可用性。原生 Linux 桌面、其他发行版与 macOS 的验收独立进行。
+
+.NET 的可选 libcoreclrtraceptprovider.so 随运行时保留，只核对架构，不作为游戏媒体闭包的必需依赖；当前基线缺少它所需的旧 liblttng-ust.so.0，未验收 LTTng 系统追踪。相关诊断的额外前置条件见 [微软 PerfCollect 文档](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/trace-perfcollect-lttng)。普通程序与媒体运行不使用该追踪入口。
 
 ## AOT 当前状态
 

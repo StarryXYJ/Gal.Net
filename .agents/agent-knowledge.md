@@ -1,6 +1,10 @@
 # GalNet Agent Knowledge
 
-- [WSLg 图形驱动选择](lessons/L-20261029-14-wsl-renderer-selection.md)：当前 Ubuntu 24.04.3 默认 llvmpipe，进程级 GALLIUM_DRIVER=d3d12 已确认 Intel UHD 硬件驱动及 Sample 启动/退出；scripts/samples/run-wsl-sample.sh 保留原 manual-profile。驱动验证不等于 blur 性能已验收；用户最新确认音频正常。
+- [Windows 原子发布句柄冲突](lessons/L-20261029-15-windows-publication-sharing.md)：独立 Move 探针确认短暂冲突；FilePublication 仅 Windows 5/32/33 有界重试，保持原子性与取消，回滚不继承取消。真实句柄回归及两种分发 40 次导出通过。
+
+- [WSLg 图形驱动选择](lessons/L-20261029-14-wsl-renderer-selection.md)：当前 Ubuntu 24.04.3 默认 llvmpipe，进程级 GALLIUM_DRIVER=d3d12 已确认 Intel UHD 硬件驱动及 Sample 启动/退出；scripts/samples/run-wsl-sample.sh 保留原 manual-profile。用户随后确认新入口 blur 人工复测通过、音频正常；尚无帧耗时测量。
+
+- Linux 本地候选入口：scripts/release/Publish-Linux.ps1、prepare-linux-media.py、package-linux.py；Ubuntu 24.04.3 / WSLg 已验证 tar 权限/hash、独立 Editor/Sample 正常退出、包内 VLC/FFmpeg 像素与 CLI 两种导出/安装。许可及对应源码可用性、原生 Linux 桌面/完整媒体仍待验收；可选 .NET LTTng 追踪不在支持范围。见 docs/manual/release-packaging.md。
 
 - [跨平台默认字体](lessons/L-20261029-13-portable-default-font.md)：UI 跟随宿主默认字体，显式 CJK 回退统一优先 Noto/思源黑体（用户要求避免专有字体依赖）；Sample 显式选择已注册的内置 Inter，不能假定 WithInterFont 自动改变默认。Ubuntu 24.04.3 / WSLg 已验证窗口、会话及确认退出；Inter 不含中文，中文显示仍需 CJK 字体。
 

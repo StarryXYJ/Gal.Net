@@ -165,4 +165,47 @@ P3b 启动/字体切片已取得上述证据，P3 整体仍 in-progress。macOS 
 - 当前 WSL 默认 `glxinfo -B` 为 llvmpipe、Accelerated: no；进程级 `GALLIUM_DRIVER=d3d12` 对照为 Intel UHD Graphics、Accelerated: yes。默认软件渲染是已确认的环境问题，但不能由此证明 blur 开销全部来自它。
 - 新增 `scripts/samples/run-wsl-sample.sh`，复用现有 Developer 候选、工作区原生依赖和 manual-profile。在存在 `/dev/dxg` 且调用者未设置 GALLIUM_DRIVER 时，为本次子进程选择 d3d12；打印诊断，不修改全局配置。`--check` 不启动游戏；显式 llvmpipe 对照仍被保留。
 - `bash -n`、候选/显示检查和 d3d12/llvmpipe 两种驱动检查通过。独立 profile 的实际 Sample D3D12 启动、会话就绪、确认退出 exit 0 通过，进程 maps 确认加载 libd3d12.so / libd3d12core.so，见 `out/cross-platform-p3b-current/smoke/46625ce92974451c933742fb39b9764e/`。
-- 未测 blur 帧耗时，也未由驱动加载结果推定 SceneRenderPipeline 全部走 GPU。用户使用新入口后的效果流畅性仍待确认；P3 不因此整体 verified。
+- 未测 blur 帧耗时，也未由驱动加载结果推定 SceneRenderPipeline 全部走 GPU。用户随后使用新入口确认“ok了”，记录为声音正常、blur 卡顿人工复测通过；P3 不因此整体 verified。
+
+## 2026-10-29：Windows 原子发布与 Linux 独立候选
+
+### Windows 短暂句柄冲突
+
+独立于 GalNet 的最小 Directory.Move 探针在有 FileSystemWatcher 时 100 次失败 1 次、无 watcher 时 100 次失败 2 次；失败后等待 100ms 均成功。确认短暂的 Windows 重命名冲突，未识别具体持有句柄的外部程序，不归因为 watcher 或杀毒软件。
+
+FilePublication 仅在 Windows 的错误码 5/32/33 下重试原生 Move，最多六次、累计等待 620ms，保持原子发布、目标不覆盖及取消语义。ProjectContentBuilder、项目创建、目录/归档导出、组合包和 profile 文件替换共用它；回滚不继承已取消的 token，以便恢复原输出。永久拒绝仍失败，不使用删除后复制降级。
+
+- Storage 全量 32/32、Editor.Shared 全量 494/494 通过；新增真实不共享 delete 的 Windows 句柄测试覆盖短暂/永久占用、取消及保留旧文件。
+- Windows `0.1.0-dev.9` 七个 ZIP 载荷验证通过；SelfContained、FrameworkDependent 的完整 DesktopSmoke 均通过，检查包内/系统运行时来源、独立项目创建/导出及真实 Editor/Sample 初始化。该脚本会终止测试进程，不作为正常退出证据。
+- 两种分发 CLI 各连续导出 20 次，40/40 成功。
+- 精简证据归档在 `out/cross-platform-validation/20261029/`；最终 Windows 候选为 `out/release/0.1.0-dev.9/`。候选包含当时工作区改动，不是精确已提交 tag 的公开发行。
+
+### Linux 候选工具
+
+新增 `Publish-Linux.ps1`、`prepare-linux-media.py`、`package-linux.py`：Desktop/linux-x64 自包含发布、Ubuntu 24.04 私有媒体闭包、保留权限与空目录的 tar.gz，合并 Editor/CLI 并核对重名依赖、严格契约、内容文件大小/hash 及 native ELF/ldd。准备媒体只下载/提取到独立工作目录，不安装或更新系统软件。包内启动脚本设置自己的 native/VLC 路径，并沿用已验证的 WSLg d3d12 选择条件。
+
+Linux 包含纯 Developer Sample、GameTestCase 整合 Sample、Editor/CLI 与 Contracts；仍是本地候选。宿主 glibc、ICU、图形驱动、显示、字体和音频服务属于系统前置条件。记录 Ubuntu 包来源、版本、SHA256 与版权文件；公开再分发前仍需完成对应源码可用性和许可审查。Linux/macOS compose 与源码 build-compose 尚未实现，不能把手工构建整合候选记为通用 compose 已完成。
+
+打包保护测试 8/8 通过（权限/空目录、拒绝链接、依赖冲突、媒体目录与 publish 根目录错误 ELF、输出目录边界）。Linux 实际重新解包及窗口验证结果如下。
+
+| Linux dev.9 检查 | 结果与证据（out/cross-platform-validation/20261029） |
+| --- | --- |
+| 最终归档 | 三个 tar.gz、Contracts ZIP，逐项索引 size/SHA256、解包后全部发行文件 hash 通过；含空格路径、执行权限、空扩展目录通过，linux-extraction.json |
+| 分发 CLI | 自包含、DOTNET_ROOT 指向不存在目录，help、包内默认创作 Skill、指定 Sample 契约创建项目、schema、文件夹/galpak 两种导出、galpak 安装及两次 inspect 全通过，linux-cli-result.json |
+| Editor 原生窗口 | 解包后的 Editor 弹出标题窗口，包内 coreclr、宿主 D3D12，WM_DELETE 正常退出 0；linux-smoke/873880aa7a9d4724a8375eb8055d4d6a/result.json |
+| Sample 原生窗口 | 整合 Developer Sample 会话就绪、确认退出 0；包内 coreclr/Skia/VLC 及宿主 D3D12，未注入旧 deps；linux-smoke/ac8e74081cee4d90b63fc1b3fae7583a/result.json |
+| 视频原生闭包 | ctypes 使用包内 VLC/FFmpeg 解码真实 niko.mp4，取得 5 帧且像素非零；未设置 VLC_PLUGIN_PATH，覆盖托管默认工厂清空该变量后的自动发现路径；linux-media-result.json |
+
+视频探针 stderr 仍输出两次 Failed to create video converter，随后成功得到像素；保留 linux-media-stderr.log，不将此次短探针扩写为所有视频格式、Gallery/缩略图或长期播放已验收。它只证明该包原生依赖和 CPU 解码路径实际可用。
+
+发布根目录的 .so 另核对 ELF 架构与 ldd；可选 .NET LTTng 系统追踪 provider 依赖本机缺少的旧 liblttng-ust.so.0，明确排除其 ldd 必需性检查、仍校验 ELF 并保留原文件。当前不声明支持 PerfCollect/LTTng，未安装旧库或伪造 SONAME 链接。结果见 linux-published-native.json。
+
+首次解包探针把 /proc/maps 按全部空格拆分，截断含空格路径；修正为只拆前五列后重验 Editor/Sample/媒体来源通过。CLI 夹具先误用 project export（应按 help 使用 export），又将 galpak 传给只接受目录的 game inspect；修正为 galpak install 后 inspect，全部通过。这些是探针错误，未修改产品行为规避。
+
+最终 Linux 本地候选：`out/linux-release/0.1.0-dev.9/`。Windows 与 Linux 候选保留原始封存字节，清单中的 sourceCommit 为打包时 HEAD，包含当时尚未提交的本 feature 改动，不宣称精确 tag 构建。
+
+### 清理与尚未验收范围
+
+先保存 TRX、重命名探针、40 次导出结果、Windows 启动/CLI 日志、Linux 解包/窗口/解码/CLI 结果及媒体来源，再清理本次旧版 Windows 候选、重复 smoke 解包、发布 staging、Linux apt 下载缓存/媒体中间目录/原始 publish 与临时 ext4 解包。精确删除清单和字节数在 cleanup-*.json。保留最新 Windows/Linux dev.9、原 `linux-developer`、旧 launcher 依赖与用户 `manual-profile`；未触及用户已有 iOS packages.lock.json 改动。
+
+P3b 的 Ubuntu 24.04.3 / WSLg 本地候选切片通过；P3 整体仍 in-progress。后续包括 P1 原生 Editor UI 两种导出、完整 Linux 媒体/Gallery/调试与原生桌面、媒体公开再分发审查、macOS、SDL、Linux/macOS compose 与 build-compose，以及 P6/P7 移动模板/真机。macOS 当前不可验证不阻挡其他切片。

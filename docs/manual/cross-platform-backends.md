@@ -97,7 +97,7 @@ services.AddSingleton(new LibVlcFactory(new LibVlcOptions
 
 原生库加载和 VLC_PLUGIN_PATH 为进程级配置，首次初始化受锁保护；后续会话必须使用相同配置，禁止运行中切换另一套库/插件。插件目录保留至进程结束，因为 VLC 可能延迟加载插件。剧情像素输出继续使用 --avcodec-hw=none。
 
-Linux 默认明确选择系统 loader，作为开发验证基线。LibVLCSharp 的 Core.Initialize(directory) 参数不支持 Linux；显式私有目录会报错，不能把传路径当成私有部署成功。应用私有 Linux 动态依赖与启动加载路径、macOS 原生部署/.app、移动绑定仍需后续阶段实现和实测。当前只有 Windows 的真实视频、Gallery 与 Editor 预览证据，不据此声明三平台应用可用。
+Linux 默认使用系统 loader；LibVLCSharp 的 Core.Initialize(directory) 参数不支持 Linux，显式私有目录会报错。私有 Linux 候选通过进程启动前的 LD_LIBRARY_PATH 加载包内 native、native/vlc 和托管程序目录，不能靠传入 Core.Initialize 路径实现私有部署。启动入口与打包步骤见 [发行打包](release-packaging.md)。Ubuntu 24.04.3 / WSLg 已验证独立解包后的 Editor/Sample 窗口、正常退出及包内 VLC/FFmpeg 真实视频帧；Gallery/缩略图、完整调试和原生 Linux 桌面仍待验收。媒体来源/版权随包记录，公开再分发前还需源码可用性及许可审查。macOS 原生部署/.app 与移动绑定仍未实测，不声明三平台完整可用。
 
 ## AOT 与验证范围
 

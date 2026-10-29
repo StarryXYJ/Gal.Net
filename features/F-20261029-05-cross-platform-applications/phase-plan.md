@@ -5,6 +5,7 @@
 - 依据：[需求](feature.md)、[设计](design.md)。
 - 当前证据：[执行记录](execution.md)、[环境矩阵](environment-matrix.md)。P1 自动化已完成，原生分发烟测待补；状态仍为 in-progress。
 - 原则：先形成可用的桌面交付切片，再完成移动模板；提前探测 iOS 发布风险。用户已授权持续实现和阶段提交，当前推进 P3，P1 原生 Editor 验收独立保留。
+- 最新切片：Windows dev.9 两种部署完整 DesktopSmoke 与连续 40 次导出通过；Linux 自包含/私有媒体 tar.gz 本地候选生成，具体重新解包和 native 验证见 execution.md。P3 整体仍 in-progress，许可/源码审查、原生 Linux 桌面、macOS 与完整操作验收独立保留。
 
 ## 阶段与依赖
 

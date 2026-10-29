@@ -3,7 +3,7 @@
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
-- 当前进度：P1 原生分发 Editor 的无 SDK 导出烟测待补；P2 Windows 布局/严格合包、P3a Windows 媒体切片已验证。P3b 已在 Ubuntu 24.04.3 / WSLg 验证普通及 Developer Sample 窗口、会话和正常退出，修正默认字体依赖；最新 Windows 本地候选为 0.1.0-dev.8。Linux 正式媒体闭包仍待完成；macOS 当前无验证环境，明确保留未验收，不阻挡 Windows/Linux 可独立推进的工作。跨平台项目仍未同步，结果与限制见 [执行记录](execution.md)及[交接记录](handoff-20261029.md)。
+- 当前进度：P1 原生分发 Editor 的无 SDK 导出烟测待补；P2 Windows 布局/严格合包、P3a Windows 媒体切片已验证。P3b 已在 Ubuntu 24.04.3 / WSLg 验证普通及 Developer Sample 窗口、会话和正常退出，修正默认字体依赖；最新 Windows 本地候选为 0.1.0-dev.9，两种部署完整 DesktopSmoke 及 40 次导出通过。Linux 私有媒体闭包与独立 tar.gz 本地候选已生成，公开再分发许可/源码可用性仍待审查；macOS 当前无验证环境，明确保留未验收。跨平台项目仍未同步，结果与限制见 [执行记录](execution.md)及[交接记录](handoff-20261029.md)。
 
 ## 用户目标与已确认决策
 

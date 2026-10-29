@@ -16,4 +16,4 @@ Ubuntu 24.04.3 / WSLg 本机存在 /dev/dxg、Mesa d3d12 驱动与 /usr/lib/wsl/
 
 入口：scripts/samples/run-wsl-sample.sh（--check 仅检查，不启动游戏）。
 证据：out/cross-platform-p3b-current/smoke/46625ce92974451c933742fb39b9764e/。
-用户最新反馈声音已经正常，后续只查 blur 等效果卡顿；不得继续沿用过时的无声问题状态。
+用户最新反馈声音已经正常，并在使用新入口后确认 blur 人工复测“ok了”；不再保留无声或 blur 仍未复测的过时状态，尚无帧耗时测量。

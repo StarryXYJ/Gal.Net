@@ -75,7 +75,7 @@ public static class GameDistributionComposer
             await using var archive = File.OpenRead(temporary);
             var hash = Convert.ToHexStringLower(await SHA256.HashDataAsync(archive, cancellationToken));
             await archive.DisposeAsync();
-            File.Move(temporary, target);
+            await FilePublication.MoveFileAsync(temporary, target, cancellationToken: cancellationToken).ConfigureAwait(false);
             return new(target, hash, packed.Manifest.ProjectId, packed.Manifest.BuildId);
         }
         finally
