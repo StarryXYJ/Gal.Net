@@ -11,7 +11,7 @@ namespace GalNet.Storage.FileSystem;
 public sealed record GameDistributionResult(string PackagePath, string Sha256, string ProjectId, string BuildId);
 
 /// <summary>Combines immutable application and content inputs without invoking a compiler or loading project code.</summary>
-public static class GameDistributionComposer
+public static partial class GameDistributionComposer
 {
     public const string ManifestPath = "docs/release-manifest.json";
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web)
@@ -26,8 +26,8 @@ public static class GameDistributionComposer
         var runtimeSource = Path.GetFullPath(runtime);
         var contentSource = Path.GetFullPath(content);
         var target = Path.GetFullPath(output);
-        if (!target.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-            throw new ArgumentException("The Windows distribution output must be a new .zip file.", nameof(output));
+        if (!target.EndsWith(".zip", StringComparison.OrdinalIgnoreCase) && !IsTarGz(target))
+            throw new ArgumentException("Distribution output must be a new .zip (Windows) or .tar.gz (Linux) file.", nameof(output));
         foreach (var input in new[] { runtimeSource, contentSource })
         {
             FileSystemPaths.RequireNoLinks(input, "Distribution inputs cannot use symbolic links.");
@@ -42,18 +42,49 @@ public static class GameDistributionComposer
         try
         {
             var game = Path.Combine(stage, "game");
+            Dictionary<string, UnixFileMode>? unixModes = null;
             if (Directory.Exists(runtimeSource)) await CopyTreeAsync(runtimeSource, game, cancellationToken);
+            else if (IsTarGz(runtimeSource))
+            {
+                unixModes = await ExtractTarRuntimeAsync(runtimeSource, game, cancellationToken);
+                if (!File.Exists(Path.Combine(game, ApplicationPackageLayout.FileName)))
+                {
+                    var children = Directory.GetFileSystemEntries(game);
+                    if (children.Length != 1 || !Directory.Exists(children[0]))
+                        throw new InvalidDataException("Runtime archive must contain one application root.");
+                    game = children[0];
+                    var prefix = Path.GetFileName(game) + "/";
+                    unixModes = unixModes.Where(pair => pair.Key.StartsWith(prefix, StringComparison.Ordinal))
+                        .ToDictionary(pair => pair.Key[prefix.Length..], pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+                }
+            }
             else await ExtractRuntimeAsync(runtimeSource, game, cancellationToken);
             var layout = ApplicationPackageLayout.Read(game);
             var manifest = await VerifyApplicationAsync(game, layout, cancellationToken);
-            if (layout.RuntimeIdentifier != "win-x64")
-                throw new InvalidDataException("compose currently supports win-x64 ZIP distributions; other targets require their platform packager.");
+            if (layout.RuntimeIdentifier is not ("win-x64" or "linux-x64"))
+                throw new InvalidDataException("compose currently supports win-x64 and linux-x64 distributions.");
+            var linux = layout.RuntimeIdentifier == "linux-x64";
+            if (linux != IsTarGz(target))
+                throw new InvalidDataException("Use .zip output for Windows and .tar.gz output for Linux.");
             if (manifest["package"]?.GetValue<string>() != "Sample")
                 throw new InvalidDataException("Select a pure Sample runtime package without installed game content.");
-            using (var stream = File.OpenRead(FileSystemPaths.ResolveRelativeFile(game, layout.EntryPoint)))
-            using (var pe = new PEReader(stream))
+            if (linux)
+            {
+                if (unixModes is null)
+                {
+                    if (!Directory.Exists(runtimeSource) || OperatingSystem.IsWindows())
+                        throw new InvalidDataException("Linux directory permissions require a Unix host; use a .tar.gz runtime on Windows.");
+                    unixModes = CaptureUnixModes(runtimeSource);
+                }
+                VerifyLinuxEntry(game, layout, manifest, unixModes);
+            }
+            else
+            {
+                using var stream = File.OpenRead(FileSystemPaths.ResolveRelativeFile(game, layout.EntryPoint));
+                using var pe = new PEReader(stream);
                 if (pe.PEHeaders.CoffHeader.Machine != Machine.Amd64 || pe.PEHeaders.CorHeader is not null)
                     throw new InvalidDataException("The win-x64 application entry must be an x64 native apphost.");
+            }
             var gameContent = FileSystemPaths.ResolveRelativeFile(game, layout.ContentDirectory);
             if (Directory.Exists(gameContent) && Files(gameContent).Any())
                 throw new InvalidDataException("The runtime already contains game content.");
@@ -70,7 +101,8 @@ public static class GameDistributionComposer
             manifest["files"] = JsonSerializer.SerializeToNode(await CaptureFilesAsync(game, cancellationToken), Options);
             await File.WriteAllTextAsync(Path.Combine(game, ManifestPath), manifest.ToJsonString(Options), cancellationToken);
             await VerifyApplicationAsync(game, layout, cancellationToken);
-            await WriteZipAsync(game, temporary, cancellationToken);
+            if (linux) await WriteTarAsync(game, temporary, Path.GetFileName(target)[..^7], unixModes!, cancellationToken);
+            else await WriteZipAsync(game, temporary, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             await using var archive = File.OpenRead(temporary);
             var hash = Convert.ToHexStringLower(await SHA256.HashDataAsync(archive, cancellationToken));

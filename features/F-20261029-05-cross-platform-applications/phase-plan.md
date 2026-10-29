@@ -15,13 +15,15 @@
 | P1 | Editor 仅保留两种完整内容导出 | P0 内容闭包结论 | in-progress |
 | P2 | 应用布局契约与 Windows 无 SDK 合包切片 | P1 内容实现 | verified |
 | P3 | 桌面三平台媒体与完整运行包 | P0 平台结论、P2 | in-progress |
-| P4 | 三平台构建合包、签名及归档工具 | P3 | planned |
+| P4 | 三平台构建合包、签名及归档工具 | P3（按平台切片推进） | in-progress |
 | P5 | SDL 统一手柄与桌面验收闭环 | P3；最终发行依赖 P4 | planned |
 | P6 | 桌面稳定后集中同步 Sample，接入已有跨平台骨架 | P0 iOS 探针结论、P1–P5 | planned |
 | P7 | Android/iOS 媒体、生命周期与真机交付 | P6；手柄集成复用 P5 | planned |
 | P8 | 整体验收、独立审核与文档收尾 | P1–P7 全部完成所需验证 | planned |
 
 P0 的移动探针缺少环境时明确保留未验收，桌面 P1–P5 仍可推进；P6 涉及 iOS 不可逆依赖选择前必须取得探针证据。P3 和 P7 按平台分别记录结果，单平台成功不使整阶段 verified。本表是依赖关系，不是要求使用并行 agent。
+
+P4 Linux 无 SDK compose 切片已通过 504 项 Editor.Shared 回归及 WSL 真实合包/解包/窗口验证；源码 build-compose、签名和 macOS 仍未完成，P4 整体不标 verified。CLI 本地候选 dev.10 与原 dev.9 应用包分开保留。
 
 2026-10-29 恢复后用户要求：先重新生成 Windows Release，再继续实施；macOS 无当前验证环境。macOS 原生验收继续保留，不使 P3 整体 verified，也不阻挡 Windows/Linux 上可独立实现和验证的切片。Linux 曾弹出窗口的人工观察与会话初始化、媒体、退出证据分别记录。
 

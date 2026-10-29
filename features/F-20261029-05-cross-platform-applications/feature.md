@@ -7,6 +7,8 @@
 
 ## 用户目标与已确认决策
 
+最新增量：Linux 无 SDK `compose` 支持 tar.gz/Unix 目录运行包和 galpak/内容目录，保留执行权限并输出 tar.gz；Editor.Shared 504/504、WSL 真实两种输入合包及合成 Sample 正常启动退出通过。CLI 本地候选 dev.10 位于 `out/linux-compose-cli-dev10/`，未重写 dev.9 应用包。源码 build-compose、macOS 与完整媒体/移动验收继续保留。
+
 Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供额外支持 Android、iOS 的 Avalonia 跨平台模板。普通剧情开发者能够在没有 .NET SDK 或原生编译工具的环境中导出内容，使用预编译运行包完成游戏发行。修改应用源码的开发者可指定工程路径和内容包，通过独立工具构建、合并并打包。
 
 用户在本次讨论中确认：

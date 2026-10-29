@@ -209,3 +209,21 @@ Linux 包含纯 Developer Sample、GameTestCase 整合 Sample、Editor/CLI 与 C
 先保存 TRX、重命名探针、40 次导出结果、Windows 启动/CLI 日志、Linux 解包/窗口/解码/CLI 结果及媒体来源，再清理本次旧版 Windows 候选、重复 smoke 解包、发布 staging、Linux apt 下载缓存/媒体中间目录/原始 publish 与临时 ext4 解包。精确删除清单和字节数在 cleanup-*.json。保留最新 Windows/Linux dev.9、原 `linux-developer`、旧 launcher 依赖与用户 `manual-profile`；未触及用户已有 iOS packages.lock.json 改动。
 
 P3b 的 Ubuntu 24.04.3 / WSLg 本地候选切片通过；P3 整体仍 in-progress。后续包括 P1 原生 Editor UI 两种导出、完整 Linux 媒体/Gallery/调试与原生桌面、媒体公开再分发审查、macOS、SDL、Linux/macOS compose 与 build-compose，以及 P6/P7 移动模板/真机。macOS 当前不可验证不阻挡其他切片。
+
+## 2026-10-29：Linux 无 SDK 合包切片
+
+GameDistributionComposer 复用现有完整内容、发行清单、严格契约和原子发布验证，加入 linux-x64 tar.gz/Unix 目录输入与 tar.gz 输出。保留 Unix rwx 模式、空目录，重建 Sample-Game 清单；验证真实 ELF x64 apphost 和可选 /bin/sh 启动脚本，两者须有用户执行位。拒绝重复/越界条目、软/硬链接、特殊文件与特权权限。Windows 主机可从 tar 元数据保留模式；Linux 目录输入只接受能读取 Unix 权限的宿主。macOS、源码 build-compose 与签名未因此实现。
+
+CLI help 与打包 README 同步；PowerShell 薄入口增加无扩展名 CLI 的定位，继续保留退出码、不提供 dotnet 回退。已使用 galnet-sync-docs 同步 release-packaging 操作说明。
+
+证据位于 `out/cross-platform-validation/20261029-compose/`：
+
+- Editor.Shared 全量 504/504 通过（含新增 10 项及既有 Windows 合包）；editor-shared-compose.trx。首轮局部回归 23/24，唯一失败是测试构建清单时提前调用布局验证，导致故障注入夹具在断言前抛错；改为直接读布局 JSON 的 RID，不改产品校验，完整回归通过。首轮 sandbox testhost 管道无响应，核对并终止本次三层自有进程，在原生环境重跑；沿用既有环境经验。
+- Linux CLI 自包含 Desktop/linux-x64 发布 dev.10 成功，未增加锁文件变化。创作/导出使用与目标 dev.9 Sample 匹配的 dev.9 CLI：新 dev.10 CLI 直接加载旧契约会正确拒绝 shared Core 字节不一致，没有放宽严格身份检查。新 CLI 的 compose 只处理已导出内容元数据，不加载项目代码。
+- WSL 无 SDK 搜索环境下，tar 运行包 + 内容目录、Unix 运行目录 + 完整 galpak 两组均通过；输出文件 SHA256、逐项发行 payload hash、执行位、空目录、纯运行包未写入内容及暂存清理通过。见 linux-compose-result.json。
+- 合包 tar 重新解到含空格路径，真实 Sample 窗口/会话就绪、确认退出 0 通过；加载包内 coreclr/Skia/VLC 与宿主 D3D12。见 linux-smoke/f7c5b02b88aa4e43825fd389fecea844/result.json。
+- 真正分发式 Tools/compose.sh 调用新自包含 CLI，含空格参数转发、已有输出拒绝 exit 1 及原文件保留通过；sh-wrapper-result.json。compose.ps1 AST 解析通过，Linux 上的 PowerShell 7 入口本次未实跑。
+- Python 打包保护 8/8、git diff --check 通过。未重建整套 Windows/Linux 应用发行包，dev.9 仍保留原封存字节；新的 CLI 本地候选为 `out/linux-compose-cli-dev10/`（含 Tools 两种薄入口与说明），不声明为公开发行。
+- 本次 `/tmp/galnet compose linux ...` 下的原运行包/Editor、CLI 副本、两份合包归档及重复解包均已清理，共 3,151,046,488 字节，保留精简证据和 CLI 候选；原 manual-profile、手测安装、dev.9 发行包及用户 iOS lock 改动未动。见 cleanup.json。
+
+P4 Linux compose 子范围通过，P4 整体仍 in-progress。下一段可推进源码 build-compose；原生 Editor UI/完整 Linux 媒体、原生 Linux 桌面、公开分发审查、macOS/签名、SDL 和移动模板/真机仍独立追踪。

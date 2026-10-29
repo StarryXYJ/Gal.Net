@@ -102,13 +102,19 @@ Sample 默认使用用户 `LocalApplicationData/GalNet/<project identity digest>
 ./GalNet.Editor.Headless.exe compose --runtime 'Sample目录' --content '导出的pak目录' --output 'MyGame.zip'
 ```
 
-当前仅接受带布局元数据的纯 `win-x64` Sample ZIP/目录与完整 v4 galpak/内容目录，输出新的 ZIP。已有输出、已有游戏内容的运行包、损坏或未声明的文件、越界路径、符号链接、契约不匹配均拒绝。输入不被修改，最终清单重建为 `Sample-Game`，包含内容 projectId/buildId 与所有发行文件 hash。内容目录中显式部署的 I18n JSON 与 ResourcePatches PAK 随包复制；这些覆盖内容仍由运行时执行语义校验。
+接受带布局元数据的纯 `win-x64` Sample ZIP/目录或 `linux-x64` Sample tar.gz/目录，以及完整 v4 galpak/内容目录；Windows 输出新 ZIP，Linux 输出新 tar.gz。已有输出、已有游戏内容的运行包、损坏或未声明的文件、越界路径、软/硬链接及特殊设备条目、契约不匹配均拒绝。输入不被修改，最终清单重建为 `Sample-Game`，包含内容 projectId/buildId 与所有发行文件 hash。内容目录中显式部署的 I18n JSON 与 ResourcePatches PAK 随包复制；这些覆盖内容仍由运行时执行语义校验。
+
+```sh
+./Tools/compose.sh --runtime 'GalNet-Sample-linux-x64.tar.gz' --content 'MyGame.galpak' --output 'MyGame.tar.gz'
+```
+
+Linux tar 可包含一个顶层应用目录，也可直接使用应用根；输出包含以输出文件名命名的顶层目录，并保留执行权限与空目录。普通文件/目录只接受 rwx 权限，拒绝 setuid/setgid/sticky。Linux 入口须为 x64 ELF，或以 `#!/bin/sh` 开头、由发行清单 nativeEntryPoint 指向包内 x64 ELF 的启动脚本；两者都须有用户执行位。Linux 目录输入需要 Unix 宿主才能读取实际权限；在 Windows 合并 Linux 包时使用 tar.gz 输入，避免猜测执行位。
 
 应用发布生成 `docs/application-layout.json`（schemaVersion 1），记录 runtimeIdentifier、entryPoint、managedDirectory、contractsDirectory、contentDirectory。所有位置相对发行根，内容不得与程序/契约/清单位置重叠。Sample 从此布局定位默认 pak，与工作目录无关。部署方式与开发能力继续由 release-manifest.json 的 selfContained/sampleFlavor 声明。
 
 内容导出的 `contractFiles` 记录加载该项目 schema 时的完整契约闭包字节身份，并参与 buildId。重新导出前若磁盘契约与已加载 catalog 不一致则拒绝，需重新加载项目；合包逐项核对运行包中同名 DLL 的大小/hash。普通编辑器默认契约和 Sample 契约并不相同，创作项目应使用目标运行包的契约。低层 API 手工构造且没有契约身份的 catalog 可以导出，但其内容不能用于严格合包。
 
-Linux 本地候选归档见下文；通用 Linux/macOS `compose`、源码 `build-compose` 与签名仍在后续阶段。
+Linux 本地候选归档见下文；macOS `compose`、源码 `build-compose` 与签名仍在后续阶段。旧候选中的 CLI 不自动更新，使用包含上述 Linux 支持的新构建。
 
 需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，保留 PDB，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
 

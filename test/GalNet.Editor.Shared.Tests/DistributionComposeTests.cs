@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Formats.Tar;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -163,6 +164,99 @@ public sealed class DistributionComposeTests
             .Select(path => new GalpakFileEntry(Path.GetRelativePath(Runtime, path).Replace('\\', '/'),
                 Convert.ToHexStringLower(SHA256.HashData(File.ReadAllBytes(path))), new FileInfo(path).Length));
         return File.WriteAllTextAsync(Path.Combine(Runtime, GameDistributionComposer.ManifestPath), JsonSerializer.Serialize(new
-        { schemaVersion = 1, runtime = "win-x64", package = "Sample", files }, JsonOptions));
+        { schemaVersion = 1, runtime = JsonNode.Parse(File.ReadAllText(Path.Combine(Runtime, ApplicationPackageLayout.FileName)))!["runtimeIdentifier"]!.GetValue<string>(), package = "Sample",
+            nativeEntryPoint = File.Exists(Path.Combine(Runtime, "lib/player")) ? "lib/player" : null, files }, JsonOptions));
+    }
+
+    private async Task<string> LinuxRuntime(string? extra = null, TarEntryType type = TarEntryType.RegularFile, UnixFileMode? entryMode = null, byte machine = 62)
+    {
+        File.Delete(Path.Combine(Runtime, "Player.exe"));
+        File.WriteAllText(Path.Combine(Runtime, "Player"), "#!/bin/sh\nexec ./lib/player\n");
+        var elf = new byte[64];
+        new byte[] { 0x7f, 69, 76, 70, 2, 1 }.CopyTo(elf, 0); elf[18] = machine;
+        File.WriteAllBytes(Path.Combine(Runtime, "lib/player"), elf);
+        var layout = ApplicationPackageLayout.Read(Runtime) with { RuntimeIdentifier = "linux-x64", EntryPoint = "Player" };
+        File.WriteAllText(Path.Combine(Runtime, ApplicationPackageLayout.FileName), JsonSerializer.Serialize(layout, JsonOptions));
+        await WriteRuntimeManifest();
+        var path = Path.Combine(_root, "runtime.tar.gz");
+        await using var output = File.Create(path);
+        await using var gzip = new GZipStream(output, CompressionLevel.Fastest);
+        await using var writer = new TarWriter(gzip);
+        await writer.WriteEntryAsync(new PaxTarEntry(TarEntryType.Directory, "runtime with spaces") { Mode = (UnixFileMode)493 });
+        foreach (var file in Directory.GetFiles(Runtime, "*", SearchOption.AllDirectories))
+        {
+            var relative = Path.GetRelativePath(Runtime, file).Replace('\\', '/');
+            await using var input = File.OpenRead(file);
+            await writer.WriteEntryAsync(new PaxTarEntry(TarEntryType.RegularFile, "runtime with spaces/" + relative)
+            { DataStream = input, Mode = relative is "Player" or "lib/player" ? entryMode ?? (UnixFileMode)493 : (UnixFileMode)420 });
+        }
+        if (extra is not null)
+        {
+            var entry = new PaxTarEntry(type, extra) { Mode = (UnixFileMode)420 };
+            if (type is TarEntryType.SymbolicLink or TarEntryType.HardLink) entry.LinkName = "../../outside";
+            await writer.WriteEntryAsync(entry);
+        }
+        return path;
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task LinuxTarPreservesExecutableModesAndEmptyDirectories(bool galpak)
+    {
+        var runtime = await LinuxRuntime();
+        var output = Path.Combine(_root, "game with spaces.tar.gz");
+        var result = await GameDistributionComposer.ComposeAsync(runtime, galpak ? Path.Combine(_root, "archives/Compose.galpak") : Content, output);
+        Assert.That(result.Sha256, Is.EqualTo(CryptoHelper.HashSHA256(File.ReadAllBytes(output))));
+        using var gzip = new GZipStream(File.OpenRead(output), CompressionMode.Decompress);
+        using var reader = new TarReader(gzip);
+        var modes = new Dictionary<string, UnixFileMode>();
+        JsonObject? manifest = null;
+        while (reader.GetNextEntry() is { } entry)
+        {
+            modes.Add(entry.Name.TrimEnd('/'), entry.Mode);
+            if (entry.Name.EndsWith("/docs/release-manifest.json")) manifest = JsonNode.Parse(entry.DataStream!)!.AsObject();
+        }
+        Assert.That(modes["game with spaces/Player"], Is.EqualTo((UnixFileMode)493));
+        Assert.That(modes["game with spaces/lib/player"], Is.EqualTo((UnixFileMode)493));
+        Assert.That(modes.ContainsKey("game with spaces/pak/ResourcePatches"), Is.True);
+        Assert.That(modes.ContainsKey("game with spaces/pak/game.pak"), Is.True);
+        Assert.That(manifest!["package"]!.GetValue<string>(), Is.EqualTo("Sample-Game"));
+        Assert.That(manifest["content"]!["projectId"]!.GetValue<string>(), Is.EqualTo("compose-project"));
+        Assert.That(File.Exists(Path.Combine(Runtime, "pak/game.pak")), Is.False);
+    }
+
+    [TestCase("../escape", TarEntryType.RegularFile)]
+    [TestCase("runtime with spaces/Player", TarEntryType.RegularFile)]
+    [TestCase("runtime with spaces/link", TarEntryType.SymbolicLink)]
+    [TestCase("runtime with spaces/hard", TarEntryType.HardLink)]
+    [TestCase("runtime with spaces/pipe", TarEntryType.Fifo)]
+    public async Task LinuxTarRejectsUnsafeEntries(string extra, TarEntryType type)
+    {
+        var runtime = await LinuxRuntime(extra, type);
+        var output = Path.Combine(_root, "game.tar.gz");
+        Assert.ThrowsAsync<InvalidDataException>(() => GameDistributionComposer.ComposeAsync(runtime, Content, output));
+        Assert.That(File.Exists(output), Is.False);
+        Assert.That(File.Exists(Path.Combine(_root, "escape")), Is.False);
+        Assert.That(Directory.GetDirectories(_root, ".compose-*"), Is.Empty);
+    }
+
+    [TestCase(420)]
+    [TestCase(2541)]
+    public async Task LinuxTarRejectsMissingExecuteOrPrivilegedMode(int mode)
+    {
+        var runtime = await LinuxRuntime(entryMode: (UnixFileMode)mode);
+        Assert.ThrowsAsync<InvalidDataException>(() => GameDistributionComposer.ComposeAsync(runtime, Content, Path.Combine(_root, "game.tar.gz")));
+    }
+
+    [Test]
+    public async Task LinuxTarRejectsWrongArchitectureAndOutputFormat()
+    {
+        var runtime = await LinuxRuntime();
+        Assert.ThrowsAsync<InvalidDataException>(() => GameDistributionComposer.ComposeAsync(runtime, Content, Output));
+        runtime = await LinuxRuntime(machine: 183);
+        Assert.ThrowsAsync<InvalidDataException>(() => GameDistributionComposer.ComposeAsync(runtime, Content, Path.Combine(_root, "game.tar.gz")));
+        // Directory input on Unix reads actual modes; Windows must require the archive.
+        if (OperatingSystem.IsWindows())
+            Assert.ThrowsAsync<InvalidDataException>(() => GameDistributionComposer.ComposeAsync(Runtime, Content, Path.Combine(_root, "game.tar.gz")));
     }
 }

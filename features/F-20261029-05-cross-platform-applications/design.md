@@ -125,6 +125,8 @@ build-compose --app-project <csproj> --content <galpak或目录>
 
 首个切片采用 docs/application-layout.json v1，声明 RID、入口、托管目录、契约目录及内容目录；原生库与运行时当前位于 lib，部署方式/开发能力复用 release-manifest 的 selfContained/sampleFlavor，不重复建立另一套能力表。compose 仅接受带完整发行清单的纯 win-x64 Sample（ZIP 或目录）、完整内容（galpak 或目录），输出新的 ZIP。其他 RID/归档形式留到 P3/P4；符号链接当前全部拒绝，合法 macOS bundle 链接保留尚未实现。
 
+后续 Linux 合包切片已扩展为 linux-x64 tar.gz/Unix 目录输入及 tar.gz 输出，继续复用同一布局、严格契约和内容验证。tar 内 Unix rwx 权限独立记录，不依赖 Windows 暂存文件属性；拒绝 setuid/setgid/sticky、硬/软链接与特殊条目。启动脚本使用发行清单的 nativeEntryPoint 验证实际 ELF x64，两处入口均有执行位；直接 ELF 入口也可用。输出使用一个顶层目录，保留空目录并重建发行清单。Windows 主机仅通过 tar 输入保留 Linux 权限，不能从 Windows 目录猜测执行位。macOS 和源码 build-compose 继续待后续阶段。
+
 内容 contractFiles 绑定加载 catalog 时捕获的闭包，导出检测磁盘变化，合包只做元数据/hash 比对，不执行项目代码。所有脚本复用自包含 Editor.Headless；sh/ps1 不承载解析/安装逻辑，也不提供 dotnet 回退。自包含 lib 内的框架依赖先复用默认加载上下文，避免项目 resolver 再加载 System.Text.Json 导致类型身份分裂。
 
 实际 Windows R2R 原生窗口验证发现 SkiaSharp 3.119.4 在合成字体读取中崩溃；选择仅将该 DLL 保持 IL，应用和其余程序集继续 R2R。此为当前版本组合下实测缓解，不推定其他平台也需要同样排除。

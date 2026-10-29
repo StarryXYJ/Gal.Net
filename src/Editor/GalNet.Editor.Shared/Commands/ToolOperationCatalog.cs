@@ -106,10 +106,10 @@ public sealed class ToolOperationCatalog
                 readOnly: false, requiresProject: false),
             Route("game.inspect", "game inspect", "Reads the packed or legacy installed content identity and package descriptors.",
                 [new CliParameter("content-directory", "string", "Installed content root (for example app/pak).", true, true)], requiresProject: false),
-            Route("distribution.compose", "compose", "Verifies a pure win-x64 runtime and complete content, then creates a game ZIP without a compiler or SDK.",
-                [new CliParameter("--runtime", "string", "Pure runtime ZIP or directory with application layout and release manifest.", true),
+            Route("distribution.compose", "compose", "Verifies a pure Windows/Linux x64 runtime and complete content, then creates a game ZIP/tar.gz without a compiler or SDK.",
+                [new CliParameter("--runtime", "string", "Pure runtime ZIP/tar.gz or directory with application layout and release manifest.", true),
                  new("--content", "string", "Complete galpak or exported content directory.", true),
-                 new("--output", "string", "New game .zip path outside the inputs.", true)], readOnly: false, requiresProject: false),
+                 new("--output", "string", "New game .zip (Windows) or .tar.gz (Linux) path outside the inputs.", true)], readOnly: false, requiresProject: false),
             Route("execute", "execute", "Executes JSON typed document operations or one asset file operation.",
                 Project(new CliParameter("command-file", "string", "JSON file path, or '-' to read stdin.", true, true)),
                 readOnly: false, requiresContract: true, dryRun: true, batchMode: "Document operations only; one file operation per invocation. File dry-run is unsupported.")

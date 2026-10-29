@@ -171,7 +171,7 @@ def package(raw, media, output, content):
             "Private media libraries and package copyright notices are in lib/native and docs/licenses.\n"
             "Exact Ubuntu source packages are recorded in native-media.json; source availability/licensing must be reviewed before public redistribution.\n"
             "WSLg selects d3d12 only when /dev/dxg exists and GALLIUM_DRIVER is unset.\n"
-            "compose currently accepts Windows runtimes only; Linux build-compose remains planned.\n")
+            "compose accepts Windows ZIP and Linux tar.gz runtimes; source build-compose remains planned.\n")
         print(f"Checking native closure: {kind}", flush=True)
         verify_native(root)
     if content:
