@@ -25,6 +25,8 @@ Project/
 
 `Contracts/` 不进入 galpak。游戏通过自己的契约项目引用取得同一集合；CLI/Editor 外层加载固定的 `GalNet.Project.Contracts.ProjectSchemas.Modules` 静态只读模块列表。缺少 DLL 时原始查询和结构校验仍可用，语义校验/编译/Editor 打开明确失败。Editor 新建项目会自动部署随程序分发的默认契约，无需用户准备 DLL，也可选择自定义构建目录。CLI 项目创建仍可先生成缺契约骨架；自定义部署方法见 [Sample 契约](../../src/Samples/GalNet.Sample.Contracts/README.md)。项目显示名改名不移动目录，不改变节点/entry ID；整项目删除采用系统回收站。
 
+Editor 新建项目可先选择游戏 App EXE：契约目录为空时，只在 EXE 同级与同级 `lib/` 查找 `GalNet.Project.Contracts.dll`，分别对应普通构建与当前发行布局。唯一结果自动填充目录；已有输入不覆盖，缺失或多份结果提示手动选择。已选 App 时不因契约缺失回退到默认契约。自定义来源在创建前解析静态托管依赖闭包并验证，仅部署契约及其非平台托管依赖，不复制 App、运行时或无关文件；DLL 字节保持不变。动态或原生加载不属于作者契约。未选 App 且契约目录为空时保留默认契约部署流程。所选 EXE 在进入工作区前保存到 `.galnet/editor/debug-launch.json`，供现有外部调试启动流程使用。
+
 ## Graph 与 Group
 
 `Graph/graph.json` 是版本 2 的编辑图，包含稳定节点/边 ID、坐标、变量和 Group 的 `groups/<id>.rawgalgroup` 文件引用。`.rawgalgroup` 是版本 2、`kind: Raw` 的编辑源，可包含 primitive 和 composite；`.galgroup` 是版本 3、`kind: Compiled` 的运行产物，只能包含 primitive。旧分号文本、旧版本 Group 格式和运行时加载 Raw 文档均不受支持。

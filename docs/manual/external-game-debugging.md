@@ -6,6 +6,10 @@ Editor 的旧内嵌 Preview 已移除，游戏测试统一使用本页的外部�
 
 ## Editor 操作
 
+新建项目时，可以在契约目录上方选择游戏 App EXE。契约框为空时自动定位配套契约；创建项目只复制契约及其托管依赖，并自动保存所选 App 为调试可执行文件。手动填写的契约目录会保留。找不到或找到多份契约时需手动指定，不会静默改用默认契约。
+
+仓库中 Debug 构建 Sample 后，可直接选择 `src/Samples/GalNet.Sample.Avalonia/bin/Debug/net10.0/GalNet.Sample.Avalonia.exe`，无需先运行契约导出脚本。普通构建读取 EXE 同级 DLL，当前发行包读取同级 `lib/`。联调发行包使用 Developer 构建；选择 App 不会自动为玩家包启用调试。之后重建若改变契约字节，仍需同步项目 `Contracts/` 并重新打开项目。
+
 1. 在“项目设置”的启动配置分类中设置可执行文件、附加参数（每行一个）及可选工作目录；路径右侧的按钮可选择文件或目录，修改自动保存。也可以首次使用“测试 → 启动应用”时选文件。配置保存在项目 `.galnet/editor/debug-launch.json`。
 2. 启动前保存并正式校验/编译工程，产物位于 `Output/Debug`。Editor 先监听，再向 App 传入该目录、`--profile <项目/.galnet/debug-profile>` 和调试邀请参数。该 profile 与游戏原有玩家目录分离。
 3. App 连接后，若注册了开始回调，可点“开始游戏”；否则在 App 中自行开始。标题页连接和游戏运行绑定是两件事。
