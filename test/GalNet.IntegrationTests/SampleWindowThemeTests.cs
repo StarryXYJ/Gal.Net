@@ -7,6 +7,8 @@ using Avalonia.Media;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.MarkupExtensions;
+using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Views;
 using GeneralTest.Integration;
@@ -108,6 +110,13 @@ public sealed class SampleWindowThemeTests
                 scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
                 Assert.That(await selection, Is.EqualTo("zh-CN"));
                 scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("en-US");
+                scope.ServiceProvider.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
+                window.CompleteStartup();
+                window.UpdateLayout();
+                var title = window.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(control => control.Text == scope.ServiceProvider.GetRequiredService<TitlePageViewModel>().GameTitle);
+                var titleBrush = (ISolidColorBrush)title.Foreground!;
+                Capture(window, "Sample-TitleBeforeExit");
                 var confirmation = window.ConfirmExitAsync();
                 Assert.That(window.ConfirmExitAsync(), Is.SameAs(confirmation));
                 var cancel = window.FindControl<Button>("CancelExitButton")!;
@@ -116,6 +125,8 @@ public sealed class SampleWindowThemeTests
                 Assert.That(cancel.IsFocused, Is.True);
                 window.UpdateLayout();
                 Capture(window, "Sample-ExitConfirmation");
+                Assert.That(((ISolidColorBrush)title.Foreground!).Color, Is.EqualTo(titleBrush.Color), "The modal must preserve the title's foreground.");
+                Assert.That(((ISolidColorBrush)title.Foreground!).Opacity, Is.EqualTo(titleBrush.Opacity), "The scrim alone dims static title text.");
                 scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("zh-CN");
                 window.UpdateLayout();
                 Capture(window, "Sample-ExitConfirmation-zh-CN");

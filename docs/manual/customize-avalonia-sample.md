@@ -120,6 +120,8 @@ public IReadOnlyDictionary<string, object> ChapterTwo { get; } =
 
 退出确认的布局在 `Views/MainWindow.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由代码维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
 
+主页静态标题显式指定 `GalNet.Brush.TextPrimary`，避免退出确认禁用背景时继承容器的半透明禁用文字色。定制主页时保留这个前景色绑定；验证弹窗截图应挂载真实主页，再检查背景标题与取消后的恢复。
+
 - `GamePage` 是稳定的游戏页面宿主；其模板必须保留 `PART_Scene`、`PART_Dialogue`、`PART_Nvl` 和 `PART_Choice` 四个 ContentPresenter。
 - 对话与 NVL 的内部部件分别需要 `PART_Typewriter`、`PART_Lines` 和 `PART_ScrollViewer`。不要在剧情播放中重建这些部件。
 - 主题页面复用共享 ViewModel 和命令；只替换布局/样式，不复制 presenter、媒体或游戏会话逻辑。

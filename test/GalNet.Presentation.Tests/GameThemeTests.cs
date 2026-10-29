@@ -615,6 +615,14 @@ public sealed partial class GameThemeTests
                 Assert.That(title.GetVisualDescendants().OfType<Button>().Count(), Is.GreaterThanOrEqualTo(4));
                 AssertPalette(root, theme.Palette);
                 Capture(window, $"{layout}-{paletteName}-title");
+                root.IsEnabled = false;
+                window.UpdateLayout();
+                var titleText = title.GetVisualDescendants().OfType<TextBlock>()
+                    .Single(block => block.Text == services.GetRequiredService<TitlePageViewModel>().GameTitle);
+                var titleBrush = (ISolidColorBrush)titleText.Foreground!;
+                Assert.That(titleBrush.Color, Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.TextPrimary")!).Color));
+                Assert.That(titleBrush.Opacity, Is.EqualTo(1), "A modal scrim must be the only dimming applied to static title text.");
+                root.IsEnabled = true;
 
                 var state = services.GetRequiredService<GamePageViewModel>();
                 var page = services.GetRequiredService<GamePage>();

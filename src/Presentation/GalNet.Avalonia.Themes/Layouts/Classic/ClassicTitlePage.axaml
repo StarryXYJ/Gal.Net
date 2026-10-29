@@ -11,7 +11,8 @@
     </Grid>
     <Grid Margin="80,64" ColumnDefinitions="440,*" RowDefinitions="Auto,*">
       <StackPanel Grid.ColumnSpan="2" Spacing="12">
-        <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap" />
+        <TextBlock Text="{Binding GameTitle}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                   FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap" />
         <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" MaxWidth="840" HorizontalAlignment="Left" />
       </StackPanel>
       <ScrollViewer Grid.Row="1" VerticalAlignment="Bottom" HorizontalScrollBarVisibility="Disabled" Margin="0,32,0,0">

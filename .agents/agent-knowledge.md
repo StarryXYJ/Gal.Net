@@ -1,5 +1,7 @@
 # GalNet Agent Knowledge
 
+- [模态背景静态标题](lessons/L-20261029-10-disabled-title-foreground.md)：禁用背景容器会改变标题继承的前景画刷；静态标题显式绑定 TextPrimary，弹窗验证须挂载真实主页并检查 Color/Opacity，不能只截空背景。
+
 - 2026-10-29 CI 发布门禁：release.yml 的 validate-source 在 tag push 后先 fetch master，Test-ReleaseRef.ps1 校验规范版本 tag、checkout HEAD 和 origin/master 祖先归属；build 依赖门禁，publish 只允许 tag push 且 build 成功。主分支普通 push 只跑 CI，手动运行只生成候选。Test-ReleaseGuards.ps1 的 17 项用例覆盖真实临时 Git 图和模拟七 ZIP 上传；Push 在创建 draft 前检查七 ZIP。见 docs/manual/release-packaging.md。
 
 - 2026-10-29 内置文档封装：新 galpak v3 固定 pak/game.pak 入口，含 content v3、installation 索引、settings、Gallery、characters、layout 六文档；localization.pak 每文化一个平铺文本条目。使用独立 document GPAK catalog，不加入资源覆盖。新安装 I18n/<culture> 仅外置覆盖；作者与 content v2 旧安装仍用 I18n/External。导出/安装保留 I18n、ResourcePatches、StoryPatches/<buildId> 空目录，ZIP 显式保存；兼容 v1/v2 galpak 和 content v2 读取。只读 CLI game inspect 供脚本读取 packed/legacy 描述；Sample profile 身份从 game.pak 读取 projectId。见 docs/spec/file-formats.md、docs/spec/i18n.md、features/F-20261029-02-packed-game-documents。

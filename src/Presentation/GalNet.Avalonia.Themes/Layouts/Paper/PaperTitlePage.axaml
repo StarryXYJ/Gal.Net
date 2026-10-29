@@ -22,7 +22,8 @@
             BorderThickness="0">
       <Grid ColumnDefinitions="*,360" ColumnSpacing="56">
         <StackPanel VerticalAlignment="Center" Spacing="24">
-          <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" TextWrapping="Wrap" />
+          <TextBlock Text="{Binding GameTitle}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                     FontSize="{DynamicResource GalNet.Theme.TitleSize}" TextWrapping="Wrap" />
           <Border Height="1" Background="{DynamicResource GalNet.Brush.Primary}" />
           <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" />
         </StackPanel>
