@@ -332,7 +332,7 @@
 
 - 2026-10-20 游戏本地化 P3 已 verified：角色 Dock、开发语言姓名/key、speaker 姓名/key 搜索与失焦创建、跨全部 Group/嵌套引用改 key、一次历史与旧值显式导入完成。新增 14 项全通过；相关回归 759 通过、3 项 P6e3 已记录 UI 失败，完整构建 0 错误。正文/分支默认语言映射及复制身份 P4、多语言表格/语言 P5、交换/完整校验 P6 待续；见 features/F-20261019-01-editor-game-localization/phase-3.md。
 
-- 用户协作约定（2026-10-20）：每个实施阶段验证结束后提交 Git，包含本阶段相关代码、测试和文档，并报告 commit；不要混入其他任务改动。
+- 用户协作约定（2026-10-20，2026-10-29 补充）：每个可验证实施阶段完成后提交相关代码、测试和文档，并报告 commit；不要混入其他任务改动。同时精简计划，把已完成步骤归并成阶段总结（结果、验证、commit/证据入口），计划只保留剩余任务、依赖和退出条件。保留详细执行历史及未验收项，不把子范围通过写成整体完成。当前跨平台 feature 的索引为 features/F-20261029-05-cross-platform-applications/progress-summary.md 与 phase-plan.md。
 
 - 用户修订：本地化 feature 不考虑向后兼容；旧 Speakers、角色迁移 UI/服务与回调已删除（d2e4b82），后续只支持当前作者及剪贴板格式。
 - [文本历史与不可撤销编号](lessons/L-20261020-05-text-history-reserved-number.md)：同文件的 characterHighWater 仅允许单调重基，文本历史不能回退编号；其他 metadata 严格校验。

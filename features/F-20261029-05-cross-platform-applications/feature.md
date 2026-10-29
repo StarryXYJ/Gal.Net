@@ -1,5 +1,7 @@
 # 桌面三平台应用、内容发行工具与 Avalonia 五平台模板
 
+进度入口：[已完成阶段总结](progress-summary.md) · [剩余计划](phase-plan.md) · [详细执行记录](execution.md)。
+
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
