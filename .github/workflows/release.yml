@@ -20,6 +20,7 @@ concurrency:
 jobs:
   validate-source:
     runs-on: windows-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
         with:

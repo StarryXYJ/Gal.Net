@@ -8,7 +8,7 @@
 pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1 -Coverage
 ```
 
-入口先检查 SDK 和七项发布保护用例，再执行 locked restore、空白与 using 检查、Release solution 构建、solution 中全部 GalNet 测试项目。restore/build/test 使用同一 Configuration，fixture 工程也列在 solution 内。构建完成后才启动 no-build 测试。测试阶段收集全部项目的失败，最后返回非零；真实设备的 Explicit 测试不属于普通 CI。
+入口先检查 SDK 和十七项发布保护用例（含 tag 主分支归属和七 ZIP 上传预检），再执行 locked restore、空白与 using 检查、Release solution 构建、solution 中全部 GalNet 测试项目。restore/build/test 使用同一 Configuration，fixture 工程也列在 solution 内。构建完成后才启动 no-build 测试。测试阶段收集全部项目的失败，最后返回非零；真实设备的 Explicit 测试不属于普通 CI。
 
 可以单独运行：
 
@@ -129,7 +129,7 @@ Release workflow 在 tag push 后先获取 master 并校验 tag 格式、checkou
 pwsh -File scripts/release/Push.ps1 -Index out/release/1.2.3/release-index.json
 ```
 
-Push 先检查索引、全部文件哈希、版本和消费者验收状态；先创建 GitHub draft，按依赖顺序上传 NuGet、上传 ZIP，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
+Push 先检查索引、全部文件哈希、版本和消费者验收状态；GitHub 目标还在创建 draft 前检查七个发行 ZIP 是否齐全。随后创建 GitHub draft，按依赖顺序上传 NuGet、上传 ZIP，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
 
 ## 兼容原有本地应用入口
 
