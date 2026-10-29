@@ -9,11 +9,16 @@
         <TextBlock Text="{text:PlayerText History.Title, History}" FontSize="30" FontWeight="SemiBold" />
         <Button Name="CloseHistory" Grid.Column="1" Content="{text:PlayerText Common.Back, Back}" Command="{Binding CloseHistoryCommand}" />
       </Grid>
-      <ListBox Name="HistoryList" Grid.Row="1" ItemsSource="{Binding HistoryLines}" Background="Transparent"
-               BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-        <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch" /></Style></ListBox.Styles>
-        <ListBox.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ListBox.ItemsPanel>
-        <ListBox.ItemTemplate>
+      <ItemsControl Name="HistoryList" Grid.Row="1" ItemsSource="{Binding HistoryLines}">
+        <ItemsControl.Template>
+          <ControlTemplate>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+              <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+            </ScrollViewer>
+          </ControlTemplate>
+        </ItemsControl.Template>
+        <ItemsControl.ItemsPanel><ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
           <DataTemplate>
             <Border Padding="12,16" BorderBrush="{DynamicResource GalNet.Brush.Divider}" BorderThickness="0,0,0,1">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
@@ -28,8 +33,8 @@
               </Grid>
             </Border>
           </DataTemplate>
-        </ListBox.ItemTemplate>
-      </ListBox>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
       <TextBlock Grid.Row="2" Text="{text:PlayerText History.Empty, 'No dialogue yet.'}" IsVisible="{Binding IsHistoryEmpty}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
     </Grid>
   </Border>

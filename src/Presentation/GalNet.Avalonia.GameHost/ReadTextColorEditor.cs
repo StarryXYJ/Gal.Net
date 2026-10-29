@@ -24,7 +24,7 @@ internal static class ReadTextColorEditor
         picker.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.GameHost/"))
         { Source = new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml") });
         var apply = new Button();
-        apply.Bind(ContentControl.ContentProperty, new Binding("Value") { Source = localization.GetString("Common.Apply") });
+        apply.Bind(ContentControl.ContentProperty, new Binding("Value") { Source = localization.GetString("Common.Confirm") });
         var cancel = new Button();
         cancel.Bind(ContentControl.ContentProperty, new Binding("Value") { Source = localization.GetString("Common.Cancel") });
         var flyout = new Flyout

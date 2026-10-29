@@ -19,3 +19,7 @@ P1/P2 的执行绑定和页面 VM 共同组成可编译的垂直切片，因此�
 运行相关测试与构建，自审实际 diff，同步 spec/manual、实现总结与已验证经验；逐阶段仅提交本 feature 文件。
 
 证据：Core 139、Storage 26、Architecture 52 项通过；合计相关回归 688 项。Debug Sample 与 Release 集成项目构建通过；受影响配置锁文件更新，Release locked restore 通过；限定功能文件的 whitespace/IDE0005 格式处理及最终只读格式检查通过。未运行全仓发布、原生视频显式用例或人工扬声器试听。详见 summary.md。
+
+## 后续修正：历史纯显示与确认按钮本地化（verified）
+
+按用户反馈将历史列表改为 ScrollViewer 承载的虚拟化 ItemsControl，移除行选择和悬停样式，保留独立语音按钮。颜色选择器确认按钮改用已有 Common.Confirm。展示层全量 296 项、设置/本地化集成 14 项通过，Release 两测试项目构建通过；覆盖三主题 2000 行虚拟化、末尾定位、正文点击不抢焦点或推进、独立重播与弹层中英文动态切换。

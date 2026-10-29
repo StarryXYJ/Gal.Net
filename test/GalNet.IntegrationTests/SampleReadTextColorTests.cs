@@ -2,12 +2,14 @@ using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using DynamicLocalization.Core;
+using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Variables;
+using GalNet.Sample.Avalonia;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -23,7 +25,17 @@ public sealed class SampleReadTextColorTests
             var directory = Path.Combine(Path.GetTempPath(), "galnet-read-color-" + Guid.NewGuid().ToString("N"));
             try
             {
-                using var localization = new AvaloniaPlayerLocalization(new CultureService());
+                var provider = new JsonLocalizationProvider();
+                provider.Initialize(new JsonLocalizationProviderOptions
+                {
+                    BasePath = "Localization",
+                    UseEmbeddedResources = true,
+                    Assembly = typeof(App).Assembly
+                });
+                var culture = new CultureService();
+                culture.RegisterProvider(provider);
+                culture.SetCulture("en-US");
+                using var localization = new AvaloniaPlayerLocalization(culture, [provider]);
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
                 var game = new GamePageViewModel(null!);
                 using (var settings = new AvaloniaPlayerSettingsService(localization, game))
@@ -57,6 +69,12 @@ public sealed class SampleReadTextColorTests
                         Assert.That(picker.Template, Is.Not.Null, "The popup must load the ColorView theme.");
                         Assert.That(picker.GetVisualDescendants().Count(), Is.GreaterThan(5));
                         Assert.That(picker.Color, Is.EqualTo(Color.Parse("#A8B8C8")));
+                        var actions = ((StackPanel)flyout.Content!).Children.OfType<StackPanel>().Single().Children.OfType<Button>().ToArray();
+                        Assert.That(actions.Select(control => control.Content), Is.EqualTo(new[] { "Cancel", "Confirm" }));
+                        culture.SetCulture("zh-CN");
+                        Assert.That(actions.Select(control => control.Content), Is.EqualTo(new[] { "取消", "确认" }));
+                        culture.SetCulture("en-US");
+                        Assert.That(actions.Select(control => control.Content), Is.EqualTo(new[] { "Cancel", "Confirm" }));
                         flyout.Hide();
                         Assert.That(await colorSetting.TrySetValueAsync("#123456"), Is.True);
                         Assert.That(((ISolidColorBrush)game.ReadTextBrush!).Color, Is.EqualTo(Color.Parse("#123456")));

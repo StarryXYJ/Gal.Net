@@ -40,3 +40,9 @@ Debug Sample、Release 集成项目构建通过；Release locked restore 通过�
 - 本次未执行全仓发行打包、原生视频显式用例或人工扬声器试听；共享后端的原生能力不由 Headless 验证代替。
 
 规范见 [control](../../docs/spec/control.md)、[runtime](../../docs/spec/runtime.md)，接入说明见 [定制 Sample](../../docs/manual/customize-avalonia-sample.md#对白历史与重播)。
+
+## 后续修正：历史纯显示与确认按钮本地化
+
+历史改用不带选择行为的虚拟化 ItemsControl，正文行无悬停样式、选择、焦点或点击行为；滚动、打开末尾定位及独立语音重播按钮保持可用。已读颜色弹层确认按钮原来引用缺失的 Common.Apply，现复用 Common.Confirm，随界面语言显示 Confirm/确认。
+
+Release 展示层和集成测试项目构建通过；展示层全量 296 项、颜色设置及本地化集成 14 项通过。三主题实际挂载测试覆盖 2000 行虚拟化、末尾定位、正文点击不抢焦点或推进及独立重播；弹层测试加载 Sample 内置语言，验证打开时与中英文切换后的确认/取消文字。

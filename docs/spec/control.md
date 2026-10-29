@@ -80,7 +80,7 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 `PlayerInputSettings` 与输入路由属于 GameView，宿主实现原始设备适配。Sample 的 Windows 手柄后端为 XInput，非 Windows 未提供原生手柄后端；三主题共享面板行为和现有设置页外壳。`PlayerInputSettings.OpenHistoryAsync` 接入默认对白历史覆盖层，无回调时历史动作禁用；默认键鼠绑定为 WheelUp，旧偏好仅在缺少该动作且没有手势冲突时补入，显式清空保持无绑定。`IFirstEmptySlotSession.SaveFirstEmptyAsync` 表示普通槽位的首空槽保存，null 表示槽位已满；Sample 在写门内重新查询并保存，满槽打开存档页供玩家选择。该行为独立于单文件 quick-save。
 
-默认宿主以 `DialogueHistoryJournal` 保存当前路线已完整显示的 ADV/NVL 文本，保留实际语言的姓名、富文本、进入前已读状态及可选语音引用；Quick/CatchUp 记录实际经过文本，调试重建不追加。新游戏清空，存档/读档恢复对应前缀；历史正文只在实际保存时进入 `GameSnapshot.Attachments[host.dialogue.history]`，状态表只编码计数游标。当前句按稳定边界重新执行，避免重复记录。默认三主题承载 GamePage.History（PART_History），列表虚拟化，每次打开定位末尾；打开取消自动/快速并屏蔽剧情输入，Escape/返回按钮关闭，关闭保持手动。
+默认宿主以 `DialogueHistoryJournal` 保存当前路线已完整显示的 ADV/NVL 文本，保留实际语言的姓名、富文本、进入前已读状态及可选语音引用；Quick/CatchUp 记录实际经过文本，调试重建不追加。新游戏清空，存档/读档恢复对应前缀；历史正文只在实际保存时进入 `GameSnapshot.Attachments[host.dialogue.history]`，状态表只编码计数游标。当前句按稳定边界重新执行，避免重复记录。默认三主题承载 GamePage.History（PART_History），列表虚拟化，每次打开定位末尾；正文行纯显示，不提供悬停、选择、焦点或点击行为，独立语音按钮可重播。打开取消自动/快速并屏蔽剧情输入，Escape/返回按钮关闭，关闭保持手动。
 
 尚未包含历史模块的当前格式旧存档由宿主补入空历史表，从读档后开始记录；无法补回此前没有保存的正文。已存在游标的存档必须具备长度一致的历史正文；其他模块状态校验保持严格。
 
