@@ -29,7 +29,8 @@
 | P4b | dirty 参数比较分配优化 | P4a 测得每条目额外分配 | verified |
 | P4c | 编辑器恢复持久化优化 | P4a 测量和生命周期设计；P4b | verified |
 | P5 | 持久化字段比较完整性 | P4 的基线设计稳定 | verified |
-| P6 | 核心协调器职责整理 | 前述行为稳定；逐个模块确认状态所有者 | planned |
+| P6a | GameEngine 职责整理 | 前述行为稳定；确认状态与锁所有者 | verified |
+| P6b | 内容会话协调职责整理 | P6a；单独评估发布/重载边界 | planned |
 | P7 | 资源错误诊断贯通 | 资源加载职责稳定 | planned |
 | P8 | 持续验证补齐 | 对应平台/测试可在 CI 重复运行 | planned |
 
@@ -105,6 +106,8 @@ P5 实现选择：在测试侧枚举序列化元数据，对作者 DTO 的每个
 
 模块：先单独评估 GameEngine 的播放/调试，再评估 ProjectContentSession 的发布/重载协调。
 
+P6 拆分：P6a 单独提交 GameEngine 的职责评估与入口缓存提取，P6b 再评估内容会话。播放计时依赖 active/blocker、推进边界、读进度和 stop/revision，本轮保留在同一执行门下，避免复制状态或引入反向调用协调器。调试入口缓存将快照、payload 大小、LRU 使用序号合成单个缓存项，由内部 DebugEntranceCache 统一拥有预算、替换、命中和淘汰；DebugSession 保留捕获时机、回放统计、路线与代次。沿用 _dispatchGate，不增加锁、后台任务或公共 API。先增加公共调试 API 的行为测试并在旧代码运行，再实施重构。
+
 任务：画清状态、锁和资源所有权；只提取独立策略/任务生命周期，保留一个权威状态入口。每个模块单独完成行为保持重构，不以文件行数为验收指标。
 
 验证：执行/快进/自动播放/调试恢复/停止交错，保存/外部重载/关闭交错及对应架构门禁。
@@ -132,6 +135,8 @@ P5 实现选择：在测试侧枚举序列化元数据，对作者 DTO 的每个
 风险：原生环境波动和 CI 时长。退出条件：发布成功与运行验证结果明确区分，关键后端变化自动获得回归证据。
 
 ## 执行记录
+
+- 2026-10-30 P6a verified：完成 GameEngine 状态/锁/生命周期梳理；播放协调继续由现有执行门管理。入口缓存从 DebugSession 的三张同键字典收拢为内部 DebugEntranceCache 的单张缓存项字典，统一拥有快照、payload、LRU、预算与统计；回放计数留在定位流程。无公共 API、锁或任务生命周期变化。新增 7 项公共调试行为测试，重构前后 DebugSession 24/24 通过；Runtime 131、Debugging 10、Architecture 53、内置自动播放/指令分发集成 29 项全部通过。设计取舍、证据与限制见 [p6a-engine-responsibilities.md](p6a-engine-responsibilities.md)。下一阶段 P6b：内容会话发布/重载协调职责评估；P6 尚未整体完成，P7/P8 仍 planned。
 
 - 2026-10-30 P5 verified：新增 87 项字段/克隆/集合/未知 JSON/局部发布契约测试；临时新增未填充可选字段和移除 StoryPackage 比较的两个反向探针均正确失败，探针已撤销。发现 ProjectVariableDefinition.Clone 隐式同步名称绕过作者校验，并使保存成功后仍 dirty；改为复用 Variable.Clone 原样捕获，名称不一致时正常拒绝发布且恢复保留完整草稿，修正后可保存并 clean。生产代码净减少 16 行，不引入运行时反射/序列化/比较缓存。Editor.Shared 608、Core 139、Architecture 53、变量面板定向 4 项全部通过。证据和边界见 [p5-content-contracts.md](p5-content-contracts.md)。下一阶段 P6：先评估 GameEngine 协调职责，再处理内容会话；P6–P8 尚未实现，正式 docs 留后同步。
 

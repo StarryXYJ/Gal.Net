@@ -11,7 +11,7 @@ using GalNet.Runtime.Runtime;
 
 namespace GeneralTest.Runtime;
 
-public class DebugSessionTests
+public partial class DebugSessionTests
 {
     [Test]
     public async Task PackagedContentDebugSeekStampsInternalBaselinesButRejectsUnstampedExternalSaves()
