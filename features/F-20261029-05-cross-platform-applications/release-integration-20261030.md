@@ -15,7 +15,9 @@
 - 已复现并拦截：Editor 默认项目契约与 CrossPlatform Sample 同名契约不同；改为从实际目标 Sample 载荷导出，保留所有契约 hash 验证。暂存目录保留真实项目名，避免 CLI 以通用暂存名称改变 projectId。
 - 运行时策略新增 3 项测试通过：Developer/Player 外部能力、Bound 拒绝其他项目、允许本项目新 build。
 - 发布集合 Python 测试 5 项通过；原始应用保护测试 8 项通过；真实临时 Git 图/模拟上传门禁 19 项及发布发现/已发布跳过用例 19 项通过。
-- Windows 自包含和框架依赖原始发布已运行，最终修正后的完整打包、NuGet 消费者、PR 检查和公开 Release 尚在执行，未在此提前标记完成。
+- 修正后 Windows FrameworkDependent 三模式原始发布、四份完整归档及 bind-game 工具通过；NuGet 六包和五个仓库外消费者通过；文件系统完整回归 37 项通过。
+- 三种模式的独立可执行消费者编译/运行通过；缺失绑定、非法模式、矛盾开关三种负例被构建拒绝。
+- PR #28 的 Android runner 未预装 sdkmanager；增加显式 Android SDK/NDK/CMake 安装，并将 workload 固定到本地已验证的 10.0.401.1 集合（Android 36.1.69、Mono 10.0.12），避免 runner 默认清单选择其他运行时版本。最终远端检查与公开 Release 继续验收。
 
 ## 边界
 
