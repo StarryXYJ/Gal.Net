@@ -2,62 +2,587 @@
   "version": 2,
   "kind": "Raw",
   "entries": [
-    { "id": "dialogue-show", "type": "dialogue.show", "parameters": {} },
-    { "id": "bgm-fade-in", "type": "audio.play", "parameters": { "trackId": "bgm", "asset": "a1000000000000000000000000000010", "gain": 1, "placement": "replace", "fadeIn": 2 } },
-    { "id": "background", "type": "variants.show", "parameters": { "handleId": "background", "assetId": "a1000000000000000000000000000021", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "opacity": 1, "displayMode": "Fill" } },
-    { "id": "unlock-gallery", "type": "gallery.unlock", "parameters": { "id": 100 } },
-    { "id": "portrait", "type": "variants.show", "parameters": { "handleId": "teacher", "assetId": "a1000000000000000000000000000020", "selection": { "expression": "shock" }, "transform": { "x": 420, "y": 80, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 10, "opacity": 1, "displayMode": "Native" } },
-    { "id": "intro-line-1", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-1.content" } },
-    { "id": "variants-shy", "type": "variants.select", "parameters": { "handleId": "teacher", "dimension": "expression", "value": "shy" } },
-    { "id": "variants-exact", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.variants-exact.content" } },
-    { "id": "variants-solo", "type": "variants.select", "parameters": { "handleId": "teacher", "dimension": "pose", "value": "solo" } },
-    { "id": "variants-reduced", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.variants-reduced.content" } },
-    { "id": "variants-return", "type": "variants.select", "parameters": { "handleId": "teacher", "dimension": "pose", "value": "xy" } },
-    { "id": "variants-remembered", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.variants-remembered.content" } },
-    { "id": "classroom-speech", "type": "variants.select", "parameters": { "handleId": "background", "dimension": "mode", "value": "speech" } },
-    { "id": "variants-default", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.variants-default.content" } },
-    { "id": "classroom-teacher", "type": "variants.select", "parameters": { "handleId": "background", "dimension": "focus", "value": "teacher" } },
-    { "id": "variants-scene", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.variants-scene.content" } },
-    { "id": "variants-hide", "type": "layer.hide", "parameters": { "handleId": "teacher" } },
-    { "id": "variants-reshow", "type": "variants.show", "parameters": { "handleId": "teacher", "assetId": "a1000000000000000000000000000020", "transform": { "x": 420, "y": 80 }, "z": 10, "displayMode": "Native" } },
-    { "id": "variants-reset", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.variants-reset.content" } },
-    { "id": "hide-dialogue-for-video", "type": "dialogue.hide", "parameters": {} },
-    { "id": "video-blocking", "type": "video.play", "parameters": { "asset": "a1000000000000000000000000000011", "handleId": "sample-video", "blocking": "true", "skipPoints": [3, 6, 9, 999999], "z": 5, "opacity": 0.85, "displayMode": "Uniform" } },
-    { "id": "show-dialogue-after-video", "type": "dialogue.show", "parameters": {} },
-    { "id": "video-background", "type": "video.play", "parameters": { "asset": "a1000000000000000000000000000011", "handleId": "sample-video", "blocking": "false", "transform": { "x": -160, "y": 60, "scaleX": 0.5, "scaleY": 0.5, "rotationDegrees": 10 }, "z": 5, "opacity": 0.7, "displayMode": "Uniform" } },
-    { "id": "intro-video-background", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-video-background.content" } },
-    { "id": "video-stop", "type": "video.stop", "parameters": { "handleId": "sample-video" } },
-    { "id": "bgm-duck", "type": "audio.seffect.apply", "parameters": { "targetId": "bgm", "instanceId": "sample-bgm-duck", "id": "seffect.gain", "parameters": { "gain": 0.35 } } },
-    { "id": "intro-line-effect-on", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-effect-on.content" } },
-    { "id": "bgm-pause-for-save", "type": "audio.pause", "parameters": { "trackId": "bgm" } },
-    { "id": "audio-save-checkpoint", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.audio-save-checkpoint.content" } },
-    { "id": "bgm-resume-after-save", "type": "audio.resume", "parameters": { "trackId": "bgm" } },
-    { "id": "bgm-unduck", "type": "audio.seffect.stop", "parameters": { "targetId": "bgm", "instanceId": "sample-bgm-duck" } },
-    { "id": "intro-line-effect-off", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-effect-off.content" } },
-    { "id": "bgm-room", "type": "audio.seffect.apply", "parameters": { "scope": "bus", "targetId": "bgm", "instanceId": "sample-room", "id": "seffect.reverb", "parameters": { "roomSize": 0.65, "decaySeconds": 1.8, "damping": 0.4, "mix": 0.25 } } },
-    { "id": "bgm-low-pass", "type": "audio.seffect.apply", "parameters": { "targetId": "bgm", "instanceId": "sample-bgm-low-pass", "id": "seffect.lowPass", "parameters": { "cutoffHz": 900, "q": 0.7071 } } },
-    { "id": "intro-line-low-pass", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-low-pass.content" } },
-    { "id": "bgm-stop-low-pass", "type": "audio.seffect.stop", "parameters": { "targetId": "bgm", "instanceId": "sample-bgm-low-pass" } },
-    { "id": "bgm-high-pass", "type": "audio.seffect.apply", "parameters": { "targetId": "bgm", "instanceId": "sample-bgm-high-pass", "id": "seffect.highPass", "parameters": { "cutoffHz": 1200, "q": 0.7071 } } },
-    { "id": "intro-line-high-pass", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-high-pass.content" } },
-    { "id": "bgm-stop-high-pass", "type": "audio.seffect.stop", "parameters": { "targetId": "bgm", "instanceId": "sample-bgm-high-pass" } },
-    { "id": "bgm-room-stop", "type": "audio.seffect.stop", "parameters": { "scope": "bus", "targetId": "bgm", "instanceId": "sample-room" } },
-    { "id": "portrait-jitter", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-jitter", "handleId": "teacher", "property": "transform.y", "from": 0, "to": 12, "duration": 0.06, "curve": "EaseInOut", "blocking": "false", "skippable": "false", "loopMode": "PingPong", "blendMode": "Additive" } },
-    { "id": "variants-during-jitter", "type": "variants.select", "parameters": { "handleId": "teacher", "dimension": "expression", "value": "wink" } },
-    { "id": "intro-line-2", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-2.content" } },
-    { "id": "portrait-spin", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-spin", "handleId": "teacher", "property": "transform.rotationDegrees", "from": 0, "to": 360, "duration": 0.7, "curve": "EaseInOut", "blocking": "true", "skippable": "true", "loopMode": "Once", "blendMode": "Replace" } },
-    { "id": "intro-line-3", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-3.content" } },
-    { "id": "intro-line-4", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-4.content" } },
-    { "id": "stop-portrait-jitter", "type": "animation.stop", "parameters": { "playbackHandleId": "portrait-jitter", "mode": "CompleteImmediately" } },
-    { "id": "dialogue-hide-for-nvl", "type": "dialogue.hide", "parameters": {} },
-    { "id": "nvl-show", "type": "nvl.show", "parameters": {} },
-    { "id": "nvl-append-rich", "type": "nvl.append", "parameters": { "content": "group.intro.entry.nvl-append-rich.content" } },
-    { "id": "nvl-append-history", "type": "nvl.append", "parameters": { "content": "group.intro.entry.nvl-append-history.content" } },
-    { "id": "nvl-clear", "type": "nvl.clear", "parameters": {} },
-    { "id": "nvl-append-after-clear", "type": "nvl.append", "parameters": { "content": "group.intro.entry.nvl-append-after-clear.content" } },
-    { "id": "nvl-hide", "type": "nvl.hide", "parameters": {} },
-    { "id": "dialogue-show-after-nvl", "type": "dialogue.show", "parameters": {} },
-    { "id": "bgm-fade-out", "type": "audio.stop", "parameters": { "trackId": "bgm", "clearQueue": "true", "fadeOut": 2 } },
-    { "id": "intro-line-5", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.intro.entry.intro-line-5.content" } }
+    {
+      "id": "dialogue-show",
+      "type": "dialogue.show",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "bgm-fade-in",
+      "type": "audio.play",
+      "condition": "",
+      "parameters": {
+        "asset": "a1000000000000000000000000000010",
+        "fadeIn": 2,
+        "gain": 1,
+        "placement": "replace",
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "background",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000021",
+        "displayMode": "Fill",
+        "handleId": "background",
+        "opacity": 1,
+        "transform": {
+          "x": 0,
+          "y": 0,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 0
+      }
+    },
+    {
+      "id": "unlock-gallery",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 100
+      }
+    },
+    {
+      "id": "portrait",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "displayMode": "Native",
+        "handleId": "teacher",
+        "opacity": 1,
+        "selection": {
+          "expression": "shock"
+        },
+        "transform": {
+          "x": 420,
+          "y": 80,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "intro-line-1",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-1.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "variants-shy",
+      "type": "variants.select",
+      "condition": "",
+      "parameters": {
+        "dimension": "expression",
+        "handleId": "teacher",
+        "value": "shy"
+      }
+    },
+    {
+      "id": "variants-exact",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.variants-exact.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "variants-solo",
+      "type": "variants.select",
+      "condition": "",
+      "parameters": {
+        "dimension": "pose",
+        "handleId": "teacher",
+        "value": "solo"
+      }
+    },
+    {
+      "id": "variants-reduced",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.variants-reduced.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "variants-return",
+      "type": "variants.select",
+      "condition": "",
+      "parameters": {
+        "dimension": "pose",
+        "handleId": "teacher",
+        "value": "xy"
+      }
+    },
+    {
+      "id": "variants-remembered",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.variants-remembered.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "classroom-speech",
+      "type": "variants.select",
+      "condition": "",
+      "parameters": {
+        "dimension": "mode",
+        "handleId": "background",
+        "value": "speech"
+      }
+    },
+    {
+      "id": "variants-default",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.variants-default.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "classroom-teacher",
+      "type": "variants.select",
+      "condition": "",
+      "parameters": {
+        "dimension": "focus",
+        "handleId": "background",
+        "value": "teacher"
+      }
+    },
+    {
+      "id": "variants-scene",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.variants-scene.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "variants-hide",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "teacher"
+      }
+    },
+    {
+      "id": "variants-reshow",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "displayMode": "Native",
+        "handleId": "teacher",
+        "transform": {
+          "x": 420,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "variants-reset",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.variants-reset.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "hide-dialogue-for-video",
+      "type": "dialogue.hide",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "video-blocking",
+      "type": "video.play",
+      "condition": "",
+      "parameters": {
+        "asset": "a1000000000000000000000000000011",
+        "blocking": "true",
+        "displayMode": "Uniform",
+        "handleId": "sample-video",
+        "opacity": 0.85,
+        "skipPoints": [
+          3,
+          6,
+          9,
+          999999
+        ],
+        "z": 5
+      }
+    },
+    {
+      "id": "show-dialogue-after-video",
+      "type": "dialogue.show",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "video-background",
+      "type": "video.play",
+      "condition": "",
+      "parameters": {
+        "asset": "a1000000000000000000000000000011",
+        "blocking": "false",
+        "displayMode": "Uniform",
+        "handleId": "sample-video",
+        "opacity": 0.7,
+        "transform": {
+          "x": -160,
+          "y": 60,
+          "scaleX": 0.5,
+          "scaleY": 0.5,
+          "rotationDegrees": 10
+        },
+        "z": 5
+      }
+    },
+    {
+      "id": "intro-video-background",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-video-background.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "video-stop",
+      "type": "video.stop",
+      "condition": "",
+      "parameters": {
+        "handleId": "sample-video"
+      }
+    },
+    {
+      "id": "bgm-duck",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.gain",
+        "instanceId": "sample-bgm-duck",
+        "parameters": {
+          "gain": 0.35
+        },
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-effect-on",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-effect-on.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-pause-for-save",
+      "type": "audio.pause",
+      "condition": "",
+      "parameters": {
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "audio-save-checkpoint",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.audio-save-checkpoint.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-resume-after-save",
+      "type": "audio.resume",
+      "condition": "",
+      "parameters": {
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-unduck",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-bgm-duck",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-effect-off",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-effect-off.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-room",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.reverb",
+        "instanceId": "sample-room",
+        "parameters": {
+          "roomSize": 0.65,
+          "decaySeconds": 1.8,
+          "damping": 0.4,
+          "mix": 0.25
+        },
+        "scope": "bus",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-low-pass",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.lowPass",
+        "instanceId": "sample-bgm-low-pass",
+        "parameters": {
+          "cutoffHz": 900,
+          "q": 0.7071
+        },
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-low-pass",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-low-pass.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-stop-low-pass",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-bgm-low-pass",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-high-pass",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.highPass",
+        "instanceId": "sample-bgm-high-pass",
+        "parameters": {
+          "cutoffHz": 1200,
+          "q": 0.7071
+        },
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-high-pass",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-high-pass.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-stop-high-pass",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-bgm-high-pass",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-room-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-room",
+        "scope": "bus",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "portrait-jitter",
+      "type": "animation.animate",
+      "condition": "",
+      "parameters": {
+        "blendMode": "Additive",
+        "blocking": "false",
+        "curve": "EaseInOut",
+        "duration": 0.06,
+        "from": 0,
+        "handleId": "teacher",
+        "loopMode": "PingPong",
+        "playbackHandleId": "portrait-jitter",
+        "property": "transform.y",
+        "skippable": "false",
+        "to": 12
+      }
+    },
+    {
+      "id": "variants-during-jitter",
+      "type": "variants.select",
+      "condition": "",
+      "parameters": {
+        "dimension": "expression",
+        "handleId": "teacher",
+        "value": "wink"
+      }
+    },
+    {
+      "id": "intro-line-2",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-2.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "portrait-spin",
+      "type": "animation.animate",
+      "condition": "",
+      "parameters": {
+        "blendMode": "Replace",
+        "blocking": "true",
+        "curve": "EaseInOut",
+        "duration": 0.7,
+        "from": 0,
+        "handleId": "teacher",
+        "loopMode": "Once",
+        "playbackHandleId": "portrait-spin",
+        "property": "transform.rotationDegrees",
+        "skippable": "true",
+        "to": 360
+      }
+    },
+    {
+      "id": "intro-line-3",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-3.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "intro-line-4",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-4.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "stop-portrait-jitter",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "portrait-jitter"
+      }
+    },
+    {
+      "id": "dialogue-hide-for-nvl",
+      "type": "dialogue.hide",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "nvl-show",
+      "type": "nvl.show",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "nvl-append-rich",
+      "type": "nvl.append",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.nvl-append-rich.content"
+      }
+    },
+    {
+      "id": "nvl-append-history",
+      "type": "nvl.append",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.nvl-append-history.content"
+      }
+    },
+    {
+      "id": "nvl-clear",
+      "type": "nvl.clear",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "nvl-append-after-clear",
+      "type": "nvl.append",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.nvl-append-after-clear.content"
+      }
+    },
+    {
+      "id": "nvl-hide",
+      "type": "nvl.hide",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "dialogue-show-after-nvl",
+      "type": "dialogue.show",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "bgm-fade-out",
+      "type": "audio.stop",
+      "condition": "",
+      "parameters": {
+        "clearQueue": "true",
+        "fadeOut": 2,
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-5",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-5.content",
+        "speaker": "guide"
+      }
+    }
   ]
 }

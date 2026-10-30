@@ -26,8 +26,7 @@ foreach ($deployment in $Deployments) {
         [IO.Compression.ZipFile]::ExtractToDirectory($zip, $root)
         $roots[$kind] = $root
         $isDeveloper = $kind -in @('Sample', 'Sample-GameTestCase') -and $SampleFlavor -eq 'Developer'
-        if (!$isDeveloper -and (Get-ChildItem -LiteralPath $root -Recurse -Filter '*.pdb')) { throw "$kind ZIP contains PDB files." }
-        if ($isDeveloper -and !(Test-Path (Join-Path $root 'lib/GalNet.Sample.Avalonia.pdb'))) { throw 'Developer ZIP is missing player symbols.' }
+        if (Get-ChildItem -LiteralPath $root -Recurse -Filter '*.pdb') { throw "$kind ZIP contains PDB files." }
         if (Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
             [IO.Path]::GetRelativePath($root, $_.FullName).Replace('\', '/') -match '(^|/)libvlc/win-(x86|arm64)/'
         }) { throw "$kind ZIP contains VLC assets for another architecture." }

@@ -32,7 +32,7 @@ dotnet build src/Samples/GalNet.Sample.Avalonia -c Release -p:EnableGameDebuggin
 
 原 Sample 的 `ConfigureServices` 参数 `enableDebug` 只允许在已经编入调试能力的构建中抑制服务注册，不能给玩家构建重新启用调试。普通关闭模式使用独立的 `packages.lock.NoGameDebugging.json`；切换开关后必须重新 restore，不能复用另一种依赖图的 `--no-restore` 输出。两个宿主 Desktop 发布的开发版使用 `packages.lock.Desktop.<rid>.Debugging.json`，玩家版使用 `packages.lock.Desktop.<rid>.json`，同时传入全局 `GalNetDesktopPublishTarget=<rid>`。原 Sample 的 WindowsReadyToRun 开发版使用 `packages.lock.WindowsReadyToRun.Debugging.json`。
 
-仓库发行脚本默认 `-SampleFlavor Player`，显式关闭游戏调试、启动参数和 PDB；`-SampleFlavor Developer` 使用带调试和参数能力的 Release 构建并保留符号，ZIP 名追加 `-developer`。两者均不改变契约程序集的编译参数和严格字节身份，也不改变 PAK 覆盖顺序或补丁策略。
+仓库发行脚本默认 `-SampleFlavor Player`，显式关闭游戏调试和启动参数；`-SampleFlavor Developer` 使用带调试和参数能力的 Release 构建，ZIP 名追加 `-developer`。两种发行包都排除 PDB；外部调试通过协议，不提供源码级单步调试。两者均不改变契约程序集的编译参数和严格字节身份，也不改变 PAK 覆盖顺序或补丁策略。
 
 默认宿主的扩展目标是让项目自己实现功能。手机、小游戏、商城等可以使用项目服务、XAML、primitive 与状态恢复组合，不需要给框架增加同名业务系统。
 

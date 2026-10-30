@@ -2,7 +2,7 @@
 
 ## 游戏接入
 
-Sample 必须以 `EnableGameDebugging=true` 构建才能接入（Debug 配置默认开启，Release 默认关闭），`EnableLaunchArguments` 默认随之开启。发布给玩家的 Sample 不包含调试协议、工具和启动参数；Release 联调可显式传入 `-p:EnableGameDebugging=true`，或使用发行脚本的 `-SampleFlavor Developer` 生成带符号的开发包。详见[调试构建与玩家发行](customize-sample.md#调试构建与玩家发行)。
+Sample 必须以 `EnableGameDebugging=true` 构建才能接入（Debug 配置默认开启，Release 默认关闭），`EnableLaunchArguments` 默认随之开启。发布给玩家的 Sample 不包含调试协议、工具和启动参数；Release 联调可显式传入 `-p:EnableGameDebugging=true`，或使用发行脚本的 `-SampleFlavor Developer` 生成带调试协议的开发包。两种发行 flavor 都不带 PDB，详见[调试构建与玩家发行](customize-sample.md#调试构建与玩家发行)。
 
 引用 `GalNet.Debugging`，在项目组合根创建服务。开始回调可省略，开始/停止回调中所需的 UI 调度由宿主负责。
 

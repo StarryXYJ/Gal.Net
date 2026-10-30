@@ -12,14 +12,11 @@ from process_steps import run
 PROJECTS = {
     "Editor": "src/Editor/GalNet.Editor/GalNet.Editor.csproj",
     "CLI": "src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj",
-    "Sample": "src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj",
     "CrossPlatform": "src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj",
 }
 TARGETS = {
     "win-x64": ("galnet_miniaudio.dll", "SDL3.dll", "coreclr.dll", ".exe"),
     "linux-x64": ("libgalnet_miniaudio.so", "libSDL3.so.0", "libcoreclr.so", ""),
-    "osx-x64": ("libgalnet_miniaudio.dylib", "libSDL3.0.dylib", "libcoreclr.dylib", ""),
-    "osx-arm64": ("libgalnet_miniaudio.dylib", "libSDL3.0.dylib", "libcoreclr.dylib", ""),
 }
 
 
@@ -89,7 +86,7 @@ def validate_publish(root, role, target):
         if not (root / (assembly + suffix)).is_file():
             raise FileNotFoundError(f"Missing application payload: {assembly}{suffix}")
     dependencies = json.loads((root / (assembly + ".deps.json")).read_text())["libraries"]
-    capabilities = validate_sample_capabilities(root, role, dependencies) if kind in ("Sample", "CrossPlatform") else {}
+    capabilities = validate_sample_capabilities(root, role, dependencies) if kind == "CrossPlatform" else {}
     if any(name.startswith("GalNet.Media.Miniaudio/") for name in dependencies):
         check_binary(root / TARGETS[target][0], target)
     contracts = root / "DefaultContracts" if kind == "Editor" else root
@@ -99,7 +96,7 @@ def validate_publish(root, role, target):
     for filename in contract_names:
         if not (contracts / filename).is_file():
             raise FileNotFoundError(f"Incomplete contracts in {role}: {filename}")
-    if kind in ("Sample", "CrossPlatform"):
+    if kind == "CrossPlatform":
         notices = root / "ThirdParty/SDL3"
         for filename in ("native-runtime.json", "SDL-LICENSE.txt", "SDL3-CS-LICENSE.txt"):
             if not (notices / filename).is_file():
@@ -167,8 +164,7 @@ def main():
         check_binary(native, args.target)
         report["nativeAudio"] = {"path": str(native), "sha256": sha256(native)}
         roles = [("Editor", None), ("CLI", None)] + [
-            (kind + "-" + flavor, flavor)
-            for kind in ("Sample", "CrossPlatform") for flavor in dict.fromkeys(args.flavors)]
+            ("CrossPlatform-" + flavor, flavor) for flavor in dict.fromkeys(args.flavors)]
         for role, flavor in roles:
             kind = role.split("-")[0]
             project = repo / PROJECTS[kind]
@@ -193,10 +189,10 @@ def main():
             hashes = {application["contracts"][filename] for application in report["applications"]}
             if len(hashes) != 1:
                 raise ValueError("Strict shared contract bytes differ between application publishes: " + filename)
-        sample_contracts = {application["contracts"]["GalNet.Project.Contracts.dll"]
-                            for application in report["applications"] if application.get("flavor")}
-        if len(sample_contracts) != 1:
-            raise ValueError("Strict project contract bytes differ between Sample host/flavor publishes.")
+        cross_platform_contracts = {application["contracts"]["GalNet.Project.Contracts.dll"]
+                                    for application in report["applications"] if application.get("flavor")}
+        if len(cross_platform_contracts) != 1:
+            raise ValueError("Strict project contract bytes differ between CrossPlatform player/developer publishes.")
         report["passed"] = True
     except Exception as error:
         report["error"] = str(error)

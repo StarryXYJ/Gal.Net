@@ -175,7 +175,7 @@ function Complete-Package([string]$Kind, [string]$PackageRoot) {
     # Filter the final payload, including the nested CLI, before hashing it.
     $payloadRoot = [IO.Path]::GetFullPath($PackageRoot).TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
     $unwanted = @(Get-ChildItem -LiteralPath $PackageRoot -Recurse -File | Where-Object {
-        ($_.Extension -eq '.pdb' -and !($Kind.StartsWith('Sample') -and $SampleFlavor -eq 'Developer')) -or
+        $_.Extension -eq '.pdb' -or
         (Get-RelativePath $PackageRoot $_.FullName).Replace('\', '/') -match '(^|/)libvlc/win-(x86|arm64)/'
     })
     foreach ($file in $unwanted) {
@@ -299,7 +299,7 @@ function Publish-SamplePackages([switch]$IncludePure, [switch]$IncludeIntegrated
     try {
         $project = Join-Path $repoRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
         Invoke-DotNet @('restore', $project, '-r', 'win-x64', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:EnableGameDebugging=$sampleDebugging", '--locked-mode', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:EnableGameDebugging=$sampleDebugging", "-p:EnableLaunchArguments=$sampleDebugging", "-p:CopyOutputSymbolsToPublishDirectory=$sampleDebugging", "-p:PackageAppHostDestinationPath=$runtimeRoot/GalNet.Sample.Avalonia.exe", '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
+        Invoke-DotNet @('publish', $project, '-c', 'Release', '-r', 'win-x64', '--no-restore', '-p:PublishProfile=WindowsReadyToRun', $deploymentProperty, "-p:EnableGameDebugging=$sampleDebugging", "-p:EnableLaunchArguments=$sampleDebugging", '-p:CopyOutputSymbolsToPublishDirectory=false', "-p:PackageAppHostDestinationPath=$runtimeRoot/GalNet.Sample.Avalonia.exe", '-p:UseSharedCompilation=false', '-m:1', '-nr:false', '-o', $runtimeRoot)
 
         if ($ContractOutputDirectory) {
             New-Item -ItemType Directory -Force -Path $ContractOutputDirectory | Out-Null

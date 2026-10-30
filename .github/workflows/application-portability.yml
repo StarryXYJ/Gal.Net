@@ -7,12 +7,18 @@ on:
       - 'src/Infrastructure/**'
       - 'src/Shared/**'
       - 'src/Editor/**'
-      - 'src/Samples/GalNet.Sample.Avalonia/**'
       - 'src/Samples/GalNet.Sample.CrossPlatform/**'
       - 'src/Samples/GalNet.Sample.Contracts/**'
+      - 'GameTestCase/**'
       - 'scripts/ci/publish-applications.py'
+      - 'scripts/ci/publish-android-sample.ps1'
       - 'scripts/ci/process_steps.py'
       - 'scripts/ci/test-application-publish.py'
+      - 'features/F-20261029-05-cross-platform-applications/probes/mobile/verify-android-package.py'
+      - 'packaging/**'
+      - 'scripts/release/Pack-NuGet.ps1'
+      - 'scripts/release/Test-NuGet.ps1'
+      - 'scripts/release/Common.ps1'
       - 'Directory.*.props'
       - 'Directory.Build.targets'
       - 'global.json'
@@ -37,10 +43,6 @@ jobs:
             rid: win-x64
           - os: ubuntu-24.04
             rid: linux-x64
-          - os: macos-15-intel
-            rid: osx-x64
-          - os: macos-15
-            rid: osx-arm64
     runs-on: ${{ matrix.os }}
     timeout-minutes: 35
     steps:
@@ -66,4 +68,81 @@ jobs:
           path: |
             out/application-portability/application-publish.json
             out/application-portability/logs/
+          if-no-files-found: warn
+
+  nuget:
+    name: NuGet package consumers
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock*.json'
+      - name: Pack preview NuGet packages and validate external consumers
+        shell: pwsh
+        run: |
+          ./scripts/release/Pack-NuGet.ps1 `
+            -Version 0.0.0-dev.1 `
+            -OutputDirectory out/nuget-preview/packages `
+            -WorkDirectory out/nuget-preview/pack
+          ./scripts/release/Test-NuGet.ps1 `
+            -Version 0.0.0-dev.1 `
+            -PackageDirectory out/nuget-preview/packages `
+            -WorkDirectory out/nuget-preview/validation
+      - name: Upload NuGet validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nuget-preview-validation
+          path: |
+            out/nuget-preview/validation/package-validation.json
+            out/nuget-preview/pack/logs/
+            out/nuget-preview/validation/logs/
+          if-no-files-found: warn
+
+  android:
+    name: Android ARM64 Mono AOT preview
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock*.json'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Android workload and native toolchain
+        shell: bash
+        run: |
+          dotnet workload install android --skip-manifest-update
+          yes | sdkmanager --licenses
+          sdkmanager "ndk;29.0.14206865" "cmake;3.22.1"
+          echo "GALNET_ANDROID_NDK=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          echo "$ANDROID_HOME/cmake/3.22.1/bin" >> "$GITHUB_PATH"
+      - name: Publish GameTestCase ARM64 APK and validate its payload
+        shell: pwsh
+        run: |
+          ./scripts/ci/publish-android-sample.ps1 `
+            -OutputDirectory out/application-portability-android `
+            -AndroidNdkDirectory $env:GALNET_ANDROID_NDK
+      - name: Upload Android publish report and payload
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-publish-android-arm64
+          path: |
+            out/application-portability-android/android-publish.json
+            out/application-portability-android/android-package-verification.json
+            out/application-portability-android/publish/**/*.apk
+            out/application-portability-android/logs/
           if-no-files-found: warn

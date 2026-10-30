@@ -2,8 +2,50 @@
   "version": 2,
   "kind": "Raw",
   "entries": [
-    { "id": "cross-fade", "type": "transition.crossFade", "parameters": { "playbackHandleId": "route-crossfade", "oldHandleId": "background", "newHandleId": "route-background", "assetId": "a1000000000000000000000000000003", "transform": { "x": 0, "y": 0, "rotationDegrees": 0, "scaleX": 1, "scaleY": 1 }, "z": 0, "displayMode": "Tile", "durationFrames": 36 } },
-    { "id": "portrait-move", "type": "animation.animate", "parameters": { "playbackHandleId": "portrait-settle", "handleId": "teacher", "property": "transform.x", "to": 500, "duration": 0.5, "curve": "EaseOut", "blocking": "false", "skippable": "false" } },
-    { "id": "line", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.downtown.entry.line.content" } }
+    {
+      "id": "cross-fade",
+      "type": "transition.crossFade",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000003",
+        "displayMode": "Tile",
+        "durationFrames": 36,
+        "newHandleId": "route-background",
+        "oldHandleId": "background",
+        "playbackHandleId": "route-crossfade",
+        "transform": {
+          "x": 0,
+          "y": 0,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 0
+      }
+    },
+    {
+      "id": "portrait-move",
+      "type": "animation.animate",
+      "condition": "",
+      "parameters": {
+        "blocking": "false",
+        "curve": "EaseOut",
+        "duration": 0.5,
+        "handleId": "teacher",
+        "playbackHandleId": "portrait-settle",
+        "property": "transform.x",
+        "skippable": "false",
+        "to": 500
+      }
+    },
+    {
+      "id": "line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.downtown.entry.line.content",
+        "speaker": "guide"
+      }
+    }
   ]
 }

@@ -97,7 +97,7 @@ class ApplicationPublishTests(unittest.TestCase):
     def test_sample_payload_rejects_debug_dependencies_and_stray_symbols(self):
         root = self.root / "player"
         root.mkdir()
-        for kind in ("Sample", "CrossPlatform"):
+        for kind in ("CrossPlatform",):
             role = kind + "-Player"
             self.assertFalse(publisher.validate_sample_capabilities(root, role, {})["gameDebugging"])
             for name in ("GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport"):
@@ -119,7 +119,7 @@ class ApplicationPublishTests(unittest.TestCase):
             "GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport")}
         debug_assemblies = ("GalNet.Avalonia.Debugging.dll", "GalNet.Debugging.dll",
                             "AvaloniaUI.DiagnosticsSupport.Avalonia.dll")
-        for kind in ("Sample", "CrossPlatform"):
+        for kind in ("CrossPlatform",):
             role = kind + "-Developer"
             with self.subTest(role=role), self.assertRaisesRegex(ValueError, "missing debug dependencies"):
                 publisher.validate_sample_capabilities(root, role, {})

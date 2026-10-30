@@ -46,33 +46,29 @@ public sealed class ProjectContractSource : IDisposable
     public static string RequireApplication(string executable)
     {
         var path = Path.GetFullPath(executable.Trim());
-        if (!File.Exists(path) || !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase))
-            throw new EditorOperationException("project.applicationInvalid", "Select an existing game application EXE.");
+        if (!File.Exists(path))
+            throw new EditorOperationException("project.applicationInvalid", "Select an existing game application.");
+        var root = Path.GetDirectoryName(path)!;
+        if (!File.Exists(Path.Combine(root, ApplicationPackageLayout.FileName)))
+            throw new EditorOperationException("project.applicationInvalid", "Select an existing game application executable.");
+        var layout = ApplicationPackageLayout.Read(root);
+        var declaredEntryPoint = Path.GetFullPath(Path.Combine(root, layout.EntryPoint));
+        var comparison = layout.RuntimeIdentifier.StartsWith("win-", StringComparison.Ordinal)
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        if (!string.Equals(declaredEntryPoint, path, comparison))
+            throw new EditorOperationException("project.applicationInvalid", "The selected application does not match its package layout.");
         return path;
     }
 
     public static string FindForApplication(string executable)
     {
         var root = Path.GetDirectoryName(RequireApplication(executable))!;
-        if (File.Exists(Path.Combine(root, ApplicationPackageLayout.FileName)))
-        {
-            var layout = ApplicationPackageLayout.Read(root);
-            if (!string.Equals(Path.GetFullPath(Path.Combine(root, layout.EntryPoint)), Path.GetFullPath(executable),
-                OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal))
-                throw new EditorOperationException("project.applicationInvalid", "The selected application does not match its package layout.");
-            var contracts = Path.Combine(root, layout.ContractsDirectory);
-            if (!File.Exists(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName)))
-                throw new EditorOperationException("project.applicationContractMissing", "The application layout declares a missing project contract.");
-            return contracts;
-        }
-        var candidates = new[] { root, Path.Combine(root, "lib") }
-            .Where(directory => File.Exists(Path.Combine(directory, ProjectSchemaContext.AssemblyFileName))).ToArray();
-        return candidates.Length switch
-        {
-            1 => candidates[0],
-            0 => throw new EditorOperationException("project.applicationContractMissing", "No project contract was found beside the application or in lib. Select a contract directory manually."),
-            _ => throw new EditorOperationException("project.applicationContractAmbiguous", "Multiple project contracts were found. Select a contract directory manually.")
-        };
+        var layout = ApplicationPackageLayout.Read(root);
+        var contracts = Path.Combine(root, layout.ContractsDirectory);
+        if (!File.Exists(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName)))
+            throw new EditorOperationException("project.applicationContractMissing", "The application layout declares a missing project contract.");
+        return contracts;
     }
 
     public static ProjectContractSource Prepare(string sourceDirectory)

@@ -19,6 +19,11 @@
     "dependencies": ["GalNet.Desktop"],
     "description": "GalNet Avalonia player views, rendering, themes and host composition."
   },
+  "GalNet.Avalonia.Debugging": {
+    "projects": ["Presentation/GalNet.Avalonia.Debugging"],
+    "dependencies": ["GalNet.Avalonia", "GalNet.Engine"],
+    "description": "Optional GalNet Avalonia debugging tools, diagnostics views and external-session integration."
+  },
   "GalNet.SchemaGenerator": {
     "projects": ["Tooling/GalNet.SchemaGenerator"],
     "dependencies": [],

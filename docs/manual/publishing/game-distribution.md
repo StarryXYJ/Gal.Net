@@ -44,7 +44,7 @@ Linux 另需 `--media-directory <准备好的目录>`，其中包含 native、li
 
 契约身份也受源码字节、构建配置和源码路径上下文影响，不能只看 `--version`。可靠流程是先发布所选应用，把实际发布的 Core/Builtins/Project.Contracts 完整闭包交给 `project create --contracts` 或作者项目，再使用同一源码/配置/版本执行 build-compose。换构建宿主或源码快照后，应重新核对三份 DLL hash；不一致时使用该构建的契约重新导出内容。Windows 与 Linux 原生 SDK 均已有实际源码合包证据，Linux 还验证了遵守上述协议的仓库外独立 csproj；这不承诺任意工程布局或跨宿主重编译工件可互换。
 
-需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，保留 PDB，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
+需要联调时，`Publish.ps1` 或 `Release.ps1` 加 `-SampleFlavor Developer`：Sample 仍使用 Release 优化，开启 `GALNET_GAME_DEBUG` 与 `GALNET_LAUNCH_ARGS`，ZIP 名追加 `-developer`，发行清单记录 sampleFlavor。开发版通过外部调试协议工作，和 Player 一样不分发 PDB。默认 `Player`。`Test-Release.ps1` 验收开发包也传入相同选项，Editor/Contracts 名称不变。
 
 完整版无需用户安装 .NET；系统 DLL、Avalonia/Skia/HarfBuzz 与 VLC 视频插件都是体积来源。R2R 保留 IL 并增加预编译代码，不能按 AOT 的体积预期评估。DLL 数量主要来自 VLC 插件，不能仅按扩展名删除；当前保留 x64 插件能力集合。Editor 与 CLI 先独立发布，再将字节一致的重名文件合并到同一目录，依赖冲突会明确失败，不覆盖另一程序的依赖。
 

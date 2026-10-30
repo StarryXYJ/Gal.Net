@@ -8,6 +8,6 @@
     <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
     <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
     <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.Desktop.$(GalNetDesktopPublishTarget).Debugging.json</NuGetLockFilePath>
-    <CopyOutputSymbolsToPublishDirectory Condition="'$(EnableGameDebugging)' != 'true'">false</CopyOutputSymbolsToPublishDirectory>
+    <CopyOutputSymbolsToPublishDirectory Condition="'$(CopyOutputSymbolsToPublishDirectory)' == ''">false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
 </Project>
