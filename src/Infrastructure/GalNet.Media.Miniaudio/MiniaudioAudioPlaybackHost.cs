@@ -120,6 +120,13 @@ public sealed unsafe class MiniaudioOutput : IAudioOutput, IAudioOutputLifecycle
 
 internal static unsafe partial class Native
 {
+    static Native()
+    {
+        // The shared managed assembly also runs on iOS, whose host force-links our archive.
+        if (OperatingSystem.IsIOS())
+            NativeLibrary.SetDllImportResolver(typeof(Native).Assembly, static (name, _, _) =>
+                name == "galnet_miniaudio" ? NativeLibrary.GetMainProgramHandle() : 0);
+    }
 #if GALNET_MINIAUDIO_STATIC
     private const string Library = "__Internal";
 #else

@@ -413,3 +413,5 @@
 - [源生成 extension data](lessons/L-20261027-09-sourcegen-extension-data.md)：GalleryAnnotation 的 init 字典触发构造绑定限制，改用 set 并验证未知字段往返。
 
 - 2026-10-29 默认播放器对白历史/重播/已读颜色：历史正文只在实际保存时进入 GameSnapshot.Attachments，host.dialogue.history 状态只保留计数；同 Group、同 rawId 的相邻 audio.play 与文本按本次执行关联，重播使用独立后端 voice，任何有效继续均停止。阅读前导不能成为半句稳定快照，见 [阅读前导快照边界](lessons/L-20261029-09-reading-preamble-checkpoints.md)、docs/spec/presentation/game-view.md、runtime.md 和 features/F-20261029-03-dialogue-history。
+
+- [Android VLC 16 KB 页](lessons/L-20261030-07-android-vlc-page-alignment.md)：官方稳定 native 也可能只有 4 KB 对齐；核对实际 APK 全部 ELF LOAD/架构及 zipalign，预发布依赖/设备运行分开记录。跨平台 P7a 的移动媒体/后台独立检查点已接线，Win/Linux native 视频各 5 项通过；Android 双 ABI Mono AOT/完整内容载荷通过，设备及 iOS 编译仍待验。

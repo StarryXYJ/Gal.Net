@@ -21,7 +21,7 @@ public sealed class VideoNativeSmokeTests
     {
         var assetsRoot = Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS") ?? throw new InvalidOperationException("Set GALNET_VIDEO_ASSETS.");
         var nativePath = Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC") ?? throw new InvalidOperationException("Set GALNET_VIDEO_LIBVLC.");
-        var factory = new LibVlcFactory(new() { NativeLibraryDirectory = nativePath, PluginDirectory = Path.Combine(nativePath, "plugins") });
+        var factory = CreateFactory(nativePath);
         using var probeVlc = factory.Create();
         using var probe = new LibVLCSharp.Shared.Media(probeVlc, Path.Combine(assetsRoot, "niko.mp4"), LibVLCSharp.Shared.FromType.FromPath);
         await probe.Parse(LibVLCSharp.Shared.MediaParseOptions.ParseLocal).WaitAsync(TimeSpan.FromSeconds(5));
@@ -73,7 +73,7 @@ public sealed class VideoNativeSmokeTests
     public async Task Hiding_or_replacing_during_asset_loading_prevents_late_video_publication(bool replace)
     {
         var nativePath = Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC")!;
-        var factory = new LibVlcFactory(new() { NativeLibraryDirectory = nativePath, PluginDirectory = Path.Combine(nativePath, "plugins") });
+        var factory = CreateFactory(nativePath);
         using var realAssets = new AssetManager([new LocalFileProvider(Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS")!, BuiltinResourceTypes.CreateCatalog())]);
         var assets = new DelayedAssets(realAssets);
         var state = new GamePageViewModel(new NoOpGameNavigationService());
@@ -93,6 +93,13 @@ public sealed class VideoNativeSmokeTests
         }
         else Assert.That(state.Layers, Is.Empty);
     }
+
+    private static LibVlcFactory CreateFactory(string native) => new(new()
+    {
+        UseSystemLibraries = OperatingSystem.IsLinux(),
+        NativeLibraryDirectory = OperatingSystem.IsLinux() ? null : native,
+        PluginDirectory = Path.Combine(native, "plugins")
+    });
 
     private sealed class DelayedAssets(IAssetManager inner) : IAssetManager
     {

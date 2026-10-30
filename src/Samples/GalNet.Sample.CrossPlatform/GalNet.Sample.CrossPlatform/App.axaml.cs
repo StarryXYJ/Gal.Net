@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.CrossPlatform.Views;
@@ -26,6 +27,8 @@ public partial class App : Application, IAsyncDisposable
     private Serilog.ILogger? _logger;
     private int _generation;
     private Task? _shutdown;
+    private bool _platformActive = true;
+    private bool _audioAvailable = true;
 
     public static Func<CancellationToken, Task<PlayerLaunchPaths>> PrepareLaunchAsync { get; set; } = _ =>
     {
@@ -34,6 +37,7 @@ public partial class App : Application, IAsyncDisposable
     };
 
     public Action? ExitRequested { get; set; }
+    public static Action<IServiceCollection>? ConfigurePlatformServices { get; set; }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -70,13 +74,32 @@ public partial class App : Application, IAsyncDisposable
         // Activity recreation moves the existing player rather than starting another session.
         if (_mount is not null) _mount.Content = null;
         var host = new ContentControl { Content = _player?.View };
+        TopLevel.SetAutoSafeAreaPadding(host, true);
         _mount = host;
+        TopLevel? top = null;
+        host.DetachedFromVisualTree += (_, _) =>
+        {
+            if (top is not null) top.BackRequested -= OnPlatformBackRequested;
+            top = null;
+        };
         host.AttachedToVisualTree += async (_, _) =>
         {
+            if (_window is null && (top = TopLevel.GetTopLevel(host)) is not null)
+            {
+                top.BackRequested -= OnPlatformBackRequested;
+                top.BackRequested += OnPlatformBackRequested;
+            }
             _startup ??= StartAsync();
             await _startup;
         };
         return host;
+    }
+
+    private async void OnPlatformBackRequested(object? sender, RoutedEventArgs args)
+    {
+        args.Handled = true;
+        try { await HandleBackAsync(); }
+        catch (Exception error) { GameLog.Logger.Error(error, "Platform back navigation failed"); }
     }
 
     private async Task StartAsync()
@@ -101,12 +124,13 @@ public partial class App : Application, IAsyncDisposable
                 }
                 var options = SamplePlayerServices.CreateHostOptions(screenshotDirectory: title =>
                     paths.ScreenshotDirectory ?? SampleScreenshotOutput.GetHostDirectory(title));
-                _player = await SamplePlayerSession.CreateAsync(options);
+                _player = await SamplePlayerSession.CreateAsync(options, ConfigurePlatformServices);
+                _player.Services.GetRequiredService<TitlePageViewModel>().CanExit = !OperatingSystem.IsIOS();
                 if (_window is not null) _player.BindWindow(_window);
                 _player.Services.GetRequiredService<TitlePageViewModel>().ExitRequested = () =>
                 {
                     if (_window is not null) _window.Close();
-                    else ExitRequested?.Invoke();
+                    else _ = ConfirmPlatformExitAsync();
                 };
                 if (_mount is not null) _mount.Content = _player.View;
                 initialization = _player.InitializeAsync(paths.ContentDirectory, paths.ProfileDirectory);
@@ -114,6 +138,7 @@ public partial class App : Application, IAsyncDisposable
             finally { _composition.Release(); }
             // Shutdown must be able to cancel onboarding while initialization awaits user input.
             await initialization;
+            await ApplyPlatformStateAsync();
         }
         catch (OperationCanceledException) when (_stopping || generation != _generation) { }
         catch (Exception error)
@@ -122,6 +147,61 @@ public partial class App : Application, IAsyncDisposable
             if (!_stopping && generation == _generation && _mount is not null)
                 _mount.Content = new TextBlock { Text = error.Message, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(24) };
         }
+    }
+
+    public Task SetPlatformActiveAsync(bool active)
+    {
+        _platformActive = active;
+        return ApplyPlatformStateAsync();
+    }
+
+    public Task SetAudioAvailableAsync(bool available)
+    {
+        _audioAvailable = available;
+        return ApplyPlatformStateAsync();
+    }
+
+    private async Task ApplyPlatformStateAsync()
+    {
+        if (_stopping) return;
+        await _composition.WaitAsync();
+        try
+        {
+            if (_stopping || _player is null) return;
+            var active = _platformActive && _audioAvailable;
+            _player.View.IsEnabled = active;
+            if (!active) await _player.SuspendAsync();
+        }
+        finally { _composition.Release(); }
+    }
+
+    public async Task HandleBackAsync()
+    {
+        if (_stopping || _player is null) return;
+        if (await _player.HandleBackAsync())
+        {
+            await ShutdownAsync();
+            ExitRequested?.Invoke();
+        }
+    }
+
+    private async Task ConfirmPlatformExitAsync()
+    {
+        try
+        {
+            if (_stopping || _player is null || !await _player.View.ConfirmExitAsync()) return;
+            await ShutdownAsync();
+            ExitRequested?.Invoke();
+        }
+        catch (Exception error) { GameLog.Logger.Error(error, "Player exit failed"); }
+    }
+
+    public async Task InterruptAsync()
+    {
+        if (_stopping) return;
+        await _composition.WaitAsync();
+        try { if (!_stopping && _player is not null) await _player.SuspendAsync(); }
+        finally { _composition.Release(); }
     }
 
     public async Task RestartAsync(bool clearPlayerState = false)
@@ -173,7 +253,6 @@ public partial class App : Application, IAsyncDisposable
             if (_logger is IDisposable disposable) disposable.Dispose();
             _logger = null;
             _composition.Release();
-            _composition.Dispose();
             _lifetime.Dispose();
         }
     }

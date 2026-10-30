@@ -1,6 +1,7 @@
 using LibVLCSharp.Shared;
 using GalNet.Media.LibVlc;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
+using SkiaSharp;
 
 namespace GalNet.Avalonia.GameView.Services;
 
@@ -26,18 +27,24 @@ internal sealed class GalleryThumbnailService(LibVlcFactory mediaFactory) : IDis
             var path = Path.Combine(_directory, Guid.NewGuid().ToString("N") + ".png");
             if (_vlc is null)
             {
-                _vlc = mediaFactory.Create();
+                _vlc = mediaFactory.Create("--avcodec-hw=none");
             }
             using var player = new MediaPlayer(_vlc);
+            var decoded = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            using var output = new LibVlcFrameOutput(player, error => decoded.TrySetException(error));
+            output.Frames.FrameChanged += () => decoded.TrySetResult();
             using var media = new LibVlcMedia(_vlc, sourcePath);
-            var playing = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
-            player.Playing += (_, _) => playing.TrySetResult();
-            if (!player.Play(media)) return null;
+            media.AddOption(":no-audio");
+            player.EncounteredError += (_, _) => decoded.TrySetException(new InvalidDataException("LibVLC could not decode the Gallery thumbnail."));
             try
             {
-                await playing.Task.WaitAsync(TimeSpan.FromSeconds(4), cancellation.Token).ConfigureAwait(false);
-                await Task.Delay(250, cancellation.Token).ConfigureAwait(false);
-                if (!player.TakeSnapshot(0, path, 0, 0) || !File.Exists(path)) return null;
+                if (!player.Play(media)) return null;
+                await decoded.Task.WaitAsync(TimeSpan.FromSeconds(4), cancellation.Token).ConfigureAwait(false);
+                using var frame = output.Frames.AcquireFrame();
+                if (frame.Texture?.SkBitmap is not { } bitmap) return null;
+                using var image = SKImage.FromBitmap(bitmap);
+                using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                using (var stream = File.Create(path)) data.SaveTo(stream);
                 _cache.Add(sourcePath, path);
                 return path;
             }

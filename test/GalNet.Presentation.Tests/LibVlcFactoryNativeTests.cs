@@ -18,7 +18,12 @@ public sealed class LibVlcFactoryNativeTests
         {
             var native = Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC") ?? throw new InvalidOperationException("Set GALNET_VIDEO_LIBVLC.");
             var assets = Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS") ?? throw new InvalidOperationException("Set GALNET_VIDEO_ASSETS.");
-            var factory = new LibVlcFactory(new() { NativeLibraryDirectory = native, PluginDirectory = Path.Combine(native, "plugins") });
+            var factory = new LibVlcFactory(new()
+            {
+                UseSystemLibraries = OperatingSystem.IsLinux(),
+                NativeLibraryDirectory = OperatingSystem.IsLinux() ? null : native,
+                PluginDirectory = Path.Combine(native, "plugins")
+            });
             using var runtime = new LibVlcRuntime(factory: factory);
             Assert.That(runtime.Instance, Is.Not.Null, runtime.InitializationError);
             using (var independent = factory.Create()) Assert.That(independent.Version, Is.EqualTo(runtime.Instance!.Version));
@@ -35,7 +40,16 @@ public sealed class LibVlcFactoryNativeTests
             var deadline = DateTime.UtcNow.AddSeconds(5);
             while (gallery.VideoPlayer?.IsPlaying != true && DateTime.UtcNow < deadline) await Task.Delay(50);
             Assert.That(gallery.VideoPlayer!.IsPlaying, Is.True);
+            while (DateTime.UtcNow < deadline)
+            {
+                using (var frame = gallery.VideoLayer.FrameSource!.AcquireFrame())
+                    if (frame.Texture is not null) break;
+                await Task.Delay(20);
+            }
+            using (var frame = gallery.VideoLayer.FrameSource!.AcquireFrame())
+                Assert.That(frame.Texture?.SkBitmap?.Width, Is.GreaterThan(0), "Gallery must decode through shared pixel output without a native child window.");
             gallery.StopVideo();
+            Assert.That(gallery.VideoLayer.FrameSource, Is.Null);
             using var media = new Media(runtime.Instance!, Path.Combine(assets, "niko.mp4"), FromType.FromPath);
             await media.Parse(MediaParseOptions.ParseLocal).WaitAsync(TimeSpan.FromSeconds(5));
             Assert.That(media.Duration, Is.GreaterThan(0), "Disposing the independent session must not dispose the runtime session.");

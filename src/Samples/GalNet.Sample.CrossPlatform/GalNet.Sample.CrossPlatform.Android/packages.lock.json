@@ -15,6 +15,15 @@
           "Xamarin.AndroidX.Window": "1.5.1.2"
         }
       },
+      "LibVLCSharp": {
+        "type": "Direct",
+        "requested": "[3.10.0, )",
+        "resolved": "3.10.0",
+        "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q==",
+        "dependencies": {
+          "LibVLCSharp.Android.AWindowModern": "3.10.0"
+        }
+      },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
         "requested": "[10.0.12, )",
@@ -38,6 +47,12 @@
         "requested": "[3.4.18.1, )",
         "resolved": "3.4.18.1",
         "contentHash": "baR3Y/1FgnevQyIfo2pDwIXF8idzqf17pDOF87qZrykBxQ0nlTzYCyu6H6GZsZdm06rQuqPU8p2NZ3qAvuvRpw=="
+      },
+      "VideoLAN.LibVLC.Android": {
+        "type": "Direct",
+        "requested": "[3.7.0-beta, )",
+        "resolved": "3.7.0-beta",
+        "contentHash": "C3gUO4KyibfliMr2uaS7hr2eX2fGyCCIQQOiOJ4FiEgc0sB8WaBvl1mDv9kgD1GmAVnV1x1WCy5OHBIyj2Chgg=="
       },
       "Xamarin.AndroidX.Core.SplashScreen": {
         "type": "Direct",
@@ -1109,15 +1124,6 @@
           "Avalonia": "12.0.2",
           "Irihi.Ursa": "2.1.0",
           "Semi.Avalonia": "12.0.1"
-        }
-      },
-      "LibVLCSharp": {
-        "type": "CentralTransitive",
-        "requested": "[3.10.0, )",
-        "resolved": "3.10.0",
-        "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q==",
-        "dependencies": {
-          "LibVLCSharp.Android.AWindowModern": "3.10.0"
         }
       },
       "LibVLCSharp.Avalonia": {

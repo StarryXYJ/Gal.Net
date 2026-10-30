@@ -4,6 +4,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Contracts.Builtins.Gallery;
 using LibVLCSharp.Shared;
+using GalNet.Rendering.Scene;
 
 namespace GalNet.Avalonia.GameView.ViewModels;
 
@@ -12,6 +13,7 @@ public sealed partial class VideoGalleryPlayerPageViewModel(
     GalleryMediaService media) : BackNavigablePageViewModel(navigation), IActivatablePageViewModel<GalleryItemData>, IDisposable
 {
     public MediaPlayer? VideoPlayer => media.VideoPlayer;
+    public IReadOnlyList<SceneLayerItem> VideoLayers { get; } = [media.VideoLayer];
     [ObservableProperty] private string _title = "Gallery";
     [ObservableProperty] private string? _errorMessage;
 

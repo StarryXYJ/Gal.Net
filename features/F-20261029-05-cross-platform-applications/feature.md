@@ -143,3 +143,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 - [后端跨平台 CI](../../.github/workflows/backend-portability.yml)
 
 本 feature 承接既有后端和发行能力，补齐完整应用、工具及模板；不会将上述历史工作重记为已完成的三平台/移动支持。
+
+## 2026-10-30 最新执行决定
+
+用户明确将独立模板延后，先使 Sample 可验收；Windows/Linux 继续已有证据的功能回归，macOS 与手柄验收延期。Android/iOS 先补功能，再做具备工具链与设备条件的平台验收；允许 Mono AOT。当前 Windows 环境缺 iOS 构建能力不阻挡其他实现，也不应记为 iOS 已支持。

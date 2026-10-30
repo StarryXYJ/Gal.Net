@@ -10,7 +10,8 @@ public sealed class LibVlcFactory
     private static readonly object InitializationGate = new();
     private static LibVlcOptions? _initializedOptions;
     private static ExceptionDispatchInfo? _initializationFailure;
-    public static LibVlcFactory Default { get; } = new(LibVlcOptions.ForCurrentDesktop());
+    private static readonly Lazy<LibVlcFactory> DesktopDefault = new(() => new(LibVlcOptions.ForCurrentDesktop()));
+    public static LibVlcFactory Default => DesktopDefault.Value;
 
     public LibVlcOptions Options { get; }
     public string? NativeVersion { get; private set; }

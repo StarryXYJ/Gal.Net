@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
-             xmlns:vlc="clr-namespace:LibVLCSharp.Avalonia;assembly=LibVLCSharp.Avalonia"
+             xmlns:scene="using:GalNet.Rendering.Scene"
              x:Class="GalNet.Avalonia.Themes.Layouts.Paper.PaperVideoGalleryPlayerPage"
              x:DataType="vm:VideoGalleryPlayerPageViewModel">
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
@@ -16,7 +16,7 @@
         <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
         <Border Classes="player-media-stage" Grid.Row="2" Margin="0,32,0,0">
           <Grid>
-            <vlc:VideoView MediaPlayer="{Binding VideoPlayer}" ClipToBounds="True" x:Name="PageMedia" />
+            <scene:SceneLayerHost ItemsSource="{Binding VideoLayers}" ClipToBounds="True" x:Name="PageMedia" />
             <TextBlock Margin="32" Text="{Binding ErrorMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource GalNet.Brush.Warning}" />
           </Grid>
         </Border>

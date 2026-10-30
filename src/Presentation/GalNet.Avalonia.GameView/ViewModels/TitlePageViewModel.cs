@@ -37,6 +37,7 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
     public bool CanContinueGame => CanContinue && !IsLoading;
     public bool HasGallery => GetGalleryTypes().Count > 0;
     public bool CanOpenGallery => HasGallery && IsNavigationEnabled;
+    [ObservableProperty] private bool _canExit = true;
 
     [ObservableProperty] private bool _isLoading;
 

@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Android;
 using GalNet.Avalonia.Themes;
 using GalNet.Sample.Player;
+using GalNet.Media.LibVlc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.Sample.CrossPlatform.Android
 {
@@ -17,6 +19,7 @@ namespace GalNet.Sample.CrossPlatform.Android
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
             var privateRoot = FilesDir!.AbsolutePath;
+            App.ConfigurePlatformServices = services => services.AddSingleton(new LibVlcFactory(new() { UseSystemLibraries = true }));
             App.PrepareLaunchAsync = async token =>
             {
                 await using var package = Assets!.Open("game.galpak");

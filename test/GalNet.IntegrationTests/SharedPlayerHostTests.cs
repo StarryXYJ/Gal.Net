@@ -15,6 +15,91 @@ namespace GalNet.IntegrationTests;
 [NonParallelizable]
 public sealed class SharedPlayerHostTests
 {
+    [Test]
+    public Task BackgroundCheckpointSurvivesScopeReplacementAndDoesNotUsePlayerSlots() => SampleUiTests.RunAsync(async () =>
+    {
+        File.WriteAllText(Path.Combine(_root, "content/Graph/graph.json"),
+            """{"version":2,"name":"Resume","rootNodeId":"main","nodes":[{"id":"main","type":"Branch","branchType":"Condition","conditions":[]}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
+        var profile = Path.Combine(_root, "resume-profile");
+        var defaults = SamplePlayerServices.CreateHostOptions();
+        var options = new AvaloniaGameHostOptions
+        {
+            CreateContentCatalogs = defaults.CreateContentCatalogs,
+            ConfigureExecution = defaults.ConfigureExecution,
+            Content = defaults.Content,
+            SelectProjectOptions = defaults.SelectProjectOptions,
+            Presentation = new()
+            {
+                CreateAudioHost = (_, _) => new SilentAudio(),
+                CreateVideoPresenter = (_, _, _) => new UnusedVideo()
+            }
+        };
+        async Task<SamplePlayerSession> Open()
+        {
+            var host = await SamplePlayerSession.CreateAsync(options);
+            var initialization = host.InitializeAsync(Path.Combine(_root, "content"), profile);
+            var language = host.Services.GetRequiredService<LanguageSelectionViewModel>();
+            while (!initialization.IsCompleted)
+            {
+                if (language.ConfirmCommand.CanExecute(null)) language.ConfirmCommand.Execute(null);
+                await Task.Delay(10);
+            }
+            Assert.That(await initialization, Is.True);
+            return host;
+        }
+        await using (var first = await Open())
+        {
+            await first.Session.PrepareNewGameAsync();
+            using var manual = new FileSaveService(profile, 60);
+            await manual.SaveAsync(0, new() { Snapshot = new() { NodeId = "manual-slot-sentinel" }, Description = "Keep my slot" });
+            var original = Directory.GetFiles(Path.Combine(profile, "saves")).ToDictionary(path => path, File.ReadAllBytes);
+            await first.SuspendAsync();
+            Assert.That(first.Session.CanContinue, Is.True);
+            Assert.That(first.Session.SaveSlots.Skip(1).All(slot => slot.IsEmpty), Is.True);
+            foreach (var (path, bytes) in original) Assert.That(File.ReadAllBytes(path), Is.EqualTo(bytes));
+            using var checkpoint = new FileSaveService(Path.Combine(profile, "resume"), 1);
+            Assert.That((await checkpoint.LoadAsync(0))?.NodeId, Is.EqualTo("main"));
+        }
+        await using var reopened = await Open();
+        Assert.That(reopened.Session.CanContinue, Is.True, "Resume must survive process/scope replacement.");
+        // The manual sentinel cannot prepare this graph. Continue must choose the newer checkpoint.
+        await reopened.Session.PrepareContinueAsync();
+        await reopened.Session.ClearPlayerStateAsync();
+        Assert.That(reopened.Session.CanContinue, Is.False);
+        using var cleared = new FileSaveService(Path.Combine(profile, "resume"), 1);
+        Assert.That(await cleared.LoadAsync(0), Is.Null);
+    });
+
+    [Test]
+    public Task PlatformBackUsesPageCleanupAndCancelsAnExistingExitPrompt() => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());
+        var navigation = host.Services.GetRequiredService<IGameNavigationService>();
+        navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
+        Assert.That(await host.HandleBackAsync(), Is.False);
+        Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>());
+        var prompt = host.HandleBackAsync();
+        Assert.That(prompt.IsCompleted, Is.False);
+        Assert.That(await host.HandleBackAsync(), Is.False);
+        Assert.That(await prompt, Is.False);
+    });
+
+    private sealed class SilentAudio : GalNet.Contracts.Builtins.Audio.IAudioPlaybackHost
+    {
+        public GalNet.Contracts.Builtins.Audio.AudioBackendCapabilities Capabilities => GalNet.Contracts.Builtins.Audio.AudioBackendCapabilities.None;
+        public GalNet.Contracts.Builtins.Audio.ISEffectCatalog SEffects => GalNet.Contracts.Builtins.Audio.SEffectCatalog.Empty;
+        public event Action<GalNet.Contracts.Builtins.Audio.AudioBackendEvent>? EventReceived { add { } remove { } }
+        public Task ApplyAsync(GalNet.Contracts.Builtins.Audio.AudioBackendRequest request, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public void Dispose() { }
+    }
+
+    private sealed class UnusedVideo : GalNet.Presentation.Abstractions.View.IVideoPresenter
+    {
+        public Task PlayVideoAsync(GalNet.Presentation.Abstractions.View.VideoRenderRequest request, CancellationToken cancellationToken) => throw new AssertionException("No video expected");
+        public void AdvanceVideo(string playbackId) { }
+        public void StopVideo(string handleId) { }
+    }
+
     private string _root = null!;
 
     [SetUp]

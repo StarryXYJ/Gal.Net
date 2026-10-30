@@ -13,6 +13,12 @@
           "Avalonia.Skia": "12.0.5"
         }
       },
+      "LibVLCSharp": {
+        "type": "Direct",
+        "requested": "[3.10.0, )",
+        "resolved": "3.10.0",
+        "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
+      },
       "Microsoft.NET.ILLink.Tasks": {
         "type": "Direct",
         "requested": "[10.0.12, )",
@@ -36,6 +42,12 @@
         "requested": "[3.4.18.1, )",
         "resolved": "3.4.18.1",
         "contentHash": "baR3Y/1FgnevQyIfo2pDwIXF8idzqf17pDOF87qZrykBxQ0nlTzYCyu6H6GZsZdm06rQuqPU8p2NZ3qAvuvRpw=="
+      },
+      "VideoLAN.LibVLC.iOS": {
+        "type": "Direct",
+        "requested": "[3.6.1, )",
+        "resolved": "3.6.1",
+        "contentHash": "YqUUlxQv2n5OVufR66aimBMh4jTyFXhfevafS1r6Y2DOMYSfaR3ko2Q9c7cwsOxHUo0xF1LPuHsuKzfpSSnFug=="
       },
       "Antlr4.Runtime.Standard": {
         "type": "Transitive",
@@ -452,12 +464,6 @@
           "Irihi.Ursa": "2.1.0",
           "Semi.Avalonia": "12.0.1"
         }
-      },
-      "LibVLCSharp": {
-        "type": "CentralTransitive",
-        "requested": "[3.10.0, )",
-        "resolved": "3.10.0",
-        "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
       },
       "LibVLCSharp.Avalonia": {
         "type": "CentralTransitive",

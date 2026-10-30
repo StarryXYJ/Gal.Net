@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Avalonia;
 using GalNet.Assets;
 using GalNet.Avalonia.GameView.Presentation;
@@ -8,7 +7,6 @@ using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 using LibVLCSharp.Shared;
-using SkiaSharp;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
 
 namespace GalNet.Avalonia.GameView.Services;
@@ -179,11 +177,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     {
         private readonly IAvaloniaUiDispatcher _dispatcher;
         private readonly object _endGate = new();
-        private IntPtr _allocation;
-        private IntPtr _pixels;
-        private int _width;
-        private int _height;
-        private int _pitch;
+        private LibVlcFrameOutput? _output;
         private int _notificationPending;
         private LibVlcMedia? _media;
         public VideoRenderRequest Request { get; }
@@ -235,45 +229,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
             Player = new MediaPlayer(_media);
             Player.EndReached += (_, _) => Complete();
             Player.EncounteredError += (_, _) => Fail(new InvalidOperationException("LibVLC could not decode the video."));
-            Player.SetVideoFormatCallbacks(Format, Cleanup);
-            Player.SetVideoCallbacks(Lock, null, Display);
-        }
-
-        private uint Format(ref IntPtr opaque, IntPtr chroma, ref uint width, ref uint height, ref uint pitches, ref uint lines)
-        {
-            try
-            {
-                FreeBuffer();
-                if (width == 0 || height == 0 || width > 8192 || height > 8192) return 0;
-                _width = checked((int)width);
-                _height = checked((int)height);
-                _pitch = checked((_width * 4 + 31) & ~31);
-                pitches = (uint)_pitch;
-                lines = (height + 31) & ~31u;
-                Marshal.Copy(new byte[] { (byte)'R', (byte)'V', (byte)'3', (byte)'2' }, 0, chroma, 4);
-                _allocation = Marshal.AllocHGlobal(checked(_pitch * (int)lines + 31));
-                _pixels = new IntPtr((_allocation.ToInt64() + 31) & ~31L);
-                return 1;
-            }
-            catch (Exception error) { Fail(error); return 0; }
-        }
-
-        private IntPtr Lock(IntPtr opaque, IntPtr planes)
-        {
-            Marshal.WriteIntPtr(planes, _pixels);
-            return IntPtr.Zero;
-        }
-
-        private void Display(IntPtr opaque, IntPtr picture)
-        {
-            if (End.Task.IsCompleted || _pixels == IntPtr.Zero) return;
-            try
-            {
-                using var decoded = new SKBitmap();
-                decoded.InstallPixels(new SKImageInfo(_width, _height, SKColorType.Bgra8888, SKAlphaType.Opaque), _pixels, _pitch);
-                Frames.Publish(decoded.Copy());
-            }
-            catch (Exception error) { Fail(error); }
+            _output = new LibVlcFrameOutput(Player, Fail, Frames);
         }
 
         private void OnFrameChanged()
@@ -286,21 +242,13 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
             });
         }
 
-        private void Cleanup(ref IntPtr opaque) => FreeBuffer();
-        private void FreeBuffer()
-        {
-            _pixels = IntPtr.Zero;
-            if (_allocation != IntPtr.Zero) Marshal.FreeHGlobal(_allocation);
-            _allocation = IntPtr.Zero;
-        }
-
         public void Dispose()
         {
             Player?.Stop();
             Player?.Dispose();
             _media?.Dispose();
             Frames.Dispose();
-            FreeBuffer();
+            _output?.Dispose();
             lock (_endGate) StopSource.Dispose();
         }
     }

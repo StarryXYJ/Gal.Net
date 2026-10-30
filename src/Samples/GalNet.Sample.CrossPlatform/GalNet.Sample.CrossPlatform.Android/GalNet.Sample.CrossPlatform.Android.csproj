@@ -11,6 +11,7 @@
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
     <UseMonoRuntime Condition="'$(UseMonoRuntime)' == ''">true</UseMonoRuntime>
     <PublishAot Condition="'$(PublishAot)' == ''">false</PublishAot>
+    <GalNetBuildMiniaudio>false</GalNetBuildMiniaudio>
   </PropertyGroup>
 
   <ItemGroup>
@@ -26,6 +27,8 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" />
+    <PackageReference Include="LibVLCSharp" />
+    <PackageReference Include="VideoLAN.LibVLC.Android" />
     <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
     <!-- Android's RID fallback can select glibc Linux native assets. The current
          SDL adapter is desktop-only; a mobile adapter must deploy Android binaries. -->
@@ -37,4 +40,5 @@
   <ItemGroup>
     <ProjectReference Include="..\GalNet.Sample.CrossPlatform\GalNet.Sample.CrossPlatform.csproj" />
   </ItemGroup>
+  <Import Project="../AndroidNativeAudio.targets" />
 </Project>

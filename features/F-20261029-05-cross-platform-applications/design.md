@@ -225,3 +225,9 @@ Android 处理音频焦点、返回键、路由及前后台；iOS 处理 AVAudio
 - [SDL3 初始化](https://wiki.libsdl.org/SDL3/SDL_InitSubSystem)、[事件泵](https://wiki.libsdl.org/SDL3/SDL_PumpEvents)：主线程要求。
 
 仓库依据：Directory.Packages.props（LibVLCSharp 3.10.0 / Windows LibVLC 3.0.23.1）；Media.LibVlc/LibVlcRuntime；AvaloniaVideoPresenter；GalleryMediaService；GalleryThumbnailService；Editor AssetInspectorControlViewModel；Miniaudio native/CMakeLists.txt；GameLaunchOptions；DebugApplicationProcess；GalpakInstaller；docs/spec/architecture.md 与 docs/manual/cross-platform-backends.md。
+
+### 2026-10-30 后续修订：Sample 优先与移动恢复语义
+
+独立模板生成延期，不阻挡 Sample 功能；macOS/手柄验收延期，Android/iOS 先实现再验收。P7a 使用独立持久检查点与停止/释放 run 的方式处理后台和音频中断，回到标题由用户“继续”重建稳定状态；不承诺暂停任意 primitive 的墙钟或原地恢复所有媒体游标。后台检查点不覆盖手动槽，显式新游戏/读档/清空会移除旧检查点。Android/iOS 事件只进入共享宿主协调，不进入 Core。
+
+Gallery 与缩略图改用与剧情视频同一 CPU 像素输出，消除原生 VideoView 子窗口的移动展示依赖。Android VLC 固定官方 3.7.0-beta 以获得 16 KB ELF 对齐（稳定 3.6.5 失败）；其预发布状态与设备验证是显式交付限制。iOS 静态音频、VLC 与 AVAudioSession 目前只有源码接线，须在 Mac 工具链完成编译链接与运行证据。

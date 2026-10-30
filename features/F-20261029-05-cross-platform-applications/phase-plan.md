@@ -1,9 +1,9 @@
 # 剩余实现计划
 
 - 更新：2026-10-30；整体 in-progress。
-- 用户最新修订：手柄、macOS、iOS 验收后移，不作为 Windows/Linux、P6 共享宿主和 Android 的进入门禁；相关未验收项保留。移动允许 Mono AOT，NativeAOT 不作硬前置。
+- 用户最新修订：独立模板延后，先把 Sample 做到可验收；macOS/手柄验收延后。Android/iOS 先实现功能再验收，本机缺 Mac 不阻挡其他实现。移动允许 Mono AOT，NativeAOT 不作硬前置。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：P6 独立模板生成和 Android 可运行交付，再推进 P7 媒体/生命周期/设备运行；共享玩家集中接入、Windows/WSLg 启动退出和 Android Mono AOT 发布已总结。P1 原生 Editor 导出和完整桌面媒体验收继续保留。
+- 下一段：先验收 Sample。独立模板生成延后；Android/iOS 功能优先，具备平台环境后验收，macOS 验收延期。P7 原生媒体、生命周期与 Android 完整内容候选已总结，当前补设备运行、iOS 编译链接与完整桌面流程。
 
 ## 阶段状态与依赖
 
@@ -16,10 +16,10 @@
 | P4 | in-progress | macOS 归档/签名延期；Windows/Linux 原生宿主合包和明确协议的仓库外工程已验证，其他定制工程不作通用支持承诺 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
 | P6 | in-progress | 共享玩家/平台内容入口与 Android Mono AOT 发布已总结；独立模板生成、Android 实际会话及完整宿主适配待补 |
-| P7 | planned | 移动媒体、生命周期和真机；依赖 P6，复用 P5 动作层 |
+| P7 | in-progress | 媒体/检查点/移动事件接线及 Android 双 ABI 候选已总结；Android 设备、iOS 编译链接/设备和签名待验 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
 
-单平台成功不使整阶段 verified。macOS/iOS 与手柄验收延期，继续 Windows/Linux 和共享宿主/Android；影响当前切片依赖选择的风险用对应构建/探针解决，延期平台风险保留。P6 集中接入后不维护第二份完整 Sample，不扩大到 Browser 验收。
+单平台成功不使整阶段 verified。macOS 与手柄验收延期，移动先功能后验收，继续 Windows/Linux 和共享宿主；影响当前切片依赖选择的风险用对应构建/探针解决，延期平台风险保留。P6 集中接入后不维护第二份完整 Sample，不扩大到 Browser 验收。
 
 ## P0/P1 — 剩余探针与原生导出验收
 
@@ -61,7 +61,7 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **前置条件**：复用已验证桌面功能，解决当前共享宿主/Desktop/Android 切片的实际构建依赖；按 2026-10-30 用户决定不等待手柄、macOS、iOS 验收。本阶段前不维护第二份完整 Sample 内容。
 - **涉及模块**：Sample 组合根、Avalonia.GameHost、显示/生命周期/内容路径边界、模板资源和平台工程。
 - **剩余任务**：
-  - 生成具有独立 package/bundle ID 和最小内容的模板；当前仓库内工程仍引用 Sample.Player/Contracts，生成结果必须能脱离仓库独立还原和构建。
+  - **延后**：独立模板生成/脱离仓库构建，待 Sample 本身可验收后再整理。
   - Android 在设备/模拟器实际验证资产安装、主视图和会话；按能力适配退出/返回/显示，不把 Debug/Mono AOT 编译成功写成可完整游玩。
   - 衔接 P7 原生媒体和生命周期；开发工具仍由原 Sample 桌面宿主保留，CrossPlatform 的可选桌面开发功能单独核对。
   - 根据最终分发方式固化 SDK/profile/版本/契约来源及模板操作文档；macOS/iOS 验收继续延期，Browser 不扩展。
@@ -76,11 +76,11 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **前置条件**：P6；标准手柄动作层复用 P5，移动设备采集独立验证。
 - **涉及模块**：Android/iOS 宿主、miniaudio native、VLC/展示、系统音频、输入布局、签名发布。
 - **任务**：
-  - Android 按 ABI 打包 native，接音频焦点、路由、返回键和后台；iOS 静态链接与 AVAudioSession、中断/路由、AOT 保留配置。
-  - 验证剧情视频像素回调、Gallery 展示和缩略图；优先 VLC，失败记录具体证据后修订局部适配方案。
+  - 在 Android 设备运行已生成的完整内容候选；确认系统音频焦点、路由、系统返回与后台事件在目标 OS 的实际行为。iOS 在 Mac 验证静态 native 构建/链接及 AVAudioSession API，修复平台编译和运行问题。
+  - 在移动设备验证已接入的共享像素视频、Gallery 与缩略图，覆盖停止/跳过/释放及 AOT 回调；Windows/Linux 真实媒体回归已总结。
   - 触摸、安全区域、软键盘、方向与高 DPI；隐藏不可用桌面设置，验证可选移动手柄。
-  - 后台/恢复协调剧情、媒体和持久化；以真实内容量验证 PAK 内存、视频帧耗时和资源释放。
-  - 生成实际 APK/AAB 与 iOS 签名产物，审查 AOT/裁剪诊断，禁止全局屏蔽警告冒充兼容。
+  - 设备验证稳定检查点、后台时限、进程终止后的“继续”、新游戏/显式读档/清空状态与方向重建；测真实内容量的内存、视频帧耗时和释放。
+  - Android 双 ABI Mono AOT APK 与完整 GameTestCase 已生成；补设备播放、生产签名/AAB 与 iOS 签名产物。跟踪 Android 官方 VLC 3.7.0-beta 的设备兼容与稳定版替换，不压制 native/AOT 诊断。
 - **测试**：真机启动、剧情/选择/存读档/音视频/Gallery、打断与恢复、进程被系统终止后恢复、方向切换；iOS AOT 回调/释放，Android 发布模式/R8 后播放；设备与性能数据逐项记录。
 - **文档**：移动构建签名、内容更新、生命周期恢复语义、资源预算和已知限制。
 - **风险**：VLC Avalonia 控件、AOT/回调、移动高分辨率复制与内存；保持图层语义，不能以播放覆盖层替代场景合成验收。

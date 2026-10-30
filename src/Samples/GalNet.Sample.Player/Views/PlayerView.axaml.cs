@@ -50,6 +50,12 @@ public partial class PlayerView : UserControl
 
     private void OnCancelExit(object? sender, RoutedEventArgs e) => CompleteExitConfirmation(false);
     private void OnConfirmExit(object? sender, RoutedEventArgs e) => CompleteExitConfirmation(true);
+    public bool CancelExitConfirmation()
+    {
+        if (_exitConfirmation is null) return false;
+        CompleteExitConfirmation(false);
+        return true;
+    }
     private void OnExitKeyDown(object? sender, KeyEventArgs e)
     {
         if (_exitConfirmation is null || e.Key != Key.Escape) return;

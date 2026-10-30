@@ -360,3 +360,24 @@ GameView 维持首个连接直至断开，统一按钮/轴、0.5/0.35 摇杆阈�
 Windows 两轮 raw publish 自有副本清理时保留报告/日志与后续 P1 所需的三份 Sample 契约；Linux 隔离 SDK、源码与 raw 发布暂供紧接的原生 build-compose 闭环使用，阶段结束一起清理，避免重复下载/构建。用户原包、手测 profile 和 iOS lock 不动。P4/P5 整体仍 in-progress，已验证部分归入总结。
 
 脚本保护验证：新增 test-application-publish.py 的输出保护、SDK/native 拒绝和自有进程树取消测试在 Windows 通过 4/4，记录在 windows-guards.log。超时仅停止测试自建父子进程，无关对照进程继续存活。首次运行请求因自动审批服务额度限制未执行；本次重新通过审批后运行成功。实际 Windows/Linux 四应用发布证据来自上述已完成运行；其后脚本加入逗号转义、可注入超时参数和进程退出检查，新增保护测试通过不等同于重新执行完整发布矩阵，Linux 保护测试仍待补。
+
+## 2026-10-30：P7a Sample 移动媒体与生命周期
+
+按用户最新决定，独立模板生成延后；先实现 Sample 的功能，再推进 Android/iOS 设备验收。macOS/手柄验收延期不作当前门禁。
+
+实现：移动宿主显式注册 LibVlcFactory，桌面 Default 改为 Lazy，避免构造移动工厂时提前触发桌面配置异常。Android 使用官方 LibVLC 3.7.0-beta、NDK r29/16 KB miniaudio；iOS 增加静态 NativeReference/ForceLoad、主程序符号解析和 LibVLC 3.6.1。剧情/Gallery/缩略图共用 LibVlcFrameOutput，三种 Gallery 主题改为 SceneLayerHost，保留剧情原有图层语义及一份像素复制。
+
+生命周期：共享命令门串行写独立恢复检查点，再停止/释放当前 run；即使保存失败也尝试释放媒体。偏好与已读进度在后台写盘，Gallery 停止并回标题；“继续”按时间选择最新有效检查点/玩家槽，检查点不占用手动槽。新游戏/显式读档/清空状态移除旧检查点。Android 接音频焦点/拔耳机/前后台，系统返回由 Avalonia BackRequested 执行页面 BackCommand；安全区自动应用。iOS 接 AVAudioSession 中断/路由、有限后台执行时间、生命周期和退出菜单能力。恢复语义为稳定剧情状态，不能宣称任意瞬间媒体游标无缝恢复。
+
+验证证据 `out/cross-platform-p7-tools/`：
+
+- Windows：Integration 193/193、Presentation 313/313、GameHost 10/10；真实 VLC 场景/Gallery/缩略图及释放 5/5。
+- Linux：复用 Ubuntu 26.04.1 的隔离原生 SDK 10.0.401/既有私有媒体依赖，将明确列出的共享修改覆盖到原有源码快照；构建通过，真实 VLC 场景/Gallery/缩略图及释放 5/5。源码覆盖 hash 在 linux-overlay.json；不是新冻结的整仓库发行或 24.04 最低基线验收。
+- Android：完整 GameTestCase 在自有副本中使用当前 Release 三契约导出；双 ABI 实际 Mono AOT 各 115 程序集，无全局压制诊断。APK 逐项核内容 SHA256、所有 native 架构/LOAD 16 KB 对齐、媒体/音频/AOT 存在、无桌面 SDL，并通过 zipalign -c -P 16 4。最终候选和 hash 在 android-package-verification.json。
+- 无 Android 连接设备；APK 没有运行，生产签名/AAB 未验。iOS 本轮没有 Mac/Xcode 编译或运行；原生目标名按 dotnet/macios _SanitizeNativeReferences 核对，但不能代替目标 SDK 编译、静态链接及设备验收。
+
+失败与修正：稳定 Android VLC 3.6.5 的 libvlc/libc++ ELF LOAD 是 4 KB，出现 XA0141；没有屏蔽诊断，改用官方固定 3.7.0-beta，实际 native 为 3.0.22-rc1，需后续设备验证/稳定版替换。Android native 过早调用 _ResolveAndroidTooling 会使 SDK ContinueOnError 属性尚未初始化，改为 CoreCompile 前依赖 AndroidPrepareForBuild。首次 Linux 测试把插件目录指向 native/plugins，实际是 native/vlc/plugins；保留失败 log，修正配置后 5/5。首次完整内容导出用 Debug CLI 读取 Release 契约被严格拒绝，改为相同 Release 构建后导出成功，没有放宽字节校验。
+
+补强“已有玩家槽不被检查点改写、Continue 优先新检查点”后，发现 ClearPlayerState 删除磁盘槽后未刷新 UI 列表，CanContinue 仍为 true；增加 RefreshSlotsAsync，并保留首次失败 log（integration-clear-first.log）。
+
+P7a 可验证切片完成；P6/P7 整体仍 in-progress。移动设备/AOT 回调、iOS 编译/链接/签名、触摸/方向/性能和最终桌面完整流程继续追踪，不能把以上测试或 APK 生成升级为五平台完整支持。

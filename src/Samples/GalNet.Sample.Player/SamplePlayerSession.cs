@@ -71,6 +71,31 @@ public sealed class SamplePlayerSession : IAsyncDisposable
     public AvaloniaGameSession Session { get; private set; } = null!;
     public IAvaloniaPlayerSettings Settings { get; private set; } = null!;
 
+    public async Task SuspendAsync()
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        ObjectDisposedException.ThrowIf(_disposal is not null, this);
+        var cleanup = new ResourceCleanup();
+        cleanup.Run(() => Services.GetRequiredService<GalleryMediaService>().StopPlayback());
+        await cleanup.RunAsync(() => new(Session.SuspendAsync()));
+        if (Session.IsReady)
+            cleanup.Run(() => Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None));
+        cleanup.ThrowIfFailed();
+    }
+
+    public async Task<bool> HandleBackAsync()
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        if (View.CancelExitConfirmation()) return false;
+        var navigation = Services.GetRequiredService<IGameNavigationService>();
+        if (navigation.CurrentViewModel is BackNavigablePageViewModel page && navigation.CanGoBack)
+            page.BackCommand.Execute(null);
+        else if (navigation.CurrentViewModel is GamePageViewModel gameplay)
+            gameplay.OpenSettingsCommand.Execute(null);
+        else return await View.ConfirmExitAsync();
+        return false;
+    }
+
     public void BindWindow(Window? window)
     {
         Dispatcher.UIThread.VerifyAccess();

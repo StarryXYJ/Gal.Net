@@ -3,6 +3,8 @@ using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Media.LibVlc;
 using LibVLCSharp.Shared;
 using LibVlcMedia = LibVLCSharp.Shared.Media;
+using GalNet.Rendering.Scene;
+using GalNet.Contracts.Builtins.Scene;
 
 namespace GalNet.Avalonia.GameView.Services;
 
@@ -12,6 +14,9 @@ public sealed class GalleryMediaService(IGameSessionService session, LibVlcFacto
     private LibVLC? _libVlc;
     private MediaPlayer? _audioPlayer;
     private MediaPlayer? _videoPlayer;
+    private LibVlcFrameOutput? _videoFrames;
+    private int _notificationPending;
+    public SceneLayerItem VideoLayer { get; } = new() { HandleId = "gallery-video", DisplayMode = LayerDisplayMode.Uniform };
     private readonly LibVlcFactory _factory = mediaFactory ?? LibVlcFactory.Default;
     private readonly GalleryThumbnailService _thumbnails = new(mediaFactory ?? LibVlcFactory.Default);
 
@@ -113,8 +118,15 @@ public sealed class GalleryMediaService(IGameSessionService session, LibVlcFacto
         try
         {
             _audioPlayer?.Stop();
-            _videoPlayer ??= new MediaPlayer(GetLibVlc());
-            _videoPlayer.Stop();
+            StopVideo();
+            _videoPlayer = new MediaPlayer(GetLibVlc());
+            _videoFrames = new LibVlcFrameOutput(_videoPlayer, error =>
+            {
+                LastError = error.Message;
+                PlaybackChanged?.Invoke();
+            });
+            VideoLayer.FrameSource = _videoFrames.Frames;
+            _videoFrames.Frames.FrameChanged += OnVideoFrame;
             using var media = new LibVlcMedia(GetLibVlc(), path);
             if (!_videoPlayer.Play(media))
                 throw new InvalidOperationException($"Unable to play Gallery video '{item.Item.ResourceId}'.");
@@ -126,7 +138,34 @@ public sealed class GalleryMediaService(IGameSessionService session, LibVlcFacto
         }
     }
 
-    public void StopVideo() => _videoPlayer?.Stop();
+    private void OnVideoFrame()
+    {
+        if (Interlocked.Exchange(ref _notificationPending, 1) != 0) return;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            Interlocked.Exchange(ref _notificationPending, 0);
+            VideoLayer.NotifyFrameChanged();
+        });
+    }
+
+    public void StopVideo()
+    {
+        _videoPlayer?.Stop();
+        _videoPlayer?.Dispose();
+        _videoPlayer = null;
+        if (_videoFrames is not null) _videoFrames.Frames.FrameChanged -= OnVideoFrame;
+        _videoFrames?.Dispose();
+        _videoFrames = null;
+        VideoLayer.FrameSource = null;
+    }
+
+    public void StopPlayback()
+    {
+        _audioPlayer?.Stop();
+        StopVideo();
+        ActiveAudioItemId = null;
+        PlaybackChanged?.Invoke();
+    }
 
     public string? ResolvePath(string resourceId) =>
         (session as IGameGallerySession)?.GalleryResources?.ResolvePath(resourceId);
@@ -134,9 +173,8 @@ public sealed class GalleryMediaService(IGameSessionService session, LibVlcFacto
     public void Dispose()
     {
         _audioPlayer?.Stop();
-        _videoPlayer?.Stop();
+        StopVideo();
         _audioPlayer?.Dispose();
-        _videoPlayer?.Dispose();
         _thumbnails.Dispose();
         _libVlc?.Dispose();
     }
@@ -161,7 +199,7 @@ public sealed class GalleryMediaService(IGameSessionService session, LibVlcFacto
     private LibVLC GetLibVlc()
     {
         if (_libVlc is not null) return _libVlc;
-        return _libVlc = _factory.Create();
+        return _libVlc = _factory.Create("--avcodec-hw=none");
     }
 
 }

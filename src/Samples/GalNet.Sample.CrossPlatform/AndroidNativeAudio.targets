@@ -1,0 +1,29 @@
+<Project>
+  <PropertyGroup>
+    <GalNetCMakePath Condition="'$(GalNetCMakePath)' == ''">cmake</GalNetCMakePath>
+    <GalNetNinjaPath Condition="'$(GalNetNinjaPath)' == ''">ninja</GalNetNinjaPath>
+    <GalNetAudioSource>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../Infrastructure/GalNet.Media.Miniaudio/native'))</GalNetAudioSource>
+  </PropertyGroup>
+  <Target Name="BuildAndroidPlayerAudio" BeforeTargets="CoreCompile" DependsOnTargets="AndroidPrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <GalNetAndroidNdkDirectory Condition="'$(GalNetAndroidNdkDirectory)' == ''">$(AndroidNdkDirectory)</GalNetAndroidNdkDirectory>
+      <_GalNetAudioRoot>$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)native'))</_GalNetAudioRoot>
+      <_GalNetAudioRids>$(RuntimeIdentifiers);$(RuntimeIdentifier)</_GalNetAudioRids>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(GalNetAndroidNdkDirectory)/build/cmake/android.toolchain.cmake')" Text="Set GalNetAndroidNdkDirectory to Android NDK r28 or later. Mobile audio is required; a desktop DLL cannot replace it." />
+    <ItemGroup>
+      <_GalNetAudioAbi Include="arm64-v8a" Condition="$([System.String]::Copy('$(_GalNetAudioRids)').Contains('android-arm64'))" />
+      <_GalNetAudioAbi Include="x86_64" Condition="$([System.String]::Copy('$(_GalNetAudioRids)').Contains('android-x64'))" />
+      <_GalNetAudioAbi Include="armeabi-v7a" Condition="$([System.String]::Copy('$(_GalNetAudioRids)').Contains('android-arm;'))" />
+      <_GalNetAudioAbi Include="x86" Condition="$([System.String]::Copy('$(_GalNetAudioRids)').Contains('android-x86'))" />
+    </ItemGroup>
+    <Error Condition="'@(_GalNetAudioAbi)' == ''" Text="Set an Android RuntimeIdentifier or RuntimeIdentifiers for native audio." />
+    <Exec Command="&quot;$(GalNetCMakePath)&quot; -S &quot;$(GalNetAudioSource)&quot; -B &quot;$(_GalNetAudioRoot)/%(_GalNetAudioAbi.Identity)&quot; -G Ninja -DCMAKE_MAKE_PROGRAM=&quot;$(GalNetNinjaPath)&quot; -DCMAKE_TOOLCHAIN_FILE=&quot;$(GalNetAndroidNdkDirectory)/build/cmake/android.toolchain.cmake&quot; -DANDROID_ABI=%(_GalNetAudioAbi.Identity) -DANDROID_PLATFORM=android-23 -DCMAKE_BUILD_TYPE=Release" />
+    <Exec Command="&quot;$(GalNetCMakePath)&quot; --build &quot;$(_GalNetAudioRoot)/%(_GalNetAudioAbi.Identity)&quot; --parallel 2" />
+    <ItemGroup>
+      <AndroidNativeLibrary Include="$(_GalNetAudioRoot)/%(_GalNetAudioAbi.Identity)/libgalnet_miniaudio.so">
+        <Abi>%(_GalNetAudioAbi.Identity)</Abi>
+      </AndroidNativeLibrary>
+    </ItemGroup>
+  </Target>
+</Project>

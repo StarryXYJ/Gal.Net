@@ -69,3 +69,13 @@ P1 原生 Editor UI 两种导出、完整 Linux 媒体/Gallery/调试及原生�
 冻结本 feature 源码后的标准 Release CI：构建/locked restore/发布保护通过，2,206 项测试通过，仅保留 P1 已记录的 2 项 Editor 既有失败；其中 Integration 186/186。并行 PAK/Core 两次提交进入真实 HEAD 后另跑 Debug Integration，191/191 通过。应用矩阵增加新 CrossPlatform 桌面宿主及源路径触发，真实 Win/Linux 输出通过相同 SDK 载荷检查；未宣称远端五应用/四 RID 新矩阵已全部执行。
 
 证据：`out/cross-platform-validation/20261030-shared-player/`；最终本地 Android APK：`out/cross-platform-p6-android-final/org.galnet.sample-Signed.apk`。[宿主操作与边界](../../src/Samples/GalNet.Sample.CrossPlatform/README.md)。macOS/iOS/手柄验收继续延期；iOS 只有代码接入。Android 还需原生音视频/Gallery、系统生命周期、返回/触摸/显示及设备运行，模板还需脱离仓库独立生成/构建。P6/P7 未整体完成，旧 dev.9/dev.10 未更新。
+
+## P7a — Sample 移动媒体与生命周期
+
+独立模板按用户决定延后。移动宿主显式提供 VLC 工厂，桌面 Default 延迟初始化；Android 实际构建两 ABI miniaudio，iOS 接静态 ForceLoad/主程序符号。剧情视频、Gallery 三种主题和缩略图共用像素输出，消除 Gallery 原生子窗口依赖。共享后台流程串行写独立检查点/偏好/已读进度，再释放剧情/Gallery 媒体并回到标题，由“继续”重建稳定剧情状态；检查点不占玩家槽，显式新游戏/读档/清空会删除旧检查点。Android 音频焦点/路由、系统返回、安全区与 iOS 音频会话/中断/后台事件均已接线。
+
+Windows Integration 193/193、Presentation 313/313、GameHost 10/10 通过，真实 VLC 场景/Gallery/缩略图与释放在 Windows/Linux 各 5/5。Android 真实 GameTestCase 完整导出后嵌入本地签名候选，ARM64/x86_64 各 115 程序集实际 Mono AOT，所有 native 架构/ELF LOAD 与 APK 的 16 KB 对齐、完整内容 hash 和无桌面 SDL 均通过检查。
+
+证据：`out/cross-platform-p7-tools/`；最终 APK `out/cross-platform-p7-android-final/org.galnet.sample-Signed.apk`；可复现载荷检查见 [移动探针](probes/mobile/verify-android-package.py)。稳定 Android VLC 3.6.5 的 4 KB native 已明确失败，当前固定官方 3.7.0-beta（3.0.22-rc1），未压制诊断，须继续设备验证及稳定版替换。
+
+没有连接 Android 设备，APK 本轮未运行；iOS 没有 Mac/Xcode 编译/链接/运行证据，生产签名/AAB、移动触摸/方向/性能及完整桌面验收仍待补。Linux 为 Ubuntu 26.04.1 隔离 SDK/既有本机媒体上的切片回归，不代替新整仓库发行、24.04 最低基线或公开再分发审查。P6/P7 整体继续 in-progress。
