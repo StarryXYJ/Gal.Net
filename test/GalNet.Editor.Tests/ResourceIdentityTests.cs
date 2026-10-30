@@ -137,6 +137,37 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task ResourceFailuresReachEditorLogsAcrossManagerGenerations()
+    {
+        var previous = Serilog.Log.Logger;
+        var sink = new AssetLogCapture();
+        using var logger = new Serilog.LoggerConfiguration().WriteTo.Sink(sink).CreateLogger();
+        Serilog.Log.Logger = logger;
+        try
+        {
+            using var services = Services();
+            var manager = services.GetRequiredService<EditorAssetManager>();
+            Assert.That(await manager.AcquireAsync<byte[]>("diagnostic-missing"), Is.Null);
+            var error = new IOException("diagnostic-provider-failure");
+            manager.RegisterProvider(new ResourceTestProvider { Failure = error });
+            Assert.That(await manager.AcquireAsync<byte[]>("diagnostic-broken"), Is.Null);
+            var reports = sink.Events.Where(item => item.Properties.ContainsKey("AssetFailure")).ToArray();
+            Assert.That(reports, Has.Length.EqualTo(2));
+            Assert.That(reports[0].RenderMessage(System.Globalization.CultureInfo.InvariantCulture), Does.Contain("NotFound").And.Contain("diagnostic-missing"));
+            Assert.That(reports[1].RenderMessage(System.Globalization.CultureInfo.InvariantCulture), Does.Contain("ProviderFailure").And.Contain("diagnostic-broken"));
+            Assert.That(reports[1].Exception, Is.SameAs(error));
+            Assert.That(reports[1].Properties["SourceContext"].ToString(), Does.Contain(nameof(EditorAssetManager)));
+        }
+        finally { Serilog.Log.Logger = previous; }
+    }
+
+    private sealed class AssetLogCapture : Serilog.Core.ILogEventSink
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<Serilog.Events.LogEvent> Events { get; } = new();
+        public void Emit(Serilog.Events.LogEvent logEvent) => Events.Enqueue(logEvent);
+    }
+
+    [Test]
     public async Task PickerNeverRebindsToReplacementAtSamePathAndDistinguishesReadErrors()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

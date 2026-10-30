@@ -22,6 +22,10 @@ public sealed class AssetManager : IAssetManager
     private readonly Dictionary<CacheKey, InFlightLoad> _inFlight = new(CacheKeyComparer.Instance);
     private bool _disposed;
 
+    /// <summary>Called on the loading thread, outside the cache lock. Observers must not block;
+    /// observer failures are isolated and cannot change resource fallback or completion.</summary>
+    public event Action<AssetDiagnostic>? Diagnostic;
+
     public AssetManager()
     {
     }
@@ -57,12 +61,12 @@ public sealed class AssetManager : IAssetManager
         }
     }
 
-    public Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default)
+    public async Task<IGameFile?> GetFileAsync(string assetId, CancellationToken ct = default)
     {
         lock (_lock) ThrowIfDisposedLocked();
         return string.IsNullOrWhiteSpace(assetId)
-            ? Task.FromResult<IGameFile?>(null)
-            : FindInProvidersAsync(NormalizeAssetId(assetId), findById: true, ct);
+            ? null
+            : (await FindInProvidersAsync(NormalizeAssetId(assetId), findById: true, ct))?.File;
     }
 
     public async Task<IReadOnlyList<IGameFile>> GetFilesAsync(string? typeId = null, CancellationToken ct = default)
@@ -79,12 +83,14 @@ public sealed class AssetManager : IAssetManager
         {
             ct.ThrowIfCancellationRequested();
             IArchive? archive = null;
+            string? assetId = null;
             try
             {
                 if (!provider.Exists("assets")) continue;
                 archive = await provider.OpenArchiveAsync("assets", ct);
                 foreach (var id in archive.AssetIds)
                 {
+                    assetId = id;
                     ct.ThrowIfCancellationRequested();
                     if (files.ContainsKey(id)) continue;
                     var file = archive.GetAsset(id, ct);
@@ -98,7 +104,7 @@ public sealed class AssetManager : IAssetManager
             }
             catch (Exception exception)
             {
-                Trace.TraceWarning("Asset enumeration failed in provider '{0}': {1}", provider.Name, exception);
+                Report(new(AssetLoadStage.Enumeration, ProviderFailure(exception), assetId, Provider: provider.Name, Exception: exception));
             }
             finally
             {
@@ -109,10 +115,10 @@ public sealed class AssetManager : IAssetManager
         return files.Values.OrderBy(x => x.Path, StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    public Task<AssetHandle<T>?> AcquireAsync<T>(string assetId, CancellationToken ct = default) where T : class =>
-        AcquireAsyncCore<T>(assetId, knownFile: null, ct);
+    public async Task<AssetHandle<T>?> AcquireAsync<T>(string assetId, CancellationToken ct = default) where T : class =>
+        (await AcquireAsyncCore<T>(assetId, knownFile: null, ct)).Handle;
 
-    private async Task<AssetHandle<T>?> AcquireAsyncCore<T>(string assetId, IGameFile? knownFile, CancellationToken ct) where T : class
+    private async Task<(AssetHandle<T>? Handle, bool FileFound)> AcquireAsyncCore<T>(string assetId, ResolvedAsset? knownFile, CancellationToken ct) where T : class
     {
         var normalizedId = NormalizeAssetId(assetId);
         var key = new CacheKey(normalizedId, typeof(T));
@@ -122,11 +128,11 @@ public sealed class AssetManager : IAssetManager
         lock (_lock)
         {
             ThrowIfDisposedLocked();
-            if (TryAcquireCacheLocked(key, out T? cached, out var cachedTypeId)) return CreateHandle(key, cachedTypeId, cached!);
+            if (TryAcquireCacheLocked(key, out T? cached, out var cachedTypeId)) return (CreateHandle(key, cachedTypeId, cached!), true);
 
             if (!_inFlight.TryGetValue(key, out load!))
             {
-                load = new InFlightLoad(normalizedId, typeof(T)) { PendingWaiters = 1 };
+                load = new InFlightLoad(normalizedId) { PendingWaiters = 1 };
                 _inFlight.Add(key, load);
                 startProducer = true;
             }
@@ -142,9 +148,9 @@ public sealed class AssetManager : IAssetManager
         try
         {
             // The producer is shared, but cancellation remains request-local.
-            await load.Completion.Task.WaitAsync(ct);
+            var fileFound = await load.Completion.Task.WaitAsync(ct);
             var asset = TakeLoadedReference<T>(key, load, out var typeId);
-            return asset is null ? null : CreateHandle(key, typeId!, asset);
+            return (asset is null ? null : CreateHandle(key, typeId!, asset), fileFound);
         }
         catch
         {
@@ -167,8 +173,9 @@ public sealed class AssetManager : IAssetManager
 
         if (assetId is not null)
         {
-            var cached = await AcquireAsync<T>(assetId, ct);
-            if (cached is not null) return cached;
+            var (cached, fileFound) = await AcquireAsyncCore<T>(assetId, knownFile: null, ct);
+            // A read/decoder failure does not invalidate the path's resolved identity.
+            if (cached is not null || fileFound) return cached;
 
             // A development provider may have invalidated a file after its watcher fired.
             // Do not keep retrying a stale path -> ID mapping forever.
@@ -180,10 +187,10 @@ public sealed class AssetManager : IAssetManager
             }
         }
 
-        var gameFile = await FindInProvidersAsync(normalizedPath, findById: false, ct);
+        var gameFile = await FindInProvidersAsync(normalizedPath, findById: false, ct, typeof(T));
         if (gameFile is null) return null;
 
-        var resolvedId = NormalizeAssetId(gameFile.Id);
+        var resolvedId = NormalizeAssetId(gameFile.File.Id);
         lock (_lock)
         {
             ThrowIfDisposedLocked();
@@ -192,7 +199,7 @@ public sealed class AssetManager : IAssetManager
 
         // Path requests join the same ID single-flight task, so two callers cannot
         // decode the same image and leak the losing IDisposable result.
-        return await AcquireAsyncCore<T>(resolvedId, gameFile, ct);
+        return (await AcquireAsyncCore<T>(resolvedId, gameFile, ct)).Handle;
     }
 
     public void Dispose()
@@ -219,21 +226,26 @@ public sealed class AssetManager : IAssetManager
         DisposeAssets(providers);
     }
 
-    private async Task ProduceLoadAsync<T>(CacheKey key, InFlightLoad load, IGameFile? knownFile) where T : class
+    private async Task ProduceLoadAsync<T>(CacheKey key, InFlightLoad load, ResolvedAsset? knownFile) where T : class
     {
         object? result = null;
         string? typeId = null;
+        var source = knownFile;
+        var stage = AssetLoadStage.Lookup;
         try
         {
-            var gameFile = knownFile ?? await FindInProvidersAsync(load.AssetId, findById: true, load.Cancellation.Token);
-            if (gameFile is not null)
+            source ??= await FindInProvidersAsync(load.AssetId, findById: true, load.Cancellation.Token, typeof(T));
+            if (source is not null)
             {
+                var gameFile = source.File;
                 typeId = gameFile.TypeId;
+                stage = AssetLoadStage.Read;
                 var rawData = await gameFile.ReadAllBytesAsync(load.Cancellation.Token);
-                result = await ConvertToAsync<T>(rawData, gameFile, load.Cancellation.Token);
+                stage = AssetLoadStage.Decode;
+                result = await ConvertToAsync<T>(rawData, source, load.Cancellation.Token);
             }
 
-            CompleteLoad(key, load, result, typeId);
+            CompleteLoad(key, load, result, typeId, source is not null);
             result = null; // ownership transferred to the cache, or intentionally discarded there
         }
         catch (OperationCanceledException)
@@ -242,10 +254,15 @@ public sealed class AssetManager : IAssetManager
         }
         catch (Exception exception)
         {
-            // A missing/invalid asset is a recoverable presentation failure. Keep the
-            // fallback path usable, but leave a diagnostic with the provider-independent key.
-            Trace.TraceWarning("Asset load failed for '{0}' as '{1}': {2}", load.AssetId, load.Type, exception);
-            CompleteLoad(key, load, null, null);
+            var kind = stage switch
+            {
+                AssetLoadStage.Decode => AssetFailureKind.DecodeFailure,
+                _ when exception is InvalidDataException => AssetFailureKind.InvalidData,
+                AssetLoadStage.Lookup => AssetFailureKind.ProviderFailure,
+                _ => AssetFailureKind.ReadFailure
+            };
+            ReportFailure(stage, kind, source, load.AssetId, typeof(T), exception);
+            CompleteLoad(key, load, null, null, source is not null);
         }
         finally
         {
@@ -254,9 +271,10 @@ public sealed class AssetManager : IAssetManager
         }
     }
 
-    private async ValueTask<T?> ConvertToAsync<T>(byte[] data, IGameFile file, CancellationToken ct) where T : class
+    private async ValueTask<T?> ConvertToAsync<T>(byte[] data, ResolvedAsset source, CancellationToken ct) where T : class
     {
         ct.ThrowIfCancellationRequested();
+        var file = source.File;
         if (typeof(T) == typeof(byte[])) return data as T;
         if (typeof(T) == typeof(string)) return System.Text.Encoding.UTF8.GetString(data) as T;
         if (typeof(T) == typeof(IGameFile)) return file as T;
@@ -269,14 +287,23 @@ public sealed class AssetManager : IAssetManager
                 : null;
         }
 
-        return decoder is null ? null : await decoder.DecodeAsync(file, data, ct);
+        if (decoder is null)
+        {
+            ReportFailure(AssetLoadStage.Decode, AssetFailureKind.DecoderMissing, source, file.Id, typeof(T));
+            return null;
+        }
+        var result = await decoder.DecodeAsync(file, data, ct);
+        if (result is null && !ct.IsCancellationRequested)
+            ReportFailure(AssetLoadStage.Decode, AssetFailureKind.DecodeFailure, source, file.Id, typeof(T));
+        return result;
     }
 
-    private async Task<IGameFile?> FindInProvidersAsync(string key, bool findById, CancellationToken ct)
+    private async Task<ResolvedAsset?> FindInProvidersAsync(string key, bool findById, CancellationToken ct, Type? targetType = null)
     {
         List<IAssetProvider> snapshot;
         lock (_lock) snapshot = _providers.ToList();
 
+        var failed = false;
         foreach (var provider in snapshot)
         {
             ct.ThrowIfCancellationRequested();
@@ -286,7 +313,7 @@ public sealed class AssetManager : IAssetManager
                 if (!provider.Exists("assets")) continue;
                 archive = await provider.OpenArchiveAsync("assets", ct);
                 var gameFile = findById ? archive.GetAsset(key, ct) : archive.GetAssetByPath(key, ct);
-                if (gameFile is not null) return gameFile;
+                if (gameFile is not null) return new(gameFile, provider.Name);
             }
             catch (OperationCanceledException)
             {
@@ -294,7 +321,9 @@ public sealed class AssetManager : IAssetManager
             }
             catch (Exception exception)
             {
-                Trace.TraceWarning("Asset lookup failed in provider '{0}' for '{1}': {2}", provider.Name, key, exception);
+                failed = true;
+                Report(new(AssetLoadStage.Lookup, ProviderFailure(exception), findById ? key : null,
+                    findById ? null : key, provider.Name, targetType, exception));
             }
             finally
             {
@@ -302,8 +331,37 @@ public sealed class AssetManager : IAssetManager
             }
         }
 
+        if (!failed && !ct.IsCancellationRequested)
+            Report(new(AssetLoadStage.Lookup, AssetFailureKind.NotFound, findById ? key : null,
+                findById ? null : key, TargetType: targetType));
         return null;
     }
+
+    private static AssetFailureKind ProviderFailure(Exception error) =>
+        error is InvalidDataException ? AssetFailureKind.InvalidData : AssetFailureKind.ProviderFailure;
+
+    private void ReportFailure(AssetLoadStage stage, AssetFailureKind kind, ResolvedAsset? source,
+        string assetId, Type targetType, Exception? error = null) =>
+        Report(new(stage, kind, assetId, source?.File.Path,
+            source?.File is IAssetFileSource origin ? origin.ProviderName : source?.Provider,
+            targetType, error, (source?.File as IAssetFileSource)?.SourceAssetId));
+
+    private void Report(AssetDiagnostic diagnostic)
+    {
+        var observers = Diagnostic;
+        if (observers is null)
+        {
+            try { Trace.TraceWarning("Asset {0} failed ({1}): id='{2}', path='{3}', provider='{4}', target='{5}': {6}",
+                diagnostic.Stage, diagnostic.Kind, diagnostic.AssetId, diagnostic.Path, diagnostic.Provider, diagnostic.TargetType, diagnostic.Exception); }
+            catch (Exception) { /* Trace listeners are observers too. */ }
+            return;
+        }
+        foreach (Action<AssetDiagnostic> observer in observers.GetInvocationList())
+            try { observer(diagnostic); }
+            catch (Exception) { /* Diagnostics must not interrupt shared load completion. */ }
+    }
+
+    private sealed record ResolvedAsset(IGameFile File, string Provider);
 
     private T? TakeLoadedReference<T>(CacheKey key, InFlightLoad load, out string? typeId) where T : class
     {
@@ -371,7 +429,7 @@ public sealed class AssetManager : IAssetManager
         assetToDispose?.Dispose();
     }
 
-    private void CompleteLoad(CacheKey key, InFlightLoad load, object? result, string? typeId)
+    private void CompleteLoad(CacheKey key, InFlightLoad load, object? result, string? typeId, bool fileFound)
     {
         var accepted = false;
         object? resultToDispose = null;
@@ -398,7 +456,7 @@ public sealed class AssetManager : IAssetManager
         }
 
         if (resultToDispose is IDisposable disposable) disposable.Dispose();
-        if (accepted) load.Completion.TrySetResult(result);
+        if (accepted) load.Completion.TrySetResult(fileFound);
         else load.Completion.TrySetCanceled();
     }
 
@@ -541,11 +599,11 @@ public sealed class AssetManager : IAssetManager
         public int RefCount;
     }
 
-    private sealed class InFlightLoad(string assetId, Type type)
+    private sealed class InFlightLoad(string assetId)
     {
         public string AssetId { get; } = assetId;
-        public Type Type { get; } = type;
-        public TaskCompletionSource<object?> Completion { get; } =
+        // The cache owns the result; waiters only need to know whether path identity was resolved.
+        public TaskCompletionSource<bool> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
         public CancellationTokenSource Cancellation { get; } = new();
         public int PendingWaiters { get; set; }

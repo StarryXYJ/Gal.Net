@@ -95,6 +95,9 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             var catalogs = _options.CreateContentCatalogs();
             var resources = await GameResourceScope.OpenAsync(gameDirectory,
                 catalogs.Resources, catalogs.Gallery, _options.Content, cancellationToken);
+            resources.Assets.Diagnostic += diagnostic => GameLog.Logger.Warning(diagnostic.Exception,
+                "Asset {AssetStage} failed ({AssetFailure}): ID={AssetId}, Path={AssetPath}, Provider={AssetProvider}, SourceID={SourceAssetId}, Target={AssetTargetType}",
+                diagnostic.Stage, diagnostic.Kind, diagnostic.AssetId, diagnostic.Path, diagnostic.Provider, diagnostic.SourceAssetId, diagnostic.TargetType?.FullName);
             AvaloniaProjectOptions projectOptions;
             profileDirectory ??= Path.Combine(resources.GameDirectory, ".galnet");
             PlayerSession? saveSession = null;

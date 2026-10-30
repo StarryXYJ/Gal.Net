@@ -16,6 +16,81 @@ namespace GalNet.IntegrationTests;
 public sealed class SharedPlayerHostTests
 {
     [Test]
+    public Task ResourceFailuresReachPlayerLogsWithoutPreventingStartup() => SampleUiTests.RunAsync(async () =>
+    {
+        var previous = Serilog.Log.Logger;
+        var sink = new AssetHostLogCapture();
+        var configuration = new Serilog.LoggerConfiguration().WriteTo.Sink(sink);
+#if GALNET_GAME_DEBUG
+        var store = new GalNet.Sample.Avalonia.Debug.SampleDebugLogStore();
+        store.Enable();
+        configuration.WriteTo.Sink(store);
+#endif
+        using var logger = configuration.CreateLogger();
+        Serilog.Log.Logger = logger;
+        try
+        {
+            var defaults = SamplePlayerServices.CreateHostOptions();
+            var options = new AvaloniaGameHostOptions
+            {
+                CreateContentCatalogs = defaults.CreateContentCatalogs,
+                ConfigureExecution = defaults.ConfigureExecution,
+                Content = defaults.Content,
+                SelectProjectOptions = defaults.SelectProjectOptions,
+                SelectTexturePreloads = async (assets, ct) =>
+                {
+                    Assert.That(await assets.AcquireAsync<byte[]>("diagnostic-missing", ct), Is.Null);
+                    assets.RegisterProvider(new FailingDiagnosticProvider());
+                    Assert.That(await assets.AcquireAsync<byte[]>("diagnostic-broken", ct), Is.Null);
+                    return [];
+                },
+                SelectEffectPrograms = (_, _) => Task.FromResult(Array.Empty<GalNet.Contracts.Builtins.Scene.EffectProgramResource>()),
+                Presentation = new()
+                {
+                    CreateAudioHost = (_, _) => new SilentAudio(),
+                    CreateVideoPresenter = (_, _, _) => new UnusedVideo()
+                }
+            };
+            await using var host = await SamplePlayerSession.CreateAsync(options);
+            var startup = host.InitializeAsync(Path.Combine(_root, "content"), Path.Combine(_root, "diagnostic-profile"));
+            var language = host.Services.GetRequiredService<LanguageSelectionViewModel>();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+            while (!startup.IsCompleted)
+            {
+                if (language.ConfirmCommand.CanExecute(null)) language.ConfirmCommand.Execute(null);
+                await Task.Delay(10, timeout.Token);
+            }
+            Assert.That(await startup, Is.True);
+            var reports = sink.Events.Where(item => item.Properties.ContainsKey("AssetFailure")).ToArray();
+            Assert.That(reports, Has.Length.EqualTo(2));
+            Assert.That(reports[0].RenderMessage(System.Globalization.CultureInfo.InvariantCulture), Does.Contain("Lookup").And.Contain("NotFound"));
+            Assert.That(reports[1].RenderMessage(System.Globalization.CultureInfo.InvariantCulture), Does.Contain("ProviderFailure").And.Contain("test-provider"));
+            Assert.That(reports[1].Exception?.Message, Is.EqualTo("diagnostic-provider-failure"));
+            Assert.That(reports[1].Properties["LogChannel"].ToString(), Does.Contain("Game"));
+#if GALNET_GAME_DEBUG
+            var lines = store.GetSnapshot().Where(line => line.Message.Contains("diagnostic-", StringComparison.Ordinal)).ToArray();
+            Assert.That(lines, Has.Length.EqualTo(2));
+            Assert.That(lines[1].FullText, Does.Contain("diagnostic-provider-failure"));
+#endif
+        }
+        finally { Serilog.Log.Logger = previous; }
+    });
+
+    private sealed class AssetHostLogCapture : Serilog.Core.ILogEventSink
+    {
+        public System.Collections.Concurrent.ConcurrentQueue<Serilog.Events.LogEvent> Events { get; } = new();
+        public void Emit(Serilog.Events.LogEvent logEvent) => Events.Enqueue(logEvent);
+    }
+
+    private sealed class FailingDiagnosticProvider : GalNet.Core.Assets.IAssetProvider
+    {
+        public string Name => "test-provider";
+        public bool Exists(string name) => true;
+        public GalNet.Core.Assets.IArchive OpenArchive(string name) => throw new IOException("diagnostic-provider-failure");
+        public Task<GalNet.Core.Assets.IArchive> OpenArchiveAsync(string name, CancellationToken ct = default) => throw new IOException("diagnostic-provider-failure");
+    }
+
+    [Test]
     public Task BackgroundCheckpointSurvivesScopeReplacementAndDoesNotUsePlayerSlots() => SampleUiTests.RunAsync(async () =>
     {
         File.WriteAllText(Path.Combine(_root, "content/Graph/graph.json"),

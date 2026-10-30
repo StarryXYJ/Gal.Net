@@ -31,7 +31,7 @@
 | P5 | 持久化字段比较完整性 | P4 的基线设计稳定 | verified |
 | P6a | GameEngine 职责整理 | 前述行为稳定；确认状态与锁所有者 | verified |
 | P6b | 内容会话协调职责整理 | P6a；单独评估发布/重载边界 | verified |
-| P7 | 资源错误诊断贯通 | 资源加载职责稳定 | planned |
+| P7 | 资源错误诊断贯通 | 资源加载职责稳定 | verified |
 | P8 | 持续验证补齐 | 对应平台/测试可在 CI 重复运行 | planned |
 
 ## P1：资源并发获取与释放
@@ -122,6 +122,10 @@ P6b 实现选择：内部 ProjectDiskBaseline 统一拥有会话接受的磁盘�
 
 任务：保留资源 ID、来源、阶段、原异常；用最小注入边界接入宿主日志，区分缺失、校验失败、解码失败，保持现有显示回退。
 
+P7 实现选择：AssetManager 暴露可选结构化诊断事件，Assets 不引用宿主/日志库，IAssetManager 不扩展。查找结果内部携带 provider；覆盖资源额外携带实际 PAK provider 和源资源 ID。诊断区分查找、读取、解码、枚举阶段，以及缺失、无效数据、provider/读取/解码失败和缺少 decoder；保留原异常实例。共享 producer 只报告一次，provider 异常后不追加误导性缺失；独立重试仍可报告新的尝试，不建立无界失败缓存。监听回调在缓存锁外且逐个隔离异常；取消不报告，未订阅时保留 Trace 回退。编辑器各代 manager 和 Avalonia 播放器资源会话连接现有 Serilog 日志/调试视图。作者索引和启动内容加载原有直接抛错链路不改为可恢复加载。
+
+P7 验证后修订：新增按路径的共享失败测试确定性复现同批请求产生两次 DecodeFailure。原因是路径缓存命中后，任何空句柄都触发 ID 映射删除/重查，包含已经找到文件但读取/解码失败的情况。共享 completion 改为返回“是否找到文件”（资源仍由原缓存拥有），路径分支只在未找到文件时重查；保持最后等待者/引用释放规则。不增加失败缓存或重试框架，显式后续请求仍可重试。本阶段因此包含这一经测试发现的行为修正。
+
 验证：不同失败原因可观察、取消不误报、一次失败不重复刷屏、无监听方可工作。
 
 风险：诊断回调干扰加载或引入反向依赖。退出条件：故障原因可追踪，层次与回退契约不变。
@@ -137,6 +141,8 @@ P6b 实现选择：内部 ProjectDiskBaseline 统一拥有会话接受的磁盘�
 风险：原生环境波动和 CI 时长。退出条件：发布成功与运行验证结果明确区分，关键后端变化自动获得回归证据。
 
 ## 执行记录
+
+- 2026-10-30 P7 verified：AssetManager 增加独立于日志库的结构化诊断事件，保留阶段、分类、逻辑 ID/路径、实际 provider、覆盖源 ID、目标类型及原异常；编辑器各代资源 manager 和 Avalonia 玩家会话接入现有日志，Debug store 验证可显示完整异常。取消不误报，观察者逐个隔离并在锁外调用；provider 错误不再追加缺失。路径并发测试发现空句柄误触重复加载，改用共享完成结果的“是否找到文件”区分身份失效与读取/解码失败，真正失效仍重查、后续显式请求仍可恢复。新增 27 项用例；Assets 248、Architecture 53、Editor 资源身份 8、Release 宿主/安装集成 18、Debug 日志 3 项通过。证据、配置修正与范围见 [p7-resource-diagnostics.md](p7-resource-diagnostics.md)，经验见 `.agents/lessons/L-20261030-09-asset-path-failure-retry.md`。下一阶段 P8 持续验证补齐，正式 docs 后续整理。
 
 - 2026-10-30 P6b verified：提取内部 ProjectDiskBaseline，统一拥有 settings 检查、契约指纹和外部文件字节的登记/比较/采纳规则；ProjectContentSession 保留发布、重载、补偿、工作文档身份与原有锁/恢复生命周期。作者 dirty 基线、Repository 源校验和受管文件期望来源保持原职责，无公共 API 或锁变化。新增 5 项公共行为测试，重构前外部重载 13/13 通过；重构后 Editor.Shared 613、Architecture 53、界面外部重载/文件操作 20 项全部通过。所有权、取舍与证据见 [p6b-content-session-responsibilities.md](p6b-content-session-responsibilities.md)。P6 当前两个切片完成；下一阶段 P7 资源错误诊断贯通，P7/P8 仍 planned，正式 docs 后续整理。
 

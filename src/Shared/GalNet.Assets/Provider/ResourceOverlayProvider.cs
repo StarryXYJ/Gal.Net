@@ -81,8 +81,10 @@ public sealed class ResourceOverlayProvider : IAssetProvider
         public IGameFile? GetAssetByPath(string path) => files.Values.FirstOrDefault(file => StringComparer.OrdinalIgnoreCase.Equals(file.Path, AssetPathHelper.Normalize(path)));
         public void Dispose() { }
     }
-    private sealed class SourceFile(ResourceFileSource source, string? id = null, string? path = null, AssetMeta? metadata = null) : IGameFile, IAssetOverrideFile
+    private sealed class SourceFile(ResourceFileSource source, string? id = null, string? path = null, AssetMeta? metadata = null) : IGameFile, IAssetOverrideFile, IAssetFileSource
     {
+        public string ProviderName => source.Provider.Name;
+        public string SourceAssetId => source.Index.Id;
         public bool IsResourceOverride => id is not null;
         public string Id => id ?? source.Index.Id;
         public string Path => path ?? source.Index.Path;
