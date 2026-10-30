@@ -93,3 +93,13 @@ Windows Integration 193/193、Presentation 313/313、GameHost 10/10 通过，真
 移动端按用户决定隐藏退出按钮；Android 标题系统返回保存/暂停后退到桌面，保留可重新挂载的会话，不永久关闭共享 App。Android 收起状态栏和底部导航栏，并保留刘海/挖孔安全区；16:9 画布等比扩大到全高，长屏侧边留白仍保留。
 
 修复重复切回同一 scoped 页面时清空当前 presenter 的空白页问题。三种主题失败回归先复现，再随完整 Presentation 313/313、共享宿主 7/7 通过；初次 4 项桌面音频失败来自测试目录缺 native，显式部署后全部通过。新 Release Mono AOT APK 双 ABI/内容/对齐检查通过，已安装手机；cold launcher 和 2×Back、1×Home 后同 PID 重进均显示正常标题，无退出按钮和常驻系统栏。证据和最终哈希见 execution.md P7c。完整移动与 iOS 验收继续追踪。
+
+## P6b — 通用宿主与内容能力归位
+
+按后续模板结构修订，把 `PlayerView`、语言选择 VM/视图和 `AvaloniaPlayerHost` 归入 Avalonia.GameHost；宿主通过注册回调提供页面、主题、本地化与设置，不依赖 Sample.Contracts。原桌面窗口直接使用通用视图，CrossPlatform 经临时 Sample 委托使用通用会话所有权。释放顺序明确在销毁本地化服务前恢复之前的解析器。
+
+非可寻址流安装归 Storage.FileSystem；GameProfilePaths 保留 projectId/开发目录的原 SHA256 身份，必须由宿主提供 profile 根。SceneScreenshotWriter 负责场景捕获和安全写入，Sample 只保留项目 entry、文件名 schema 和任务适配。
+
+Windows 自动化实际执行：Presentation 322/322、Integration 195/195、架构 54/54、Storage 34/34。独立宿主测试没有 Sample.Contracts 引用；原窗口的主题/语言和截图、后台检查点回归通过。CrossPlatform Desktop Debug 构建通过；14 组既有 Desktop/R2R 配置 locked restore 通过，包版本/hash 与目标框架/RID 键不变。明确区分 TRX 的实际执行与未执行显式用例。
+
+规范/手册已同步 [宿主](../../docs/spec/presentation/game-host.md)、[模块边界](../../docs/spec/architecture/modules.md)、[定制](../../docs/manual/extensions/customize-sample.md)和 CrossPlatform README。证据在 `out/cross-platform-p6b/`，详见 execution.md。本轮没有重新发布/运行 Android、Linux、macOS 或 iOS；旧设备证据不升级为新代码通过。Player 的临时项目配置/资源及两个小型委托仍存在，P6c 删除；通用调试和最终发布设备矩阵仍待 P6d/P6e。

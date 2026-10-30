@@ -5,7 +5,6 @@ using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Entry;
 using GalNet.Core.I18n;
 using GalNet.Editor.Shared.Services;
-using GalNet.Sample.Player;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -60,7 +59,7 @@ public sealed class BundledGameInstallerTests
         Assert.That(newer, Is.Not.EqualTo(installed));
         Assert.That(InstalledGameDescriptor.Read(newer).BuildId, Is.Not.EqualTo(descriptor.BuildId));
         var profiles = Path.Combine(_root, "profiles");
-        Assert.That(SamplePlayerPaths.GetProfileDirectory(newer, profiles), Is.EqualTo(SamplePlayerPaths.GetProfileDirectory(installed, profiles)));
+        Assert.That(GameProfilePaths.GetProfileDirectory(newer, profiles), Is.EqualTo(GameProfilePaths.GetProfileDirectory(installed, profiles)));
         Assert.That(Directory.GetFiles(Cache, ".incoming-*"), Is.Empty);
     }
 

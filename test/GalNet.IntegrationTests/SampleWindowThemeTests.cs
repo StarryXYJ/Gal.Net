@@ -11,7 +11,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Views;
-using GalNet.Sample.Player.Views;
+using GalNet.Avalonia.GameHost.Views;
 using GeneralTest.Integration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -108,7 +108,7 @@ public sealed class SampleWindowThemeTests
                     Is.EqualTo(((ISolidColorBrush)picker.Background!).Color));
                 Capture(window, "Sample-LanguagePicker");
                 picker.IsDropDownOpen = false;
-                scope.ServiceProvider.GetRequiredService<GalNet.Sample.Player.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
+                scope.ServiceProvider.GetRequiredService<GalNet.Avalonia.GameHost.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
                 Assert.That(await selection, Is.EqualTo("zh-CN"));
                 scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("en-US");
                 scope.ServiceProvider.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);

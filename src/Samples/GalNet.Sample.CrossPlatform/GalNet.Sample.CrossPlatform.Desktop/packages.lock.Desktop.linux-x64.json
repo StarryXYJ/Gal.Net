@@ -225,6 +225,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia.Controls.ColorPicker": "[12.0.5, )",
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
@@ -239,7 +240,8 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Storage.FileSystem": "[1.0.0, )"
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {

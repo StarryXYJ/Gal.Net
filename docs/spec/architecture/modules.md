@@ -11,7 +11,7 @@ Diagnostics ────────────── 可选 Benchmark 构建�
 Contracts.Builtins ──────── 内置场景/音频/Gallery/差分图片契约、默认资源、纯算法与 schema
 Presentation.Abstractions ─ 执行注册/恢复组合、presenter 与平台无关应用契约
 GameHost ───────────────── 游戏会话、内容聚合、运行生命周期、玩家持久化与偏好规则
-Avalonia.GameHost ───────── 默认 Avalonia 会话、展示组合、设置 UI 和平台适配
+Avalonia.GameHost ───────── 默认 Avalonia 会话、玩家宿主/启动视图、展示组合、设置 UI 和平台适配
 Media.Audio ─────────────── 跨平台 PCM 混音与 DSP
 Media.Miniaudio ──────────── 原生设备与流式解码适配（当前实机验证 Windows x64）
 Media.LibVlc ────────────── 视频/Gallery/Editor 共用的原生初始化、配置与独立媒体会话工厂
@@ -100,6 +100,7 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
 - `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目、测试项目的直接依赖 allowlist，禁止测试项目互相引用，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新本页和受影响模块规范。
+- 通用玩家的 GameHost/GameView/Storage 生产依赖图不得包含 Sample（包括 Sample.Contracts）或循环引用；项目主题、契约和启动路径由宿主配置。`Sample.Player` 当前只保留迁移期间的项目配置与委托，不是可复用框架层。
 - 内容、保存、玩家变量、变量桥接和进度协议由 Runtime 拥有；资源访问协议由 Core.Assets 拥有；Editor 设置和退出协议由 Editor.Abstraction 拥有。
 - `ISaveService` 只提供异步、可取消的 I/O API，保存请求统一使用 `SaveRequest` 携带 snapshot 与可选展示 metadata。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。

@@ -1,9 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Services;
 
-namespace GalNet.Sample.Player.ViewModels;
+namespace GalNet.Avalonia.GameHost.ViewModels;
 
 /// <summary>Owns the first-run selection; language sources must be loaded before choosing.</summary>
 public sealed partial class LanguageSelectionViewModel(IPlayerLocalization localization) : ObservableObject

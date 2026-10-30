@@ -1,8 +1,8 @@
 using Avalonia.Controls;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Sample.Player.ViewModels;
-using GalNet.Sample.Player.Views;
+using GalNet.Avalonia.GameHost.ViewModels;
+using GalNet.Avalonia.GameHost.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 
@@ -20,6 +20,7 @@ public partial class MainWindow : UrsaWindow
         _settings = services.GetRequiredService<IAvaloniaPlayerSettings>();
         _settings.BindWindow(this);
         Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+        GalNet.Sample.Player.SamplePlayerServices.ConfigureView(PlayerControl);
         PlayerControl.Attach(shell, services.GetRequiredService<LanguageSelectionViewModel>());
         InitializeDebug(services);
         Closed += OnClosed;

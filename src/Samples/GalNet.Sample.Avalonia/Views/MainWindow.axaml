@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:GalNet.Game.Controls"
         xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
-        xmlns:player="using:GalNet.Sample.Player.Views"
+        xmlns:player="using:GalNet.Avalonia.GameHost.Views"
         xmlns:ursa="https://irihi.tech/ursa"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
         Width="1280" Height="720" MinWidth="800" MinHeight="500"

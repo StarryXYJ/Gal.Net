@@ -2,9 +2,9 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Sample.Player.ViewModels;
+using GalNet.Avalonia.GameHost.ViewModels;
 
-namespace GalNet.Sample.Player.Views;
+namespace GalNet.Avalonia.GameHost.Views;
 
 /// <summary>The shared player surface; the platform owns its window and session lifetime.</summary>
 public partial class PlayerView : UserControl
@@ -16,8 +16,6 @@ public partial class PlayerView : UserControl
     public PlayerView()
     {
         InitializeComponent();
-        Resources.MergedDictionaries.Add(SamplePlayerServices.PlayerPalette.CreateResources());
-        PlayerRoot.Styles.Add(SamplePlayerServices.PlayerTheme.CreateStyles());
         AddHandler(KeyDownEvent, OnExitKeyDown, RoutingStrategies.Tunnel);
     }
 

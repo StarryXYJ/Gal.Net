@@ -2,8 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="using:GalNet.Game.Controls"
              xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
-             xmlns:views="using:GalNet.Sample.Player.Views"
-             x:Class="GalNet.Sample.Player.Views.PlayerView">
+             xmlns:views="using:GalNet.Avalonia.GameHost.Views"
+             x:Class="GalNet.Avalonia.GameHost.Views.PlayerView">
   <Grid x:Name="PlayerRoot" Classes="galnet-player" Background="{DynamicResource GalNet.Brush.Background}">
     <Grid x:Name="PlayerContent">
       <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"

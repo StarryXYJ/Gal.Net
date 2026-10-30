@@ -1,4 +1,4 @@
-using Avalonia.Threading;
+using GalNet.Avalonia.GameHost.Presentation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.Execution;
@@ -64,54 +64,11 @@ public sealed class ScreenshotPrimitiveInstance(PrimitiveTaskScope? taskScope, G
     private async Task CaptureAsync(CancellationToken cancellation)
     {
         using var scope = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetimeCancellation);
-        string? temporary = null;
-        Exception? failure = null;
         var token = scope.Token;
-        try
-        {
-            token.ThrowIfCancellationRequested();
-            var name = fileName ?? $"Screenshot-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.png";
-            ScreenshotSchema.ValidateFileName(name);
-            var directory = outputDirectory();
-            if (!Path.IsPathFullyQualified(directory)) throw new InvalidDataException("The host screenshot directory must be absolute.");
-            directory = Path.TrimEndingDirectorySeparator(Path.GetFullPath(directory));
-            RejectLinks(directory);
-            var target = Path.Combine(directory, name);
-            if (File.Exists(target) || Directory.Exists(target)) throw new IOException($"Screenshot already exists: '{target}'.");
-            var png = await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                token.ThrowIfCancellationRequested();
-                page.EnsureLayout();
-                if (page.SceneHost.Bounds.Width <= 0 || page.SceneHost.Bounds.Height <= 0)
-                    throw new InvalidOperationException("The game scene must be laid out before a screenshot entry executes.");
-                return page.CaptureScenePng();
-            });
-            token.ThrowIfCancellationRequested();
-            RejectLinks(directory);
-            Directory.CreateDirectory(directory);
-            temporary = Path.Combine(directory, ".galnet-screenshot-" + Guid.NewGuid().ToString("N") + ".tmp");
-            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous))
-                await stream.WriteAsync(png, token).ConfigureAwait(false);
-            token.ThrowIfCancellationRequested();
-            RejectLinks(directory);
-            File.Move(temporary, target, overwrite: false);
-            temporary = null;
-            SavedPath = target;
-        }
-        catch (Exception exception) { failure = exception; }
-        finally
-        {
-            try { if (temporary is not null) File.Delete(temporary); }
-            catch (Exception cleanup) { failure = failure is null ? cleanup : new AggregateException(failure, cleanup); }
-        }
-        if (failure is not null) System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(failure).Throw();
-    }
-
-    private static void RejectLinks(string directory)
-    {
-        for (var current = new DirectoryInfo(directory); current is not null; current = current.Parent)
-            if (current.Exists && (current.Attributes & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException("The host screenshot directory cannot traverse links.");
+        token.ThrowIfCancellationRequested();
+        var name = fileName ?? $"Screenshot-{DateTime.UtcNow:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.png";
+        ScreenshotSchema.ValidateFileName(name);
+        SavedPath = await SceneScreenshotWriter.SaveAsync(page, outputDirectory(), name, token).ConfigureAwait(false);
     }
 }
 

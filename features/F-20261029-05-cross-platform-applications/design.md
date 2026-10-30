@@ -3,6 +3,7 @@
 - 日期：2026-10-29
 - 状态：P0/P1 仍有平台/原生 Editor 验收待补；P2 Windows 合包已实现，结果见 execution.md；桌面三平台及移动端完整发布尚未验收。
 - 需求：[feature.md](feature.md)
+- 最近修订：2026-10-30；Sample 模板结构调整见 §8.1，属于已确认方向、尚未实现的设计。
 
 ## 1. 问题与目标
 
@@ -165,6 +166,8 @@ SDL 仅负责设备输入，不接管 Avalonia 窗口、渲染和主循环。初
 
 ## 8. 五平台模板
 
+本节早期关于不复制 Sample 配置、集中引用 `Sample.Player` 的方案，已由下面 §8.1 的用户修订替代；已有实现和验证事实继续保留为迁移基线。
+
 P6 当前实现（2026-10-30）：新增源码共享库 `GalNet.Sample.Player`，把原 Sample 的语言选择、本地化资源、主视图、截图实现和公共注册/执行组合迁入；原 Sample 保留桌面入口与调试扩展，并复用该库。CrossPlatform App 组合 `SamplePlayerSession`，由 UI 线程拥有会话范围、取消初始化并按顺序异步释放；原生窗口行为归宿主，Activity 重挂载移动现有视图，不再打开第二套会话。跨平台重启替换 scope，继续使用项目身份定位的 profile。
 
 Android Asset / iOS Bundle 通过 `BundledGameInstaller` 将非可寻址 galpak 流写到临时文件、计算 SHA256 并交给正式安装器校验，按归档 hash 分版缓存；相同 projectId 的内容更新继续使用相同 profile。Android/iOS 明确排除传递来的桌面 SDL runtime/build 资产，移动输入后端另接。Android Release 使用 MonoVM + RunAOTCompilation，已完成两种 ABI 的实际发布；iOS 只有代码接入，后续验证。当前仓库工程集中复用已完成，独立模板生成和完整移动运行仍待后续，不以这些切片宣称 P6/P7 全部完成。
@@ -188,6 +191,50 @@ P1–P5 期间，功能改动集中在现有 Sample 和公共库，不把页面�
 移动暂停协调剧情推进、音频输出与保存；系统可能直接终止进程，不能依赖正常退出时最后一次落盘。启动恢复沿用明确检查点，不承诺任意后台瞬间恢复媒体游标。清空玩家状态后的“重启”实现为会话/导航重建，不启动新进程。
 
 Android 处理音频焦点、返回键、路由及前后台；iOS 处理 AVAudioSession、音频中断/路由、静态链接与签名。Gallery 与剧情视频都必须覆盖。先做 iOS 最小完整发布探针，识别 JSON、DI、第三方 UI/视频回调的 AOT/裁剪问题；发现不兼容依赖时局部替换或显式注册，不全局吞掉警告。
+
+### 8.1 2026-10-30 修订：模板拥有配置，通用层拥有机制
+
+**已确认目标，P6b 通用机制迁移已验证。** 用户考虑未来项目模板，不希望保留额外的 `GalNet.Sample.Player` 工程；两个 Sample 可以有相似配置代码，真正通用的功能（包括调试能力）应在适当的库层复用。模板生成仍延期，本轮先调整模板源工程。实际落地能力与验证见 execution.md，P6c–P6e 尚未迁移部分继续保留待办。
+
+#### 当前问题与取舍
+
+P6a 的 Player 库同时拥有可复用的启动/会话机制和项目选择：固定主题/配色、本地化资源程序集、`ProjectSchemas`、`sample.screenshot` 注册。CrossPlatform 直接调用这些静态默认值，主项目没有对等的 `SampleCustomization`。原桌面 Sample 仍自行维护部分 scope/窗口/调试组合，尚不是两套等价的定制入口。
+
+最终删除这个库，不将其整体改名搬入 Presentation。允许两个宿主独立保留声明性的配置和少量平台接线；有状态的初始化取消、异步释放、检查点、导航和调试协议机制仍只有一个实现来源。相比两份完整玩家实现，这需要更明确的依赖边界；相比继续共用 Sample 默认配置，模板可以在主项目内完成定制。
+
+#### 职责归属
+
+| 当前内容 | 目标归属与边界 |
+| --- | --- |
+| `SamplePlayerServices` 的主题/配色、catalog、`ProjectSchemas`、执行模块及项目标题 | 两个 Sample 主项目各自的 `SampleCustomization`；可有相似注册，不使用共享 Sample 静态默认值 |
+| `SamplePlayerSession` 的 scope、初始化/取消、绑定/释放和后台协调 | 优先复用/补充 `Avalonia.GameHost`；宿主传入配置、视图和平台动作，不内置 Sample 契约或主题 |
+| `PlayerView`、首次语言选择、加载状态、退出确认 | 通用宿主容器/启动协调放 `Avalonia.GameHost`；可独立复用的纯视图按已有边界放 GameView/Controls，外观交给 Themes/宿主；不机械移动形成 GameView → GameHost 反向依赖 |
+| `Localization/*.json`、本地化工厂 | 按键归属拆分：通用控件文案属于控件/主题资源，游戏标题/项目文案属于各 Sample；宿主显式选择资源程序集和覆盖顺序 |
+| `BundledGameInstaller` 的非可寻址流、hash 分版、原子安装 | `Storage.FileSystem` 的通用安装能力；平台仅打开 APK Asset/Bundle 流并提供缓存根，不引入 Android/iOS SDK 依赖 |
+| `SamplePlayerPaths` | 项目身份/稳定目录键可复用文件系统能力；应用名、OS 默认根、显式 profile/log 路径仍是宿主策略，保留当前身份算法与用户数据 |
+| 截图捕获、取消、输出与清理机制 | 通用 Avalonia 捕获及输出能力按现有 GameView/GameHost 和文件系统边界归属；路径/命名策略由宿主提供 |
+| `SampleScreenshotModule` 中的 `ScreenshotOptions`、`ScreenshotSchema.TypeId` 注册 | 项目契约和两份小型 Sample 适配；不使 Presentation 依赖 `GalNet.Project.Contracts`，不为本次结构调整改变内容 schema |
+| 调试 VM、日志缓存/显示、快照辅助、外部调试生命周期适配 | Presentation 下可选调试模块；协议/engine 调试继续属于 `GalNet.Debugging`，不让普通 GameHost/GameView 被迫依赖调试协议 |
+| `MainWindow.Debug`、重启、打开日志目录、参数/邀请解析 | 宿主接入与平台操作；通用调试模块通过窄接口/回调请求动作，不引用 Sample `App`、`GameLaunchOptions` 或 `MainWindow` |
+| Android/iOS 生命周期、音频焦点/会话、系统栏与沙盒根 | 继续留在平台入口，调用通用宿主；保持 P7b/P7c 的规范路径、移动无退出按钮、全屏与重进语义 |
+
+#### 依赖与配置方式
+
+两个 Sample 均提供主项目内的 `SampleCustomization`，负责创建 HostOptions、选择主题/配色、注册页面/编辑器/执行模块、本地化和可选调试。App 只编排应用 lifetime，平台入口只注入平台能力与路径。复用已有配置对象、注册 API 和所需的窄回调，不引入一个包含所有项目选择的全局单例或巨型 options。
+
+Presentation、Infrastructure 和 Shared 不引用 Sample 工程/命名空间/项目契约。GameView 不因语言选择或调试 UI 反向依赖 GameHost；调试模块可以向下依赖通用宿主和 `GalNet.Debugging`，普通宿主不能反向依赖可选调试模块。若现有项目无法做到构建/发布时真正可排除，优先增加一个职责单一的可选 Presentation 调试项目（具体命名在实施时确定），不再建一个包含 Sample 默认选择的 Player 替代库。
+
+调试通用化覆盖现有能力：日志/菜单、调试快照、玩家状态清空、资源重载和外部调试连接；可通用的能力与桌面窗口外壳分开。重启/重载从进程启动改为由宿主决定原进程重启或 scope 重建。项目特有 replay 策略（如 `sample.screenshot` 忽略）由宿主传入，库不能写死 Sample 指令。清空状态、调试存档覆盖等显式作者操作及确认语义保留。
+
+原 Sample 和 CrossPlatform Desktop 都接入同一套可选调试能力。移动接入适用的会话内操作和可嵌入的调试 UI；桌面日志窗口、打开目录或进程重启只在平台提供能力时出现。未建立 Android/iOS 外部调试传输与邀请入口前，不把抽出通用连接适配宣称为移动远程调试支持。
+
+#### 迁移与行为保持
+
+先建立可独立验证的通用机制并让现有调用委托给它，再让两个 Sample 的定制入口接管项目选择；调用迁完后删除 Player 工程/引用/锁图。过渡适配只用于阶段迁移，不作为长期旧 API 兼容承诺。历史 feature、lesson 和验收截图仍可提及 Player，但正式文档、生产代码/构建配置和测试入口最终不能依赖它。
+
+内容格式、契约字节校验、profile 身份、检查点与手动槽的优先级不变。移动仍允许 Mono AOT；调试关闭的玩家发布不得携带调试实现、资源、PDB（沿用既有发布策略）或 `GalNet.Debugging` 传递依赖，关闭调试不影响普通日志。修改锁图和引用后分别 restore，不能用旧 bin/obj 或另一个调试开关下的 `--no-restore` 产物证明成功。
+
+验收先覆盖两宿主独立配置、页面/资源加载和会话机制，再验证可选调试与真实发布。Windows/Linux 和已连接 Android 的新产物需要重新运行，旧 P7b/P7c 证据只作基线。iOS/macOS/真实手柄继续按用户决定延期；结构调整不能扩大它们的支持声明。独立模板生成/脱仓库发布仍单独追踪，不以删除 Player 就标记完成。
 
 ## 9. 兼容性与迁移
 

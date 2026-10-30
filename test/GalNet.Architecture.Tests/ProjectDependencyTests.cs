@@ -25,6 +25,18 @@ public class ProjectDependencyTests
             ["GalNet.Media.LibVlc"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Runtime", "GalNet.Assets", "GalNet.GameHost"],
+            ["GalNet.Avalonia.GameHost"] =
+            [
+                "GalNet.Input.Sdl3", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.Media.Miniaudio",
+                "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Primitives.Builtins",
+                "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core",
+                "GalNet.Avalonia.Rendering", "GalNet.Contracts.Builtins"
+            ],
+            ["GalNet.Avalonia.GameView"] =
+            [
+                "GalNet.Media.LibVlc", "GalNet.Avalonia.Controls", "GalNet.Avalonia.Rendering",
+                "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core", "GalNet.Contracts.Builtins"
+            ],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
             ["GalNet.Editor.DefaultContracts"] = ["GalNet.Contracts.Builtins"],
             ["GalNet.Editor.Shared"] =
@@ -98,6 +110,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Presentation.Tests"] =
             ["GalNet.Contracts.Builtins", "GalNet.Media.Miniaudio",
+                "GalNet.Avalonia.GameHost",
                 "GalNet.Media.LibVlc",
                 "GalNet.SchemaGenerator",
                 "GalNet.Assets",
@@ -235,6 +248,25 @@ public class ProjectDependencyTests
             .Select(reference => (string?)reference.Attribute("Include") ?? "").ToArray();
         Assert.That(packages.Where(name => name.StartsWith("Avalonia", StringComparison.Ordinal) ||
             name.StartsWith("SkiaSharp", StringComparison.Ordinal) || name.EndsWith(".Avalonia", StringComparison.Ordinal)), Is.Empty);
+    }
+
+    [Test]
+    public void ReusablePlayerLibrariesDoNotDependOnSampleProjectsOrFormCycles()
+    {
+        var complete = new HashSet<string>(StringComparer.Ordinal);
+        var visiting = new HashSet<string>(StringComparer.Ordinal);
+        void Visit(string project)
+        {
+            Assert.That(project, Does.Not.StartWith("GalNet.Sample"), "Reusable player libraries cannot depend on a Sample or its contracts.");
+            if (complete.Contains(project)) return;
+            Assert.That(visiting.Add(project), Is.True, $"Project dependency cycle at {project}.");
+            foreach (var reference in ReadProjectReferences(FindProjectFile(project))) Visit(reference);
+            visiting.Remove(project);
+            complete.Add(project);
+        }
+        Visit("GalNet.Avalonia.GameHost");
+        Visit("GalNet.Avalonia.GameView");
+        Visit("GalNet.Storage.FileSystem");
     }
 
     [Test]

@@ -415,3 +415,30 @@ Android 挂载后通过 Avalonia InsetsManager 设置 edge-to-edge 和 IsSystemB
 补充的坐标设置页探针未处于预期标题页面：截图已进入剧情，随后 Back 观察到应用退到后台。此探针未完成预设步骤，不计为设置页真机通过；保留 `immersive-final-settings.png` 和工具结果，设置返回的自动化证据来自共享宿主/主题回归。后续设备操作应先确认当前页面，避免与用户手动游玩相互干扰。
 
 证据在 `out/android-device-validation/`：`icon-start-warm.png`（旧版空白）、`immersive-final-title.png`、`immersive-final-reopen-{1,2,3}.png`、`immersive-final-reopen.json`、`immersive-final-runtime.log`、`repeated-title-before-fix.log`、`presentation-with-native-final.log`、`presentation-results/`、`mobile-back-final-tests.log`、`immersive-final-package-verification.json`。本切片不替代剧情存读档/Gallery/进程被系统杀死恢复、音频焦点路由、完整安全区/方向/性能或 iOS 真机验收。
+
+## 2026-10-30：P6b 通用宿主、视图与内容安装归位（verified）
+
+用户要求为模板取消额外的 Player 项目，允许两个主项目保留类似配置。设计与 P6b–P6e 计划已记录后，按“开始吧”先实施本切片；没有把整个 Player 改名移进框架。
+
+Avalonia.GameHost 现在提供 `AvaloniaPlayerHost` 和 `Views.PlayerView`、LanguageSelectionView/ViewModel；注册回调必须由宿主提供项目页面、主题、本地化、设置与平台后端。通用视图不引用 SamplePlayerServices、固定配色或 Sample 文案程序集。Host 统一管理 scope、初始化取消、后台暂停/导航和异步释放；新增非空旧解析器的恢复回归，释放先恢复借用的 resolver，再销毁本地化服务。SamplePlayerSession 暂时只做配置委托；原桌面 MainWindow 也使用同一通用视图，主题由 Sample 配置施加。
+
+BundledGameInstaller 移入 Storage.FileSystem，保留非可寻址资产流、SHA256 缓存、正式安装校验和调用方流所有权。GameProfilePaths 提取稳定身份计算，沿用原 profile 键且由宿主提供绝对根；SamplePlayerPaths 暂时只保留 OS 默认目录。SceneScreenshotWriter 负责 UI 线程捕获、链接/文件名路径校验、临时文件清理和不覆盖发布；SampleScreenshotModule 继续拥有 ScreenshotSchema、primitive 及命名约束。没有移动/修改项目契约或内容格式。
+
+新增架构门禁覆盖 GameHost/GameView 的直接引用，以及通用宿主/视图/Storage 的传递依赖无 Sample、无循环。Presentation 测试工程直接消费通用宿主，没有引用 Sample 或 Sample.Contracts；测试提供自己的 theme、文本 provider、页面/启动服务及 HostOptions。
+
+实际测试证据：
+
+| 检查 | 结果 |
+| --- | --- |
+| Presentation | TRX total=328、executed=322、passed=322、failed=0；其余为未运行的显式场景 |
+| Integration | TRX total=204、executed=195、passed=195、failed=0；包含原桌面窗口语言/主题、截图、流安装和后台检查点/重建；显式原生场景未运行 |
+| Architecture | 54/54；包含新依赖门禁 |
+| Storage.FileSystem | 34/34；包含稳定 profile 身份与默认根分离 |
+| CrossPlatform Desktop | Windows Debug locked restore/build 通过，无新增构建警告 |
+| 发布锁图 | 四 RID × 原 Sample Player/Developer/CrossPlatform Desktop 共 12 组，加原 Sample 两种 Windows R2R，共 14 组 locked restore 通过；仅依赖记录调整，既有包 resolved/contentHash 与框架/RID 键保持一致 |
+
+保留的过程失败：首次测试代码把 IPlayerLocalization 当作具体类型使用索引器，编译失败后改用其 CultureService；没有改产品 API 迎合测试。第一次 Desktop 锁图命令误用 `restore -r`，Linux 目标被已有 RID 一致性门禁拒绝；按既有 L-20261029-16 修正为单数 `-p:RuntimeIdentifier`，全矩阵重新还原再 locked 校验，未放宽门禁或锁定模式。
+
+证据根 `out/cross-platform-p6b/`：`architecture.log`、`storage.log`、`presentation-verified.log`、`integration.log`、`results/`、`cross-desktop-build.log` 和 `locked-*`；历史失败 log 保留。已同步宿主/架构 spec 与 Sample 定制/启动手册，只描述当前实现。
+
+本切片没有重新发布或运行 Android/Linux/macOS/iOS，不将旧 P7b/P7c 真机结果记作本次新代码验收。Player 工程仍保留临时配置、资源、项目 primitive 和委托，P6c 才删除；两主项目独立配置、可选通用调试和新发布产物/设备回归分别留在 P6c/P6d/P6e，独立模板生成继续延期。

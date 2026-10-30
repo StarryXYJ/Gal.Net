@@ -239,6 +239,16 @@
         "resolved": "3.119.4",
         "contentHash": "XOpbx/4CReO2wYsq2s6rbvdauc6dntG4Zv499sHGTJ87bwZaFXszFkwql3+FIZMc8kUPeaj3Mx2ezIJmo8a1Kg=="
       },
+      "System.Text.Json": {
+        "type": "Transitive",
+        "resolved": "6.0.10",
+        "contentHash": "NSB0kDipxn2ychp88NXWfFRFlmi1bst/xynOutbnpEfRCT9JZkZ7KOmF/I/hNKo2dILiMGnqblm+j1sggdLB9g=="
+      },
+      "YamlDotNet": {
+        "type": "Transitive",
+        "resolved": "11.0.1",
+        "contentHash": "UvICfSN4gJfAmOsuY/go0hb5SFfr3ZYCXb7jg66yT7kh+wSJEt7tUiwuoCNMpt8ScEXLDwXttpFoWKWeirYU1A=="
+      },
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
@@ -252,6 +262,29 @@
           "Avalonia": "[12.0.5, )",
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )"
+        }
+      },
+      "galnet.avalonia.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "Avalonia.Controls.ColorPicker": "[12.0.5, )",
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
+          "DynamicLocalization.Core": "[2.1.2, )",
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Avalonia.Controls": "[1.0.0, )",
+          "GalNet.Avalonia.GameView": "[1.0.0, )",
+          "GalNet.Avalonia.Rendering": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Input.Sdl3": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
+          "GalNet.Media.Miniaudio": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Primitives.Builtins": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {
@@ -300,6 +333,24 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
+      "galnet.input.sdl3": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "SDL3-CS.Linux": "[3.4.18.1, )",
+          "SDL3-CS.MacOS": "[3.4.18.1, )",
+          "SDL3-CS.Windows": "[3.4.18.1, )"
+        }
+      },
       "galnet.media.audio": {
         "type": "Project",
         "dependencies": {
@@ -332,12 +383,31 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
+      "galnet.primitives.builtins": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
       "galnet.runtime": {
         "type": "Project",
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
+        }
+      },
+      "galnet.storage.filesystem": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "Avalonia": {
@@ -349,6 +419,16 @@
           "Avalonia.BuildServices": "11.3.2",
           "Avalonia.Remote.Protocol": "12.0.5",
           "MicroCom.Runtime": "0.11.4"
+        }
+      },
+      "Avalonia.Controls.ColorPicker": {
+        "type": "CentralTransitive",
+        "requested": "[12.0.5, )",
+        "resolved": "12.0.5",
+        "contentHash": "EmYXjNZq5wevvvvbLTNvnDBnZfQ6YuFBPOwDc6IXMFFIFLY4WAfpi3Dr94/qmt55shDcMceogaUiNy0yyLf5NQ==",
+        "dependencies": {
+          "Avalonia": "12.0.5",
+          "Avalonia.Remote.Protocol": "12.0.5"
         }
       },
       "Avalonia.Fonts.Inter": {
@@ -393,6 +473,16 @@
           "Antlr4.Runtime.Standard": "4.13.1"
         }
       },
+      "DynamicLocalization.Core": {
+        "type": "CentralTransitive",
+        "requested": "[2.1.2, )",
+        "resolved": "2.1.2",
+        "contentHash": "UdDvJeBnNoif/bi73CBDi7GiOhGUB9EkKl3v0JTNdVcPhCqWY+Jy9qr4IqNS9bQ5Xwn6uTYimYLDqGNxEEDjqw==",
+        "dependencies": {
+          "System.Text.Json": "[6.0.10, 10.0.0)",
+          "YamlDotNet": "[11.0.1, 19.0.0)"
+        }
+      },
       "Irihi.Ursa": {
         "type": "CentralTransitive",
         "requested": "[2.1.0, )",
@@ -425,6 +515,24 @@
         "requested": "[10.0.0, )",
         "resolved": "10.0.0",
         "contentHash": "L3AdmZ1WOK4XXT5YFPEwyt0ep6l8lGIPs7F5OOBZc77Zqeo01Of7XXICy47628sdVl0v/owxYJTe86DTgFwKCA=="
+      },
+      "SDL3-CS.Linux": {
+        "type": "CentralTransitive",
+        "requested": "[3.4.18.1, )",
+        "resolved": "3.4.18.1",
+        "contentHash": "0D5kTnaNnHKvLAOvzPJRIbyWDYq09ePVJZqlsPxp5HjM3jw0wIzyv9uLb+tPKuNiTq1nl5Zzbj1YjpjjWbGWxw=="
+      },
+      "SDL3-CS.MacOS": {
+        "type": "CentralTransitive",
+        "requested": "[3.4.18.1, )",
+        "resolved": "3.4.18.1",
+        "contentHash": "dkxWPh1Yh1h6zGLNczE+9sF+lKgN6y529WTffeCWmn1MYZgvjS+aH5jrSUIhGnQze8NxG+jt6AlQ+MSCQmWaCQ=="
+      },
+      "SDL3-CS.Windows": {
+        "type": "CentralTransitive",
+        "requested": "[3.4.18.1, )",
+        "resolved": "3.4.18.1",
+        "contentHash": "baR3Y/1FgnevQyIfo2pDwIXF8idzqf17pDOF87qZrykBxQ0nlTzYCyu6H6GZsZdm06rQuqPU8p2NZ3qAvuvRpw=="
       },
       "Serilog": {
         "type": "CentralTransitive",

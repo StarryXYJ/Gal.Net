@@ -1,10 +1,12 @@
 # GalNet cross-platform sample
 
-当前 CrossPlatform 已接入共享玩家，不再是欢迎页骨架。原 `GalNet.Sample.Avalonia` 保留桌面启动和开发工具；两种宿主都引用 `../GalNet.Sample.Player/` 的主视图、语言选择、本地化、截图实现与公共执行组合。
+当前 CrossPlatform 已接入游戏会话，不再是欢迎页骨架。原 `GalNet.Sample.Avalonia` 保留桌面启动和开发工具；两种宿主复用 `Avalonia.GameHost` 的视图/语言选择和宿主机制，当前项目配置与资源仍经 `../GalNet.Sample.Player/` 接入。
+
+P6b 迁移：通用主视图/语言选择和会话所有权已归 `GalNet.Avalonia.GameHost`，内容流安装及 profile 身份计算归 `GalNet.Storage.FileSystem`，通用截图写入与 Sample entry 注册分开。`Sample.Player` 当前保留主题/本地化/项目契约配置和临时委托；两个主项目独立定制及该工程删除尚待 P6c，不应将其视为最终模板结构。
 
 | 工程 | 职责与当前验证 |
 | --- | --- |
-| `GalNet.Sample.Player` | 共享源码库；不包含桌面入口或调试窗口 |
+| `GalNet.Sample.Player` | 临时项目配置/资源与 Sample 契约适配；通用机制已归现有库层，待删除 |
 | CrossPlatform 共享 App | 会话组合、Activity 视图重挂载、scope 重建和关闭 |
 | Desktop | Windows/Linux/macOS 入口；Windows/WSLg 启动、会话和正常退出已验证，macOS 验收延期 |
 | Android | ARM64 真机已安装启动，语言页、剧情视频叠加立绘、声音与触摸推进通过基础 smoke；存读档/Gallery/生命周期完整验收待补 |
@@ -54,6 +56,6 @@ iOS 在装有 Xcode/对应 workload 的 Mac 上构建，传入 `GalNetGamePackag
 - Android 使用 InsetsManager 的 edge-to-edge 与隐藏系统栏设置收起顶部状态栏/底部导航栏；安全区仍由 TopLevel 自动保护刘海/挖孔。16:9 设计画布等比缩放到扩大的区域，长屏侧边留白不裁剪或拉伸消除。iOS 显示与设备行为尚未验证。
 - 剧情视频、Gallery 三种主题及缩略图共享 LibVLC CPU 像素回调，不创建 Gallery 原生子窗口；Windows/Linux 各 5 项真实解码、缩略图和释放用例通过。
 - `App.RestartAsync(clearPlayerState: true)` 重建当前应用中的会话，不启动第二个进程；关闭调用 `ShutdownAsync`。这两个入口由平台 UI 线程调用。
-- 公共注册/执行和资源在 `SamplePlayerServices`，项目可在其基础上定制；原桌面的 `SampleCustomization` 只组合桌面特有服务。嵌入式 UI 文本属于 `typeof(SamplePlayerServices).Assembly`，不再属于旧 Sample App 程序集。
+- 当前项目注册/执行和资源仍在临时 `SamplePlayerServices`，通用宿主为 `AvaloniaPlayerHost`，视图不选择 Sample 主题或文案程序集。两个主项目独立的 `SampleCustomization` 尚待迁移；现有 Sample UI 文本仍属于 `typeof(SamplePlayerServices).Assembly`。
 
 当前证据与剩余工作见 `features/F-20261029-05-cross-platform-applications/progress-summary.md` 和 `phase-plan.md`。

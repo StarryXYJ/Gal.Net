@@ -4,7 +4,7 @@ using GalNet.Core.Variable;
 using GalNet.GameHost;
 using GalNet.Runtime.Persistence;
 using GalNet.Sample.Player;
-using GalNet.Sample.Player.ViewModels;
+using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using GalNet.Avalonia.GameView.Navigation;

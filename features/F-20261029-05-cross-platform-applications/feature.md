@@ -5,7 +5,8 @@
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
-- 当前进度：P2 已验证；Windows/Linux 的 compose 与原生宿主 build-compose 已闭环。P6 已集中抽取共享 Sample.Player，原 Sample 与 CrossPlatform 共用页面/本地化/执行组合；Windows 两宿主及 WSLg 新宿主正常启动退出通过，Android Debug 与 Release Mono AOT 发布通过。P6 整体仍在进行，独立模板生成、Android 完整媒体/生命周期/设备运行及 P1 原生 Editor 导出待补。手柄、macOS、iOS 验收按用户决定延期；旧 dev.9/dev.10 未更新，详见阶段总结和执行记录。
+- 最新结构决定（2026-10-30，P6b 已验证，其余待实施）：删除独立 `GalNet.Sample.Player` 项目；通用能力按职责归入 Presentation 等已有层，两个 Sample 各自保留 `SampleCustomization`、项目资源和平台接线，允许少量配置重复。可选调试能力从原 Sample 解耦后供宿主选择接入；见 design.md §8.1 与 phase-plan.md P6c–P6e。
+- 当前进度：P2 已验证；Windows/Linux 的 compose 与原生宿主 build-compose 已闭环。P6a 已抽取共享 Sample.Player 并接入 CrossPlatform；P7a–P7c 已完成移动媒体/检查点接线、Android Release Mono AOT、ARM64 真机基础音视频/触摸、沉浸显示及后台重进切片。当前先按 P6b–P6e 重新整理模板源结构；独立模板生成、完整移动验收及 P1 原生 Editor 导出仍待补。手柄、macOS、iOS 验收按用户决定延期；旧 dev.9/dev.10 未更新，详见阶段总结和执行记录。
 
 ## 用户目标与已确认决策
 
@@ -31,6 +32,8 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 12. 2026-10-29 用户要求避免微软雅黑等专有字体依赖，优先更通用、适合分发的字体。共享玩家显式 CJK 回退统一选择 Noto Sans CJK / Noto Sans / Source Han Sans，移除微软雅黑和苹方名称；Sample 继续使用已分发的 Inter 作为默认字体。本次不复制系统字体或新增中文字体载荷；未命中的系统最终回退不等同于应用分发该字体。
 
 ## 范围
+
+2026-10-30 Sample 结构修订：此前 P6a 的共享 Player 项目是已实现的中间状态，不再作为最终模板结构。保留通用机制的集中维护，允许两个 Sample 重复少量主题、服务注册、契约及执行模块配置；不复制资源释放、后台恢复或调试协议实现。独立模板生成仍延期，本次先整理可作为模板源的工程边界。
 
 2026-10-30 移动交互修订：用户要求移动端隐藏退出按钮，Android 收起状态栏和底部导航栏扩大可用区域；返回桌面后的再次启动必须保持可用。
 
@@ -99,6 +102,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 - [ ] 建设三平台 CI、分发验收与 GUI 验收矩阵。
 - [ ] iOS 最小 Avalonia + 会话 + 音频的 Mono AOT 发布闭包（按用户决定延期）。
 - [x] 集中抽取 Sample 共享页面/资源/组合并接入 CrossPlatform，提供 lifetime、内容流与沙盒目录入口；完整平台运行另验。
+- [ ] 按模板边界拆除 `GalNet.Sample.Player`：通用机制归入已有层、两个 Sample 独立配置、调试能力可选复用，迁移并重新验证项目依赖、资源与发布矩阵。
 - [ ] 适配移动显示/触摸/返回键、安全区域、横竖屏和系统生命周期。
 - [ ] 完成移动音频、视频与 Gallery 后端及原生打包。
 - [ ] 提供可生成、可独立构建的五平台模板并完成设备验收。
@@ -115,6 +119,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 7. Editor 三平台覆盖项目打开/保存、内容导出、媒体预览、外部调试与正常退出；系统集成和 IME 的人工项有明确结果。
 8. 模板生成的桌面、Android、iOS 工程具备独立构建和运行证据；移动覆盖内容加载、存读档、媒体、中断恢复、触摸及平台发布。
 9. CI、模拟器、WSL 与真机证据分别记录；无法执行的项保留未验收状态，不用后端/headless 测试代替。
+10. 两个 Sample 均有主项目内的明确定制入口；Presentation/Infrastructure 不依赖 Sample 或 `GalNet.Project.Contracts`，解决方案、生产依赖和构建工具不再引用 `GalNet.Sample.Player`。调试关闭的玩家产物不包含调试实现/资源/协议依赖，平台未验项继续明示。
 
 ## 非目标
 
@@ -151,3 +156,5 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 ## 2026-10-30 最新执行决定
 
 用户明确将独立模板延后，先使 Sample 可验收；Windows/Linux 继续已有证据的功能回归，macOS 与手柄验收延期。Android/iOS 先补功能，再做具备工具链与设备条件的平台验收；允许 Mono AOT。当前 Windows 环境缺 iOS 构建能力不阻挡其他实现，也不应记为 iOS 已支持。
+
+后续结构决定：用户接受取消独立 Player 工程、通用机制回到库层、两个主项目独立定制且允许少量配置重复。用户随后明确“开始吧”，已实施并验证 P6b；Player 仍保留临时项目配置/资源与委托，P6c–P6e 的独立配置、工程删除、通用调试和新发布产物复验继续待办。

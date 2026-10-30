@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
-using GalNet.Storage.FileSystem;
 
-namespace GalNet.Sample.Player;
+namespace GalNet.Storage.FileSystem;
 
 /// <summary>Materializes a platform asset stream into a validated, versioned writable content directory.</summary>
 public static class BundledGameInstaller

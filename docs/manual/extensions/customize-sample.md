@@ -1,8 +1,12 @@
 # 定制 Avalonia Sample
 
-`GalNet.Sample.Avalonia` 是桌面组合根示例，保留启动参数、项目选择和可选调试策略。通用玩家配置、语言 UI 与会话已经提取到 `GalNet.Sample.Player`，由桌面和 CrossPlatform 入口共同复用；更底层的通用会话、页面与展示组合来自 `Avalonia.GameHost`、`Avalonia.GameView` 和 Themes。
+`GalNet.Sample.Avalonia` 是桌面组合根示例，保留启动参数、项目选择和可选调试策略。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`；`GalNet.Sample.Player` 当前只保留两个 Sample 共用的临时项目配置与契约执行适配。它尚未删除，两个主项目独立配置的迁移仍待完成。
 
 从 `SamplePlayerServices` 调整共享玩家配置；桌面 `SampleCustomization` 继续提供组合适配入口。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期。不要把某个平台的 App、退出链和 DI scope 整份复制到其他入口。
+
+直接接入通用宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，在 `configure` 中注册页面/主题、本地化、设置与启动服务。可以注册 `PlayerView` 工厂，在该实例的 Resources/Styles 应用自己的主题和文案资源；通用视图不会自动引用 Sample 资源或选择固定配色。窗口宿主也可以直接创建该视图并复用已有会话。
+
+包内内容流安装使用 `Storage.FileSystem.BundledGameInstaller`；稳定 profile 目录通过 `GameProfilePaths.GetProfileDirectory(content, profileRoot)` 计算，应用自行提供绝对根。项目截图 primitive 负责自己的 schema/参数，通用 `SceneScreenshotWriter.SaveAsync` 负责捕获与安全写入，两者不要求框架引用项目契约。
 
 ## 调试构建与玩家发行
 

@@ -6,6 +6,7 @@ using Avalonia.iOS;
 using Avalonia.Media;
 using GalNet.Avalonia.Themes;
 using GalNet.Sample.Player;
+using GalNet.Storage.FileSystem;
 using GalNet.Media.LibVlc;
 using Microsoft.Extensions.DependencyInjection;
 using AVFoundation;

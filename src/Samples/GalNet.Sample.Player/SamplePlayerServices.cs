@@ -20,7 +20,7 @@ using GalNet.Primitives.Builtins;
 using GalNet.Project.Contracts;
 using GalNet.GameHost.Content;
 using GalNet.Sample.Player.Presentation;
-using GalNet.Sample.Player.ViewModels;
+using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Presentation.Abstractions.Application;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,6 +31,19 @@ public static class SamplePlayerServices
 {
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
     public static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(PlayerPalette);
+
+    public static GalNet.Avalonia.GameHost.Views.PlayerView CreateView()
+    {
+        var view = new GalNet.Avalonia.GameHost.Views.PlayerView();
+        ConfigureView(view);
+        return view;
+    }
+
+    public static void ConfigureView(GalNet.Avalonia.GameHost.Views.PlayerView view)
+    {
+        view.Resources.MergedDictionaries.Add(PlayerPalette.CreateResources());
+        view.Styles.Add(PlayerTheme.CreateStyles());
+    }
 
     public static void ConfigureServices(IServiceCollection services, Action<IPageViewRegistryBuilder>? configureViews = null)
     {

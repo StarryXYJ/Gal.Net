@@ -8,11 +8,15 @@
 
 `AvaloniaGameHostOptions.AttachPlayer` 与 `AttachRun` 接收借用对象。返回的绑定由宿主释放，支持异步清理；运行绑定在 Engine 停止后结束，玩家绑定在所有运行结束后、玩家存储和资源释放前结束。
 
-## 项目级共享玩家
+## Avalonia 玩家宿主
 
-`GalNet.Sample.Player` 是示例层的共享实现，不属于 Runtime 或通用引擎契约。它提供 `SamplePlayerServices`、`SamplePlayerSession`、启动语言 UI、路径策略及包内内容安装辅助；桌面和 CrossPlatform 入口复用它。
+`Avalonia.GameHost` 提供 `AvaloniaPlayerHost`、`Views.PlayerView` 与首次语言选择 UI。`AvaloniaPlayerHost.CreateAsync(options, configure)` 由调用方注册项目页面/主题、本地化、设置、启动服务及平台后端；宿主不选择 Sample 的主题、项目契约或本地化程序集。视图默认可以独立使用，也可以通过 DI 替换工厂，并由项目提供资源和样式。
 
-`SamplePlayerSession` 在 UI 线程创建和操作，建立 DI 根与玩家 scope，挂载共享视图；初始化可等待用户选择语言。释放先取消初始化、等待结束，再停止会话、解绑窗口和视图、释放 scope 与服务根。平台宿主通过 `PrepareLaunchAsync` 提供内容/profile，不能把 Activity 重建等同于新建剧情运行。
+`AvaloniaPlayerHost` 在 UI 线程创建和操作，建立 DI 根与玩家 scope，挂载视图；初始化可等待用户选择语言。释放先取消初始化并等待结束，再停止会话、解绑窗口/视图、恢复借用的本地化解析器、释放 scope 与服务根。构造失败同样清理已创建的异步服务。暂停停止 Gallery/剧情媒体并落盘检查点，回到标题；标题页根据退出能力返回宿主或显示确认，不把 Activity 重建等同于新建剧情运行。
+
+`Storage.FileSystem.BundledGameInstaller` 接受宿主拥有的内容流，将其复制、计算 hash 并交给正式安装器校验到分版缓存；不会关闭调用方的流。`GameProfilePaths.GetProfileDirectory(content, profileRoot)` 根据项目身份计算稳定目录，应用名与操作系统默认根由宿主决定。`SceneScreenshotWriter.SaveAsync` 捕获借用的 GamePage 并以不覆盖的方式发布 PNG，拒绝路径穿越/目录链接；项目 entry schema 和文件名业务约束由项目执行适配提供。
+
+当前两个 Sample 仍通过 `GalNet.Sample.Player` 的临时配置层接入上述机制。该工程保留项目主题、本地化资源、契约注册、默认目录策略和小型委托，不再拥有通用视图、语言选择、会话释放及包流安装实现。两主项目的独立配置和该临时工程的删除仍属于后续迁移。
 
 运行状态与存档见[运行时状态](../runtime/state-and-save.md)，依赖和释放规则见[生命周期](../architecture/lifecycles.md)。使用与定制分别见 [Sample 手册](../../manual/sample/README.md)和[扩展入口](../../manual/extensions/customize-sample.md)。
 
