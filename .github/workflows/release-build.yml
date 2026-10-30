@@ -129,7 +129,10 @@ jobs:
           python-version: '3.12'
       - name: Prepare private Ubuntu media libraries
         if: matrix.rid == 'linux-x64'
-        run: python scripts/release/prepare-linux-media.py --work-directory out/media-work --output-directory out/media
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgles2
+          python scripts/release/prepare-linux-media.py --work-directory out/media-work --output-directory out/media
       - name: Publish and package both deployments of all three player modes
         shell: pwsh
         env:
