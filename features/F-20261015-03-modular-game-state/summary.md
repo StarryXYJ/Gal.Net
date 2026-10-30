@@ -26,8 +26,8 @@
 
 ## 文档
 
-- [Runtime 当前行为](../../docs/spec/runtime.md)
-- [扩展开发入口](../../docs/development.md#持久状态与读档扩展)
-- [设计与实施决策](../../docs/design/modular-game-state-and-restore.md)
-- [ADR-0005](../../docs/adr/0005-modular-persistent-state.md)
+- [Runtime 当前行为](../../docs/spec/runtime/execution.md)
+- [扩展开发入口](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md#持久状态与读档扩展)
+- [设计与实施决策](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/design/modular-game-state-and-restore.md)
+- [ADR-0005](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/adr/0005-modular-persistent-state.md)
 - [自审](review.md)

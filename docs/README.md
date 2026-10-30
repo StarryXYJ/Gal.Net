@@ -1,46 +1,79 @@
 # GalNet 文档
 
-这里仅保留当前可用的项目文档。功能开发过程、已废弃方案和决策记录不作为规范来源；需要追溯一次实现时，查看对应的 `features/F-*/` 记录。
+按任务开始阅读：首次运行走快速开始；做游戏阅读 Editor；改玩家应用阅读 Sample 与宿主扩展；查阅具体规则进入技术规范。
 
-## 项目入口
+文档随源码版本维护。平台接入代码、构建通过和实际运行验收的范围分别说明；旧发行包不会自动获得当前源码能力。
 
-- [设计理念与架构概览](philosophy.md)：分层原则、依赖方向与高层架构图。
-- [术语表](glossary.md)：项目通用术语的统一定义。
-
-## 规范
-
-`spec/` 描述已实现的模块契约和当前限制。新增或修改功能后，应更新其唯一对应页面，而不是另建设计或 ADR 文档。
-
-- [架构与程序集边界](spec/architecture.md)
-- [CPU 性能事件](spec/cpu-benchmark.md)
-- [运行时与存档](spec/runtime.md)
-- [条目类型与项目契约](spec/entry-types.md)
-- [资源管理](spec/assets.md)
-- [项目与发布格式](spec/file-formats.md)
-- [Avalonia 游戏页面](spec/control.md)
-- [国际化](spec/i18n.md)
-- [Editor 游戏本地化](spec/editor-game-localization.md)
-- [Editor Graph 编辑](spec/editor-graph.md)
-- [Editor 历史与保存](spec/editor-history-and-save.md)
-- [Editor 项目文件操作](spec/editor-files.md)
-- [Dock 集成](spec/dock-design.md)
-
-## 二次开发手册
-
-- [内容分包与资源补丁](manual/content-packaging.md)：单图章节启动、依赖闭包、剧情分包和独立资源覆盖矩阵。
-- [Track / Bus 音频混音](manual/audio-mixing.md)
-- [跨平台后端接入](manual/cross-platform-backends.md)：原生媒体构建、包内 PAK、缓存目录、设备生命周期及移动端验收边界。
-- [NativeAOT 发布与扩展契约](manual/native-aot.md)：复用 Headless Sample 发布、自检与源生成 JSON 元数据注册。
-- [默认视觉资源与演出预设](manual/default-visuals.md)
-
-- [接入新的表现层](manual/new-presentation-layer.md)：为 WPF、WinUI 或其他 UI 框架实现宿主和呈现适配的最小路径。
-- [定制 Avalonia Sample](manual/customize-avalonia-sample.md)：基于现有 Sample 落地项目配置、主题、原语和平台能力。
-- [注册通用 action](manual/custom-actions.md)：用固定双字符串原语调用项目逻辑，配置同步、异步和完整实例的运行行为。
-- [对接外部游戏调试](manual/external-game-debugging.md)：可选宿主接入、测试启动配置、实例变量、路线定位与缓存边界。
-- [编辑游戏文本与翻译](manual/game-localization.md)：开发语言创作、多语言表格、语言顺序和草稿处理。
-- [创建图片差分图集](manual/image-variants.md)：目录导入、配置与差分预览、剧情初始选择及维度切换。
-- [使用与扩展 Editor 创作工作区](manual/editor-authoring-workspace.md)：常用字段、Inspector、会话草稿、问题定位与手动布局。
-- [外部工具创作与热重载](manual/external-project-authoring.md)：CLI 批量应用、Agent Skill、Git 回退和 Editor 外部文件同步。
-- [测量 CPU 启动](manual/cpu-benchmark.md)：编译开关、Editor/Sample 自动化基线与方法内埋点。
-- [使用 Windows ReadyToRun 发布](manual/ready-to-run.md)：发布版启动优化、隔离产物与契约字节身份。
-- [发布 Editor 与 Sample](manual/release-packaging.md)：本地 ZIP、GameTestCase / Galpak 整合包和 GitHub Release tag 流程。
+<!-- navigation:start -->
+- [快速开始](quick-start/README.md)
+  - [环境与依赖](quick-start/requirements.md)
+  - [运行 Sample](quick-start/run-sample.md)
+  - [创建第一个项目](quick-start/first-project.md)
+  - [首次源码构建](quick-start/build-from-source.md)
+- [操作手册](manual/README.md)
+  - [Editor 使用](manual/editor/README.md)
+    - [Editor 创作工作区](manual/editor/projects-and-workspace.md)
+    - [剧情、分支、变量与角色](manual/editor/story-editing.md)
+    - [导入与管理资源](manual/editor/resources.md)
+    - [创建和使用图片差分图集](manual/editor/image-variants.md)
+    - [音频创作与播放](manual/editor/audio.md)
+    - [默认视觉资源与演出预设](manual/editor/default-visuals.md)
+    - [编辑游戏文本与翻译](manual/editor/localization.md)
+    - [对接外部游戏调试](manual/editor/preview-and-debugging.md)
+    - [游戏内容分包与资源补丁](manual/editor/content-packaging.md)
+    - [外部工具创作与热重载](manual/editor/external-tools.md)
+  - [Sample 使用](manual/sample/README.md)
+    - [Sample 启动与内容路径](manual/sample/startup-and-content.md)
+    - [游戏操作与玩家设置](manual/sample/gameplay-and-settings.md)
+    - [存档、对白历史与 Gallery](manual/sample/saves-history-and-gallery.md)
+    - [平台支持与验证范围](manual/sample/platform-support.md)
+  - [Sample 与宿主扩展](manual/extensions/README.md)
+    - [定制 Avalonia Sample](manual/extensions/customize-sample.md)
+    - [页面与主题扩展](manual/extensions/pages-and-themes.md)
+    - [用通用原语调用项目逻辑](manual/extensions/actions-and-contracts.md)
+    - [设置、变量与会话扩展](manual/extensions/settings-and-variables.md)
+    - [DTO 字段提示与参数控件](manual/extensions/parameter-editors.md)
+    - [游戏宿主接入外部调试](manual/extensions/external-debugging.md)
+    - [接入新的表现层](manual/extensions/new-presentation-layer.md)
+    - [跨平台后端接入](manual/extensions/media-and-platform-backends.md)
+    - [扩展 Editor 面板](manual/extensions/editor-panels.md)
+  - [构建与发布](manual/publishing/README.md)
+    - [组合内容与应用，分发游戏](manual/publishing/game-distribution.md)
+    - [本地 CI 与发布](manual/publishing/engine-release.md)
+    - [使用 Windows ReadyToRun 发布](manual/publishing/ready-to-run.md)
+    - [NativeAOT 发布与扩展契约](manual/publishing/native-aot.md)
+  - [项目开发](manual/development/README.md)
+    - [构建、测试与本地 CI](manual/development/build-and-test.md)
+    - [使用项目工具 CLI](manual/development/cli.md)
+    - [测量 CPU 启动](manual/development/cpu-benchmark.md)
+    - [文档维护与 Wiki 同步](manual/development/documentation.md)
+- [技术规范](spec/README.md)
+  - [架构设计](spec/architecture/README.md)
+    - [GalNet 架构](spec/architecture/modules.md)
+    - [组合、生命周期与所有权](spec/architecture/lifecycles.md)
+    - [CPU 性能事件](spec/architecture/diagnostics.md)
+  - [运行时规范](spec/runtime/README.md)
+    - [条目类型与 target profile](spec/runtime/entries.md)
+    - [运行时参考](spec/runtime/execution.md)
+    - [运行状态、快照与存档](spec/runtime/state-and-save.md)
+  - [内容与资源规范](spec/content/README.md)
+    - [资源文件管理](spec/content/assets.md)
+    - [项目与发布格式](spec/content/file-formats.md)
+    - [国际化](spec/content/localization.md)
+  - [呈现与宿主规范](spec/presentation/README.md)
+    - [游戏宿主与玩家会话](spec/presentation/game-host.md)
+    - [Avalonia 游戏页面](spec/presentation/game-view.md)
+    - [媒体后端契约](spec/presentation/media.md)
+  - [Editor 技术规范](spec/editor/README.md)
+    - [Editor 项目文件操作](spec/editor/project-and-files.md)
+    - [Editor Graph 编辑](spec/editor/graph.md)
+    - [Editor Group 编辑交互](spec/editor/groups.md)
+    - [Editor 变量面板](spec/editor/variables.md)
+    - [Editor 项目历史与保存](spec/editor/history-and-save.md)
+    - [Editor 游戏本地化基础](spec/editor/localization.md)
+    - [Editor 场景目标查询](spec/editor/scene-targets.md)
+    - [Dock 面板与布局契约](spec/editor/dock.md)
+    - [外部调试状态与缓存契约](spec/editor/debugging.md)
+- [设计理念与架构概览](philosophy.md)
+- [GalNet 术语表](glossary.md)
+<!-- navigation:end -->

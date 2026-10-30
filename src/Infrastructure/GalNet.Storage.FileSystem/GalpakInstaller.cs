@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
-using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Core.Serialization;
 
@@ -9,8 +8,6 @@ namespace GalNet.Storage.FileSystem;
 /// <summary>Verifies and installs a distributable <c>.galpak</c> beside its ZIP container.</summary>
 public static class GalpakInstaller
 {
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
-
     public static async Task<string> InstallAsync(string packagePath, string? installationDirectory = null, CancellationToken ct = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(packagePath);
@@ -21,38 +18,36 @@ public static class GalpakInstaller
 
         using var source = File.OpenRead(sourcePath);
         using var zip = new ZipArchive(source, ZipArchiveMode.Read, leaveOpen: false);
-        var manifestEntry = zip.GetEntry("pak/" + PackedGameDocuments.GameFileName) ?? FindManifestEntry(zip);
-        PackedGamePackage? packed = null;
-        byte[]? gameBytes = null;
-        if (manifestEntry.FullName == "pak/" + PackedGameDocuments.GameFileName)
+        const string prefix = "pak/";
+        var manifestEntry = zip.GetEntry(prefix + PackedGameDocuments.GameFileName)
+            ?? throw new InvalidDataException("A .galpak must contain pak/game.pak with a complete v4 installation index.");
+        byte[] gameBytes;
+        await using (var input = manifestEntry.Open())
+        using (var buffer = new MemoryStream())
         {
-            await using var input = manifestEntry.Open();
-            using var buffer = new MemoryStream();
             await input.CopyToAsync(buffer, ct);
             gameBytes = buffer.ToArray();
-            packed = PackedGameDocuments.ReadGame(gameBytes);
         }
-        var manifest = packed?.Installation ?? await ReadManifestAsync(manifestEntry, ct);
-        var prefix = manifest.Version switch
-        {
-            1 when !manifestEntry.FullName.Contains('/', StringComparison.Ordinal) => "",
-            2 when manifestEntry.FullName.StartsWith("pak/", StringComparison.Ordinal)
-                && !manifestEntry.FullName[4..].Contains('/', StringComparison.Ordinal) => "pak/",
-            3 when packed is not null => "pak/",
-            _ => throw new InvalidDataException($"Unsupported .galpak version or layout '{manifest.Version}'.")
-        };
+        var packed = PackedGameDocuments.ReadGame(gameBytes);
+        var manifest = packed.Installation;
         ValidateManifest(manifest, zip, manifestEntry.FullName, prefix);
         var targetDirectory = installationDirectory is null
-            ? Path.Combine(Path.GetDirectoryName(sourcePath)!, manifest.Version >= 2 ? "pak" : Path.GetFileNameWithoutExtension(sourcePath))
+            ? Path.Combine(Path.GetDirectoryName(sourcePath)!, "pak")
             : Path.GetFullPath(installationDirectory);
 
         if (Directory.Exists(targetDirectory))
         {
             if (await MatchesInstalledPackageAsync(targetDirectory, manifest, ct)
-                && (gameBytes is null || (File.Exists(Path.Combine(targetDirectory, PackedGameDocuments.GameFileName))
-                    && (await File.ReadAllBytesAsync(Path.Combine(targetDirectory, PackedGameDocuments.GameFileName), ct)).AsSpan().SequenceEqual(gameBytes))))
+                && File.Exists(Path.Combine(targetDirectory, PackedGameDocuments.GameFileName))
+                && (await File.ReadAllBytesAsync(Path.Combine(targetDirectory, PackedGameDocuments.GameFileName), ct)).AsSpan().SequenceEqual(gameBytes))
             {
-                EnsureDirectories(targetDirectory, packed);
+                foreach (var payload in manifest.Files)
+                {
+                    await using var input = zip.GetEntry(prefix + payload.Path)!.Open();
+                    if (Convert.ToHexStringLower(await SHA256.HashDataAsync(input, ct)) != payload.Sha256)
+                        throw new InvalidDataException($"Package entry '{payload.Path}' checksum does not match its manifest.");
+                }
+                InstalledGameDescriptor.EnsureExtensionDirectories(targetDirectory, packed.Manifest.BuildId);
                 return targetDirectory;
             }
             throw new InvalidOperationException($"Installation directory '{targetDirectory}' already contains a different package. Choose a new directory or remove it explicitly.");
@@ -78,7 +73,7 @@ public static class GalpakInstaller
             await using (var manifestDestination = File.Create(installedManifest))
                 await manifestSource.CopyToAsync(manifestDestination, ct);
 
-            EnsureDirectories(stagingDirectory, packed);
+            InstalledGameDescriptor.EnsureExtensionDirectories(stagingDirectory, packed.Manifest.BuildId);
             Directory.Move(stagingDirectory, targetDirectory);
             return targetDirectory;
         }
@@ -87,39 +82,6 @@ public static class GalpakInstaller
             if (Directory.Exists(stagingDirectory)) Directory.Delete(stagingDirectory, recursive: true);
             throw;
         }
-    }
-
-    private static void EnsureDirectories(string root, PackedGamePackage? packed)
-    {
-        if (packed is null) EnsureExternalDirectory(root);
-        else InstalledGameDescriptor.EnsureExtensionDirectories(root, packed.Manifest.BuildId);
-    }
-
-    private static void EnsureExternalDirectory(string root)
-    {
-        foreach (var directory in new[] { Path.Combine(root, "I18n"), Path.Combine(root, "I18n", "External") })
-        {
-            Directory.CreateDirectory(directory);
-            if ((File.GetAttributes(directory) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException($"External translation directory cannot be a symbolic link: '{directory}'.");
-        }
-    }
-
-    private static ZipArchiveEntry FindManifestEntry(ZipArchive zip)
-    {
-        var manifests = zip.Entries
-            .Where(entry => entry.FullName.EndsWith(".galnet", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-        return manifests.Length == 1
-            ? manifests[0]
-            : throw new InvalidDataException("A .galpak must contain exactly one .galnet manifest in its content root.");
-    }
-
-    private static async Task<GalpakManifest> ReadManifestAsync(ZipArchiveEntry entry, CancellationToken ct)
-    {
-        await using var stream = entry.Open();
-        var manifest = await JsonCodec.DeserializeAsync<GalpakManifest>(stream, JsonOptions, ct);
-        return manifest ?? throw new InvalidDataException("Package manifest is empty.");
     }
 
     private static void ValidateManifest(GalpakManifest manifest, ZipArchive zip, string manifestPath, string prefix)
@@ -146,8 +108,8 @@ public static class GalpakInstaller
                 throw new InvalidDataException($"Package manifest entry '{package.Path}' has an invalid checksum or size.");
             ValidateRelativePath(package.Path);
             if (prefix + package.Path == manifestPath) throw new InvalidDataException("The package index cannot include itself.");
-            if (package.Path.StartsWith(manifest.Version >= 3 ? "I18n/" : "I18n/External/", StringComparison.OrdinalIgnoreCase))
-                throw new InvalidDataException("I18n/External is reserved for player-installed translations, not package payloads.");
+            if (package.Path.StartsWith("I18n/", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("I18n is reserved for player-installed translations, not package payloads.");
             if (package.Path.EndsWith(".galnet", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidDataException("The package manifest cannot also be a payload file.");
             if (!paths.Add(package.Path)) throw new InvalidDataException($"Package manifest repeats '{package.Path}'.");

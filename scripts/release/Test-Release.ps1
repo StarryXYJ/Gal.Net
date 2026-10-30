@@ -26,8 +26,7 @@ foreach ($deployment in $Deployments) {
         [IO.Compression.ZipFile]::ExtractToDirectory($zip, $root)
         $roots[$kind] = $root
         $isDeveloper = $kind -in @('Sample', 'Sample-GameTestCase') -and $SampleFlavor -eq 'Developer'
-        if (!$isDeveloper -and (Get-ChildItem -LiteralPath $root -Recurse -Filter '*.pdb')) { throw "$kind ZIP contains PDB files." }
-        if ($isDeveloper -and !(Test-Path (Join-Path $root 'lib/GalNet.Sample.Avalonia.pdb'))) { throw 'Developer ZIP is missing player symbols.' }
+        if (Get-ChildItem -LiteralPath $root -Recurse -Filter '*.pdb') { throw "$kind ZIP contains PDB files." }
         if (Get-ChildItem -LiteralPath $root -Recurse -File | Where-Object {
             [IO.Path]::GetRelativePath($root, $_.FullName).Replace('\', '/') -match '(^|/)libvlc/win-(x86|arm64)/'
         }) { throw "$kind ZIP contains VLC assets for another architecture." }
@@ -60,6 +59,14 @@ foreach ($deployment in $Deployments) {
                 }
                 finally { $reader.Dispose(); $stream.Dispose() }
             }
+            $stream = [IO.File]::OpenRead((Join-Path $root 'lib/SkiaSharp.dll'))
+            $reader = [Reflection.PortableExecutable.PEReader]::new($stream)
+            try {
+                if ($reader.PEHeaders.CorHeader.ManagedNativeHeaderDirectory.Size -ne 0) {
+                    throw 'SkiaSharp must retain original IL: win-x64 R2R can crash while reading synthetic system fonts.'
+                }
+            }
+            finally { $reader.Dispose(); $stream.Dispose() }
             $rootFiles = @(Get-ChildItem -LiteralPath $root -File)
             if ($rootFiles.Count -ne $apps.Count -or ($rootFiles | Where-Object Name -notin @($apps | ForEach-Object { "$_.exe" }))) {
                 throw "Application root must contain only entry executables and directories: $kind"
@@ -141,6 +148,7 @@ foreach ($deployment in $Deployments) {
         $smokeRoot = Join-Path $deploymentWork 'player smoke with spaces'
         New-Item -ItemType Directory -Path $smokeRoot | Out-Null
         Copy-Item -LiteralPath (Join-Path $roots.Sample 'lib') -Destination (Join-Path $smokeRoot 'lib') -Recurse
+        Copy-Item -LiteralPath (Join-Path $roots.Sample 'docs') -Destination (Join-Path $smokeRoot 'docs') -Recurse
         Copy-Item -LiteralPath (Join-Path $roots.Sample 'GalNet.Sample.Avalonia.exe') -Destination $smokeRoot
         Invoke-ReleaseCommand "distributed-cli-export-$deployment" $cli @('project', 'export-directory', $authorProject, '--output', (Join-Path $smokeRoot 'pak'))
         Invoke-ReleaseCommand "distributed-cli-smoke-inspect-$deployment" $cli @('game', 'inspect', (Join-Path $smokeRoot 'pak'))

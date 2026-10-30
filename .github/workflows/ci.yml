@@ -2,9 +2,12 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [master]
   workflow_dispatch:
+    inputs:
+      coverage:
+        description: Collect code coverage
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -15,10 +18,7 @@ concurrency:
 
 jobs:
   verify:
-    strategy:
-      fail-fast: false
-      matrix:
-        stage: [Format, BuildTest]
+    name: verify (BuildTest)
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -26,13 +26,23 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            **/packages.lock*.json
       - name: Run shared local CI entry
         shell: pwsh
-        run: ./scripts/ci/Invoke-CI.ps1 -Stage ${{ matrix.stage }} -OutputRoot out/ci/${{ matrix.stage }} -Coverage
+        env:
+          COLLECT_COVERAGE: ${{ inputs.coverage || false }}
+        run: |
+          $arguments = @{ Stage = 'BuildTest'; OutputRoot = 'out/ci/BuildTest' }
+          if ($env:COLLECT_COVERAGE -eq 'true') { $arguments.Coverage = $true }
+          ./scripts/ci/Invoke-CI.ps1 @arguments
       - name: Upload check logs and test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-${{ matrix.stage }}
-          path: out/ci/${{ matrix.stage }}
+          name: ci-BuildTest
+          path: out/ci
+          retention-days: 7
           if-no-files-found: warn

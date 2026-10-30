@@ -371,6 +371,7 @@
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
@@ -461,6 +462,7 @@
           "GalNet.Debugging": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },

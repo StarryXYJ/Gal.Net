@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: [master]
     tags: ['v*']
   workflow_dispatch:
     inputs:
@@ -13,101 +14,36 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
-  validate-source:
-    runs-on: windows-latest
+  discover:
+    runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      has-releases: ${{ steps.plan.outputs.has-releases }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Require the release tag to belong to master
-        if: github.event_name == 'push'
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
+      - name: Fetch master and discover newly eligible version tags
+        id: plan
         shell: pwsh
         run: |
           git fetch --no-tags origin '+refs/heads/master:refs/remotes/origin/master'
-          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch the release main branch.' }
-          ./scripts/ci/Test-ReleaseRef.ps1 -Tag $env:RELEASE_TAG
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch master.' }
+          ./scripts/ci/Get-ReleasePlan.ps1 -EventPath $env:GITHUB_EVENT_PATH -GitHubOutput $env:GITHUB_OUTPUT
 
-  build:
-    needs: validate-source
-    runs-on: windows-latest
-    timeout-minutes: 90
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
-      - name: Run the same CI checks as local development
-        shell: pwsh
-        run: ./scripts/ci/Invoke-CI.ps1 -Stage All -OutputRoot out/ci/release
-      - name: Build and validate the local release
-        env:
-          CANDIDATE_VERSION: ${{ inputs.version }}
-        shell: pwsh
-        run: |
-          if ('${{ github.event_name }}' -eq 'push') {
-            ./scripts/release/Release.ps1 -Tag $env:GITHUB_REF_NAME -SampleMode R2R
-          } else {
-            ./scripts/release/Release.ps1 -Version $env:CANDIDATE_VERSION -SampleMode R2R
-          }
-      - name: Upload sealed release files
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-files
-          path: |
-            out/release/*/nuget/*.nupkg
-            out/release/*/assets/*.zip
-            out/release/*/SHA256SUMS
-            out/release/*/release-index.json
-          if-no-files-found: error
-      - name: Upload validation evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-evidence
-          path: |
-            out/ci/release
-            out/release/.work/**/logs
-            out/release/.work/**/package-validation.json
-          include-hidden-files: true
-          if-no-files-found: warn
-
-  publish:
-    if: github.event_name == 'push' && github.ref_type == 'tag'
-    needs: build
-    runs-on: windows-latest
+  release:
+    needs: discover
+    if: needs.discover.outputs.has-releases == 'true'
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.discover.outputs.matrix) }}
     permissions:
       contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v5
-        with:
-          global-json-file: global.json
-      - uses: actions/download-artifact@v4
-        with:
-          name: release-files
-          path: out/release
-      - name: Upload the verified files without rebuilding
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-        run: |
-          $version = $env:GITHUB_REF_NAME.Substring(1)
-          ./scripts/release/Push.ps1 -Index "out/release/$version/release-index.json"
-      - name: Preserve upload journal
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-push-journal
-          path: out/release/*/push-state.json
-          if-no-files-found: warn
+    uses: ./.github/workflows/release-build.yml
+    with:
+      tag: ${{ matrix.tag }}
+      version: ${{ matrix.version }}
+      commit: ${{ matrix.commit }}
+    secrets: inherit

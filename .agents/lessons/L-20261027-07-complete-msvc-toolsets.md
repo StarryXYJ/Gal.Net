@@ -18,4 +18,4 @@ native/build.ps1 的 ARM64 构建选择 MSVC 14.44.35207 并链接成功，PE Ma
 
 ## 适用范围与禁止做法
 
-适用于多版本 MSVC 并存的原生构建。不要在未检查并存版本前反复要求用户安装组件，也不要为迎合默认工具集混用不同版本的头文件和 CRT。当前接入事实见 docs/manual/cross-platform-backends.md。
+适用于多版本 MSVC 并存的原生构建。不要在未检查并存版本前反复要求用户安装组件，也不要为迎合默认工具集混用不同版本的头文件和 CRT。当前接入事实见 docs/manual/extensions/media-and-platform-backends.md。

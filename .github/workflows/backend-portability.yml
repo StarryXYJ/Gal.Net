@@ -4,33 +4,39 @@ on:
   pull_request:
     paths:
       - 'src/Shared/**'
-      - 'src/Infrastructure/**'
-      - 'src/Tooling/**'
+      - 'src/Infrastructure/GalNet.Media.Audio/**'
+      - 'src/Infrastructure/GalNet.Media.Miniaudio/**'
+      - 'src/Infrastructure/GalNet.Storage.FileSystem/**'
+      - 'src/Tooling/GalNet.SchemaGenerator/**'
       - 'src/Samples/GalNet.Sample.Headless/**'
       - 'src/Samples/GalNet.Sample.Contracts/**'
-      - 'test/GalNet.Assets.Tests/**'
-      - 'test/GalNet.Media.Audio.Tests/**'
+      - 'test/**'
+      - 'scripts/ci/**'
+      - 'scripts/test-native-aot.ps1'
       - 'Directory.*'
       - 'global.json'
-      - 'scripts/test-native-aot.ps1'
+      - 'NuGet.Config'
       - '.github/workflows/backend-portability.yml'
   workflow_dispatch:
+    inputs:
+      native_aot:
+        description: Include the NativeAOT acceptance matrix
+        type: boolean
+        default: false
 
 permissions:
   contents: read
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   portable-backends:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: windows-latest
-            library: galnet_miniaudio.dll
-          - os: ubuntu-latest
-            library: libgalnet_miniaudio.so
-          - os: macos-latest
-            library: libgalnet_miniaudio.dylib
+        os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
@@ -40,37 +46,35 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.401
-      - name: Build native audio library
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            **/packages.lock*.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify CI evidence guards
         shell: pwsh
         run: |
-          cmake -S src/Infrastructure/GalNet.Media.Miniaudio/native -B artifacts/native -DCMAKE_BUILD_TYPE=Release
+          python scripts/ci/test-backend-checks.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake --build artifacts/native --config Release
+          python scripts/ci/test-application-publish.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          cmake --install artifacts/native --config Release --prefix artifacts/native/install
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Verify shared resources and audio decoding
+      - name: Run backend regressions and Headless acceptance
         shell: pwsh
         run: |
-          $nativePath = Join-Path $PWD 'artifacts/native/install/${{ matrix.library }}'
-          foreach ($project in @('GalNet.Assets.Tests', 'GalNet.Media.Audio.Tests')) {
-            $projectPath = "test/$project/$project.csproj"
-            dotnet restore $projectPath --locked-mode -p:GalNetMiniaudioNativePath="$nativePath"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            dotnet build $projectPath --no-restore --configuration Release -p:GalNetMiniaudioNativePath="$nativePath"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            dotnet test $projectPath --no-build --no-restore --configuration Release -p:GalNetMiniaudioNativePath="$nativePath" --logger "trx;LogFileName=$project.trx" --results-directory artifacts/results
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+          python scripts/ci/verify-backends.py --output artifacts/backend-checks
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-tests-${{ matrix.os }}
-          path: artifacts/results
+          path: artifacts/backend-checks
           if-no-files-found: warn
 
   native-aot:
+    if: github.event_name == 'workflow_dispatch' && inputs.native_aot
     strategy:
       fail-fast: false
       matrix:
@@ -84,7 +88,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10.0.401
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            **/packages.lock*.json
       - name: Publish and execute NativeAOT engine acceptance
         shell: pwsh
         run: ./scripts/test-native-aot.ps1

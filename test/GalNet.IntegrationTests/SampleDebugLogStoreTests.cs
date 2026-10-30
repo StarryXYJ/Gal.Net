@@ -1,31 +1,31 @@
-using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 
 namespace GeneralTest.Diagnostics;
 
-public sealed class SampleDebugLogStoreTests
+public sealed class GameDebugLogStoreTests
 {
     [Test]
     public void AddSampleDebug_enables_and_registers_the_supplied_store()
     {
         var services = new ServiceCollection();
-        var store = new SampleDebugLogStore();
+        var store = new GameDebugLogStore();
 
-        services.AddSampleDebug(store);
+        services.AddGameDebugTools(new() { RestartAsync = _ => Task.CompletedTask }, store);
 
         using var provider = services.BuildServiceProvider();
         Assert.Multiple(() =>
         {
             Assert.That(store.IsEnabled, Is.True);
-            Assert.That(provider.GetRequiredService<SampleDebugLogStore>(), Is.SameAs(store));
+            Assert.That(provider.GetRequiredService<GameDebugLogStore>(), Is.SameAs(store));
         });
     }
 
     [Test]
     public void Store_retains_the_most_recent_500_lines_and_can_be_cleared()
     {
-        var store = new SampleDebugLogStore();
+        var store = new GameDebugLogStore();
         store.Enable();
         using var logger = new LoggerConfiguration().WriteTo.Sink(store).CreateLogger();
 

@@ -31,5 +31,5 @@ updated: 2026-09-29
 
 ## 文档
 
-- [架构规范](../../docs/spec/architecture.md)记录程序集根命名空间所有权。
-- [条目类型规范](../../docs/spec/entry-types.md)记录 Builtins 与 Core entry 基础设施边界。
+- [架构规范](../../docs/spec/architecture/modules.md)记录程序集根命名空间所有权。
+- [条目类型规范](../../docs/spec/runtime/entries.md)记录 Builtins 与 Core entry 基础设施边界。

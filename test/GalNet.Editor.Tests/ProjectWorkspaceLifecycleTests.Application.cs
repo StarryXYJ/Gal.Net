@@ -11,15 +11,14 @@ namespace GeneralTest.Editor;
 
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task NewProjectApplication_FindsContractsCopiesOnlyDependenciesAndPersistsDebugApp(bool packaged)
+    [Test]
+    public async Task NewProjectApplication_FindsDeclaredContractsCopiesOnlyDependenciesAndPersistsDebugApp()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
             using var services = Services();
-            var (executable, contracts) = CreateApplication(packaged);
+            var (executable, contracts) = CreateApplication();
             var dialogs = (TestDialogs)services.GetRequiredService<IFileDialogService>();
             dialogs.OpenPaths = [executable];
             var panel = services.GetRequiredService<NewProjectPanelViewModel>();
@@ -67,7 +66,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var dialogs = (TestDialogs)services.GetRequiredService<IFileDialogService>();
         var panel = services.GetRequiredService<NewProjectPanelViewModel>();
         panel.ContractsDirectory = "  explicit contract  ";
-        var (executable, _) = CreateApplication(false);
+        var (executable, _) = CreateApplication();
         dialogs.OpenPaths = [executable];
         await panel.BrowseApplicationCommand.ExecuteAsync(null);
         Assert.That(panel.ContractsDirectory, Is.EqualTo("  explicit contract  "));
@@ -80,24 +79,18 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase("missing")]
     [TestCase("invalid")]
     [TestCase("dependency")]
-    [TestCase("ambiguous")]
     public async Task NewProjectApplication_InvalidSourceDoesNotCreateOrFallBackToDefaults(string failure)
     {
         using var services = Services();
-        var (executable, contracts) = CreateApplication(false);
+        var (executable, contracts) = CreateApplication();
         if (failure == "missing") File.Delete(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName));
         if (failure == "invalid") File.WriteAllText(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName), "invalid DLL");
         if (failure == "dependency") File.Delete(Path.Combine(contracts, "SchemaDependency.dll"));
-        if (failure == "ambiguous")
-        {
-            Directory.CreateDirectory(Path.Combine(contracts, "lib"));
-            File.Copy(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName), Path.Combine(contracts, "lib", ProjectSchemaContext.AssemblyFileName));
-        }
         var panel = services.GetRequiredService<NewProjectPanelViewModel>();
         panel.ProjectName = "Rejected";
         panel.ProjectRoot = _root;
         panel.ApplicationPath = executable;
-        if (failure is "missing" or "ambiguous")
+        if (failure is "missing")
         {
             Assert.That(panel.ContractsDirectory, Is.Empty);
             Assert.That(panel.Message, Is.Not.Empty);
@@ -112,8 +105,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     public async Task NewProjectApplication_ManualContractsCanResolveMissingAutomaticSource()
     {
         using var services = Services();
-        var executable = Path.Combine(_root, "Game.exe");
-        File.WriteAllBytes(executable, []);
+        var (executable, contracts) = CreateApplication();
+        File.Delete(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName));
         var panel = services.GetRequiredService<NewProjectPanelViewModel>();
         panel.ProjectName = "Manual";
         panel.ProjectRoot = _root;
@@ -130,10 +123,32 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await projects.CloseAsync();
     }
 
-    private (string Executable, string Contracts) CreateApplication(bool packaged)
+    [Test]
+    public void NewProjectApplication_LinuxPackageLauncherFindsDeclaredContracts()
+    {
+        var root = Directory.CreateDirectory(Path.Combine(_root, "Linux Game App")).FullName;
+        var contracts = Directory.CreateDirectory(Path.Combine(root, "lib")).FullName;
+        foreach (var file in Directory.GetFiles(Contracts(), "*.dll"))
+            File.Copy(file, Path.Combine(contracts, Path.GetFileName(file)));
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "docs", "application-layout.json"),
+            """{"schemaVersion":1,"runtimeIdentifier":"linux-x64","entryPoint":"GalNet.Sample.CrossPlatform","managedDirectory":"lib","contractsDirectory":"lib","contentDirectory":"pak"}""");
+        var launcher = Path.Combine(root, "GalNet.Sample.CrossPlatform");
+        File.WriteAllBytes(launcher, []);
+
+        Assert.That(ProjectContractSource.RequireApplication(launcher), Is.EqualTo(launcher));
+        Assert.That(ProjectContractSource.FindForApplication(launcher), Is.EqualTo(contracts));
+
+        var undeclared = Path.Combine(root, "not-the-launcher");
+        File.WriteAllBytes(undeclared, []);
+        Assert.That(() => ProjectContractSource.RequireApplication(undeclared),
+            Throws.TypeOf<EditorOperationException>());
+    }
+
+    private (string Executable, string Contracts) CreateApplication()
     {
         var root = Directory.CreateDirectory(Path.Combine(_root, "Game App")).FullName;
-        var contracts = packaged ? Directory.CreateDirectory(Path.Combine(root, "lib")).FullName : root;
+        var contracts = Directory.CreateDirectory(Path.Combine(root, "lib")).FullName;
         foreach (var file in Directory.GetFiles(Contracts(), "*.dll"))
             File.Copy(file, Path.Combine(contracts, Path.GetFileName(file)));
         // A self-contained App also carries framework DLLs and unrelated managed/native payloads.
@@ -143,6 +158,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         File.WriteAllText(Path.Combine(contracts, "Game.pdb"), "symbols");
         var executable = Path.Combine(root, "Game.exe");
         File.WriteAllBytes(executable, []);
+        Directory.CreateDirectory(Path.Combine(root, "docs"));
+        File.WriteAllText(Path.Combine(root, "docs", "application-layout.json"),
+            """{"schemaVersion":1,"runtimeIdentifier":"win-x64","entryPoint":"Game.exe","managedDirectory":"lib","contractsDirectory":"lib","contentDirectory":"pak"}""");
         return (executable, contracts);
     }
 }

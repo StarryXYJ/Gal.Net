@@ -10,13 +10,13 @@
 
 解决方案构建成功；1192 项相关回归通过，2 项既有 Group 布局断言失败，6 项原生媒体用例未执行。范围、退出条件与完整证据见 [阶段记录](phase-6e4.md)。
 
-稳定行为以 [Editor 场景目标查询](../../docs/spec/editor-scene-targets.md) 为准。剩余内置语义及缺目标运行时独立核验继续留后续，实时预览不列入计划。
+稳定行为以 [Editor 场景目标查询](../../docs/spec/editor/scene-targets.md) 为准。剩余内置语义及缺目标运行时独立核验继续留后续，实时预览不列入计划。
 
 ## P6e4c4：播放实例 Locator
 
 停止动画通过共享 Picker 选择 Animate 或 Timeline 的播放来源，支持本地化名称和英文类型搜索，不展示内部 handle。播放候选与可动画场景对象分域，Timeline 对象树保持原有范围；立即停止与迭代后停止采用不同的保守候选规则。选择域、过期保护、单步历史、复制引用及保存重开已验证。
 
-解决方案构建成功，1239 项相关回归通过，2 项既有 Group 布局断言失败，6 项原生媒体环境用例未执行。完整证据见 [阶段记录](phase-6e4.md)，当前契约见 [Editor 场景目标查询](../../docs/spec/editor-scene-targets.md)。P6e4c 整体仍在实施。
+解决方案构建成功，1239 项相关回归通过，2 项既有 Group 布局断言失败，6 项原生媒体环境用例未执行。完整证据见 [阶段记录](phase-6e4.md)，当前契约见 [Editor 场景目标查询](../../docs/spec/editor/scene-targets.md)。P6e4c 整体仍在实施。
 
 ## Group 作者一致性（GC1–GC5）
 
@@ -30,6 +30,6 @@
 
 搜索依赖属性变化实时重筛，摘要与 Picker 共用可读来源。干净字段和退出投影使用弱保留，未完成输入通过中立适配保存，历史只保留中立作者数据；强制 GC 用例验证删除 ViewModel 在历史仍保留时可释放。资源名称后台准备有独立预算与取消，摘要读取不挤占交互选择缓存。
 
-正式当前行为见 [Group 编辑](../../docs/spec/editor-groups.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)、[场景目标](../../docs/spec/editor-scene-targets.md)。原生 IME 候选、真实系统剪贴板多应用交互和四项 Explicit 原生媒体 GUI 流程没有在本轮人工验收；未知自定义语义仍保守报告覆盖不足，运行时缺目标语义没有在本轮改写。
+正式当前行为见 [Group 编辑](../../docs/spec/editor/groups.md)、[历史与保存](../../docs/spec/editor/history-and-save.md)、[场景目标](../../docs/spec/editor/scene-targets.md)。原生 IME 候选、真实系统剪贴板多应用交互和四项 Explicit 原生媒体 GUI 流程没有在本轮人工验收；未知自定义语义仍保守报告覆盖不足，运行时缺目标语义没有在本轮改写。
 
 本轮最终验证：当前源码完整解决方案构建成功，Editor 327、Shared 427、Architecture 49、Integration 123，共 **926 项执行通过**；51 个 C# 文件格式/IDE0005 verify 通过，工作区与最终快照 1,356 文件哈希一致。一次 Headless 会话 DisposeAsync 异常保留日志，同一构建的独立用例与完整 Editor 重跑通过，根因未确认。GC1–GC5 verified，专项复核 pass-with-follow-up，材料见 `artifacts/group-consistency-gc5/`。

@@ -6,6 +6,31 @@ namespace GalNet.GameHost.Tests;
 public sealed class GameSessionTests
 {
     [Test]
+    public async Task BackgroundCheckpointSerializesReplacementAndAlwaysReleasesMedia()
+    {
+        var run = new Run();
+        await using var session = new GameSession(_ => Task.FromResult<IGameRun>(run));
+        await session.PrepareAsync(null);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var checkpoint = session.CheckpointAndReleaseAsync(async (_, _) => { entered.SetResult(); await release.Task; throw new IOException("disk full"); });
+        await entered.Task;
+        var replace = session.PrepareAsync(null);
+        Assert.That(run.Calls, Is.EqualTo(new[] { "prepare" }));
+        release.SetResult();
+        Assert.ThrowsAsync<AggregateException>(async () => await checkpoint);
+        await replace;
+        Assert.That(run.Calls, Is.EqualTo(new[] { "prepare", "stop", "dispose", "prepare" }));
+    }
+
+    [Test]
+    public async Task BackgroundingWithoutARunDoesNotCreateOrSaveOne()
+    {
+        await using var session = new GameSession(_ => throw new AssertionException("No run expected"));
+        await session.CheckpointAndReleaseAsync((_, _) => throw new AssertionException("No snapshot expected"));
+    }
+
+    [Test]
     public async Task InvalidReplacementSaveDoesNotStopOrReleaseCurrentRun()
     {
         var run = new Run { FailValidate = true };

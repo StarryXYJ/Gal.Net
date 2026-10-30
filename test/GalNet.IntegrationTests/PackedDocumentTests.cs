@@ -161,12 +161,15 @@ public sealed class PackedDocumentTests
     [TestCase("identity")]
     [TestCase("index")]
     [TestCase("extra")]
+    [TestCase("old-version")]
     public async Task InternalDescriptorAndInstallationIndexMustAgree(string change)
     {
         await Export();
         var original = PackedGameDocuments.ReadGame(File.ReadAllBytes(Path.Combine(Installed, "game.pak")));
         var documents = original.Documents.Documents.ToDictionary();
-        if (change == "index")
+        if (change == "old-version")
+            documents[PackedGameDocuments.InstallationPath] = JsonSerializer.SerializeToUtf8Bytes(original.Installation with { Version = 3 }, JsonOptions);
+        else if (change == "index")
             documents[PackedGameDocuments.InstallationPath] = JsonSerializer.SerializeToUtf8Bytes(original.Installation with { Files = [] }, JsonOptions);
         else if (change == "extra") documents["unexpected.json"] = "{}"u8.ToArray();
         var bytes = PackedGameDocuments.Build(change == "identity" ? "another-project" : original.Manifest.ProjectId, original.Manifest.BuildId, documents);
@@ -208,6 +211,8 @@ public sealed class PackedDocumentTests
             stream.Position--;
             stream.WriteByte((byte)(previous ^ 1));
         }
+        Assert.ThrowsAsync<InvalidDataException>(() => GalpakInstaller.InstallAsync(result.PackagePath!, installed));
+        Assert.That(File.ReadAllBytes(installedGame), Is.EqualTo(originalGame));
         Assert.ThrowsAsync<InvalidDataException>(() => GalpakInstaller.InstallAsync(result.PackagePath!, Path.Combine(_root, "broken")));
         Assert.That(Directory.Exists(Path.Combine(_root, "broken")), Is.False);
     }

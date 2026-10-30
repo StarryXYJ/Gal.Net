@@ -20,4 +20,4 @@
 
 ## 范围与禁止做法
 
-适用于原生媒体库的字符串互操作和回调生命周期。不要把 CMake 编译成功当作移动设备验收，也不要把静态回调改造当作全引擎 AOT 支持。当前反射 JSON/metadata 的 IL 警告仍存在，详见 docs/manual/cross-platform-backends.md。
+适用于原生媒体库的字符串互操作和回调生命周期。不要把 CMake 编译成功当作移动设备验收，也不要把静态回调改造当作全引擎 AOT 支持。当前反射 JSON/metadata 的 IL 警告仍存在，详见 docs/manual/extensions/media-and-platform-backends.md。

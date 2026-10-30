@@ -32,4 +32,4 @@ Provider 只返回可读取的源描述；页面或媒体适配层先通过 `IAs
 - `src/GalNet.Avalonia.GameView/Services/AssetGalleryResourceResolver.cs`
 - `src/GalNet.Editor/Services/EditorPreviewHost.cs`
 - `test/GeneralTest/Presentation/AssetGalleryResourceResolverTests.cs`
-- `docs/spec/assets.md`
+- `docs/spec/content/assets.md`

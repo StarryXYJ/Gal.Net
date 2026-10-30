@@ -164,4 +164,4 @@ Transform/Flipbook 保留当前专用布局，子输入仍按 registry 选择 Nu
 - UI 与扫描有独立预算，防止“界面回退 JSON”被误判成分析失败，或分析器生成大量控件。
 - 动态目录不在当前交付全量迁移，限制跨领域重构扩散；仍有未覆盖警告的场景必须在总结中如实列出。
 
-参考：[feature](feature.md)、[前期讨论](../F-20261023-01-editor-uiux/design-recursive-properties-20261027.md)、[字段契约](../../docs/spec/entry-types.md)、[共享表单](../../docs/spec/control.md#schema-字段表单)、[本地化索引](../../docs/spec/editor-game-localization.md#只读作者索引)。
+参考：[feature](feature.md)、[前期讨论](../F-20261023-01-editor-uiux/design-recursive-properties-20261027.md)、[字段契约](../../docs/spec/runtime/entries.md)、[共享表单](../../docs/spec/presentation/game-view.md#schema-字段表单)、[本地化索引](../../docs/spec/editor/localization.md#只读作者索引)。

@@ -11,7 +11,7 @@ Editor 扩展 API 现在保留稳定的非泛型 registry 接口，同时为 doc
 - 保留 `IDockPanelContribution`、`IInspectorControlContribution`、非泛型 `DockPanelContributionBase` 与 `IServiceProvider`，现有实现可以继续工作。
 - 将 6 个内置 dock panel 和 3 个 inspector contribution 迁移到泛型 delegate；`GroupEditor` 的 `GraphNode` 参数由泛型约束表达。
 - 增加 registry 重复 ID、三类 typed bridge 和内置 Log panel 注册/创建测试。
-- 将扩展 registry、DI scope 与 Avalonia 边界同步到 [架构规范](../../docs/spec/architecture.md)。
+- 将扩展 registry、DI scope 与 Avalonia 边界同步到 [架构规范](../../docs/spec/architecture/modules.md)。
 
 ## 关键决定
 

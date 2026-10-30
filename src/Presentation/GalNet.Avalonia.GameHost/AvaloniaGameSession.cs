@@ -32,6 +32,8 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private AvaloniaProjectOptions _projectOptions = new();
     private AvaloniaGameResources? _visualResources;
     private PlayerSession? _saveSession;
+    private FileSaveService? _resumeStore;
+    private bool _hasResumeCheckpoint;
     private IGalleryResourceResolver? _galleryResources;
     private readonly GameSession _session;
     private IDisposable? _playerBinding;
@@ -93,6 +95,9 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             var catalogs = _options.CreateContentCatalogs();
             var resources = await GameResourceScope.OpenAsync(gameDirectory,
                 catalogs.Resources, catalogs.Gallery, _options.Content, cancellationToken);
+            resources.Assets.Diagnostic += diagnostic => GameLog.Logger.Warning(diagnostic.Exception,
+                "Asset {AssetStage} failed ({AssetFailure}): ID={AssetId}, Path={AssetPath}, Provider={AssetProvider}, SourceID={SourceAssetId}, Target={AssetTargetType}",
+                diagnostic.Stage, diagnostic.Kind, diagnostic.AssetId, diagnostic.Path, diagnostic.Provider, diagnostic.SourceAssetId, diagnostic.TargetType?.FullName);
             AvaloniaProjectOptions projectOptions;
             profileDirectory ??= Path.Combine(resources.GameDirectory, ".galnet");
             PlayerSession? saveSession = null;
@@ -124,6 +129,9 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             _projectOptions = projectOptions;
             _visualResources = visuals;
             _saveSession = saveSession;
+            _resumeStore = new FileSaveService(Path.Combine(profileDirectory, "resume"), 1);
+            var resume = await _resumeStore.GetSlotInfoAsync(0, cancellationToken);
+            _hasResumeCheckpoint = resume.Timestamp != default && !resume.IsCorrupt;
             _galleryResources = galleryResources;
             _localization.AttachGame(resources.Content);
 
@@ -177,8 +185,11 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         await BeginPreparedGameAsync(cancellationToken);
     }
 
-    public Task PrepareNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default) =>
-        _session.PrepareNewAsync(initialSaveVariables, cancellationToken);
+    public async Task PrepareNewGameAsync(IReadOnlyDictionary<string, object> initialSaveVariables, CancellationToken cancellationToken = default)
+    {
+        await _session.PrepareNewAsync(initialSaveVariables, cancellationToken);
+        await ClearResumeCheckpointAsync(cancellationToken);
+    }
 
     public async Task ContinueAsync(CancellationToken cancellationToken = default)
     {
@@ -186,14 +197,49 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         await BeginPreparedGameAsync(cancellationToken);
     }
 
-    public Task PrepareNewGameAsync(CancellationToken cancellationToken = default)
+    public async Task PrepareNewGameAsync(CancellationToken cancellationToken = default)
     {
         GameLog.Logger.Information("Preparing a new game");
-        return PrepareGameAsync(null, cancellationToken);
+        await PrepareGameAsync(null, cancellationToken);
+        await ClearResumeCheckpointAsync(cancellationToken);
     }
 
     public Task PrepareContinueAsync(CancellationToken cancellationToken = default) =>
-        _session.PrepareFromAsync(token => _saveSession!.LoadLatestAsync(token), cancellationToken);
+        _session.PrepareFromAsync(LoadLatestWithCheckpointAsync, cancellationToken);
+
+    private async Task<GameSnapshot> LoadLatestWithCheckpointAsync(CancellationToken token)
+    {
+        var checkpoint = _resumeStore is null ? null : await _resumeStore.GetSlotInfoAsync(0, token);
+        var latest = _saveSlots.Where(slot => !slot.IsEmpty && !slot.IsCorrupt).MaxBy(slot => slot.Timestamp);
+        if (checkpoint is { IsCorrupt: false } && checkpoint.Timestamp != default &&
+            (latest is null || checkpoint.Timestamp > latest.Timestamp))
+            return await _resumeStore!.LoadAsync(0, token) ?? throw new InvalidDataException("The resume checkpoint is unavailable.");
+        return await _saveSession!.LoadLatestAsync(token);
+    }
+
+    /// <summary>Backgrounding returns to title; Continue restores a durable stable checkpoint without overwriting player slots.</summary>
+    public async Task SuspendAsync(CancellationToken cancellationToken = default)
+    {
+        if (_disposed || !IsReady) return;
+        var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(() => new(_settings.FlushAsync()));
+        await cleanup.RunAsync(() => new(_session.CheckpointAndReleaseAsync(async (snapshot, token) =>
+        {
+            await _saveSession!.Progress.FlushAsync(token);
+            await _saveSession.Variables.FlushPlayerVariablesAsync(token);
+            await _resumeStore!.SaveAsync(0, new() { Snapshot = snapshot }, token);
+            _hasResumeCheckpoint = true;
+        }, cancellationToken)));
+        await cleanup.RunAsync(() => new(RefreshSlotsAsync(cancellationToken)));
+        cleanup.ThrowIfFailed();
+    }
+
+    private async Task ClearResumeCheckpointAsync(CancellationToken token)
+    {
+        if (_resumeStore is not null) await _resumeStore.ClearAsync(token);
+        _hasResumeCheckpoint = false;
+        CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
+    }
 
     public Task StopAsync(CancellationToken cancellationToken = default) =>
         _disposed ? Task.CompletedTask : _session.StopAsync(cancellationToken);
@@ -204,6 +250,8 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             var saveSession = _saveSession;
             await _settings.FlushAsync();
             if (saveSession is not null) await saveSession.ClearAsync(token);
+            await ClearResumeCheckpointAsync(token);
+            await RefreshSlotsAsync(token);
             await AvaloniaUiDispatcher.Instance.InvokeAsync(async () =>
             {
                 if (saveSession is not null)
@@ -277,8 +325,11 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         _gameplay.StatusMessage = $"Loaded slot {slotIndex}.";
     }
 
-    public Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default) =>
-        _session.PrepareFromAsync(token => _saveSession!.LoadRequiredAsync(slotIndex, token), cancellationToken);
+    public async Task PrepareLoadAsync(int slotIndex, CancellationToken cancellationToken = default)
+    {
+        await _session.PrepareFromAsync(token => _saveSession!.LoadRequiredAsync(slotIndex, token), cancellationToken);
+        await ClearResumeCheckpointAsync(cancellationToken);
+    }
 
     public ValueTask DisposeAsync()
     {
@@ -305,6 +356,8 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             cleanup.Run(() => (_galleryResources as IDisposable)?.Dispose());
             _galleryResources = null;
             cleanup.Run(() => saves?.Dispose());
+            cleanup.Run(() => _resumeStore?.Dispose());
+            _resumeStore = null;
             cleanup.Run(() => _visualResources?.Dispose());
             _visualResources = null;
             var resources = _resources;
@@ -340,7 +393,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             _localization,
             _options,
             _projectOptions.Audio,
-            _mediaRuntime.Instance,
+            _mediaRuntime,
             UpdateRunnerStateAsync,
             () => RefreshSlotsAsync(CancellationToken.None),
             ResetScenePresentationAsync,
@@ -348,7 +401,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             cancellationToken);
     }
 
-    protected async Task RefreshSlotsAsync(CancellationToken cancellationToken)
+    public async Task RefreshSlotsAsync(CancellationToken cancellationToken = default)
     {
         if (_saveSession is null) return;
         var slots = await _saveSession.ListSlotsAsync(cancellationToken);
@@ -363,7 +416,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         await OnUiAsync(() =>
         {
             _saveSlots.ReplaceAll(slots.Select(slot => CreateSlot(slot, previews.GetValueOrDefault(slot.SlotIndex))));
-            CanContinue = _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
+            CanContinue = _hasResumeCheckpoint || _saveSlots.Any(slot => !slot.IsEmpty && !slot.IsCorrupt);
         });
     }
 
@@ -391,7 +444,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             var index = _saveSlots.ToList().FindIndex(item => item.SlotIndex == slotIndex);
             if (index >= 0) _saveSlots[index] = CreateSlot(slot, preview);
             else _saveSlots.Add(CreateSlot(slot, preview));
-            CanContinue = _saveSlots.Any(item => !item.IsEmpty && !item.IsCorrupt);
+            CanContinue = _hasResumeCheckpoint || _saveSlots.Any(item => !item.IsEmpty && !item.IsCorrupt);
         });
     }
 
@@ -409,7 +462,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     }
 
     /// <summary>Runs a project-specific save action under the same command gate as normal saves and run replacement.</summary>
-    protected Task<T> WithSnapshotAsync<T>(Func<GameSnapshot, PlayerSession, CancellationToken, Task<T>> action,
+    public Task<T> WithSnapshotAsync<T>(Func<GameSnapshot, PlayerSession, CancellationToken, Task<T>> action,
         CancellationToken cancellationToken = default) =>
         _session.WithSnapshotAsync((snapshot, token) => action(snapshot,
             _saveSession ?? throw new InvalidOperationException("The player session is not initialized."), token), cancellationToken);

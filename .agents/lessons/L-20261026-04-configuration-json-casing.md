@@ -13,4 +13,4 @@
 
 适用范围：在按精确字段 ID 校验之后反序列化为 CLR DTO 的配置、命令或内容边界。不要通过大小写不敏感解码绕过 schema，也不要为修复字段身份问题直接删除不认识的作者数据。
 
-关联：docs/spec/file-formats.md；features/F-20261026-01-engine-core-simplification/summary.md。
+关联：docs/spec/content/file-formats.md；features/F-20261026-01-engine-core-simplification/summary.md。

@@ -56,6 +56,17 @@ public sealed class GameSession(Func<CancellationToken, Task<IGameRun>> createRu
     public Task StopAsync(CancellationToken cancellationToken = default) =>
         ExecuteAsync(async _ => { if (_run is not null) await _run.StopAsync(); }, cancellationToken);
 
+    /// <summary>Persists a stable checkpoint and releases presentation, including when persistence fails.</summary>
+    public Task CheckpointAndReleaseAsync(Func<GameSnapshot, CancellationToken, Task> save,
+        CancellationToken cancellationToken = default) => ExecuteAsync(async token =>
+        {
+            if (_run is null) return;
+            var cleanup = new ResourceCleanup();
+            await cleanup.RunAsync(() => new(save(_run.CreateSaveData(), token)));
+            await cleanup.RunAsync(() => new(ReleaseRunAsync()));
+            cleanup.ThrowIfFailed();
+        }, cancellationToken);
+
     public async Task<T> WithSnapshotAsync<T>(Func<GameSnapshot, CancellationToken, Task<T>> action,
         CancellationToken cancellationToken = default)
     {

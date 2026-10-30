@@ -17,7 +17,7 @@ updated: 2026-09-30
 
 ## 原始目标
 
-以 [音频系统设计](../../docs/design/audio-system-design.md) 为基础，审查其合理性、识别实现难点和潜在问题，并澄清需要产品或技术决策的范围；后续将其实现为 GalNet 的音频 feature。
+以 [音频系统设计](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/design/audio-system-design.md) 为基础，审查其合理性、识别实现难点和潜在问题，并澄清需要产品或技术决策的范围；后续将其实现为 GalNet 的音频 feature。
 
 ## 当前事实
 
@@ -87,8 +87,8 @@ updated: 2026-09-30
 
 - [设计复核](design.md)
 - [实施计划](phase-plan.md)
-- [音频系统设计](../../docs/design/audio-system-design.md)
-- [引擎使用手册](../../docs/engine.md)
+- [音频系统设计](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/design/audio-system-design.md)
+- [引擎使用手册](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/engine.md)
 - [当前音频条目类型](../../src/Shared/GalNet.Primitives.Builtins/Entry/MediaEntries.cs)
 - [当前 Builtin 音频模块](../../src/Shared/GalNet.Primitives.Builtins/BuiltinEntryModules.cs)
 - [当前 LibVLC 适配器](../../src/Presentation/GalNet.Presentation.Defaults/Media/LibVlcAudioController.cs)

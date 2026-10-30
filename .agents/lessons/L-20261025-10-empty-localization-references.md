@@ -13,4 +13,4 @@
 
 适用范围：游戏本地化引用和引用分析中的空字段；不放宽角色声明的唯一身份、JSON 语法、必填字段或非空错误引用。禁止只在 UI 隐藏诊断、只修改索引却遗漏启动加载器，或把所有非空不透明字段都视为可安全重写。
 
-关联文档：docs/spec/editor-game-localization.md、docs/spec/i18n.md。
+关联文档：docs/spec/editor/localization.md、docs/spec/content/localization.md。

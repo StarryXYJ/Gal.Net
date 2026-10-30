@@ -31,8 +31,8 @@ flowchart TB
     AvaloniaHost --> Sample[Sample 或项目宿主]
 ```
 
-这是依赖方向图，不是运行时创建顺序。具体程序集职责、生命周期和测试边界见[架构规范](spec/architecture.md)。
+这是依赖方向图，不是运行时创建顺序。具体程序集职责、生命周期和测试边界见[架构规范](spec/architecture/modules.md)。
 
 ## 文档约定
 
-`spec/` 只记录已经由代码和测试验证的事实；`manual/` 说明如何在既有边界内扩展。一次性 feature 的需求、设计取舍与验证历史保留在 `features/`，不作为当前 API 的权威来源。
+`quick-start/` 提供最短成功流程；`manual/` 分别说明 Editor/Sample 的使用、项目扩展、发布与开发操作；`spec/` 记录当前实现的职责、契约和限制。一次性 feature 的需求、设计取舍与验证历史保留在 `features/`，不作为当前 API 的权威来源。完整入口见[文档首页](README.md)。

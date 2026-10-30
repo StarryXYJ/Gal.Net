@@ -40,6 +40,6 @@ Assets 的 PackedGameDocuments 编解码固定文档集合；Editor.Shared 的 G
 
 ## 文档与边界
 
-已同步 [文件格式](../../docs/spec/file-formats.md)、[国际化](../../docs/spec/i18n.md)、[架构](../../docs/spec/architecture.md)、[内容分包](../../docs/manual/content-packaging.md)、[发行打包](../../docs/manual/release-packaging.md)、[Sample 定制](../../docs/manual/customize-avalonia-sample.md)、glossary 和 Headless README。
+已同步 [文件格式](../../docs/spec/content/file-formats.md)、[国际化](../../docs/spec/content/localization.md)、[架构](../../docs/spec/architecture/modules.md)、[内容分包](../../docs/manual/editor/content-packaging.md)、[发行打包](../../docs/manual/publishing/engine-release.md)、[Sample 定制](../../docs/manual/extensions/customize-sample.md)、glossary 和 Headless README。
 
 本轮没有体积专项优化、加密、防提取、BSON、AOT、热加载或通用更新协议。保留整包缓冲；按语言条目组织不代表流式按需 I/O。Windows x64 是发行验收平台，未运行其他平台发行、完整剧情/全部音视频格式或完整 CI/NuGet 消费验收。发现并修复的启动异常继承边界记录在 .agents/lessons/L-20261029-08-invalid-data-startup-fallback.md。

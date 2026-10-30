@@ -41,15 +41,15 @@ Core、Presentation、Editor.Shared、Editor、Architecture、Primitives.Builtin
 
 第二轮面板优化（2026-10-25）已实现变量分作用域选择和项目会话草稿、正文主输入行对齐、Inspector 底部独立预览、角色图标工具栏与身份安全的草稿保留，以及本地化搜索/状态筛选、语言与导出弹层、固定上下文和列头、窄面板布局。完整实施、验证结果与保留边界见 [第二轮实施](phase-ui-20261025.md)；原始候选方案保留在 [分析](analysis-20261025.md)。本轮不修改作者格式、项目保存语义或 Runtime。
 
-- [共享表单契约](../../docs/spec/control.md)
-- [Group 与 Inspector](../../docs/spec/editor-groups.md)
-- [历史、草稿与保存](../../docs/spec/editor-history-and-save.md)
-- [Dock 预设](../../docs/spec/dock-design.md)
-- [Graph 导航](../../docs/spec/editor-graph.md)
-- [资源操作](../../docs/spec/editor-files.md)
-- [使用及 DTO 扩展手册](../../docs/manual/editor-authoring-workspace.md)
+- [共享表单契约](../../docs/spec/presentation/game-view.md)
+- [Group 与 Inspector](../../docs/spec/editor/groups.md)
+- [历史、草稿与保存](../../docs/spec/editor/history-and-save.md)
+- [Dock 预设](../../docs/spec/editor/dock.md)
+- [Graph 导航](../../docs/spec/editor/graph.md)
+- [资源操作](../../docs/spec/editor/project-and-files.md)
+- [使用及 DTO 扩展手册](../../docs/manual/editor/projects-and-workspace.md)
 
-本地化页后续按用户反馈进一步精简：单行工具栏、紧凑资源表、结构化双行定位列、统一不透明背景、语言搜索/已有语言管理/移除及列宽与可见性。输入直接更新 Working，取消草稿/复核 UI，Save All 仍负责写盘；失败输入就地保留，成功更新通过项目撤销恢复。实现与验证边界见 [本地化精简实施](phase-localization-20261025.md)，当前规范及操作见 [本地化规范](../../docs/spec/editor-game-localization.md) 和 [使用手册](../../docs/manual/game-localization.md)。
+本地化页后续按用户反馈进一步精简：单行工具栏、紧凑资源表、结构化双行定位列、统一不透明背景、语言搜索/已有语言管理/移除及列宽与可见性。输入直接更新 Working，取消草稿/复核 UI，Save All 仍负责写盘；失败输入就地保留，成功更新通过项目撤销恢复。实现与验证边界见 [本地化精简实施](phase-localization-20261025.md)，当前规范及操作见 [本地化规范](../../docs/spec/editor/localization.md) 和 [使用手册](../../docs/manual/editor/localization.md)。
 
 后续实测修正：输入改为失焦/Ctrl+Enter/Save All 提交，输入期间不逐字更新项目；正文和摘要左上对齐。表头明确靠左，修复隐藏语言后表格变窄时居中导致的列错位。验证见 [交互修正记录](follow-up-localization-20261025.md)。
 

@@ -13,7 +13,7 @@ internal static class FileReplacement
         {
             await File.WriteAllTextAsync(temporary, text, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, path, overwrite: true);
+            await FilePublication.MoveFileAsync(temporary, path, overwrite: true, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception writeError)
         {

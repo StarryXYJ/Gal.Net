@@ -51,4 +51,4 @@ dotnet build GalNet.slnx --no-restore -m:1 -p:UseSharedCompilation=false --verbo
 - 未进行桌面 IME 人工验收；本阶段不新增输入控件。
 - 原有未提交/并行工作区修改保留，本记录只描述本 feature 改动；没有执行 Git 提交。
 
-当前事实同步到 [规范](../../docs/spec/editor-game-localization.md)。
+当前事实同步到 [规范](../../docs/spec/editor/localization.md)。

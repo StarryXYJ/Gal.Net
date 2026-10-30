@@ -1,7 +1,10 @@
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Security.Cryptography;
 using System.Text.Json;
+using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Services;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -9,6 +12,7 @@ namespace GalNet.Editor.Shared.Services;
 public sealed class ProjectContractSource : IDisposable
 {
     private static readonly HashSet<string> PlatformAssemblyNames = GetPlatformAssemblyNames();
+    internal static bool IsPlatformAssembly(string name) => PlatformAssemblyNames.Contains(name);
 
     private static HashSet<string> GetPlatformAssemblyNames()
     {
@@ -42,29 +46,34 @@ public sealed class ProjectContractSource : IDisposable
     public static string RequireApplication(string executable)
     {
         var path = Path.GetFullPath(executable.Trim());
-        if (!File.Exists(path) || !string.Equals(Path.GetExtension(path), ".exe", StringComparison.OrdinalIgnoreCase))
-            throw new EditorOperationException("project.applicationInvalid", "Select an existing game application EXE.");
+        if (!File.Exists(path))
+            throw new EditorOperationException("project.applicationInvalid", "Select an existing game application.");
+        var root = Path.GetDirectoryName(path)!;
+        if (!File.Exists(Path.Combine(root, ApplicationPackageLayout.FileName)))
+            throw new EditorOperationException("project.applicationInvalid", "Select an existing game application executable.");
+        var layout = ApplicationPackageLayout.Read(root);
+        var declaredEntryPoint = Path.GetFullPath(Path.Combine(root, layout.EntryPoint));
+        var comparison = layout.RuntimeIdentifier.StartsWith("win-", StringComparison.Ordinal)
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        if (!string.Equals(declaredEntryPoint, path, comparison))
+            throw new EditorOperationException("project.applicationInvalid", "The selected application does not match its package layout.");
         return path;
     }
 
     public static string FindForApplication(string executable)
     {
         var root = Path.GetDirectoryName(RequireApplication(executable))!;
-        var candidates = new[] { root, Path.Combine(root, "lib") }
-            .Where(directory => File.Exists(Path.Combine(directory, ProjectSchemaContext.AssemblyFileName))).ToArray();
-        return candidates.Length switch
-        {
-            1 => candidates[0],
-            0 => throw new EditorOperationException("project.applicationContractMissing", "No project contract was found beside the application or in lib. Select a contract directory manually."),
-            _ => throw new EditorOperationException("project.applicationContractAmbiguous", "Multiple project contracts were found. Select a contract directory manually.")
-        };
+        var layout = ApplicationPackageLayout.Read(root);
+        var contracts = Path.Combine(root, layout.ContractsDirectory);
+        if (!File.Exists(Path.Combine(contracts, ProjectSchemaContext.AssemblyFileName)))
+            throw new EditorOperationException("project.applicationContractMissing", "The application layout declares a missing project contract.");
+        return contracts;
     }
 
     public static ProjectContractSource Prepare(string sourceDirectory)
     {
-        var reader = new ProjectRawReader(sourceDirectory);
-        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-        ReadAssembly(ProjectSchemaContext.AssemblyFileName);
+        var files = ReadClosure(sourceDirectory);
         var snapshot = new ProjectContractSource(Path.Combine(Path.GetTempPath(), "GalNet-contracts-" + Guid.NewGuid().ToString("N")));
         try
         {
@@ -78,6 +87,18 @@ public sealed class ProjectContractSource : IDisposable
             snapshot.Dispose();
             throw;
         }
+    }
+
+    internal static List<GalpakFileEntry> ReadIdentity(string sourceDirectory) => ReadClosure(sourceDirectory)
+        .OrderBy(file => file.Key, StringComparer.Ordinal)
+        .Select(file => new GalpakFileEntry(file.Key, Convert.ToHexStringLower(SHA256.HashData(file.Value)), file.Value.LongLength)).ToList();
+
+    private static Dictionary<string, byte[]> ReadClosure(string sourceDirectory)
+    {
+        var reader = new ProjectRawReader(sourceDirectory);
+        var files = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+        ReadAssembly(ProjectSchemaContext.AssemblyFileName);
+        return files;
 
         void ReadAssembly(string fileName)
         {

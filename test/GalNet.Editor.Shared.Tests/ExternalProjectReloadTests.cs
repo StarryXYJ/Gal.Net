@@ -70,6 +70,82 @@ public sealed class ExternalProjectReloadTests
         Assert.That(count, Is.Zero);
     }
 
+    [TestCase("notes.txt", "before", "saved")]
+    [TestCase("I18n/zh-CN/local.json", "{\"line\":\"before\"}", "{\"line\":\"saved\"}")]
+    public async Task SavedManagedFileBaselineIsIndependentOfLaterAuthorEdits(string path, string before, string saved)
+    {
+        var fullPath = Path.Combine(_root, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        File.WriteAllText(fullPath, before);
+        var file = _content.TrackFile(path, File.ReadAllBytes(fullPath));
+        file.Data = Encoding.UTF8.GetBytes(saved);
+        await _content.SaveAsync();
+        file.Data[0] ^= 1;
+
+        Assert.That(await _content.ReloadExternalAsync(Read()), Is.EqualTo(ExternalReloadResult.Unchanged));
+        Assert.That(_content.IsDirty, Is.True);
+        Assert.That(File.ReadAllText(fullPath), Is.EqualTo(saved));
+        Assert.That(Encoding.UTF8.GetString(_content.CaptureSaved().Files[file.Id].Data), Is.EqualTo(saved));
+    }
+
+    [Test]
+    public async Task AcceptedExternalSnapshotDoesNotShareItsBaselineBytesWithTheCaller()
+    {
+        var path = Path.Combine(_root, "notes.txt");
+        File.WriteAllText(path, "before");
+        var file = _content.TrackFile("notes.txt", File.ReadAllBytes(path));
+        File.WriteAllText(path, "external");
+        File.AppendAllText(Path.Combine(_root, "settings.json"), "\n");
+        var candidate = Read();
+        Assert.That(await _content.ReloadExternalAsync(candidate), Is.EqualTo(ExternalReloadResult.Reloaded));
+        candidate.Files["notes.txt"][0] ^= 1;
+        candidate.Files["settings.json"][0] ^= 1;
+
+        Assert.That(await _content.ReloadExternalAsync(Read()), Is.EqualTo(ExternalReloadResult.Unchanged));
+        Assert.That(Encoding.UTF8.GetString(file.Data), Is.EqualTo("external"));
+        Assert.That(_content.IsDirty, Is.False);
+        await _content.SaveAsync();
+        Assert.That(await _content.ReloadExternalAsync(Read()), Is.EqualTo(ExternalReloadResult.Unchanged));
+    }
+
+    [Test]
+    public async Task RejectedSaveDoesNotAcceptExternalSettingsAsItsBaseline()
+    {
+        var graph = File.ReadAllBytes(Path.Combine(_root, "Graph/graph.json"));
+        _documents.CurrentDocument.Name = "Unsaved";
+        File.AppendAllText(Path.Combine(_root, "settings.json"), "\n");
+        var error = Assert.ThrowsAsync<EditorOperationException>(() => _content.SaveAsync());
+        Assert.That(error!.Code, Is.EqualTo("project.externalSettings"));
+        Assert.That(File.ReadAllBytes(Path.Combine(_root, "Graph/graph.json")), Is.EqualTo(graph));
+        Assert.That(_content.CaptureSaved().Graph.Name, Is.EqualTo("Original"));
+
+        Assert.That(await _content.ReloadExternalAsync(Read()), Is.EqualTo(ExternalReloadResult.LocalChanges));
+        _documents.CurrentDocument.Name = "Original";
+        Assert.That(await _content.ReloadExternalAsync(Read()), Is.EqualTo(ExternalReloadResult.Reloaded));
+        await _content.SaveAsync();
+        Assert.That(_content.IsDirty, Is.False);
+    }
+
+    [Test]
+    public async Task LocalizationFilePublicationUndoAndRedoDoNotBecomeExternalReloads()
+    {
+        var count = 0;
+        _content.ExternalReloaded += () => count++;
+        _documents.CurrentDocument.Name = "Keep unsaved";
+        const string path = "I18n/zh-CN/local.json";
+        using var operation = new ProjectFileOperation(_root,
+            new(ProjectFileAction.CreateFile, [], path, Content: Encoding.UTF8.GetBytes("{\"line\":\"local\"}")), _catalog);
+        foreach (var forward in new[] { true, false, true })
+        {
+            await operation.ApplyAsync(forward, _content.PublishStructureAsync);
+            Assert.That(File.Exists(Path.Combine(_root, path)), Is.EqualTo(forward));
+            Assert.That(await _content.ReloadExternalAsync(Read()), Is.EqualTo(ExternalReloadResult.Unchanged));
+            Assert.That(_content.IsDirty, Is.True);
+            Assert.That(_content.CaptureSaved().Graph.Name, Is.EqualTo("Original"));
+        }
+        Assert.That(count, Is.Zero);
+    }
+
     [Test]
     public async Task LocalChangesAndPendingInputArePreservedUntilExplicitDiscard()
     {

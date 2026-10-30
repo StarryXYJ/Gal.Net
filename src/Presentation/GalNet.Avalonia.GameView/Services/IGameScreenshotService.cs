@@ -11,6 +11,12 @@ public interface IGameScreenshotService
     Task CaptureAsync(GameScreenshotRequest request, CancellationToken cancellationToken = default);
 }
 
+/// <summary>Optional platform destination, such as a photo library, that needs no directory picker.</summary>
+public interface IAutomaticGameScreenshotDestination
+{
+    Task SaveAsync(string gameTitle, string fileName, ReadOnlyMemory<byte> png, CancellationToken cancellationToken = default);
+}
+
 public sealed record GameScreenshotRequest(
     string GameTitle,
     TopLevel? Owner,

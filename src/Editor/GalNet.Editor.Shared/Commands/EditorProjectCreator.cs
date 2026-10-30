@@ -8,6 +8,7 @@ using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Abstraction.Project;
 using GalNet.Editor.Shared.Services;
 using GalNet.Editor.Shared.Visuals;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Commands;
 
@@ -99,7 +100,7 @@ public static class EditorProjectCreator
             cancellationToken.ThrowIfCancellationRequested();
             EnsureEmptyTarget(root);
             if (Directory.Exists(root)) { Directory.Delete(root); removedEmptyTarget = true; }
-            Directory.Move(stage, root);
+            await FilePublication.MoveDirectoryAsync(stage, root, cancellationToken).ConfigureAwait(false);
             return new("project.create", true, report, []);
         }
         catch

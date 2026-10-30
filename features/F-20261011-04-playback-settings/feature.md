@@ -127,11 +127,11 @@ updated: 2026-10-12
 
 ## 相关链接
 
-- [Runtime 规范](../../docs/spec/runtime.md)
-- [Avalonia 游戏页面](../../docs/spec/control.md)
-- [运行期本地化与玩家偏好](../../docs/spec/i18n.md)
-- [架构规范](../../docs/spec/architecture.md)
-- [Feature 工作流](../../docs/design/feature-workflow.md)
+- [Runtime 规范](../../docs/spec/runtime/execution.md)
+- [Avalonia 游戏页面](../../docs/spec/presentation/game-view.md)
+- [运行期本地化与玩家偏好](../../docs/spec/content/localization.md)
+- [架构规范](../../docs/spec/architecture/modules.md)
+- [Feature 工作流](https://github.com/StarryXYJ/Gal.Net/blob/80693d3dff17255fa93fbf31e4e3f26480020cb9/docs/design/feature-workflow.md)
 - [暂缓的追帧存档需求](../F-20260929-15-replay-save-format/feature.md)
 - [主题拥有页面](../F-20261011-03-theme-owned-views/feature.md)
 - [现有设置项接口](../../src/Presentation/GalNet.Avalonia.GameView/Services/IPlayerSettingsService.cs)

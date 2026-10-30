@@ -90,4 +90,4 @@ updated: 2026-10-15
 - [Phase 1 实现与验证](phase-1.md)
 - [Phase 2a 实现与验证](phase-2a.md)
 - [Phase 2b 实现与验证](phase-2b.md)
-- 当前事实参考 [开发指南](../../docs/development.md)、[架构](../../docs/spec/architecture.md)、[Entry 注册 ADR](../../docs/adr/0002-entry-schema-execution-registration.md)。
+- 当前事实参考 [开发指南](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md)、[架构](../../docs/spec/architecture/modules.md)、[Entry 注册 ADR](https://github.com/StarryXYJ/Gal.Net/blob/e650ee511a1e2511f0c82110b954e255110a2fd5/docs/adr/0002-entry-schema-execution-registration.md)。

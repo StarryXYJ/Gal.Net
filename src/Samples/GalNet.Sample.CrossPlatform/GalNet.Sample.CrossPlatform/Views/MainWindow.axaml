@@ -1,0 +1,24 @@
+<ursa:UrsaWindow xmlns="https://github.com/avaloniaui"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:ursa="https://irihi.tech/ursa"
+                 x:Class="GalNet.Sample.CrossPlatform.Views.MainWindow"
+                 Icon="/Assets/avalonia-logo.ico"
+                 Width="1280" Height="720" MinWidth="800" MinHeight="500"
+                 Classes="galnet-player"
+                 Background="{DynamicResource GalNet.Brush.Background}"
+                 Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                 Title="GalNet Avalonia CrossPlatform Player">
+  <ursa:UrsaWindow.Resources>
+    <!-- Match the desktop Sample's drawn caption buttons and title bar. -->
+    <SolidColorBrush x:Key="CaptionButtonForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
+    <SolidColorBrush x:Key="CaptionButtonPointeroverForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
+    <SolidColorBrush x:Key="CaptionButtonPointeroverBackground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" Opacity="0.08" />
+    <SolidColorBrush x:Key="CaptionButtonPressedBackground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" Opacity="0.14" />
+    <SolidColorBrush x:Key="CaptionButtonPressedForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
+    <SolidColorBrush x:Key="CaptionButtonCloseForeground" Color="White" />
+    <SolidColorBrush x:Key="CaptionButtonClosePointeroverBackground" Color="#C42B1C" />
+    <SolidColorBrush x:Key="CaptionButtonClosePressedBackground" Color="#A4261B" />
+    <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource GalNet.Palette.BackgroundColor}" />
+    <SolidColorBrush x:Key="WindowBackground" Color="{DynamicResource GalNet.Palette.BackgroundColor}" />
+  </ursa:UrsaWindow.Resources>
+</ursa:UrsaWindow>

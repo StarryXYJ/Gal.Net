@@ -10,6 +10,43 @@ public sealed class ContentPackageContractTests
 {
     private static readonly IResourceTypeCatalog Types = BuiltinResourceTypes.CreateCatalog();
 
+    [Test]
+    public void Pak_rejects_declared_length_mismatches_during_decompression([Values] CompressionMode mode, [Values(128, 1024)] int declaredLength)
+    {
+        var meta = new SpriteAssetMeta { Id = "bounded", Path = "bounded.png", TypeId = "sprite" };
+        var pak = PakBuilder.Build("assets", [new GameFile(meta.Id, meta.Path, meta.TypeId, meta, new byte[512])], Types, mode);
+        using (var stream = new MemoryStream(pak, writable: true))
+        using (var reader = new BinaryReader(stream))
+        {
+            stream.Position = 8;
+            stream.Position += sizeof(int) + BinaryPrimitives.ReadInt32LittleEndian(pak.AsSpan(8));
+            Assert.That(reader.ReadInt32(), Is.EqualTo(1));
+            for (var i = 0; i < 4; i++)
+            {
+                var length = reader.ReadInt32();
+                stream.Position += length;
+            }
+            stream.Position += sizeof(long); // data offset precedes the original length
+            BinaryPrimitives.WriteInt64LittleEndian(pak.AsSpan((int)stream.Position), declaredLength);
+        }
+
+        using var archive = Archive.Deserialize("assets", pak, Types);
+        var error = Assert.Throws<InvalidDataException>(() => archive.GetAsset("bounded"));
+        Assert.That(error!.Message, Does.Contain(declaredLength < 512 ? "exceeds" : "shorter"));
+    }
+
+    [Test]
+    public void Pak_cancellation_is_preserved_through_interface_and_deserialization()
+    {
+        var pak = PakBuilder.Build("assets", [Sprite("a")], Types);
+        using IArchive archive = Archive.Deserialize("assets", pak, Types);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => archive.GetAsset("a", cancellation.Token));
+        Assert.Throws<OperationCanceledException>(() => archive.GetAssetByPath("a.png", cancellation.Token));
+        Assert.Throws<OperationCanceledException>(() => Archive.Deserialize("assets", [], Types, cancellation.Token));
+    }
+
     [TestCase("base")]
     [TestCase("story")]
     [TestCase("override")]

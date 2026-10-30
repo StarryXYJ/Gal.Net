@@ -44,4 +44,4 @@ Timeline 对象选择后不立即写作者数据，对象行“＋”逐项添�
 
 证据目录：`C:/Users/Starry/.codex/visualizations/2026/10/15/01a13e35-d53c-7270-b753-7b67a4eee31c/timeline-validation`。初轮脚本/结果为 validate-locator.ps1、locator-GalNet*；最终脚本 validate-locator-final.ps1，构建 locator-final-solution-build.log，TRX/日志 locator-final-GalNet*，指纹 locator-final-source-sha256.json，格式 locator-final-format-verify.log。两步交互聚焦结果 locator-two-step.trx。
 
-正式行为已同步 [场景查询](../../docs/spec/editor-scene-targets.md)、[Group/Timeline](../../docs/spec/editor-groups.md)、[共享控件](../../docs/spec/control.md) 和 [i18n](../../docs/spec/i18n.md)。P6e2b 退出条件满足；P6e3 曲线/切线、P6e4 剩余语义/事件/引用、P6f animate 曲线和 P7 仍未完成；没有实现实时游戏预览。
+正式行为已同步 [场景查询](../../docs/spec/editor/scene-targets.md)、[Group/Timeline](../../docs/spec/editor/groups.md)、[共享控件](../../docs/spec/presentation/game-view.md) 和 [i18n](../../docs/spec/content/localization.md)。P6e2b 退出条件满足；P6e3 曲线/切线、P6e4 剩余语义/事件/引用、P6f animate 曲线和 P7 仍未完成；没有实现实时游戏预览。

@@ -20,4 +20,4 @@
 ## 关联文档
 
 - `features/F-20261021-03-external-game-debugging/phase-liveness-diagnostics.md`
-- `docs/manual/external-game-debugging.md`
+- `docs/manual/editor/preview-and-debugging.md`

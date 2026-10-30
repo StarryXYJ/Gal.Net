@@ -59,13 +59,16 @@ public static class PackedGameDocuments
         if (manifest.Version != 3 || string.IsNullOrWhiteSpace(manifest.ProjectId) || !IsHash(manifest.BuildId)
             || manifest.ProjectId != documents.Descriptor.ProjectId || manifest.BuildId != documents.Descriptor.BuildId
             || manifest.BasePaks is not { Count: > 0 } || manifest.Stories is null
+            || manifest.Stories.Any(story => story is null || string.IsNullOrWhiteSpace(story.PackageId) || story.Parts is not { Count: > 0 }
+                || story.Parts.Any(file => file?.Path is null || !file.Path.StartsWith("StoryPatches/" + manifest.BuildId + "/", StringComparison.Ordinal)))
             || manifest.BasePaks.Any(file => file?.Path is null || !file.Path.StartsWith("Assets/Paks/", StringComparison.Ordinal))
             || manifest.LocalizationPak is not { Path: LocalizationFileName } language || !ValidFile(language))
             throw new InvalidDataException("Invalid packed content descriptor.");
         var index = JsonCodec.Deserialize<GalpakManifest>(documents.GetText(InstallationPath), JsonOptions)
             ?? throw new InvalidDataException("Missing packed installation index.");
-        var expected = manifest.BasePaks.Append(language).ToArray();
-        if (index.Version != 3 || index.ProjectId != manifest.ProjectId || index.Files is null
+        var expected = manifest.BasePaks.Append(language)
+            .Concat(manifest.Stories.SelectMany(story => story.Parts)).ToArray();
+        if (index.Version != 4 || index.ProjectId != manifest.ProjectId || index.Files is null
             || expected.Any(file => !ValidFile(file)) || expected.Select(file => file.Path).Distinct(StringComparer.OrdinalIgnoreCase).Count() != expected.Length
             || index.Files.Count != expected.Length || index.Files.Distinct().Count() != expected.Length
             || expected.Any(file => !index.Files.Contains(file)))

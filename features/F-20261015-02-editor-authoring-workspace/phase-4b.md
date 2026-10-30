@@ -40,7 +40,7 @@
 
 大型目录枚举/WrapPanel/缩略图与多个文本缓冲的性能继续按 P7 fixture 测量，不声称已经满足一万文件规模。游戏预览仍是后续独立 feature。
 
-正式规则见 [项目文件操作](../../docs/spec/editor-files.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)、[目录格式](../../docs/spec/file-formats.md)、[资源](../../docs/spec/assets.md)、[i18n](../../docs/spec/i18n.md)。下一阶段 P5 Group 核心编辑与最小参数表单；整体 feature 保持 in-progress。
+正式规则见 [项目文件操作](../../docs/spec/editor/project-and-files.md)、[历史与保存](../../docs/spec/editor/history-and-save.md)、[目录格式](../../docs/spec/content/file-formats.md)、[资源](../../docs/spec/content/assets.md)、[i18n](../../docs/spec/content/localization.md)。下一阶段 P5 Group 核心编辑与最小参数表单；整体 feature 保持 in-progress。
 
 ## 后续修正：目录展开三角（2026-10-17）
 

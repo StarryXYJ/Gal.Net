@@ -10,14 +10,19 @@
     "description": "GalNet narrative runtime, content abstractions and host sessions."
   },
   "GalNet.Desktop": {
-    "projects": ["Infrastructure/GalNet.Storage.FileSystem", "Infrastructure/GalNet.Media.Audio", "Infrastructure/GalNet.Media.Miniaudio", "Infrastructure/GalNet.Media.LibVlc"],
+    "projects": ["Infrastructure/GalNet.Storage.FileSystem", "Infrastructure/GalNet.Media.Audio", "Infrastructure/GalNet.Media.Miniaudio", "Infrastructure/GalNet.Media.LibVlc", "Infrastructure/GalNet.Input.Sdl3"],
     "dependencies": ["GalNet.Engine"],
-    "description": "GalNet default file storage and audio/video backends. Native audio assets currently support Windows x64."
+    "description": "GalNet default file storage, audio/video and desktop SDL input backends. Native audio assets currently support Windows x64."
   },
   "GalNet.Avalonia": {
     "projects": ["Presentation/GalNet.Avalonia.Controls", "Presentation/GalNet.Avalonia.Rendering", "Presentation/GalNet.Avalonia.GameView", "Presentation/GalNet.Avalonia.Themes", "Presentation/GalNet.Avalonia.GameHost"],
     "dependencies": ["GalNet.Desktop"],
     "description": "GalNet Avalonia player views, rendering, themes and host composition."
+  },
+  "GalNet.Avalonia.Debugging": {
+    "projects": ["Presentation/GalNet.Avalonia.Debugging"],
+    "dependencies": ["GalNet.Avalonia", "GalNet.Engine"],
+    "description": "Optional GalNet Avalonia debugging tools, diagnostics views and external-session integration."
   },
   "GalNet.SchemaGenerator": {
     "projects": ["Tooling/GalNet.SchemaGenerator"],

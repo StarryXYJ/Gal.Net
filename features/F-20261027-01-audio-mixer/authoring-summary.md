@@ -39,4 +39,4 @@
 
 一次最终验证被提前启动的测试进程锁住输出 DLL，构建失败；日志保存为 `audio-authoring-overlap-build.log` 与 `audio-authoring-overlap-editor.log`，未用作最终验收。等待这些进程退出后，同源码构建以 0 错误通过，再启动最终测试。规则见 [lesson](../../.agents/lessons/L-20261027-04-build-before-no-build-tests.md)。
 
-正式用法见 [音频手册](../../docs/manual/audio-mixing.md)，契约见 [Entry 类型](../../docs/spec/entry-types.md)、[Runtime](../../docs/spec/runtime.md)，查询边界见 [作者目标查询](../../docs/spec/editor-scene-targets.md)。全 feature 的后端验证仍见 [原总结](summary.md)，不覆盖其历史证据和保留项。
+正式用法见 [音频手册](../../docs/manual/editor/audio.md)，契约见 [Entry 类型](../../docs/spec/runtime/entries.md)、[Runtime](../../docs/spec/runtime/execution.md)，查询边界见 [作者目标查询](../../docs/spec/editor/scene-targets.md)。全 feature 的后端验证仍见 [原总结](summary.md)，不覆盖其历史证据和保留项。

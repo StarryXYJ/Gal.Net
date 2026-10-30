@@ -71,9 +71,9 @@ Editor 对接外部游戏 App 进行 debug 和测试。底层提供可选调试�
 
 ## 当前实现依据
 
-- [运行时规范](../../docs/spec/runtime.md)：执行门、稳定存档、状态恢复与停止语义。
-- [架构](../../docs/spec/architecture.md)：GameSession/运行/展示生命周期和依赖方向。
-- [变量规范](../../docs/spec/editor-variables.md)：声明与运行时当前值的边界。
+- [运行时规范](../../docs/spec/runtime/execution.md)：执行门、稳定存档、状态恢复与停止语义。
+- [架构](../../docs/spec/architecture/modules.md)：GameSession/运行/展示生命周期和依赖方向。
+- [变量规范](../../docs/spec/editor/variables.md)：声明与运行时当前值的边界。
 - `src/Shared/GalNet.Runtime/Engine/GameEngine.cs`、`GameEngine.CatchUp.cs`。
 - `src/Shared/GalNet.Runtime/Runtime/GameRuntime.cs`、`Variables/VariableStore.cs`、`Variables/PlayerVariableService.cs`。
 - `src/Shared/GalNet.Core/Compilation/GalgroupCompiler.cs`：作者 Entry 到编译 primitive 的 SourceMap。

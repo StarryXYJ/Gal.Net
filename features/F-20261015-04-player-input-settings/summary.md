@@ -22,7 +22,7 @@
 - Sample 输入、显示设置、存档、组合及清理生命周期集成测试 11 项通过。
 - 最终小范围复验：PlayerInputTests 与 SettingSchemaFormTests 共 14 项通过；确认最后的冲突文案、配置校验和编辑器释放修正未破坏输入/设置队列。
 - 追加游戏页焦点修复：先运行窗口/工具栏焦点复现用例，旧实现 2 项失败。修正后输入专项 25 项通过；再补充按住快速 Control+K 组合键用例，最终 Presentation 全量 217 项通过（原输入测试 11 项，现 26 项）。覆盖三主题真实 GamePage 的推进、截图、隐藏/恢复、鼠标中键、修改绑定立即生效，以及编辑器/宿主隔离、工具栏原生交互、捕获优先、卸载重挂/释放和按住状态取消。
-- 新增模块边界已同步到 [control.md](../../docs/spec/control.md)，设计偏差见 [design.md 第 9 节](design.md#9-2026-10-16-游戏快捷键路由修正)。焦点路由经验见 [feature 内暂存 lesson](lesson-shortcut-focus-routing.md)。本轮是无界面测试宿主中的真实路由事件验证，未冒充桌面窗口/实体设备人工验收。
+- 新增模块边界已同步到 [control.md](../../docs/spec/presentation/game-view.md)，设计偏差见 [design.md 第 9 节](design.md#9-2026-10-16-游戏快捷键路由修正)。焦点路由经验见 [feature 内暂存 lesson](lesson-shortcut-focus-routing.md)。本轮是无界面测试宿主中的真实路由事件验证，未冒充桌面窗口/实体设备人工验收。
 - 首空槽测试实际建立临时 profile，保留槽 0 内容和槽 1 损坏文件，并发保存分别写入槽 2/3，填满其余槽后返回 null，原内容不变。
 - 输入持久化测试关闭/重开变量存储，恢复键鼠与 A/B 布局且不额外写文件；清空玩家变量后恢复默认。
 - 本 feature 未修改 Editor 用户工作树，未自动提交混合改动。
@@ -35,7 +35,7 @@
 - GameShell 一次组合 `PageBackInputListener`，不依赖 `PlayerInputSettings` 是否存在。未被内部控件消费的纯 Esc 在 bubble 阶段执行页面返回命令，捕获/弹出选择/局部取消优先，长按不连续退页；标题/加载/剧情不默认返回，宿主壳外输入不会误触发。手柄返回同样调用当前页命令。
 - 最终 Presentation 回归 225 项通过。新增 5 项 Esc 用例、3 项真实三主题 GameShell 设置/存档/鉴赏返回用例；原设置工厂测试追加边框和焦点画刷断言。实际渲染截图位于 `artifacts/player-settings/`（构建产物，不提交），已检查三套主题的设置页面和行内编辑焦点。
 - Sample 构建成功；Sample 输入/显示设置、保存、组合/清理，以及 Gallery 和截图受影响集成测试共 26 项通过。测试项目顺序构建，未改动 Editor 的业务或测试文件。
-- 已同步 [control.md](../../docs/spec/control.md)，新页面继承返回基类即可，无需逐页监听按键；特殊清理重写 `OnBack()` 并调用基类。
+- 已同步 [control.md](../../docs/spec/presentation/game-view.md)，新页面继承返回基类即可，无需逐页监听按键；特殊清理重写 `OnBack()` 并调用基类。
 
 ## 修正：键值入口描边，不是逐行外框
 
@@ -43,7 +43,7 @@
 - `InputBindingCapture` 显式复用 Button 样式键与 `player-input-binding` 类，为 Control 等键值自身提供输入框式描边、主题底色/圆角和悬停文字/描边反馈。模板内实际显示的文字同样变色，不只是根控件属性发生变化。
 - 原设置模板无条件创建非空 Tip 内容对象，ReasonKey 为空、内部文字隐藏时仍会弹空容器。删除重复 Tooltip，保留原内联可用性原因和错误；测试验证原因出现时仍可见。
 - 先补三主题回归，旧实现均因绑定按钮 BorderThickness 为 0 失败；修正后独立三主题用例通过，最终 Presentation 全量 228 项通过。已检查三套主题实际绑定面板截图（`artifacts/player-settings/*-InputBindingFields.png`，测试宿主未接本地化，标签显示 key；不提交产物）。测试同时覆盖实际模板描边、实际文字悬停、无行外框/无空 Tip、内联原因、原捕获与 Esc 返回。
-- [control.md](../../docs/spec/control.md) 与设计第 11 节已修正；用户澄清与视觉回归经验见 [lesson-binding-field-affordance.md](lesson-binding-field-affordance.md)。
+- [control.md](../../docs/spec/presentation/game-view.md) 与设计第 11 节已修正；用户澄清与视觉回归经验见 [lesson-binding-field-affordance.md](lesson-binding-field-affordance.md)。
 - 按用户要求整理：将 `InputBindingCapture` 从面板文件拆到独立文件，集中捕获状态字段和构造初始化，面板只负责布局/设置投影；不改变公开类型或捕获语义。整理后输入、返回与主题相关 81 项回归通过。
 
 ## 整理提交与 Sample 字体统一
@@ -61,7 +61,7 @@
 - 多指手势使用实际路由事件验证，尚未在真实触屏设备验证系统兼容鼠标事件与输入手感。长按在释放时确定，双击判定窗口为 280ms，长按阈值为 550ms，滑动阈值为 60 个设计单位。
 - 触屏不支持按住快速，相关行禁用；手势属于离散动作。
 - 两个绑定位置均有录入/选择，清除目前作用整行；逐行恢复默认与主/备用列标题等视觉细化可后续补充。
-- 正式入口与宿主约定见 [control.md](../../docs/spec/control.md)。
+- 正式入口与宿主约定见 [control.md](../../docs/spec/presentation/game-view.md)。
 
 ## Agent 验证环境记录
 

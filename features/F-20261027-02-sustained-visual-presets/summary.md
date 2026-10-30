@@ -21,4 +21,4 @@ Timeline 事件新增可选 execution：EachIteration 保持旧行为，Once 用
 
 未运行显式原生视频或 shader 图片导出用例；没有新增图形特效或修改 shader。持续集中线的 shader time 按作者循环周期重播；不承诺跨周期相位无缝。未新增人物姿态中断、淡出停止或复杂动作编排。
 
-当前操作见 [默认视觉库手册](../../docs/manual/default-visuals.md)，事件契约见 [Entry 类型](../../docs/spec/entry-types.md)，停止生命周期见 [Runtime](../../docs/spec/runtime.md)。
+当前操作见 [默认视觉库手册](../../docs/manual/editor/default-visuals.md)，事件契约见 [Entry 类型](../../docs/spec/runtime/entries.md)，停止生命周期见 [Runtime](../../docs/spec/runtime/execution.md)。

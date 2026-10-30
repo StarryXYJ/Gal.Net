@@ -11,6 +11,6 @@
     <Button Classes="player-menu" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" IsEnabled="{Binding IsNavigationEnabled}" />
     <Button Classes="player-menu" Content="{text:PlayerText Title.Gallery, Gallery}" Command="{Binding OpenGalleryCommand}" IsEnabled="{Binding CanOpenGallery}" IsVisible="{Binding HasGallery}" />
     <Button Classes="player-menu" Content="{text:PlayerText Title.About, About}" Command="{Binding OpenAboutCommand}" IsEnabled="{Binding IsNavigationEnabled}" />
-    <Button Classes="player-menu" Content="{text:PlayerText Title.Exit, Exit}" Command="{Binding ExitCommand}" IsEnabled="{Binding IsNavigationEnabled}" />
+    <Button Classes="player-menu" Content="{text:PlayerText Title.Exit, Exit}" Command="{Binding ExitCommand}" IsEnabled="{Binding IsNavigationEnabled}" IsVisible="{Binding CanExit}" />
   </StackPanel>
 </UserControl>

@@ -139,6 +139,6 @@ P6e4c 整体仍 in-progress。下一步为播放实例 Locator、其余内置语
 - 首轮 16 项分析失败来自测试 helper 将 Animate 的字符串布尔写成 JSON bool；生产 converter 严格规则保留，修正后加入原生 bool 拒绝和有效夹具 Complete 断言，见 author-parameter-wire-format lesson。另修正预算零尚无入口的夹具预期，并让真实列表用例定位停止条目、先将控件滚动入视区；没有绕过真实指针/键盘，未放宽产品行为断言。原始专项失败日志和 TRX 保留。
 - 最终场景分析专项 100 项通过，本轮新增 26 项；真实播放选择器 1 项通过，覆盖本地化/英文搜索、无结果不提交、四语刷新不换域、不显示 handle、选择/清空单步 Undo/Redo、作者改变/Undo/关闭后旧 lease 拒绝、Timeline 对象树不列播放实例，以及保存重开保留未知字段和大整数。
 - 隔离基线 39bc39b，明确覆盖 13 个 C# 与 4 个语言资源文件；默认契约及 schema fixture 固定路径产物均来自此候选。最终解决方案构建 49 警告、0 错误。最终七项目合计 1239 通过、2 失败、0 跳过：Editor 252/2、Editor.Shared 355/0、Architecture 45/0、Core 116/0、Primitives.Builtins 117/0、Integration 111/0、Presentation 243/0。两项仍是此前独立复现的 Group 尾部留白和窄面板宽度，未修改布局或放宽断言。6 项原生媒体环境测试未执行；本切片未声称运行时全部缺目标语义已独立验证。
-- 13 个 C# 的 whitespace/IDE0005 verify、四语 JSON 唯一 key/键集合、全部 17 个候选源码/资源 SHA256 与归档核对通过。证据在 timeline-validation，前缀 playback-c4-，含基线、清单、候选源码 archive、构建/格式日志及 TRX；仅删除核对绝对路径的本轮临时快照。当前规范见 [Editor 场景目标查询](../../docs/spec/editor-scene-targets.md)。
+- 13 个 C# 的 whitespace/IDE0005 verify、四语 JSON 唯一 key/键集合、全部 17 个候选源码/资源 SHA256 与归档核对通过。证据在 timeline-validation，前缀 playback-c4-，含基线、清单、候选源码 archive、构建/格式日志及 TRX；仅删除核对绝对路径的本轮临时快照。当前规范见 [Editor 场景目标查询](../../docs/spec/editor/scene-targets.md)。
 
 P6e4c 仍 in-progress。继续剩余内置语义与缺目标运行时独立核验；P6f 自定义曲线和实时预览的原有边界不变。

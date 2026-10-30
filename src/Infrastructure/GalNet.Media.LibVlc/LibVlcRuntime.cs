@@ -7,16 +7,17 @@ public sealed class LibVlcRuntime : IDisposable
 {
     public LibVLC? Instance { get; }
     public string? InitializationError { get; }
+    public LibVlcFactory Factory { get; }
 
     /// <param name="create">Optional platform initialization and factory. The runtime owns the returned instance.</param>
-    public LibVlcRuntime(Func<LibVLC>? create = null)
+    public LibVlcRuntime(Func<LibVLC>? create = null, LibVlcFactory? factory = null)
     {
+        Factory = factory ?? LibVlcFactory.Default;
         try
         {
             if (create is null)
             {
-                LibVLCSharp.Shared.Core.Initialize();
-                Instance = new LibVLC("--no-video-title-show", "--avcodec-hw=none");
+                Instance = Factory.Create("--avcodec-hw=none");
             }
             else Instance = create() ?? throw new InvalidOperationException("The LibVLC factory returned null.");
         }

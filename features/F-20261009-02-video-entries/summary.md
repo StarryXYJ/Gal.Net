@@ -48,9 +48,9 @@ Native 测试通过设置 `GALNET_VIDEO_ASSETS`、`GALNET_VIDEO_LIBVLC` 后运�
 
 ## 文档与经验
 
-- [Entry 参数与推进语义](../../docs/spec/entry-types.md)
-- [Runtime 与稳定存档](../../docs/spec/runtime.md)
-- [平台视频与渲染边界](../../docs/spec/control.md)
+- [Entry 参数与推进语义](../../docs/spec/runtime/entries.md)
+- [Runtime 与稳定存档](../../docs/spec/runtime/execution.md)
+- [平台视频与渲染边界](../../docs/spec/presentation/game-view.md)
 - [视频加载与帧生命周期 lesson](../../.agents/lessons/L-20261010-01-video-layer-lifetime.md)
 
 计划偏差：补充加载期取消的真实宿主回归测试；整体架构门禁的既有失败保留为外部收尾阻塞。没有改变用户已有的 ADR 删除或音频行为。

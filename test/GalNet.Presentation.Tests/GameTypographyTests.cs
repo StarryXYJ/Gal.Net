@@ -18,8 +18,12 @@ public sealed class GameTypographyTests
         Assert.That(first, Is.Not.SameAs(second));
         Assert.That(first.FontFallbacks, Is.Not.SameAs(second.FontFallbacks));
         Assert.That(first.FontFallbacks!.Select(item => item.FontFamily.Name),
-            Does.Contain("Microsoft YaHei UI").And.Contain("Noto Sans CJK SC").And.Contain("PingFang SC"));
-        if (OperatingSystem.IsWindows()) Assert.That(first.DefaultFamilyName, Is.EqualTo("Microsoft YaHei UI"));
+            Does.Contain("Noto Sans CJK SC").And.Contain("Source Han Sans SC")
+                .And.Not.Contain("Microsoft YaHei UI").And.Not.Contain("Microsoft YaHei").And.Not.Contain("PingFang SC"));
+        Assert.That(first.DefaultFamilyName, Is.Null);
+        Assert.That(GameTypography.UiFontFamily, Is.EqualTo(FontFamily.Default));
+        Assert.That(GameTypography.CreateFontManagerOptions("fonts:Inter#Inter").DefaultFamilyName,
+            Is.EqualTo("fonts:Inter#Inter"));
     }
 
     [Test]

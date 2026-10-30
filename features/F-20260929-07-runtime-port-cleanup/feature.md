@@ -40,5 +40,5 @@ parent: F-20260929-03-maintainability-roadmap
 
 - [实施计划](phase-plan.md)
 - [实现总结](summary.md)
-- [ADR-0001](../../docs/adr/0001-runtime-storage-contract-ownership.md)
+- [ADR-0001](https://github.com/StarryXYJ/Gal.Net/blob/2e9ce29e491bd60a15939d0197fc426ccec7919e/docs/adr/0001-runtime-storage-contract-ownership.md)
 - [路线图 Phase 2a](../F-20260929-03-maintainability-roadmap/phase-plan.md)

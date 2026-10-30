@@ -54,7 +54,7 @@ $configuration.Save((Join-Path $consumerRoot 'NuGet.Config'))
 $previousPackages = $env:NUGET_PACKAGES
 $env:NUGET_PACKAGES = Join-Path $consumerRoot 'packages'
 try {
-    foreach ($packageId in @('GalNet.Contracts', 'GalNet.Engine', 'GalNet.Desktop', 'GalNet.Avalonia')) {
+    foreach ($packageId in @('GalNet.Contracts', 'GalNet.Engine', 'GalNet.Desktop', 'GalNet.Avalonia', 'GalNet.Avalonia.Debugging')) {
         $consumer = Join-Path $consumerRoot $packageId
         New-Item -ItemType Directory -Path $consumer | Out-Null
         @"
@@ -96,8 +96,18 @@ public partial class ConsumerOptions
         $names = @($assets.libraries.Keys | ForEach-Object { $_.Split('/')[0] })
         if ($packageId -eq 'GalNet.Contracts' -and ($names -contains 'GalNet.Engine' -or $names -contains 'CoreCLR-NCalc')) { throw 'Contracts leaked runtime dependencies.' }
         if ($packageId -eq 'GalNet.Engine' -and ($names -contains 'GalNet.Desktop' -or $names -contains 'Avalonia' -or $names -contains 'LibVLCSharp')) { throw 'Engine leaked backend dependencies.' }
-        if ($packageId -in @('GalNet.Desktop', 'GalNet.Avalonia')) {
+        if ($packageId -in @('GalNet.Desktop', 'GalNet.Avalonia', 'GalNet.Avalonia.Debugging')) {
             if (!(Test-Path (Join-Path $consumer 'bin/Release/net10.0/runtimes/win-x64/native/galnet_miniaudio.dll'))) { throw "Native audio did not flow to $packageId consumer." }
+            $sdl = Join-Path $consumer 'bin/Release/net10.0/runtimes/win-x64/native/SDL3.dll'
+            if (!(Test-Path -LiteralPath $sdl)) { throw "Native SDL did not flow to $packageId consumer." }
+            $notices = Join-Path $consumer 'bin/Release/net10.0/ThirdParty/SDL3'
+            foreach ($notice in @('SDL-LICENSE.txt', 'SDL3-CS-LICENSE.txt', 'native-runtime.json')) {
+                if (!(Test-Path -LiteralPath (Join-Path $notices $notice))) { throw "SDL notice missing from $packageId consumer: $notice" }
+            }
+            $inventory = Get-Content (Join-Path $notices 'native-runtime.json') -Raw | ConvertFrom-Json
+            if ((Get-FileHash -LiteralPath $sdl -Algorithm SHA256).Hash.ToLowerInvariant() -ne $inventory.assets.'win-x64'.sha256) {
+                throw "SDL native inventory mismatch in $packageId consumer."
+            }
         }
     }
     [ordered]@{ passed = $true; consumerDirectory = $consumerRoot; packageCount = $mapping.Count; version = $Version } | ConvertTo-Json | Set-Content (Join-Path $WorkDirectory 'package-validation.json') -Encoding utf8

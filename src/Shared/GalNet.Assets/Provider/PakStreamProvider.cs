@@ -32,7 +32,7 @@ public sealed class PakStreamProvider : IAssetProvider
         using var stream = Open(archiveName);
         using var data = new MemoryStream();
         stream.CopyTo(data);
-        return Archive.Deserialize(archiveName, data.ToArray(), _resourceTypes);
+        return Archive.DeserializeOwned(archiveName, data.ToArray(), _resourceTypes);
     }
 
     public async Task<IArchive> OpenArchiveAsync(string archiveName, CancellationToken ct = default)
@@ -42,7 +42,7 @@ public sealed class PakStreamProvider : IAssetProvider
         using var data = new MemoryStream();
         await stream.CopyToAsync(data, ct).ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
-        return Archive.Deserialize(archiveName, data.ToArray(), _resourceTypes);
+        return Archive.DeserializeOwned(archiveName, data.ToArray(), _resourceTypes, ct);
     }
 
     private Stream Open(string archiveName)

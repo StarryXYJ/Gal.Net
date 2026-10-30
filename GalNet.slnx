@@ -23,12 +23,14 @@
     <Project Path="src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj" />
   </Folder>
   <Folder Name="/src/Infrastructure/">
+    <Project Path="src/Infrastructure/GalNet.Input.Sdl3/GalNet.Input.Sdl3.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.Audio/GalNet.Media.Audio.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <Project Path="src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />
@@ -39,6 +41,13 @@
     <Project Path="src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
+  </Folder>
+  <Folder Name="/src/Samples/CrossPlatform/">
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Android/GalNet.Sample.CrossPlatform.Android.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Browser/GalNet.Sample.CrossPlatform.Browser.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.iOS/GalNet.Sample.CrossPlatform.iOS.csproj" />
+    <Project Path="src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.csproj" />
   </Folder>
   <Folder Name="/src/Shared/">
     <Project Path="src/Shared/GalNet.Diagnostics/GalNet.Diagnostics.csproj" />

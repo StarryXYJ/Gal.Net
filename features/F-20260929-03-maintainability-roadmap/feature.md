@@ -72,7 +72,7 @@ updated: 2026-09-29
 
 - [设计](design.md)
 - [实施计划](phase-plan.md)
-- [当前架构](../../docs/spec/architecture.md)
-- [架构](../../docs/spec/architecture.md)
-- [Feature 工作流](../../docs/design/feature-workflow.md)
-- [杂项待办](../../docs/design/misc-todo.md)
+- [当前架构](../../docs/spec/architecture/modules.md)
+- [架构](../../docs/spec/architecture/modules.md)
+- [Feature 工作流](https://github.com/StarryXYJ/Gal.Net/blob/80693d3dff17255fa93fbf31e4e3f26480020cb9/docs/design/feature-workflow.md)
+- [杂项待办](https://github.com/StarryXYJ/Gal.Net/blob/f1beedf8b44ae519d1382c7359784838d6724004/docs/design/misc-todo.md)

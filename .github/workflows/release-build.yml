@@ -1,0 +1,138 @@
+name: Build release candidate
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+      version:
+        type: string
+        required: true
+      commit:
+        type: string
+        required: true
+
+# Covers both build and publish, including duplicate master/tag events.
+concurrency:
+  group: release-${{ inputs.tag || format('candidate-{0}', github.run_id) }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - name: Validate exact tag and master membership
+        if: inputs.tag != ''
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          git fetch --no-tags origin '+refs/heads/master:refs/remotes/origin/master'
+          if ($LASTEXITCODE -ne 0) { throw 'Could not fetch master.' }
+          ./scripts/ci/Test-ReleaseRef.ps1 -Tag $env:RELEASE_TAG
+      - name: Skip an already published release
+        id: state
+        if: inputs.tag != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: ./scripts/ci/Get-ReleaseState.ps1 -Tag $env:RELEASE_TAG -GitHubOutput $env:GITHUB_OUTPUT
+      - uses: actions/setup-dotnet@v5
+        if: steps.state.outputs.published != 'true'
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: |
+            global.json
+            **/packages.lock*.json
+      - name: Run full tests for the release source
+        if: steps.state.outputs.published != 'true'
+        shell: pwsh
+        run: ./scripts/ci/Invoke-CI.ps1 -Stage BuildTest -OutputRoot out/ci/release
+      - name: Build and validate the release files
+        if: steps.state.outputs.published != 'true'
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          CANDIDATE_VERSION: ${{ inputs.version }}
+        run: |
+          $arguments = @{ SampleMode = 'R2R' }
+          if ($env:RELEASE_TAG) { $arguments.Tag = $env:RELEASE_TAG }
+          else { $arguments.Version = $env:CANDIDATE_VERSION }
+          ./scripts/release/Release.ps1 @arguments
+      - name: Upload sealed release files
+        if: steps.state.outputs.published != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-files-${{ inputs.version }}
+          path: out/release/${{ inputs.version }}/
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - name: Mark the sealed candidate ready
+        id: ready
+        if: steps.state.outputs.published != 'true'
+        shell: pwsh
+        run: '"ready=true" >> $env:GITHUB_OUTPUT'
+      - name: Upload validation evidence
+        if: always() && steps.state.outputs.published != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-evidence-${{ inputs.version }}
+          path: |
+            out/ci/release
+            out/release/.work/**/logs
+            out/release/.work/**/package-validation.json
+          include-hidden-files: true
+          retention-days: 7
+          if-no-files-found: warn
+
+  publish:
+    needs: build
+    if: inputs.tag != '' && needs.build.outputs.ready == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-files-${{ inputs.version }}
+          path: out/release/${{ inputs.version }}
+      - name: Upload verified files without rebuilding
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          CANDIDATE_VERSION: ${{ inputs.version }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          ./scripts/ci/Test-ReleaseRef.ps1 -Tag $env:RELEASE_TAG
+          ./scripts/release/Push.ps1 -Index "out/release/$env:CANDIDATE_VERSION/release-index.json"
+      - name: Preserve upload journal
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-push-journal-${{ inputs.version }}
+          path: out/release/*/push-state.json
+          retention-days: 30
+          if-no-files-found: warn

@@ -56,7 +56,7 @@ public sealed class InputBindingCapture : Button, IDisposable
         if (buttons.Count > 0)
         {
             if (buttons.Count >= _gamepadPeak)
-            { _gamepadPeak = buttons.Count; _draft = string.Join('+', buttons.Order(StringComparer.Ordinal)); Content = _draft; }
+            { _gamepadPeak = buttons.Count; _draft = string.Join('+', buttons.Order(StringComparer.Ordinal)); Content = _settings.FormatGamepadGesture(_draft); }
         }
         else if (_draft is not null) await FinishAsync();
     }
@@ -96,7 +96,8 @@ public sealed class InputBindingCapture : Button, IDisposable
     {
         if (_capturing) return;
         var gesture = _settings.GetBindings(_action, _device).ElementAtOrDefault(_slot)?.Gesture;
-        Content = string.IsNullOrEmpty(gesture) ? new PlayerTextBlock { Key = "Input.Unbound" } : gesture;
+        Content = string.IsNullOrEmpty(gesture) ? new PlayerTextBlock { Key = "Input.Unbound" } :
+            _device == PlayerInputDevice.Gamepad ? _settings.FormatGamepadGesture(gesture) : gesture;
     }
     public void Cancel()
     {

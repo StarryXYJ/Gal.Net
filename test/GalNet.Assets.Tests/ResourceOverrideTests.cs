@@ -33,6 +33,36 @@ public sealed class ResourceOverrideTests
         return archive.AssetIds.Select(id => new ResourceFileSource(archive.GetAsset(id)!, provider)).ToArray();
     }
 
+    [Test]
+    public async Task Failed_replacement_read_reports_logical_identity_and_backing_source()
+    {
+        var original = File("original", "A", "audio");
+        var replacement = File("replacement", "B", "audio");
+        var patch = Patch(Definition("voice", 0, ("original", "replacement")), original, replacement);
+        var error = new InvalidDataException("changed patch hash");
+        patch = patch with { Files = patch.Files.Select(file => file with { Provider = new BrokenPatchProvider(error) }).ToArray() };
+        using var manager = new AssetManager([new ResourceOverlayProvider(Base(original), [patch], Types)]);
+        var reports = new List<AssetDiagnostic>();
+        manager.Diagnostic += reports.Add;
+        Assert.That(await manager.AcquireAsync<byte[]>("original"), Is.Null);
+        var report = reports.Single();
+        Assert.That(report.Stage, Is.EqualTo(AssetLoadStage.Read));
+        Assert.That(report.Kind, Is.EqualTo(AssetFailureKind.InvalidData));
+        Assert.That(report.AssetId, Is.EqualTo("original"));
+        Assert.That(report.Path, Is.EqualTo(original.Path));
+        Assert.That(report.SourceAssetId, Is.EqualTo("replacement"));
+        Assert.That(report.Provider, Is.EqualTo("voice-patch.pak"));
+        Assert.That(report.Exception, Is.SameAs(error));
+    }
+
+    private sealed class BrokenPatchProvider(Exception error) : IAssetProvider
+    {
+        public string Name => "voice-patch.pak";
+        public bool Exists(string name) => true;
+        public IArchive OpenArchive(string name) => throw error;
+        public Task<IArchive> OpenArchiveAsync(string name, CancellationToken ct = default) => throw error;
+    }
+
     [TestCase("sprite")]
     [TestCase("audio")]
     [TestCase("video")]

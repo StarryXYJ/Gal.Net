@@ -17,4 +17,4 @@
 
 ## 发现与验证
 
-用户提供 Bloom 参数对象 angle/strength/softKnee/radius/threshold 并明确纠正。源码核对 TextureEffects.cs 的 descriptor 参数枚举；Core 开放对象回归验证附加对象/数组/空键、已知字段校验、重复成员、局部 patch 与别名边界。相关正式规范：docs/spec/entry-types.md、docs/spec/editor-game-localization.md。
+用户提供 Bloom 参数对象 angle/strength/softKnee/radius/threshold 并明确纠正。源码核对 TextureEffects.cs 的 descriptor 参数枚举；Core 开放对象回归验证附加对象/数组/空键、已知字段校验、重复成员、局部 patch 与别名边界。相关正式规范：docs/spec/runtime/entries.md、docs/spec/editor/localization.md。

@@ -28,4 +28,4 @@ Do not unsubscribe/dispose a presenter before sending it host reset events that 
 - `SampleGameRunner.DisposeAsync`
 - `GamePageViewModel.ResetScenePresentation`
 - `AvaloniaDialoguePresenter` subscribes to `NvlClearRequested` and clears `GamePage.Nvl`.
-- `docs/spec/control.md`
+- `docs/spec/presentation/game-view.md`

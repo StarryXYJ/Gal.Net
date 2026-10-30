@@ -19,4 +19,4 @@ AsyncPrimitiveInstanceTests.CompletionObserversSeeThePublishedFailure 在 Comple
 
 适用于会通过 Completed 触发 Engine 续跑的异步原语及其默认实现。不要为了让 await task 之后逻辑标记必定完成而反转错误发布顺序；不要只验证实例最终完成而遗漏 Engine 的错误路径。
 
-关联：docs/spec/runtime.md；features/F-20261013-02-parameter-and-sample-simplification/phase-4b1.md。
+关联：docs/spec/runtime/execution.md；features/F-20261013-02-parameter-and-sample-simplification/phase-4b1.md。

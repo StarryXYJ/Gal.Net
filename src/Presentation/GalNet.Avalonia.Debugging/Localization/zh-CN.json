@@ -1,0 +1,14 @@
+{
+  "Debug.Menu": "调试",
+  "Debug.ClearPlayerState": "清空游戏数据...",
+  "Debug.ReloadGameResources": "重新加载游戏资源并重启",
+  "Debug.Save": "存档",
+  "Debug.SaveProgressOnly": "仅进度存档",
+  "Debug.SaveGalgroup": "galgroup 存档",
+  "Debug.ShowLog": "日志面板 (L)",
+  "Debug.OpenLogDirectory": "打开日志目录",
+  "DebugLog.Title": "调试日志",
+  "DebugLog.Clear": "清空日志",
+  "DebugLog.OpenDirectory": "打开日志目录",
+  "DebugLog.Close": "关闭"
+}

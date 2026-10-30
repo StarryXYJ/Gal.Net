@@ -1,40 +1,45 @@
-using GalNet.Contracts.Builtins.Assets;
-using DynamicLocalization.Core;
-using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Composition;
-using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
-using GalNet.Core.Assets;
 using GalNet.Contracts.Builtins.Audio;
-using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Contracts.Builtins;
+using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins.Gallery;
+using GalNet.Core.Assets;
 using GalNet.Game.Controls.Forms;
-using GalNet.Media.LibVlc;
+using GalNet.GameHost.Content;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Project.Contracts;
-using GalNet.GameHost.Content;
-#if GALNET_GAME_DEBUG
-using GalNet.Sample.Avalonia.Debug;
-#endif
+using GalNet.Media.LibVlc;
+using GalNet.Avalonia.GameHost.ViewModels;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Sample.Avalonia.Services;
-using GalNet.Sample.Avalonia.ViewModels;
 using GalNet.Sample.Avalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
+#if GALNET_GAME_DEBUG
+using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
+#endif
 
 namespace GalNet.Sample.Avalonia;
 
-/// <summary>Project choices. The host owns services and resources; modules borrow platform ports.</summary>
+/// <summary>Project choices and desktop services owned by this Sample.</summary>
 internal static class SampleCustomization
 {
     internal static GamePalette PlayerPalette { get; } = GamePalette.Mono;
     internal static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(PlayerPalette);
+
+    internal static void ConfigureView(GalNet.Avalonia.GameHost.Views.PlayerView view)
+    {
+        view.Resources.MergedDictionaries.Add(PlayerPalette.CreateResources());
+        view.Styles.Add(PlayerTheme.CreateStyles());
+    }
 
     internal static void ConfigureServices(IServiceCollection services, bool enableDebug = true, Action<IPageViewRegistryBuilder>? configureViews = null)
     {
@@ -47,32 +52,27 @@ internal static class SampleCustomization
             .AddScoped<IPlayerStartup, AvaloniaPlayerStartup>()
             .AddScoped<LanguageSelectionViewModel>()
             .AddScoped<IAvaloniaPlayerSettings>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
-            .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<IAvaloniaPlayerSettings>())
-            .AddScoped<SampleGameSessionService>()
+            .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<IAvaloniaPlayerSettings>());
+        services.AddScoped<SampleGameSessionService>()
+            .AddScoped<AvaloniaGameSession>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddScoped<IGameSessionService>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddTransient<MainWindow>();
 #if GALNET_GAME_DEBUG
-        if (enableDebug) services.AddSampleDebug();
-        if (enableDebug) services.AddScoped<SampleExternalDebug>();
+        if (enableDebug) SampleDebugConfiguration.Configure(services);
 #endif
     }
 
     internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
+    internal static AvaloniaPlayerLocalization CreateLocalizationService() =>
+#if GALNET_GAME_DEBUG
+        AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(GameDebugViewModel).Assembly, typeof(SampleCustomization).Assembly]);
+#else
+        AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(SampleCustomization).Assembly]);
+#endif
 
-    internal static AvaloniaPlayerLocalization CreateLocalizationService()
-    {
-        var cultureService = new CultureService();
-        var provider = new JsonLocalizationProvider();
-        provider.Initialize(new JsonLocalizationProviderOptions
-        {
-            BasePath = "Localization",
-            UseEmbeddedResources = true,
-            Assembly = typeof(SampleCustomization).Assembly
-        });
-        cultureService.RegisterProvider(provider);
-        cultureService.SetCulture("en-US");
-        return new AvaloniaPlayerLocalization(cultureService, [provider]);
-    }
+    internal static string GetProfileDirectory(string content, string? profileRoot = null) =>
+        GalNet.Storage.FileSystem.GameProfilePaths.GetProfileDirectory(content,
+            profileRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet"));
 
     internal static (IResourceTypeCatalog Resources, IGalleryTypeCatalog Gallery) CreateContentCatalogs()
     {
@@ -106,10 +106,9 @@ internal static class SampleCustomization
             presentation.Video, presentation.AudioModule, presentation.ImageVariants)
     };
 
-    internal static void ConfigureExecution(
-        GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
-        GameContent content, AvaloniaEffectRuntime? effects, IAudioPlaybackHost? audio,
-        IVideoPresenter? video, BuiltinAudioModule? audioModule, GalNet.Contracts.Builtins.Variants.ImageVariantsCatalog? imageVariants = null)
+    internal static void ConfigureExecution(GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,
+        GameContent content, AvaloniaEffectRuntime? effects, IAudioPlaybackHost? audio, IVideoPresenter? video,
+        BuiltinAudioModule? audioModule, GalNet.Contracts.Builtins.Variants.ImageVariantsCatalog? imageVariants = null)
     {
         registration.UseCatalog(ProjectSchemas.CreateCatalog());
         registration.AddBuiltinImplementations(registration.BuildCatalog(),

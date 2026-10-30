@@ -1,12 +1,14 @@
 <page:ScreenshotDialog xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
-             x:Class="GalNet.Avalonia.Themes.Layouts.Paper.PaperScreenshotDialog" Classes="galnet-player">
+             xmlns:services="using:GalNet.Avalonia.GameView.Services"
+             x:Class="GalNet.Avalonia.Themes.Layouts.Paper.PaperScreenshotDialog"
+             x:DataType="services:ScreenshotDialogViewModel" x:CompileBindings="True" Classes="galnet-player">
   <Border MaxWidth="760"
           Padding="32"
           Background="{DynamicResource GalNet.Brush.Surface}"
           CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
-    <Grid RowDefinitions="Auto,300,Auto,Auto,Auto,Auto"
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
           RowSpacing="14">
       <TextBlock Text="{text:PlayerText Screenshot.Title, 'Save screenshot'}"
                  FontSize="26"
@@ -21,6 +23,7 @@
       </Border>
 
       <Grid Grid.Row="2"
+            Name="DirectoryPanel" IsVisible="{Binding CanChooseDestination}"
             ColumnDefinitions="*,Auto"
             ColumnSpacing="8">
         <StackPanel Spacing="4">
@@ -34,6 +37,7 @@
       </Grid>
 
       <StackPanel Grid.Row="3"
+                  Name="FileNamePanel" IsVisible="{Binding CanChooseDestination}"
                   Spacing="4">
         <TextBlock Text="{text:PlayerText Screenshot.FileName, 'File name'}" />
         <TextBox Name="FileNameBox"

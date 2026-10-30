@@ -6,6 +6,7 @@ namespace GalNet.Editor.Services.Interfaces;
 public interface IGameExportService
 {
     Task<GameExportResult> ExportAsync(string outputDirectory, CancellationToken cancellationToken = default);
+    Task<GameExportResult> ExportDirectoryAsync(string outputDirectory, CancellationToken cancellationToken = default);
 }
 
 public sealed record GameExportResult(bool Success, string? PackagePath, string? Error)

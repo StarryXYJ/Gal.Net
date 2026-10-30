@@ -29,6 +29,6 @@
 
 ## 文档与经验
 
-已同步 [Runtime](../../docs/spec/runtime.md)、[游戏页面](../../docs/spec/control.md)、[i18n](../../docs/spec/i18n.md) 和 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。正式文档保留当前能力与边界，未加入未实现方案。
+已同步 [Runtime](../../docs/spec/runtime/execution.md)、[游戏页面](../../docs/spec/presentation/game-view.md)、[i18n](../../docs/spec/content/localization.md) 和 [Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。正式文档保留当前能力与边界，未加入未实现方案。
 
 经验见 [agent-lessons.md](agent-lessons.md)：run scope、作者校验作用域、显式文本 delay、Fluent 模板状态覆盖。`.agents` 只读，尚未晋升或更新长期索引，临时记录保留原始证据。

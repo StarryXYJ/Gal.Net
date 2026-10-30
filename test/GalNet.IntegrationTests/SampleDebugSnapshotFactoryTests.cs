@@ -1,19 +1,19 @@
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Runtime;
 using GalNet.Core.Variable;
-using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
 using GalVariable = GalNet.Core.Variable.Variable;
 
 namespace GeneralTest.Diagnostics;
 
-public sealed class SampleDebugSnapshotFactoryTests
+public sealed class DebugSnapshotFactoryTests
 {
     [Test]
     public void ProgressOnly_preserves_the_current_position_and_save_variables_without_scene_state()
     {
         var source = CreateSourceSnapshot(entryIndex: 7);
 
-        var snapshot = SampleDebugSnapshotFactory.Create(source, SampleDebugSaveKind.ProgressOnly);
+        var snapshot = DebugSnapshotFactory.Create(source, DebugSaveKind.ProgressOnly);
 
         Assert.Multiple(() =>
         {
@@ -35,7 +35,7 @@ public sealed class SampleDebugSnapshotFactoryTests
     {
         var source = CreateSourceSnapshot(entryIndex: 7);
 
-        var snapshot = SampleDebugSnapshotFactory.Create(source, SampleDebugSaveKind.GalGroupStart);
+        var snapshot = DebugSnapshotFactory.Create(source, DebugSaveKind.GalGroupStart);
 
         Assert.Multiple(() =>
         {

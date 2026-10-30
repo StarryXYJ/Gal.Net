@@ -18,6 +18,6 @@ LocalizationReferenceIndexTests.NestedRoleFieldsUseActualSerializerWireNames 分
 
 本地化、角色、变量或资产等需要遍历嵌套 DTO 的索引和重写器。不要用显示标签或规范 schema 名猜测作者 JSON 路径；不要把未知结构当作无引用。相关共享结构化表单重建 FieldDescriptor 时也须保留 Semantic。
 
-关联：docs/spec/editor-game-localization.md；features/F-20261019-01-editor-game-localization/phase-3.md。
+关联：docs/spec/editor/localization.md；features/F-20261019-01-editor-game-localization/phase-3.md。
 
 多层 DTO 同样必须沿实际外层 JsonOptions 递归，不在每个子字段恢复其默认配置；否则外层 camelCase 的第二层会再次被当成 PascalCase。NestedWireOptionsPropagateThroughMultipleDtoLevels 两种策略用例通过，最终 Shared 264 项全通过。

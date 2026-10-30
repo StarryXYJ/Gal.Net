@@ -5,6 +5,7 @@
     {
       "id": "stop-snow",
       "type": "particle.stop",
+      "condition": "",
       "parameters": {
         "instanceId": "route-particles"
       }
@@ -12,6 +13,7 @@
     {
       "id": "hide-portrait",
       "type": "layer.hide",
+      "condition": "",
       "parameters": {
         "handleId": "teacher"
       }
@@ -19,6 +21,7 @@
     {
       "id": "hide-toy-backdrop",
       "type": "layer.hide",
+      "condition": "",
       "parameters": {
         "handleId": "shader-toy-background"
       }
@@ -26,19 +29,21 @@
     {
       "id": "visual-background",
       "type": "layer.show",
+      "condition": "",
       "parameters": {
-        "handleId": "visual-bg",
         "assetId": "a1000000000000000000000000000001",
-        "z": 0,
-        "displayMode": "Fill"
+        "displayMode": "Fill",
+        "handleId": "visual-bg",
+        "z": 0
       }
     },
     {
       "id": "visual-portrait",
       "type": "variants.show",
+      "condition": "",
       "parameters": {
-        "handleId": "visual-hero",
         "assetId": "a1000000000000000000000000000020",
+        "handleId": "visual-hero",
         "selection": {
           "expression": "shy"
         },
@@ -52,58 +57,64 @@
     {
       "id": "visual-intro",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.visual-intro.content"
+        "content": "group.ending.entry.visual-intro.content",
+        "speaker": "guide"
       }
     },
     {
       "id": "visual-bloom",
       "type": "effect.apply",
+      "condition": "",
       "parameters": {
         "instanceId": "visual-bloom",
-        "program": "b1000000000000000000000000000001",
         "parameters": {
           "strength": 2,
           "radius": 24
-        }
+        },
+        "program": "b1000000000000000000000000000001"
       }
     },
     {
       "id": "visual-vignette",
       "type": "effect.apply",
+      "condition": "",
       "parameters": {
         "instanceId": "visual-vignette",
-        "program": "b1000000000000000000000000000003",
         "parameters": {
           "strength": 0.8,
           "radius": 0.2
-        }
+        },
+        "program": "b1000000000000000000000000000003"
       }
     },
     {
       "id": "visual-grade",
       "type": "effect.apply",
+      "condition": "",
       "parameters": {
         "instanceId": "visual-grade",
-        "program": "b1000000000000000000000000000004",
         "parameters": {
           "temperature": 0.4,
           "saturation": 0.8
-        }
+        },
+        "program": "b1000000000000000000000000000004"
       }
     },
     {
       "id": "visual-grade-line",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.visual-grade.content"
+        "content": "group.ending.entry.visual-grade.content",
+        "speaker": "guide"
       }
     },
     {
       "id": "stop-visual-bloom",
       "type": "effect.stop",
+      "condition": "",
       "parameters": {
         "instanceId": "visual-bloom"
       }
@@ -111,6 +122,7 @@
     {
       "id": "stop-visual-vignette",
       "type": "effect.stop",
+      "condition": "",
       "parameters": {
         "instanceId": "visual-vignette"
       }
@@ -118,6 +130,7 @@
     {
       "id": "stop-visual-grade",
       "type": "effect.stop",
+      "condition": "",
       "parameters": {
         "instanceId": "visual-grade"
       }
@@ -125,42 +138,46 @@
     {
       "id": "depth-bg",
       "type": "effect.apply",
+      "condition": "",
       "parameters": {
         "instanceId": "depth-bg",
-        "targetHandleId": "visual-bg",
-        "program": "b1000000000000000000000000000005",
         "parameters": {
           "focusZ": 10,
           "falloff": 2,
           "maxRadius": 24
-        }
+        },
+        "program": "b1000000000000000000000000000005",
+        "targetHandleId": "visual-bg"
       }
     },
     {
       "id": "depth-hero",
       "type": "effect.apply",
+      "condition": "",
       "parameters": {
         "instanceId": "depth-hero",
-        "targetHandleId": "visual-hero",
-        "program": "b1000000000000000000000000000005",
         "parameters": {
           "focusZ": 10,
           "falloff": 2,
           "maxRadius": 24
-        }
+        },
+        "program": "b1000000000000000000000000000005",
+        "targetHandleId": "visual-hero"
       }
     },
     {
       "id": "visual-depth",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.visual-depth.content"
+        "content": "group.ending.entry.visual-depth.content",
+        "speaker": "guide"
       }
     },
     {
       "id": "rack-focus",
       "type": "timeline.play",
+      "condition": "",
       "parameters": {
         "timeline": {
           "playbackHandleId": "visual-rack-focus",
@@ -205,14 +222,16 @@
     {
       "id": "visual-focus",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.visual-focus.content"
+        "content": "group.ending.entry.visual-focus.content",
+        "speaker": "guide"
       }
     },
     {
       "id": "stop-depth-bg",
       "type": "effect.stop",
+      "condition": "",
       "parameters": {
         "instanceId": "depth-bg"
       }
@@ -220,6 +239,7 @@
     {
       "id": "stop-depth-hero",
       "type": "effect.stop",
+      "condition": "",
       "parameters": {
         "instanceId": "depth-hero"
       }
@@ -227,147 +247,160 @@
     {
       "id": "jump",
       "type": "preset.motion",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-jump",
+        "distance": 24,
+        "durationFrames": 24,
         "handleId": "visual-hero",
         "motion": "Jump",
-        "distance": 24,
-        "durationFrames": 24
+        "playbackHandleId": "visual-jump"
       }
     },
     {
       "id": "nod",
       "type": "preset.motion",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-nod",
+        "durationFrames": 30,
         "handleId": "visual-hero",
         "motion": "Nod",
-        "rotationDegrees": 8,
-        "durationFrames": 30
+        "playbackHandleId": "visual-nod",
+        "rotationDegrees": 8
       }
     },
     {
       "id": "shake",
       "type": "preset.shake",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-shake",
-        "handleId": "visual-hero",
         "amplitude": 12,
         "angle": 15,
-        "durationFrames": 36
+        "durationFrames": 36,
+        "handleId": "visual-hero",
+        "playbackHandleId": "visual-shake"
       }
     },
     {
       "id": "radial-lines",
       "type": "preset.speedLines",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-radial-lines",
-        "program": "b1000000000000000000000000000006",
+        "durationFrames": 90,
         "parameters": {
           "mode": "Radial",
           "density": 80,
           "color": "#FFFFFF"
         },
-        "durationFrames": 90
+        "playbackHandleId": "visual-radial-lines",
+        "program": "b1000000000000000000000000000006"
       }
     },
     {
       "id": "directional-lines",
       "type": "preset.speedLines",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-directional-lines",
-        "program": "b1000000000000000000000000000006",
+        "durationFrames": 90,
         "parameters": {
           "mode": "Directional",
           "angle": 0,
           "color": "#FFFFFF"
         },
-        "speed": 5,
-        "durationFrames": 90
+        "playbackHandleId": "visual-directional-lines",
+        "program": "b1000000000000000000000000000006",
+        "speed": 5
       }
     },
     {
       "id": "impact",
       "type": "preset.impact",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-impact",
-        "program": "b1000000000000000000000000000006",
-        "handleId": "visual-hero",
         "amplitude": 18,
-        "durationFrames": 48
+        "durationFrames": 48,
+        "handleId": "visual-hero",
+        "playbackHandleId": "visual-impact",
+        "program": "b1000000000000000000000000000006"
       }
     },
     {
       "id": "visual-impact",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.visual-impact.content"
+        "content": "group.ending.entry.visual-impact.content",
+        "speaker": "guide"
       }
     },
     {
       "id": "push",
       "type": "preset.motion",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-push",
-        "handleId": "visual-bg",
-        "motion": "Push",
-        "scale": 1.1,
         "anchorX": 200,
         "distance": 0,
-        "durationFrames": 60
+        "durationFrames": 60,
+        "handleId": "visual-bg",
+        "motion": "Push",
+        "playbackHandleId": "visual-push",
+        "scale": 1.1
       }
     },
     {
       "id": "wipe",
       "type": "transition.reveal",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-wipe",
-        "oldHandleId": "visual-bg",
-        "newHandleId": "visual-bg2",
         "assetId": "a1000000000000000000000000000002",
-        "program": "b1000000000000000000000000000007",
+        "durationFrames": 60,
         "mode": "Wipe",
-        "durationFrames": 60
+        "newHandleId": "visual-bg2",
+        "oldHandleId": "visual-bg",
+        "playbackHandleId": "visual-wipe",
+        "program": "b1000000000000000000000000000007"
       }
     },
     {
       "id": "blur",
       "type": "transition.blur",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-blur",
-        "oldHandleId": "visual-bg2",
-        "newHandleId": "visual-bg3",
         "assetId": "a1000000000000000000000000000001",
         "blurProgram": "b1000000000000000000000000000002",
-        "durationFrames": 60
+        "durationFrames": 60,
+        "newHandleId": "visual-bg3",
+        "oldHandleId": "visual-bg2",
+        "playbackHandleId": "visual-blur"
       }
     },
     {
       "id": "mask",
       "type": "transition.reveal",
+      "condition": "",
       "parameters": {
-        "playbackHandleId": "visual-mask",
-        "oldHandleId": "visual-bg3",
-        "newHandleId": "visual-bg4",
         "assetId": "a1000000000000000000000000000002",
-        "program": "b1000000000000000000000000000008",
-        "mode": "Mask",
+        "durationFrames": 60,
         "maskAsset": "a1000000000000000000000000000003",
-        "durationFrames": 60
+        "mode": "Mask",
+        "newHandleId": "visual-bg4",
+        "oldHandleId": "visual-bg3",
+        "playbackHandleId": "visual-mask",
+        "program": "b1000000000000000000000000000008"
       }
     },
     {
       "id": "visual-transitions",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.visual-transitions.content"
+        "content": "group.ending.entry.visual-transitions.content",
+        "speaker": "guide"
       }
     },
     {
       "id": "hide-visual-hero",
       "type": "layer.hide",
+      "condition": "",
       "parameters": {
         "handleId": "visual-hero"
       }
@@ -375,9 +408,10 @@
     {
       "id": "line",
       "type": "dialogue.text",
+      "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.ending.entry.line.content"
+        "content": "group.ending.entry.line.content",
+        "speaker": "guide"
       }
     }
   ]

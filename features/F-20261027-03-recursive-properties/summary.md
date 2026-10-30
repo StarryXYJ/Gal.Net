@@ -51,4 +51,4 @@ Transform/Flipbook 保留专用布局，子字段读取、修改和草稿保存�
 
 实际后端仍使用 System.Text.Json；没有重写 JSON 序列化器、替换全部 JsonElement、扩展 Prefab/多对象系统或改变运行/存档格式。当前只读结构解析集中复用现有 Schema，未强制改写所有生成 DTO 的公共接口。完整编译/运行和跨字段领域规则继续由原契约负责。
 
-正式行为同步：[字段契约](../../docs/spec/entry-types.md)、[共享表单](../../docs/spec/control.md)、[本地化索引](../../docs/spec/editor-game-localization.md)、[Group 编辑](../../docs/spec/editor-groups.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)；接入示例见[创作工作区手册](../../docs/manual/editor-authoring-workspace.md#声明嵌套结构)。经验见 `.agents/lessons/L-20261027-06-property-wire-boundaries.md`。
+正式行为同步：[字段契约](../../docs/spec/runtime/entries.md)、[共享表单](../../docs/spec/presentation/game-view.md)、[本地化索引](../../docs/spec/editor/localization.md)、[Group 编辑](../../docs/spec/editor/groups.md)、[历史与保存](../../docs/spec/editor/history-and-save.md)；接入示例见[创作工作区手册](../../docs/manual/extensions/parameter-editors.md#声明嵌套结构)。经验见 `.agents/lessons/L-20261027-06-property-wire-boundaries.md`。

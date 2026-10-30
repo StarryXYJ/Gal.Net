@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using GalNet.Avalonia.GameView.MarkupExtensions;
 
 namespace GalNet.Avalonia.GameView.Input;
@@ -21,12 +22,14 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
         foreach (var device in Enum.GetValues<PlayerInputDevice>())
         {
             var rows = new StackPanel { Spacing = 16, Margin = new Thickness(0, 16, 0, 0) };
-            var supported = device != PlayerInputDevice.Gamepad || settings.GamepadSupported;
-            if (device == PlayerInputDevice.Touch) supported = settings.TouchSupported;
+            bool Supported() => device switch
+            {
+                PlayerInputDevice.Gamepad => settings.GamepadSupported,
+                PlayerInputDevice.Touch => settings.TouchSupported, _ => true
+            };
             if (device == PlayerInputDevice.Gamepad)
             {
-                var layout = new ComboBox { HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch };
-                layout.ItemsSource = new Control[] { Text("Input.SouthConfirms"), Text("Input.EastConfirms") };
+                var layout = Choice(["Input.SouthConfirms", "Input.EastConfirms"]);
                 _refresh.Add(() => layout.SelectedIndex = settings.EastConfirms ? 1 : 0);
                 layout.SelectionChanged += async (_, _) =>
                 {
@@ -38,22 +41,24 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
                 rows.Children.Add(Text("Input.ConfirmLayout"));
                 rows.Children.Add(layout);
             }
-            if (!supported) rows.Children.Add(Text("Input.DeviceUnavailable"));
+            var unavailable = Text("Input.DeviceUnavailable");
+            rows.Children.Add(unavailable);
+            _refresh.Add(() => unavailable.IsVisible = !Supported());
             foreach (var action in PlayerInputSettings.Actions)
             {
                 var row = new Grid { ColumnDefinitions = new ColumnDefinitions("180,*,*,Auto"), ColumnSpacing = 12 };
                 row.Children.Add(Text(action.NameKey));
-                var available = supported && settings.IsActionAvailable(action.Id) && !(device == PlayerInputDevice.Touch && action.IsHold);
+                bool Available() => Supported() && settings.IsActionAvailable(action.Id) && !(device == PlayerInputDevice.Touch && action.IsHold);
                 for (var index = 0; index < 2; index++)
                 {
                     var slot = index;
                     Control editor;
                     if (device == PlayerInputDevice.Touch)
                     {
-                        var combo = new ComboBox { HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch, IsEnabled = available };
-                        combo.ItemsSource = new[] { "None" }.Concat(PlayerInputSettings.TouchGestures).Select(gesture => Text("Input.Touch." + gesture)).ToArray();
+                        var combo = Choice(new[] { "None" }.Concat(PlayerInputSettings.TouchGestures).Select(gesture => "Input.Touch." + gesture));
                         _refresh.Add(() =>
                         {
+                            combo.IsEnabled = Available();
                             var current = settings.GetBindings(action.Id, device).ElementAtOrDefault(slot)?.Gesture;
                             combo.SelectedIndex = string.IsNullOrEmpty(current) ? 0 : PlayerInputSettings.TouchGestures.ToList().IndexOf(current) + 1;
                         });
@@ -67,7 +72,8 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
                     }
                     else
                     {
-                        var capture = new InputBindingCapture(settings, action.Id, device, slot) { IsEnabled = available };
+                        var capture = new InputBindingCapture(settings, action.Id, device, slot);
+                        _refresh.Add(() => capture.IsEnabled = Available());
                         _captures.Add(capture);
                         _refresh.Add(capture.Refresh);
                         editor = capture;
@@ -75,7 +81,8 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
                     Grid.SetColumn(editor, slot + 1);
                     row.Children.Add(editor);
                 }
-                var clear = new Button { Content = Text("Input.Clear"), IsEnabled = available };
+                var clear = new Button { Content = Text("Input.Clear") };
+                _refresh.Add(() => clear.IsEnabled = Available());
                 clear.Click += async (_, _) =>
                 {
                     await settings.SetBindingAsync(action.Id, device, 1, null);
@@ -107,6 +114,12 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
         settings.Changed += Refresh;
         Refresh();
     }
+    private static ComboBox Choice(IEnumerable<string> keys) => new()
+    {
+        HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch,
+        ItemsSource = keys.ToArray(),
+        ItemTemplate = new FuncDataTemplate<string>((key, _) => Text(key))
+    };
     private static PlayerTextBlock Text(string? key) => new() { Key = key, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap };
     private void Refresh()
     {

@@ -20,11 +20,11 @@ public sealed class Archive : IPakArchive
     });
     private readonly Dictionary<string, EntryDescriptor> _entries;
     private readonly Dictionary<string, string> _pathToId;
-    private readonly byte[] _dataSection;
+    private readonly ArraySegment<byte> _dataSection;
     private readonly PakDescriptor _descriptor;
     private bool _disposed;
 
-    private Archive(string name, byte[] dataSection, Dictionary<string, EntryDescriptor> entries,
+    private Archive(string name, ArraySegment<byte> dataSection, Dictionary<string, EntryDescriptor> entries,
         Dictionary<string, string> pathToId, PakDescriptor descriptor)
     {
         Name = name;
@@ -41,21 +41,31 @@ public sealed class Archive : IPakArchive
         entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, entry.OriginalLength, entry.Hash)).ToArray();
     public bool Contains(string assetId) => _entries.ContainsKey(assetId.Trim());
 
-    public IGameFile? GetAsset(string assetId)
+    public IGameFile? GetAsset(string assetId) => GetAsset(assetId, CancellationToken.None);
+
+    public IGameFile? GetAsset(string assetId, CancellationToken ct)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ct.ThrowIfCancellationRequested();
         if (!_entries.TryGetValue(assetId.Trim(), out var entry)) return null;
-        var raw = _dataSection.AsSpan((int)entry.Offset, (int)entry.StoredLength).ToArray();
-        var data = entry.Compression == CompressionMode.None ? raw : CompressionHelper.Decompress(raw, entry.Compression);
+        using var source = new MemoryStream(_dataSection.Array!, _dataSection.Offset + (int)entry.Offset,
+            (int)entry.StoredLength, writable: false);
+        var data = CompressionHelper.Decompress(source, entry.Compression, (int)entry.OriginalLength, ct);
         if (data.LongLength != entry.OriginalLength || CryptoHelper.HashSHA256(data) != entry.Hash)
             throw new InvalidDataException($"PAK resource '{assetId}' failed size/hash verification.");
+        ct.ThrowIfCancellationRequested();
         var file = new GameFile(entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, data, entry.Hash);
         ValidateCompiledDependencies(file);
         return file;
     }
 
-    public IGameFile? GetAssetByPath(string path) =>
-        _pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id) ? GetAsset(id) : null;
+    public IGameFile? GetAssetByPath(string path) => GetAssetByPath(path, CancellationToken.None);
+
+    public IGameFile? GetAssetByPath(string path, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        return _pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id) ? GetAsset(id, ct) : null;
+    }
 
     public void Dispose()
     {
@@ -64,8 +74,20 @@ public sealed class Archive : IPakArchive
         _pathToId.Clear();
     }
 
-    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes)
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes) =>
+        Deserialize(name, pakData, resourceTypes, CancellationToken.None);
+
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes, CancellationToken ct) =>
+        Deserialize(name, pakData, resourceTypes, ownsData: false, ct);
+
+    /// <summary>Takes exclusive ownership of a fresh provider buffer; the caller must never reuse or modify it.</summary>
+    internal static Archive DeserializeOwned(string name, byte[] pakData, IResourceTypeCatalog resourceTypes,
+        CancellationToken ct = default) => Deserialize(name, pakData, resourceTypes, ownsData: true, ct);
+
+    private static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes,
+        bool ownsData, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         try
         {
             using var stream = new MemoryStream(pakData, writable: false);
@@ -85,6 +107,7 @@ public sealed class Archive : IPakArchive
             var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < count; i++)
             {
+                ct.ThrowIfCancellationRequested();
                 var id = ReadString(reader);
                 var path = ReadString(reader);
                 var type = ReadString(reader);
@@ -100,19 +123,22 @@ public sealed class Archive : IPakArchive
                 if (!entries.TryAdd(id, entry) || !paths.TryAdd(AssetPathHelper.Normalize(path), id))
                     throw new InvalidDataException("Duplicate PAK resource ID or logical path.");
             }
-            var data = pakData[(int)stream.Position..];
+            var dataOffset = (int)stream.Position;
+            var dataLength = pakData.Length - dataOffset;
             long position = 0;
             foreach (var entry in entries.Values)
             {
-                if (entry.Offset != position || entry.StoredLength > data.LongLength - position)
+                if (entry.Offset != position || entry.StoredLength > dataLength - position)
                     throw new InvalidDataException("Invalid PAK data block range.");
                 position += entry.StoredLength;
             }
-            if (position != data.LongLength) throw new InvalidDataException("Unexpected PAK trailing bytes.");
+            if (position != dataLength) throw new InvalidDataException("Unexpected PAK trailing bytes.");
             ValidateTargets(descriptor, entries.Keys);
+            var data = ownsData ? new ArraySegment<byte>(pakData, dataOffset, dataLength)
+                : new ArraySegment<byte>(pakData[dataOffset..]);
             var archive = new Archive(name, data, entries, paths, descriptor);
             foreach (var id in entries.Where(pair => pair.Value.Metadata.TypeId == ImageVariantsCodec.ResourceType).Select(pair => pair.Key))
-                archive.GetAsset(id);
+                archive.GetAsset(id, ct);
             return archive;
         }
         catch (Exception exception) when (exception is EndOfStreamException or JsonException or DecoderFallbackException or ArgumentException or OverflowException)
@@ -122,7 +148,11 @@ public sealed class Archive : IPakArchive
     }
 
     public static byte[] Serialize(string name, IReadOnlyList<IGameFile> files,
-        IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli, PakDescriptor? descriptor = null)
+        IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli, PakDescriptor? descriptor = null) =>
+        PrepareSerialization(files, resourceTypes, compression, descriptor).ToArray();
+
+    internal static PreparedArchive PrepareSerialization(IReadOnlyList<IGameFile> files,
+        IResourceTypeCatalog resourceTypes, CompressionMode compression, PakDescriptor? descriptor)
     {
         ArgumentNullException.ThrowIfNull(files);
         if (!Enum.IsDefined(compression)) throw new ArgumentOutOfRangeException(nameof(compression));
@@ -174,9 +204,27 @@ public sealed class Archive : IPakArchive
             writer.Write(Utf8.GetBytes(entry.Hash));
             offset += stored.Length;
         }
-        foreach (var (_, stored) in entries) writer.Write(stored);
         writer.Flush();
-        return stream.ToArray();
+        return new PreparedArchive(stream.ToArray(), entries.Select(item => item.Data).ToArray(), offset);
+    }
+
+    // Payload preparation finishes before the caller opens its destination. This keeps
+    // validation/read failures from truncating an existing file and shares one wire writer.
+    internal sealed class PreparedArchive(byte[] header, byte[][] blocks, long payloadLength)
+    {
+        public byte[] ToArray()
+        {
+            var bytes = new byte[checked((int)(header.LongLength + payloadLength))];
+            using var output = new MemoryStream(bytes, writable: true);
+            WriteTo(output);
+            return bytes;
+        }
+
+        public void WriteTo(Stream destination)
+        {
+            destination.Write(header);
+            foreach (var block in blocks) destination.Write(block);
+        }
     }
 
     private static void ValidateCompiledDependencies(GameFile file)

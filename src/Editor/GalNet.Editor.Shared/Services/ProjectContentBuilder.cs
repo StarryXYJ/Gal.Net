@@ -9,6 +9,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Abstraction.Documents;
 using GalNet.Editor.Shared.Commands;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -77,19 +78,19 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
             if (Directory.Exists(targetRoot))
             {
                 backupRoot = targetRoot + $".previous-{Guid.NewGuid():N}";
-                Directory.Move(targetRoot, backupRoot);
+                await FilePublication.MoveDirectoryAsync(targetRoot, backupRoot, cancellationToken).ConfigureAwait(false);
             }
 
             try
             {
-                Directory.Move(stageRoot, targetRoot);
+                await FilePublication.MoveDirectoryAsync(stageRoot, targetRoot, cancellationToken).ConfigureAwait(false);
                 stageRoot = "";
             }
             catch
             {
                 if (backupRoot is not null && !Directory.Exists(targetRoot))
                 {
-                    Directory.Move(backupRoot, targetRoot);
+                    await FilePublication.MoveDirectoryAsync(backupRoot, targetRoot).ConfigureAwait(false);
                     backupRoot = null;
                 }
                 throw;
@@ -108,7 +109,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
             if (!string.IsNullOrEmpty(stageRoot) && Directory.Exists(stageRoot))
                 Directory.Delete(stageRoot, recursive: true);
             if (backupRoot is not null && Directory.Exists(backupRoot) && !Directory.Exists(targetRoot))
-                Directory.Move(backupRoot, targetRoot);
+                await FilePublication.MoveDirectoryAsync(backupRoot, targetRoot).ConfigureAwait(false);
         }
     }
 

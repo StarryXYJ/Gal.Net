@@ -28,4 +28,4 @@ Sample 独立模块声明 `sample.screenshot(fileName?)`，不属于 BuiltinSche
 
 截图参数的声明源为 ScreenshotOptions 的公开属性及 Field 特性；生成 Schema 和成员访问，由 ForDto 建立契约参数表和 FieldDataType，Editor 直接绑定文档参数。FileNameParameter 仅是生成字段的投影，复杂安全文件名规则仍由 ScreenshotSchema.ValidateFileName 校验。生成器采用 Analyzer 引用并去掉继承的 OutputPath/OutDir，独立部署不会带入生成器或 Roslyn 构建产物。普通 DTO 不需 UI 依赖；需要自动刷新时由宿主选择 INotifyPropertyChanged/ObservableObject。
 
-Avalonia 平台的项目接入集中在 SampleCustomization.ConfigureExecution，截图模块在此注册；新增类似业务无需改动 App、Session、Runner 或关闭链。主题、本地化启动、字段工厂与资源策略入口见 [定制 Avalonia Sample 手册](../../../docs/manual/customize-avalonia-sample.md)。
+Avalonia 平台的项目接入集中在 SampleCustomization.ConfigureExecution，截图模块在此注册；新增类似业务无需改动 App、Session、Runner 或关闭链。主题、本地化启动、字段工厂与资源策略入口见 [定制 Avalonia Sample 手册](../../../docs/manual/extensions/customize-sample.md)。

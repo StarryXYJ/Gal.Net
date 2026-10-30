@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
 
-public sealed class ProjectContentSessionTests
+public sealed partial class ProjectContentSessionTests
 {
     private string _root = null!;
     private EditorDocumentService _documents = null!;
@@ -86,7 +86,7 @@ public sealed class ProjectContentSessionTests
         for (var index = 0; index < 20; index++) dirty |= _session.IsDirty;
         var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
         Assert.That(dirty, Is.False);
-        Assert.That(allocated, Is.LessThan(2_000_000), "Status reads must not serialize and clone the complete project.");
+        Assert.That(allocated, Is.LessThan(30_000), "Status reads must not allocate an enumerator per entry or serialize the complete project.");
     }
 
     [Test]

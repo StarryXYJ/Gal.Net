@@ -56,7 +56,7 @@ SampleCustomization 集中服务/主题/本地化/字段工厂/资源选择/执�
 
 完整 GalNet.slnx 独立输出编译 0 错误、46 个现有/输出目录/审计源警告，日志 phase6-build.log；输出仅作为编译验证，不作为发布包。Sample.Contracts 独立构建并部署至 GameTestCase/Contracts，CLI 独立构建后 schema show sample.screenshot 成功，实际项目编译 4 个 Group、diagnostics=[]，证据 phase6-contracts.log、phase6-cli-build.log、phase6-schema.json、phase6-game-build.json。复用原 16 条 Composite fixture，再次实际编译为 20 条 Primitive；按对象键规范化比较后完整文档与 phase5d-after.galgroup 相同，含参数/条件/批次/阅读边界/source map，证据 phase6-composites-comparison.json。临时游戏项目 fixture 已精确清除。
 
-正式事实见 [开发指南](../../docs/development.md)、[条目契约](../../docs/spec/entry-types.md)、[共享控件](../../docs/spec/control.md)、[运行时](../../docs/spec/runtime.md)。
+正式事实见 [开发指南](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md)、[条目契约](../../docs/spec/runtime/entries.md)、[共享控件](../../docs/spec/presentation/game-view.md)、[运行时](../../docs/spec/runtime/execution.md)。
 
 ## 保留与暂缓
 

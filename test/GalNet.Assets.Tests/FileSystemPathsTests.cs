@@ -37,7 +37,7 @@ public sealed class FileSystemPathsTests
         {
             DirectoryLinks.Create(link, real);
             Assert.That(() => FileSystemPaths.RequireNoLinks(Path.Combine(link, "missing", "file"), "linked"),
-                Throws.TypeOf<InvalidDataException>().With.Message.EqualTo("linked"));
+                Throws.TypeOf<InvalidDataException>().With.Message.EqualTo($"linked Path: '{link}'."));
             Assert.That(() => FileSystemPaths.RequireNoLinks(Path.Combine(real, "missing", "file"), "linked"), Throws.Nothing);
         }
         finally

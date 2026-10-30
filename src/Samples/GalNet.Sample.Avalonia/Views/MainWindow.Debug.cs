@@ -1,6 +1,7 @@
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
+using GalNet.Avalonia.Debugging.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Ursa.Controls;
 
@@ -9,19 +10,19 @@ namespace GalNet.Sample.Avalonia.Views;
 public partial class MainWindow
 {
     private IServiceProvider _services = null!;
-    private SampleDebugLogStore? _debugLogStore;
-    private SampleDebugViewModel? _debugViewModel;
+    private GameDebugLogStore? _debugLogStore;
+    private GameDebugViewModel? _debugViewModel;
     private DebugLogWindow? _debugLogWindow;
     private DebugMenuView _debugMenu = null!;
 
     partial void InitializeDebug(IServiceProvider services)
     {
         _services = services;
-        _debugLogStore = services.GetService<SampleDebugLogStore>();
-        _debugViewModel = services.GetService<SampleDebugViewModel>();
+        _debugLogStore = services.GetService<GameDebugLogStore>();
+        _debugViewModel = services.GetService<GameDebugViewModel>();
         _debugMenu = new DebugMenuView();
         LeftContent = _debugMenu;
-        _debugMenu.IsVisible = false;
+        _debugMenu.IsVisible = _debugLogStore is not null && _debugViewModel is not null;
         _debugMenu.DataContext = _debugViewModel;
         if (_debugViewModel is not null)
         {
@@ -32,8 +33,10 @@ public partial class MainWindow
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
     }
 
-    partial void CompleteDebugStartup(string? error) =>
-        _debugMenu.IsVisible = error is null && _debugLogStore is not null && _debugViewModel is not null;
+    partial void CompleteDebugStartup(string? error)
+    {
+        if (_debugViewModel is not null) _debugViewModel.IsGameReady = error is null;
+    }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {
@@ -46,10 +49,10 @@ public partial class MainWindow
 
     private void OnLogRequested() => _ = ShowDebugLogAsync();
 
-    private async Task<bool> ConfirmAsync(SampleDebugPrompt prompt) =>
+    private async Task<bool> ConfirmAsync(GameDebugPrompt prompt) =>
         await MessageBox.ShowAsync(this, prompt.Message, prompt.Title, button: MessageBoxButton.OKCancel) == MessageBoxResult.OK;
 
-    private Task<MessageBoxResult> NotifyAsync(SampleDebugNotification notification) =>
+    private Task<MessageBoxResult> NotifyAsync(GameDebugNotification notification) =>
         MessageBox.ShowAsync(this, notification.Message, notification.Title, button: MessageBoxButton.OK);
 
     private Task ShowDebugLogAsync()
@@ -64,6 +67,7 @@ public partial class MainWindow
         }
 
         var window = _services.GetRequiredService<DebugLogWindow>();
+        window.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
         _debugLogWindow = window;
         window.Closed += (_, _) =>
         {

@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <GalNetCMakePath Condition="'$(GalNetCMakePath)' == ''">cmake</GalNetCMakePath>
+    <GalNetAudioSource>$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)../../Infrastructure/GalNet.Media.Miniaudio/native'))</GalNetAudioSource>
+  </PropertyGroup>
+  <Target Name="BuildIosPlayerAudio" BeforeTargets="_SanitizeNativeReferences" DependsOnTargets="_DetectSdkLocations;_ComputeTargetArchitectures" Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <_GalNetAudioRoot>$([System.IO.Path]::GetFullPath('$(IntermediateOutputPath)native/$(RuntimeIdentifier)'))</_GalNetAudioRoot>
+      <_GalNetAppleArch Condition="'$(RuntimeIdentifier)' == 'ios-arm64' Or '$(RuntimeIdentifier)' == 'iossimulator-arm64'">arm64</_GalNetAppleArch>
+      <_GalNetAppleArch Condition="'$(RuntimeIdentifier)' == 'iossimulator-x64'">x86_64</_GalNetAppleArch>
+      <_GalNetAppleSdk Condition="'$(RuntimeIdentifier)' == 'ios-arm64'">iphoneos</_GalNetAppleSdk>
+      <_GalNetAppleSdk Condition="'$(RuntimeIdentifier)' != 'ios-arm64'">iphonesimulator</_GalNetAppleSdk>
+    </PropertyGroup>
+    <Error Condition="'$(_GalNetAppleArch)' == ''" Text="The iOS player requires ios-arm64, iossimulator-arm64 or iossimulator-x64." />
+    <Exec Command="&quot;$(GalNetCMakePath)&quot; -S &quot;$(GalNetAudioSource)&quot; -B &quot;$(_GalNetAudioRoot)&quot; -G &quot;Unix Makefiles&quot; -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_SYSROOT=$(_GalNetAppleSdk) -DCMAKE_OSX_ARCHITECTURES=$(_GalNetAppleArch) -DCMAKE_OSX_DEPLOYMENT_TARGET=$(SupportedOSPlatformVersion) -DGALNET_MINIAUDIO_STATIC=ON -DCMAKE_BUILD_TYPE=Release" />
+    <Exec Command="&quot;$(GalNetCMakePath)&quot; --build &quot;$(_GalNetAudioRoot)&quot; --parallel 2" />
+    <ItemGroup>
+      <NativeReference Include="$(_GalNetAudioRoot)/libgalnet_miniaudio.a">
+        <Kind>Static</Kind>
+        <ForceLoad>true</ForceLoad>
+        <Frameworks>CoreFoundation CoreAudio AudioToolbox AVFoundation</Frameworks>
+      </NativeReference>
+    </ItemGroup>
+  </Target>
+</Project>

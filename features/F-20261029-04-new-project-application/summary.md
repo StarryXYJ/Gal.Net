@@ -30,8 +30,8 @@
 
 ## 正式文档与经验
 
-- [项目格式](../../docs/spec/file-formats.md)：新建项目来源发现、复制边界与调试配置。
-- [外部游戏调试](../../docs/manual/external-game-debugging.md)：直接选择 Debug Sample EXE、Developer 包和契约更新要求。
+- [项目格式](../../docs/spec/content/file-formats.md)：新建项目来源发现、复制边界与调试配置。
+- [外部游戏调试](../../docs/manual/editor/preview-and-debugging.md)：直接选择 Debug Sample EXE、Developer 包和契约更新要求。
 - [自包含平台程序集 lesson](../../.agents/lessons/L-20261029-07-self-contained-platform-assemblies.md)：已记录并索引；未扩大修改既有 SchemaLoadContext 的平台回退实现。
 
 ## 限制

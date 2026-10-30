@@ -19,4 +19,4 @@
 
 适用于读档、重载、重启、同句柄替换。禁止把 ClearActive 当作取消；禁止让旧 finally 按句柄无条件清理新状态；禁止取消现有运行后才检查非法存档版本。
 
-关联：docs/spec/runtime.md；GameRuntimeSnapshotTests；AnimationPrimitiveInstance；AnimationPlanPrimitiveInstance。
+关联：docs/spec/runtime/execution.md；GameRuntimeSnapshotTests；AnimationPrimitiveInstance；AnimationPlanPrimitiveInstance。

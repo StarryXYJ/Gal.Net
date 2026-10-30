@@ -92,8 +92,15 @@ public sealed class ExternalSampleDebugTests
                 await store.SaveAsync(new Dictionary<string, Variable> { [count.Name] = count, [locale.Name] = locale });
             }
             var appHost = TestContext.Parameters.Get("SampleAppHost", "");
-            var contractPath = string.IsNullOrEmpty(appHost) ? typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location
-                : Path.Combine(Path.GetDirectoryName(appHost)!, "lib", "GalNet.Project.Contracts.dll");
+            var contractPath = typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location;
+            if (!string.IsNullOrEmpty(appHost))
+            {
+                var applicationRoot = Path.GetDirectoryName(appHost)!;
+                var contractsDirectory = File.Exists(Path.Combine(applicationRoot, ApplicationPackageLayout.FileName))
+                    ? Path.Combine(applicationRoot, ApplicationPackageLayout.Read(applicationRoot).ContractsDirectory)
+                    : applicationRoot;
+                contractPath = Path.Combine(contractsDirectory, "GalNet.Project.Contracts.dll");
+            }
             var contract = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(contractPath)));
             using var listener = new DebugListener(new("sample-test", DebugContentIdentity.Compute(content), contract));
             var invitation = listener.Invitation;

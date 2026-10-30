@@ -8,6 +8,7 @@ using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
+using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 
@@ -20,8 +21,8 @@ public sealed class VideoNativeSmokeTests
     {
         var assetsRoot = Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS") ?? throw new InvalidOperationException("Set GALNET_VIDEO_ASSETS.");
         var nativePath = Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC") ?? throw new InvalidOperationException("Set GALNET_VIDEO_LIBVLC.");
-        LibVLCSharp.Shared.Core.Initialize(nativePath);
-        using var probeVlc = new LibVLCSharp.Shared.LibVLC("--no-video-title-show");
+        var factory = CreateFactory(nativePath);
+        using var probeVlc = factory.Create();
         using var probe = new LibVLCSharp.Shared.Media(probeVlc, Path.Combine(assetsRoot, "niko.mp4"), LibVLCSharp.Shared.FromType.FromPath);
         await probe.Parse(LibVLCSharp.Shared.MediaParseOptions.ParseLocal).WaitAsync(TimeSpan.FromSeconds(5));
         var duration = probe.Duration / 1000d;
@@ -29,7 +30,7 @@ public sealed class VideoNativeSmokeTests
         TestContext.Out.WriteLine($"Video duration: {duration} seconds.");
         using var assets = new AssetManager([new LocalFileProvider(assetsRoot, BuiltinResourceTypes.CreateCatalog())]);
         var state = new GamePageViewModel(new NoOpGameNavigationService());
-        await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher());
+        await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher(), mediaFactory: factory);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var request = new VideoRenderRequest("native-smoke", new LayerRenderRequest("video", "a1000000000000000000000000000011",
             new LayerTransform(), 5, LayerDisplayMode.Uniform, 1), naturalEnd ? [Math.Max(.1, duration - .6)] : [1, 2, 999999]);
@@ -71,11 +72,12 @@ public sealed class VideoNativeSmokeTests
     [TestCase(false), TestCase(true), Explicit("Requires the video assets and native LibVLC."), NonParallelizable]
     public async Task Hiding_or_replacing_during_asset_loading_prevents_late_video_publication(bool replace)
     {
-        LibVLCSharp.Shared.Core.Initialize(Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC")!);
+        var nativePath = Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC")!;
+        var factory = CreateFactory(nativePath);
         using var realAssets = new AssetManager([new LocalFileProvider(Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS")!, BuiltinResourceTypes.CreateCatalog())]);
         var assets = new DelayedAssets(realAssets);
         var state = new GamePageViewModel(new NoOpGameNavigationService());
-        await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher());
+        await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher(), mediaFactory: factory);
         var request = new VideoRenderRequest("pending-video", new LayerRenderRequest("video", "a1000000000000000000000000000011",
             new LayerTransform(), 0, LayerDisplayMode.Uniform, 1), []);
         var playing = presenter.PlayVideoAsync(request, CancellationToken.None);
@@ -91,6 +93,13 @@ public sealed class VideoNativeSmokeTests
         }
         else Assert.That(state.Layers, Is.Empty);
     }
+
+    private static LibVlcFactory CreateFactory(string native) => new(new()
+    {
+        UseSystemLibraries = OperatingSystem.IsLinux(),
+        NativeLibraryDirectory = OperatingSystem.IsLinux() ? null : native,
+        PluginDirectory = Path.Combine(native, "plugins")
+    });
 
     private sealed class DelayedAssets(IAssetManager inner) : IAssetManager
     {

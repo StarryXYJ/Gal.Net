@@ -116,10 +116,11 @@ public class GameTestCaseTests
             var galleryTypes = BuiltinGalleryTypes.CreateCatalog(resourceTypes);
             var content = await new ProjectGameContentProvider(output, resourceTypes, galleryTypes).LoadAsync();
 
-            var groups = content.Graph.Nodes.OfType<Group>().ToArray();
+            var groups = content.Graph.Nodes.OfType<Group>().Where(group => group.Id != content.Graph.RootNodeId).ToArray();
             Assert.Multiple(() =>
             {
-                Assert.That(content.Graph.RootNodeId, Is.EqualTo("intro"));
+                Assert.That(content.Graph.RootNodeId, Is.EqualTo("entry"));
+                Assert.That(content.Graph.Nodes.OfType<Group>().Single(group => group.Id == "entry").Entries, Is.Empty);
                 Assert.That(groups, Has.Length.EqualTo(4));
                 Assert.That(groups, Has.All.Matches<Group>(group => group.Entries.Count > 0));
                 Assert.That(groups.SelectMany(group => group.Entries), Has.All.TypeOf<PrimitiveEntry>());

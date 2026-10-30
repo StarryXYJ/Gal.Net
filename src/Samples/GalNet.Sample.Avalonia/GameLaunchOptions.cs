@@ -1,10 +1,9 @@
 using System.Security.Cryptography;
-using System.Text;
-using System.Text.Json;
 using GalNet.Assets;
 using GalNet.Storage.FileSystem;
 #if GALNET_GAME_DEBUG
 using GalNet.Debugging;
+using GalNet.Avalonia.Debugging;
 #endif
 
 namespace GalNet.Sample.Avalonia;
@@ -15,51 +14,20 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
     public DebugInvitation? DebugInvitation { get; init; }
 #endif
     public string LogDirectory => Path.Combine(ProfileDirectory
-        ?? GetDefaultProfileDirectory(GameDirectory ?? Path.Combine(GetApplicationDirectory(AppContext.BaseDirectory), "pak")), "logs");
+        ?? GetDefaultProfileDirectory(GameDirectory ?? ApplicationPackageLayout.GetContentDirectory(GetApplicationDirectory(AppContext.BaseDirectory))), "logs");
 
     public static GameLaunchOptions Parse(string[] args)
         => Parse(args, GetApplicationDirectory(AppContext.BaseDirectory));
 
     internal static string GetApplicationDirectory(string assemblyDirectory)
-    {
-        var directory = new DirectoryInfo(Path.GetFullPath(assemblyDirectory));
-        return directory.Name.Equals("lib", StringComparison.OrdinalIgnoreCase) && directory.Parent is not null
-            && (File.Exists(Path.Combine(directory.Parent.FullName, "GalNet.Sample.Avalonia.exe"))
-                || File.Exists(Path.Combine(directory.Parent.FullName, "GalNet.Sample.Avalonia")))
-            ? directory.Parent.FullName : directory.FullName;
-    }
+        => ApplicationPackageLayout.FindApplicationRoot(assemblyDirectory);
 
-    internal static string GetDefaultProfileDirectory(string gameDirectory)
-    {
-        var identity = "directory:" + Path.GetFullPath(gameDirectory);
-        try
-        {
-            if (File.Exists(Path.Combine(gameDirectory, PackedGameDocuments.GameFileName)))
-                identity = "project:" + InstalledGameDescriptor.Read(gameDirectory).ProjectId;
-            else
-            {
-                var descriptor = Path.Combine(gameDirectory, "content.json");
-                if (File.Exists(descriptor))
-                {
-                    using var json = JsonDocument.Parse(File.ReadAllBytes(descriptor));
-                    if (json.RootElement.ValueKind == JsonValueKind.Object
-                        && json.RootElement.TryGetProperty("projectId", out var id)
-                        && id.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(id.GetString()))
-                        identity = "project:" + id.GetString();
-                }
-            }
-        }
-        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
-        {
-            // Content loading reports the original error in the startup window.
-        }
-        var projectKey = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(identity)));
-        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet", projectKey);
-    }
+    internal static string GetDefaultProfileDirectory(string gameDirectory) =>
+        SampleCustomization.GetProfileDirectory(gameDirectory);
 
     internal static GameLaunchOptions Parse(string[] args, string applicationDirectory)
     {
-        var gameDirectory = Path.Combine(Path.GetFullPath(applicationDirectory), "pak");
+        var gameDirectory = ApplicationPackageLayout.GetContentDirectory(Path.GetFullPath(applicationDirectory));
         string? profileDirectory = null;
 #if GALNET_LAUNCH_ARGS
         var hasGameArgument = false;
@@ -102,21 +70,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
         profileDirectory ??= GetDefaultProfileDirectory(gameDirectory);
 
 #if GALNET_GAME_DEBUG
-        DebugInvitation? invitation = null;
-        if (debug.Count > 0)
-        {
-            if (!debug.TryGetValue("--debug-port", out var portText) || !int.TryParse(portText, out var port) || port is <= 0 or > 65535 ||
-                !debug.TryGetValue("--debug-token", out var token) || !debug.TryGetValue("--debug-session", out var session) || !debug.TryGetValue("--debug-project", out var project))
-                throw new ArgumentException("Debug launch requires a content directory, port, token, session and project identity.");
-            string? fingerprint = null;
-            if (debug.TryGetValue("--debug-contract", out var expected))
-            {
-                fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
-                if (!string.Equals(expected, fingerprint, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException($"The App contract differs from the Editor project. Expected SHA256: {expected}; actual SHA256: {fingerprint}. Deploy the App's matching Contracts and reopen the Editor project before debugging.");
-            }
-            invitation = new(port, token, session, new(project, DebugContentIdentity.Compute(gameDirectory), fingerprint));
-        }
+        var invitation = DebugLaunchArguments.Parse(debug, gameDirectory, typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location);
         return new GameLaunchOptions(gameDirectory, profileDirectory) { DebugInvitation = invitation };
 #else
         return new GameLaunchOptions(gameDirectory, profileDirectory);

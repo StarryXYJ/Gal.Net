@@ -15,7 +15,13 @@ public sealed class GameExportService(
     IResourceTypeCatalog resourceTypes,
     IGalleryTypeCatalog galleryTypes) : IGameExportService
 {
-    public async Task<GameExportResult> ExportAsync(string outputDirectory, CancellationToken cancellationToken = default)
+    public Task<GameExportResult> ExportAsync(string outputDirectory, CancellationToken cancellationToken = default)
+        => ExportContentAsync(outputDirectory, directory: false, cancellationToken);
+
+    public Task<GameExportResult> ExportDirectoryAsync(string outputDirectory, CancellationToken cancellationToken = default)
+        => ExportContentAsync(outputDirectory, directory: true, cancellationToken);
+
+    private async Task<GameExportResult> ExportContentAsync(string outputDirectory, bool directory, CancellationToken cancellationToken)
     {
         var project = projects.Current;
         if (project is null) return GameExportResult.Failed("Open a project before exporting.");
@@ -24,7 +30,20 @@ public sealed class GameExportService(
             .AcquireCaptureAsync(cancellationToken: cancellationToken);
         if (!ReferenceEquals(project, projects.Current)) return GameExportResult.Failed("The project was closed.");
         var catalog = project.Services.GetRequiredService<IEntryCatalog>();
-        var result = await Task.Run(() => GamePackageExporter.ExportAsync(project.Id, project.Name, project.RootPath, outputDirectory, resourceTypes, galleryTypes, catalog, project.Configurations, cancellationToken), cancellationToken);
-        return new GameExportResult(result.Success, result.PackagePath, result.Error);
+        return await Task.Run(async () =>
+        {
+            if (directory)
+            {
+                var result = await GamePackageExporter.ExportDirectoryAsync(project.Id, project.Name, project.RootPath, outputDirectory,
+                    resourceTypes, galleryTypes, catalog, project.Configurations, cancellationToken);
+                return new GameExportResult(result.Success, result.ContentDirectory, result.Error);
+            }
+            else
+            {
+                var result = await GamePackageExporter.ExportAsync(project.Id, project.Name, project.RootPath, outputDirectory,
+                    resourceTypes, galleryTypes, catalog, project.Configurations, cancellationToken);
+                return new GameExportResult(result.Success, result.PackagePath, result.Error);
+            }
+        }, cancellationToken);
     }
 }

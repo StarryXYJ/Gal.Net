@@ -106,6 +106,23 @@ public sealed class ToolOperationCatalog
                 readOnly: false, requiresProject: false),
             Route("game.inspect", "game inspect", "Reads the packed or legacy installed content identity and package descriptors.",
                 [new CliParameter("content-directory", "string", "Installed content root (for example app/pak).", true, true)], requiresProject: false),
+            Route("distribution.compose", "compose", "Verifies a pure Windows/Linux x64 runtime and complete content, then creates a game ZIP/tar.gz without a compiler or SDK.",
+                [new CliParameter("--runtime", "string", "Pure runtime ZIP/tar.gz or directory with application layout and release manifest.", true),
+                 new("--content", "string", "Complete galpak or exported content directory.", true),
+                 new("--output", "string", "New game .zip (Windows) or .tar.gz (Linux) path outside the inputs.", true)], readOnly: false, requiresProject: false),
+            Route("distribution.build-compose", "build-compose", "Publishes an explicit application project with the SDK, verifies contracts and builds a Windows/Linux game archive.",
+                [new CliParameter("--app-project", "string", "Application csproj (not an authoring project).", true),
+                 new("--content", "string", "Complete galpak or content directory exported against matching target contracts.", true),
+                 new("--runtime-id", "string", "Target RID.", true, Enum: ["win-x64", "linux-x64"]),
+                 new("--entry-point", "string", "Published native apphost filename.", true),
+                 new("--version", "string", "Application/contract version used for the build.", true),
+                 new("--output", "string", "New game ZIP/tar.gz outside content and dependency inputs.", true),
+                 new("--configuration", "string", "Build configuration; default Release."),
+                 new("--sample-flavor", "string", "Default Player.", Enum: ["Player", "Developer"]),
+                 new("--publish-profile", "string", "Existing application publish profile name; no path."),
+                 new("--sdk-version", "string", "Require exactly this resolved SDK version."),
+                 new("--miniaudio-native", "string", "Prebuilt target miniaudio library; required when the project cannot build it."),
+                 new("--media-directory", "string", "Linux private native/licenses/media-manifest directory.")], readOnly: false, requiresProject: false),
             Route("execute", "execute", "Executes JSON typed document operations or one asset file operation.",
                 Project(new CliParameter("command-file", "string", "JSON file path, or '-' to read stdin.", true, true)),
                 readOnly: false, requiresContract: true, dryRun: true, batchMode: "Document operations only; one file operation per invocation. File dry-run is unsupported.")
@@ -164,6 +181,8 @@ public sealed class ToolOperationCatalog
             "project.export-directory" => typeof(ProjectExportDirectoryReport),
             "galpak.install" => typeof(GalpakInstallReport),
             "game.inspect" => typeof(GalNet.Core.Serialization.GameContentManifest),
+            "distribution.compose" => typeof(GalNet.Storage.FileSystem.GameDistributionResult),
+            "distribution.build-compose" => typeof(GalNet.Editor.Shared.Services.BuildComposeReport),
             "project.rename" or "group.create" or "group.rename" or "group.delete" => typeof(ProjectEditReport),
             "files" => typeof(QueryPage<ProjectFileItem>),
             "find" or "graph.nodes" or "graph.node" or "graph.edges" or "group.entries" or "variables" => typeof(QueryPage<ProjectObjectItem>),
@@ -178,7 +197,13 @@ public sealed class ToolOperationCatalog
         var options = new JsonSerializerOptions(JsonSerializerDefaults.Web) { TypeInfoResolver = new DefaultJsonTypeInfoResolver() };
         var result = JsonNode.Parse(ResultSchema.GetRawText())!;
         result["properties"]!["data"] = options.GetJsonSchemaAsNode(dataType);
-        return operation with { OutputSchema = JsonSerializer.SerializeToElement(result) };
+        return operation with
+        {
+            OutputSchema = JsonSerializer.SerializeToElement(result),
+            ExitCodes = operation.OperationId == "distribution.build-compose"
+                ? new Dictionary<int, string>(operation.ExitCodes) { [130] = "Build cancelled; owned SDK process tree stopped" }
+                : operation.ExitCodes
+        };
     }
 
     private static ToolOperationDefinition FromCommand(IProjectCommandDefinition definition, bool file)

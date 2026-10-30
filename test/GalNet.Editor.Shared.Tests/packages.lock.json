@@ -154,7 +154,17 @@
           "GalNet.Debugging": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
+        }
+      },
+      "galnet.gamehost": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "galnet.presentation.abstractions": {
@@ -179,6 +189,16 @@
           "CoreCLR-NCalc": "[3.1.253, )",
           "GalNet.Core": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
+        }
+      },
+      "galnet.storage.filesystem": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "CoreCLR-NCalc": {

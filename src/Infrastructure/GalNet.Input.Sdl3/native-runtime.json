@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "nativeVersion": "3.4.18",
+  "binding": "GalNet.Input.Sdl3 source-generated LibraryImport",
+  "packages": {
+    "SDL3-CS.Windows": "3.4.18.1",
+    "SDL3-CS.Linux": "3.4.18.1",
+    "SDL3-CS.MacOS": "3.4.18.1"
+  },
+  "packageRepository": "https://github.com/edwardgushchin/SDL3-CS",
+  "packageCommit": "96675af9d3c5b080ed47638d3879f2f0ce7c2c38",
+  "upstreamRelease": "https://github.com/libsdl-org/SDL/releases/tag/release-3.4.18",
+  "assets": {
+    "win-x86": {
+      "file": "SDL3.dll",
+      "sha256": "ca2828b8a9c1eb3e77b8aec9fde076318ba74ecc4ead70f80d9a47423e36e839"
+    },
+    "win-x64": {
+      "file": "SDL3.dll",
+      "sha256": "882ec01a575547124c7617a81060c9bb8b28ecea92ddb08535eb529bda62ee76"
+    },
+    "win-arm64": {
+      "file": "SDL3.dll",
+      "sha256": "3c83c4f8415e0196623dd3fb702264997829768412850f143dc1e39602ee0299"
+    },
+    "linux-x64": {
+      "file": "libSDL3.so.0",
+      "sha256": "c21675c66cfd4d4a0e6e30c70644132fa49ffad028606c3c0649fd0eb8315c27"
+    },
+    "linux-arm64": {
+      "file": "libSDL3.so.0",
+      "sha256": "4fb7f4ae3d2e2167a22f6402137add83d5f62063cd86eec9a6bae5af69b58776"
+    },
+    "osx-x64": {
+      "file": "libSDL3.0.dylib",
+      "sha256": "4f7ce02aaf3ed0560323c192fcab2802e4f3ead37277fb7ff7bb5f96cb1b858c"
+    },
+    "osx-arm64": {
+      "file": "libSDL3.0.dylib",
+      "sha256": "ed75f40b0937f3069636e742e2e46604a7899675a8bb4ae6ef36224839b77ee5"
+    }
+  },
+  "note": "Asset inventory is not a platform or physical-device acceptance claim."
+}

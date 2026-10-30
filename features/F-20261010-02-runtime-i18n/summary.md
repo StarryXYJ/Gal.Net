@@ -4,7 +4,7 @@
 
 原 [2026-10-10 阶段性总结](history/summary-20261010.md) 保留为历史；其中未完成事项描述的是当时状态，并非当前结论。
 
-Phase 1–5 已完成；[阶段证据](phase-plan.md)、[交付自查](review.md) 和 [当前国际化契约](../../docs/spec/i18n.md) 是具体依据。
+Phase 1–5 已完成；[阶段证据](phase-plan.md)、[交付自查](review.md) 和 [当前国际化契约](../../docs/spec/content/localization.md) 是具体依据。
 
 ## 实现结果
 

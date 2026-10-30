@@ -15,6 +15,7 @@ using GalNet.Project.Contracts;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Engine;
 using GalNet.Sample.Avalonia.Presentation;
+using GalNet.Avalonia.GameHost.Presentation;
 using SkiaSharp;
 
 namespace GeneralTest.Integration;

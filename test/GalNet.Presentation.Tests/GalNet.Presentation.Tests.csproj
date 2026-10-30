@@ -4,6 +4,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../src/Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" />
+    <ProjectReference Include="../../src/Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <ProjectReference Include="../../src/Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <ProjectReference Include="../../src/Infrastructure/GalNet.Media.Miniaudio/GalNet.Media.Miniaudio.csproj" />
     <ProjectReference Include="../../src/Tooling/GalNet.SchemaGenerator/GalNet.SchemaGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;OutDir" />
@@ -23,4 +25,5 @@
     <ProjectReference Include="..\..\src\Shared\GalNet.Runtime\GalNet.Runtime.csproj" />
   </ItemGroup>
   <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.Contracts.Builtins/GalNet.Contracts.Builtins.csproj" /></ItemGroup>
+  <ItemGroup><EmbeddedResource Include="Localization/*.json" /></ItemGroup>
 </Project>

@@ -54,6 +54,6 @@ dotnet test test/GalNet.Editor.Shared.Tests/GalNet.Editor.Shared.Tests.csproj --
 
 ## 文档与后续
 
-已同步[资源规范](../../docs/spec/assets.md)的已验证事实，并更新[设计](design.md)和[阶段计划](phase-plan.md)。无匹配算法偏差。
+已同步[资源规范](../../docs/spec/content/assets.md)的已验证事实，并更新[设计](design.md)和[阶段计划](phase-plan.md)。无匹配算法偏差。
 
 P3 接续运行指令、Layer 唯一状态、CatchUp 和存读档；图集指令的 wire 名届时核定。本阶段不宣称游戏显示链或专属 GUI 已完成。已有其他 feature 的 phase-plan.md 改动保留，不混入提交。

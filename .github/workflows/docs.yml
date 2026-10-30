@@ -1,0 +1,93 @@
+name: Documentation
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'src/**/README.md'
+      - 'scripts/README.md'
+      - 'GameTestCase/README.md'
+      - 'docs/**'
+      - 'scripts/docs/**'
+      - '.github/workflows/docs.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'README.md'
+      - 'src/**/README.md'
+      - 'scripts/README.md'
+      - 'GameTestCase/README.md'
+      - 'docs/**'
+      - 'scripts/docs/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+    inputs:
+      publish_wiki:
+        description: Publish validated documentation to the Wiki
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Validate documentation and generator
+        run: |
+          python scripts/docs/sync_wiki.py check
+          python -m unittest discover -s scripts/docs/tests -v
+      - name: Generate reviewable Wiki preview
+        shell: bash
+        run: |
+          mkdir -p out/wiki-preview
+          git -C out/wiki-preview init
+          python scripts/docs/sync_wiki.py sync --wiki-dir out/wiki-preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wiki-preview
+          path: |
+            out/wiki-preview/*.md
+            out/wiki-preview/.galnet-wiki.json
+            out/wiki-preview/_assets/**
+          include-hidden-files: true
+          retention-days: 7
+      - name: Check Wiki publication configuration
+        if: github.ref == 'refs/heads/master' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish_wiki))
+        id: publish
+        env:
+          WIKI_TOKEN: ${{ secrets.DOCS_WIKI_TOKEN }}
+        shell: bash
+        run: |
+          if [ -n "$WIKI_TOKEN" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Wiki preview generated; configure DOCS_WIKI_TOKEN with Wiki repository write access to enable publication."
+          fi
+      - name: Sync and publish Wiki
+        if: steps.publish.outputs.enabled == 'true'
+        env:
+          WIKI_TOKEN: ${{ secrets.DOCS_WIKI_TOKEN }}
+        shell: bash
+        run: |
+          export GIT_CONFIG_COUNT=1
+          export GIT_CONFIG_KEY_0=http.https://github.com/.extraheader
+          export GIT_CONFIG_VALUE_0="AUTHORIZATION: basic $(printf 'x-access-token:%s' "$WIKI_TOKEN" | base64 -w0)"
+          git clone "https://github.com/${GITHUB_REPOSITORY}.wiki.git" wiki
+          python scripts/docs/sync_wiki.py sync
+          git -C wiki add --all
+          if ! git -C wiki diff --cached --quiet; then
+            git -C wiki -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m "docs: sync from $GITHUB_SHA"
+            git -C wiki push
+          fi

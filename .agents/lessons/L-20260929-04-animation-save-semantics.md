@@ -31,5 +31,5 @@ Do not save a frame number alone and call it resumable state: plan events, ping-
 
 - `src/GalNet.Primitives.Builtins/BuiltinRuntimeActions.cs`
 - `src/GalNet.Primitives.Builtins/BuiltinPresentationReplay.cs`
-- `docs/spec/runtime.md`
+- `docs/spec/runtime/execution.md`
 - User-confirmed restore semantics in F-20260929-01

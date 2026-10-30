@@ -143,13 +143,13 @@ public sealed class GameInstallationTests
             var files = BuildContentFiles(BuiltinResourceTypes.CreateCatalog());
             await CreatePackageAsync(package, files);
             var installed = await GalpakInstaller.InstallAsync(package);
-            var external = Path.Combine(installed, "I18n", "External", "en-US");
+            var external = Path.Combine(installed, "I18n", "en-US");
             Assert.That(Directory.Exists(Path.GetDirectoryName(external)), Is.True);
             Directory.CreateDirectory(external);
             var translation = Path.Combine(external, "third-party.json");
             await File.WriteAllTextAsync(translation, """{"line":"preserved"}""");
             Assert.That(await GalpakInstaller.InstallAsync(package), Is.EqualTo(installed));
-            await CreatePackageAsync(package, files.Append(("settings.json", """{"version":1,"sections":{}}"""u8.ToArray())).ToArray());
+            await CreatePackageAsync(package, files.Append(("settings.json", """{"version":1,"sections":{"test":{"version":1,"data":{}}}}"""u8.ToArray())).ToArray());
             Assert.ThrowsAsync<InvalidOperationException>(() => GalpakInstaller.InstallAsync(package));
             Assert.That(await File.ReadAllTextAsync(translation), Does.Contain("preserved"));
         }
@@ -158,7 +158,8 @@ public sealed class GameInstallationTests
 
     [TestCase(1)]
     [TestCase(2)]
-    public async Task Galpak_rejects_payloads_whose_manifest_hash_does_not_match(int version)
+    [TestCase(3)]
+    public async Task GalpakRejectsObsoleteLooseManifestLayouts(int version)
     {
         var root = Path.Combine(Path.GetTempPath(), $"galnet-{Guid.NewGuid():N}");
         Directory.CreateDirectory(root);
@@ -189,7 +190,7 @@ public sealed class GameInstallationTests
     [TestCase(null)]
     [TestCase("settings.json")]
     [TestCase("pak/undeclared.txt")]
-    [TestCase("pak/gallery.json")]
+    [TestCase("pak/game.pak")]
     [TestCase("pak/../escape.txt")]
     [TestCase("legacy.galnet")]
     public async Task Wrapped_package_installs_once_or_rejects_mixed_duplicate_and_undeclared_entries(string? extra)
@@ -199,7 +200,7 @@ public sealed class GameInstallationTests
         try
         {
             var package = Path.Combine(root, "sample.galpak");
-            await CreatePackageAsync(package, BuildContentFiles(BuiltinResourceTypes.CreateCatalog()), version: 2);
+            await CreatePackageAsync(package, BuildContentFiles(BuiltinResourceTypes.CreateCatalog()));
             if (extra is not null)
             {
                 using (var zip = ZipFile.Open(package, ZipArchiveMode.Update))
@@ -211,7 +212,7 @@ public sealed class GameInstallationTests
             {
                 var installed = await GalpakInstaller.InstallAsync(package);
                 Assert.That(installed, Is.EqualTo(Path.Combine(root, "pak")));
-                Assert.That(File.Exists(Path.Combine(installed, "sample.galnet")), Is.True);
+                Assert.That(File.Exists(Path.Combine(installed, "game.pak")), Is.True);
                 Assert.That(Directory.Exists(Path.Combine(installed, "pak")), Is.False);
                 Assert.That(await GalpakInstaller.InstallAsync(package), Is.EqualTo(installed));
             }
@@ -236,7 +237,7 @@ public sealed class GameInstallationTests
         ];
     }
 
-    private static async Task CreatePackageAsync(string path, IReadOnlyList<(string Path, byte[] Data)> files, int version = 1)
+    private static async Task CreatePackageAsync(string path, IReadOnlyList<(string Path, byte[] Data)> files)
     {
         var types = BuiltinResourceTypes.CreateCatalog();
         var data = files.Where(file => file.Path != GameContentManifest.FileName).ToList();
@@ -249,21 +250,33 @@ public sealed class GameInstallationTests
             data[item.index] = (item.file.Path, PakBuilder.Build("assets", source.AssetIds.Select(id => source.GetAsset(id)!).ToArray(), types,
                 descriptor: new() { ProjectId = "test", BuildId = buildId, PartIndex = part, PartCount = paks.Length }));
         }
-        data.Add((GameContentManifest.FileName, JsonSerializer.SerializeToUtf8Bytes(new GameContentManifest
+        var languages = PackedGameDocuments.Build("test", buildId, []);
+        var languageEntry = new GalpakFileEntry(PackedGameDocuments.LocalizationFileName, Hash(languages), languages.LongLength);
+        var content = new GameContentManifest
         {
+            Version = 3,
             ProjectId = "test",
             BuildId = buildId,
             BasePaks = data.Where(file => file.Path.EndsWith(".pak", StringComparison.Ordinal))
-            .Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.LongLength)).ToList()
-        }, JsonSerializerOptions.Web)));
-        files = data;
-        var entries = files.Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.Length)).ToArray();
-        var manifest = new GalpakManifest(version, "test", "sample", DateTimeOffset.UtcNow, entries);
-        var prefix = version == 2 ? "pak/" : "";
+                .Select(file => new GalpakFileEntry(file.Path, Hash(file.Data), file.Data.LongLength)).ToList(),
+            LocalizationPak = languageEntry
+        };
+        var manifest = new GalpakManifest(4, "test", "sample", DateTimeOffset.UnixEpoch, content.BasePaks.Append(languageEntry).ToArray());
+        var documents = new Dictionary<string, byte[]>
+        {
+            [GameContentManifest.FileName] = JsonSerializer.SerializeToUtf8Bytes(content, JsonSerializerOptions.Web),
+            [PackedGameDocuments.InstallationPath] = JsonSerializer.SerializeToUtf8Bytes(manifest, JsonSerializerOptions.Web),
+            ["settings.json"] = data.FirstOrDefault(item => item.Path == "settings.json").Data ?? """{"version":1,"sections":{}}"""u8.ToArray(),
+            ["gallery.json"] = data.Single(item => item.Path == "gallery.json").Data,
+            ["characters.json"] = "[]"u8.ToArray(),
+            ["packaging-layout.json"] = "{}"u8.ToArray()
+        };
+        data.RemoveAll(item => !item.Path.EndsWith(".pak", StringComparison.Ordinal));
+        data.Add((PackedGameDocuments.LocalizationFileName, languages));
+        data.Add((PackedGameDocuments.GameFileName, PackedGameDocuments.Build("test", buildId, documents)));
         await using var file = File.Create(path);
         using var zip = new ZipArchive(file, ZipArchiveMode.Create, leaveOpen: true);
-        foreach (var entry in files) await WriteEntryAsync(zip, prefix + entry.Path, entry.Data);
-        await WriteEntryAsync(zip, prefix + "sample.galnet", JsonSerializer.SerializeToUtf8Bytes(manifest));
+        foreach (var entry in data) await WriteEntryAsync(zip, "pak/" + entry.Path, entry.Data);
     }
 
     private static async Task WriteEntryAsync(ZipArchive zip, string path, byte[] data)

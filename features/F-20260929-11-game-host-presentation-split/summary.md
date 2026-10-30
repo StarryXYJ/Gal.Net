@@ -28,6 +28,6 @@ Gallery resolver/data source 最终归 `SampleSaveSession`，因为其解锁状�
 
 ## 文档
 
-- [架构](../../docs/spec/architecture.md)
-- [Avalonia 游戏页面](../../docs/spec/control.md)
+- [架构](../../docs/spec/architecture/modules.md)
+- [Avalonia 游戏页面](../../docs/spec/presentation/game-view.md)
 - [维护性路线图](../F-20260929-03-maintainability-roadmap/phase-plan.md)

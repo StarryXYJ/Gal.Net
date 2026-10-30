@@ -37,6 +37,7 @@ public sealed partial class GameEngine
     public sealed partial class DebugSession : IDisposable
     {
         private readonly GameEngine _engine;
+        private readonly DebugEntranceCache _entrances;
         private bool _disposed;
         private long _generation = 1;
         internal bool Paused { get; private set; }
@@ -45,6 +46,7 @@ public sealed partial class GameEngine
         {
             if (options.MaxEntrancePayloadBytes < 0 || options.MaxEntranceGroups < 0) throw new ArgumentOutOfRangeException(nameof(options));
             _engine = engine;
+            _entrances = new(options.MaxEntrancePayloadBytes, options.MaxEntranceGroups);
             _options = new GameDebugOptions
             {
                 Instructions = options.Instructions.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
@@ -68,11 +70,11 @@ public sealed partial class GameEngine
                     _engine._active.Where(item => !item.Instance.IsCompleted).Select(item => item.StableId).ToArray(), variables,
                     _engine._navigation.Nodes.OfType<Group>().Select(group => new GameDebugGroup(group.Id,
                         group.Entries.OfType<GalNet.Core.Entry.PrimitiveEntry>().Select(entry => entry.StableId).ToArray())).ToArray(),
-                    _entrances.Keys.ToArray(), _engine._flowError?.ToString(),
+                    _entrances.Groups.ToArray(), _engine._flowError?.ToString(),
                     _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null,
                     _engine._active.Where(item => !item.Instance.IsCompleted)
                         .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray(),
-                    new(_entrances.Count, _cacheBytes, _options.MaxEntrancePayloadBytes, _options.MaxEntranceGroups), _lastReplay);
+                    _entrances.Stats, _lastReplay);
             }
             finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }

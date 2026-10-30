@@ -134,21 +134,38 @@ public sealed class StoryPackageExportTests
     }
 
     [Test]
-    public async Task GalpakPublishesExternalStoriesAndRepeatExportKeepsContentHashes()
+    public async Task GalpakCarriesAllStoriesAndMatchesDirectoryExportAfterMovingTheArchive()
     {
         var output = Path.Combine(_root, "release");
         async Task<GamePackageExportResult> ExportZip() => await GamePackageExporter.ExportAsync("story-project", "Story", Source, output,
             _types, BuiltinGalleryTypes.CreateCatalog(_types), _catalog);
         var first = await ExportZip();
         Assert.That(first.Success, Is.True, first.Error);
+        Assert.That(Directory.Exists(Path.Combine(output, "StoryPatches")), Is.False);
+        Dictionary<string, string> payloads;
         using (var zip = System.IO.Compression.ZipFile.OpenRead(first.PackagePath!))
-            Assert.That(zip.Entries.Any(entry => entry.FullName.StartsWith("StoryPatches/", StringComparison.Ordinal)), Is.False);
-        var parts = Directory.GetFiles(Path.Combine(output, "StoryPatches"), "*.pak", SearchOption.AllDirectories)
-            .ToDictionary(path => path, path => CryptoHelper.HashSHA256(File.ReadAllBytes(path)));
+        {
+            Assert.That(zip.Entries.Any(entry => entry.FullName.StartsWith("pak/StoryPatches/", StringComparison.Ordinal)
+                && entry.FullName.EndsWith(".pak", StringComparison.Ordinal)), Is.True);
+            payloads = zip.Entries.Where(entry => !entry.FullName.EndsWith('/')).ToDictionary(entry => entry.FullName,
+                entry => { using var stream = entry.Open(); return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(stream)); });
+        }
         var second = await ExportZip();
         Assert.That(second.Success, Is.True, second.Error);
-        foreach (var part in parts) Assert.That(CryptoHelper.HashSHA256(File.ReadAllBytes(part.Key)), Is.EqualTo(part.Value));
-        var installation = await GameInstallation.OpenAsync(second.PackagePath!);
+        var moved = Directory.CreateDirectory(Path.Combine(_root, "moved archive")).FullName;
+        var movedPackage = Path.Combine(moved, "Story.galpak");
+        File.Copy(second.PackagePath!, movedPackage);
+        var installation = await GameInstallation.OpenAsync(movedPackage);
+        var directoryResult = await GamePackageExporter.ExportDirectoryAsync("story-project", "Story", Source, Installed,
+            _types, BuiltinGalleryTypes.CreateCatalog(_types), _catalog);
+        Assert.That(directoryResult.Success, Is.True, directoryResult.Error);
+        foreach (var payload in payloads)
+        {
+            var relative = payload.Key["pak/".Length..];
+            Assert.That(CryptoHelper.HashSHA256(File.ReadAllBytes(Path.Combine(installation.RootDirectory, relative))), Is.EqualTo(payload.Value));
+            Assert.That(File.ReadAllBytes(Path.Combine(Installed, relative)), Is.EqualTo(File.ReadAllBytes(Path.Combine(installation.RootDirectory, relative))));
+        }
+        Assert.That(PackedGameDocuments.ReadGame(File.ReadAllBytes(Path.Combine(Installed, "game.pak"))).Installation.Version, Is.EqualTo(4));
         var content = await installation.CreateContentProvider(_types, BuiltinGalleryTypes.CreateCatalog(_types)).LoadAsync();
         Assert.That(content.Graph.InstalledStoryPackages, Is.EquivalentTo(new[] { "A", "B" }));
         using var canceled = new CancellationTokenSource(); canceled.Cancel();
@@ -157,6 +174,29 @@ public sealed class StoryPackageExportTests
             _types, BuiltinGalleryTypes.CreateCatalog(_types), _catalog, cancellationToken: canceled.Token);
         Assert.That(canceledResult.Success, Is.False);
         Assert.That(File.ReadAllBytes(second.PackagePath!), Is.EqualTo(before));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task ArchiveRejectsMissingOrCorruptStoryPayloadWithoutPublishingInstallation(bool corrupt)
+    {
+        var result = await GamePackageExporter.ExportAsync("story-project", "Story", Source, Path.Combine(_root, "release"),
+            _types, BuiltinGalleryTypes.CreateCatalog(_types), _catalog);
+        Assert.That(result.Success, Is.True, result.Error);
+        using (var zip = System.IO.Compression.ZipFile.Open(result.PackagePath!, System.IO.Compression.ZipArchiveMode.Update))
+        {
+            var part = zip.Entries.First(entry => entry.FullName.StartsWith("pak/StoryPatches/", StringComparison.Ordinal)
+                && entry.FullName.EndsWith(".pak", StringComparison.Ordinal));
+            if (corrupt)
+            {
+                using var stream = part.Open();
+                var value = stream.ReadByte(); stream.Position = 0; stream.WriteByte((byte)(value ^ 1));
+            }
+            else part.Delete();
+        }
+        Assert.ThrowsAsync<InvalidDataException>(() => GalpakInstaller.InstallAsync(result.PackagePath!, Installed));
+        Assert.That(Directory.Exists(Installed), Is.False);
+        Assert.That(Directory.GetDirectories(_root, "*.installing-*"), Is.Empty);
     }
 
     [Test]

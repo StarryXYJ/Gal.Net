@@ -6,7 +6,7 @@
 
 项目 ProjectSettings.TargetLocale 作为默认开发语言，AvailableLocales 保存支持语言及顺序。Editor 的 UiLocale 只控制工具 UI，不改变作者文本的编辑语言。
 
-以下为设计开工时的事实；已实现阶段的当前行为见 [Editor 游戏本地化基础](../../docs/spec/editor-game-localization.md)：
+以下为设计开工时的事实；已实现阶段的当前行为见 [Editor 游戏本地化基础](../../docs/spec/editor/localization.md)：
 
 - Core CharacterDefinition 为 Id/DisplayNameKey；CharacterCatalog 按 Ordinal 验证唯一 Id。Runtime 对话把 speaker 当角色 ID，正文当文本 key。
 - GameLocalizationLoader 读取 I18n/catalog/characters.json 和 I18n/<culture>/**/*.json，支持平铺/嵌套字符串对象；同语言文件按规范化路径排序，后文件覆盖前文件。

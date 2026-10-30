@@ -81,8 +81,10 @@ public sealed class ResourceOverlayProvider : IAssetProvider
         public IGameFile? GetAssetByPath(string path) => files.Values.FirstOrDefault(file => StringComparer.OrdinalIgnoreCase.Equals(file.Path, AssetPathHelper.Normalize(path)));
         public void Dispose() { }
     }
-    private sealed class SourceFile(ResourceFileSource source, string? id = null, string? path = null, AssetMeta? metadata = null) : IGameFile, IAssetOverrideFile
+    private sealed class SourceFile(ResourceFileSource source, string? id = null, string? path = null, AssetMeta? metadata = null) : IGameFile, IAssetOverrideFile, IAssetFileSource
     {
+        public string ProviderName => source.Provider.Name;
+        public string SourceAssetId => source.Index.Id;
         public bool IsResourceOverride => id is not null;
         public string Id => id ?? source.Index.Id;
         public string Path => path ?? source.Index.Path;
@@ -99,7 +101,7 @@ public sealed class ResourceOverlayProvider : IAssetProvider
         public async Task<byte[]> ReadAllBytesAsync(CancellationToken ct = default)
         {
             using var archive = await source.Provider.OpenArchiveAsync("assets", ct);
-            return await (archive.GetAsset(source.Index.Id) ?? throw new InvalidDataException("Prepared resource disappeared.")).ReadAllBytesAsync(ct);
+            return await (archive.GetAsset(source.Index.Id, ct) ?? throw new InvalidDataException("Prepared resource disappeared.")).ReadAllBytesAsync(ct);
         }
     }
 }

@@ -3,11 +3,12 @@
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == '' And '$(Configuration)' == 'Debug'">true</EnableGameDebugging>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
     <EnableLaunchArguments Condition="'$(EnableLaunchArguments)' == ''">$(EnableGameDebugging)</EnableLaunchArguments>
-    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'WindowsReadyToRun'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'WindowsReadyToRun' And '$(PublishProfile)' != 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
     <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
     <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
     <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'WindowsReadyToRun'">$(MSBuildProjectDirectory)/packages.lock.WindowsReadyToRun.Debugging.json</NuGetLockFilePath>
-    <CopyOutputSymbolsToPublishDirectory Condition="'$(EnableGameDebugging)' != 'true'">false</CopyOutputSymbolsToPublishDirectory>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.Desktop.$(RuntimeIdentifier).Debugging.json</NuGetLockFilePath>
+    <CopyOutputSymbolsToPublishDirectory Condition="'$(CopyOutputSymbolsToPublishDirectory)' == ''">false</CopyOutputSymbolsToPublishDirectory>
   </PropertyGroup>
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -20,13 +21,13 @@
 
   <ItemGroup>
     <ProjectReference Include="../../Shared/GalNet.Debugging/GalNet.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true'" />
+    <ProjectReference Include="../../Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true'" />
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
     <ProjectReference Include="../../Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Themes\GalNet.Avalonia.Themes.csproj" />
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <EmbeddedResource Include="Localization\*.json" />
     <Folder Include="ViewModels\" />
     <Compile Update="Views\LanguageSelectionView.axaml.cs">
       <DependentUpon>LanguageSelectionView.axaml</DependentUpon>
@@ -34,6 +35,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Localization/*.json" />
     <PackageReference Include="Avalonia" />
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="Avalonia.Themes.Fluent" />
@@ -51,7 +53,7 @@
     <PackageReference Include="Serilog" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
-    <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))" />
   </ItemGroup>
 
   <ItemGroup>

@@ -8,6 +8,7 @@
 
     <ItemGroup>
         <PackageReference Include="Serilog" />
+        <ProjectReference Include="../../Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
     </ItemGroup>
 
     <ItemGroup>
@@ -21,5 +22,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Visuals/Shaders/*.sksl" LogicalName="GalNet.Visuals.%(Filename)%(Extension)" />
+        <InternalsVisibleTo Include="GalNet.Editor.Shared.Tests" />
+        <InternalsVisibleTo Include="GalNet.Editor.Benchmarks" />
     </ItemGroup>
 </Project>

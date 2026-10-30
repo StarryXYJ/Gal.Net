@@ -51,6 +51,6 @@ dotnet test test/GalNet.Editor.Shared.Tests/GalNet.Editor.Shared.Tests.csproj --
 
 ## 文档和后续
 
-已同步[资源规范](../../docs/spec/assets.md)、[指令规范](../../docs/spec/entry-types.md)、[运行时规范](../../docs/spec/runtime.md)和[新表现层接入手册](../../docs/manual/new-presentation-layer.md)。设计偏差、实际接口和状态版本已回写 design.md / phase-plan.md。
+已同步[资源规范](../../docs/spec/content/assets.md)、[指令规范](../../docs/spec/runtime/entries.md)、[运行时规范](../../docs/spec/runtime/execution.md)和[新表现层接入手册](../../docs/manual/extensions/new-presentation-layer.md)。设计偏差、实际接口和状态版本已回写 design.md / phase-plan.md。
 
 P4 继续图集配置/预览、动态选择控件与场景查询适配；P5 继续真实素材示例、发布运行和完整收尾。当前不提供图集维度动画轨道或专属切图淡化。

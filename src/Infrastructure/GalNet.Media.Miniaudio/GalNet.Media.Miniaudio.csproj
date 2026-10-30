@@ -5,6 +5,7 @@
     <DefineConstants Condition="'$(GalNetMiniaudioStaticLink)' == 'true'">$(DefineConstants);GALNET_MINIAUDIO_STATIC</DefineConstants>
     <GalNetMiniaudioRid Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</GalNetMiniaudioRid>
     <GalNetMiniaudioRid Condition="'$(GalNetMiniaudioRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</GalNetMiniaudioRid>
+    <GalNetMiniaudioRid Condition="'$(PublishProfile)' == 'Desktop'">$(GalNetDesktopPublishTarget)</GalNetMiniaudioRid>
     <GalNetBuildMiniaudio Condition="'$(GalNetBuildMiniaudio)' == '' And '$(GalNetMiniaudioNativePath)' == '' And $([MSBuild]::IsOSPlatform('Windows')) And ('$(GalNetMiniaudioRid)' == 'win-x64' Or '$(GalNetMiniaudioRid)' == 'win-arm64')">true</GalNetBuildMiniaudio>
     <GalNetMiniaudioArchitecture Condition="'$(GalNetMiniaudioRid)' == 'win-x64'">x64</GalNetMiniaudioArchitecture>
     <GalNetMiniaudioArchitecture Condition="'$(GalNetMiniaudioRid)' == 'win-arm64'">arm64</GalNetMiniaudioArchitecture>

@@ -1,39 +1,145 @@
 {
   "version": 2,
   "name": "Entry instance runtime smoke test",
-  "rootNodeId": "intro",
+  "rootNodeId": "entry",
   "nodes": [
-    { "id": "intro", "type": "Group", "name": "Classroom", "file": "groups/intro.rawgalgroup" },
+    {
+      "id": "entry",
+      "type": "Entry",
+      "name": "Entry",
+      "x": 40,
+      "y": 260,
+      "file": null,
+      "branchType": null,
+      "options": null,
+      "conditions": null
+    },
+    {
+      "id": "intro",
+      "type": "Group",
+      "name": "Classroom",
+      "x": 360,
+      "y": 260,
+      "file": "groups/intro.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
+    },
     {
       "id": "route_choice",
       "type": "Branch",
       "name": "Choose a route",
+      "x": 678.6314309495947,
+      "y": 262.73713810081057,
+      "file": null,
       "branchType": "Choice",
       "options": [
-        { "id": "route_choice_option_0", "text": "branch.route_choice.option.0.text" },
-        { "id": "route_choice_option_1", "text": "branch.route_choice.option.1.text" }
-      ]
+        {
+          "id": "route_choice_option_0",
+          "text": "branch.route_choice.option.0.text",
+          "condition": ""
+        },
+        {
+          "id": "route_choice_option_1",
+          "text": "branch.route_choice.option.1.text",
+          "condition": ""
+        }
+      ],
+      "conditions": null
     },
-    { "id": "downtown", "type": "Group", "name": "Tiled route", "file": "groups/downtown.rawgalgroup" },
-    { "id": "harbor", "type": "Group", "name": "Filled route", "file": "groups/harbor.rawgalgroup" },
+    {
+      "id": "downtown",
+      "type": "Group",
+      "name": "Tiled route",
+      "x": 1000,
+      "y": 80,
+      "file": "groups/downtown.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
+    },
+    {
+      "id": "harbor",
+      "type": "Group",
+      "name": "Filled route",
+      "x": 998.6314309495947,
+      "y": 442.73713810081057,
+      "file": "groups/harbor.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
+    },
     {
       "id": "ending_check",
       "type": "Branch",
       "name": "Literal condition",
+      "x": 1320,
+      "y": 260,
+      "file": null,
       "branchType": "Condition",
+      "options": null,
       "conditions": [
-        { "id": "ending_check_condition_0", "expression": "true" }
+        {
+          "id": "ending_check_condition_0",
+          "expression": "true"
+        }
       ]
     },
-    { "id": "ending", "type": "Group", "name": "Ending", "file": "groups/ending.rawgalgroup" }
+    {
+      "id": "ending",
+      "type": "Group",
+      "name": "Ending",
+      "x": 1640,
+      "y": 260,
+      "file": "groups/ending.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
+    }
   ],
   "edges": [
-    { "id": "intro_choice", "fromNodeId": "intro", "fromOutlet": 0, "toNodeId": "route_choice" },
-    { "id": "choice_downtown", "fromNodeId": "route_choice", "fromOutlet": 0, "toNodeId": "downtown" },
-    { "id": "choice_harbor", "fromNodeId": "route_choice", "fromOutlet": 1, "toNodeId": "harbor" },
-    { "id": "downtown_check", "fromNodeId": "downtown", "fromOutlet": 0, "toNodeId": "ending_check" },
-    { "id": "harbor_check", "fromNodeId": "harbor", "fromOutlet": 0, "toNodeId": "ending_check" },
-    { "id": "check_ending", "fromNodeId": "ending_check", "fromOutlet": 0, "toNodeId": "ending" }
+    {
+      "id": "entry_intro",
+      "fromNodeId": "entry",
+      "fromOutlet": 0,
+      "toNodeId": "intro"
+    },
+    {
+      "id": "intro_choice",
+      "fromNodeId": "intro",
+      "fromOutlet": 0,
+      "toNodeId": "route_choice"
+    },
+    {
+      "id": "choice_downtown",
+      "fromNodeId": "route_choice",
+      "fromOutlet": 0,
+      "toNodeId": "downtown"
+    },
+    {
+      "id": "choice_harbor",
+      "fromNodeId": "route_choice",
+      "fromOutlet": 1,
+      "toNodeId": "harbor"
+    },
+    {
+      "id": "downtown_check",
+      "fromNodeId": "downtown",
+      "fromOutlet": 0,
+      "toNodeId": "ending_check"
+    },
+    {
+      "id": "harbor_check",
+      "fromNodeId": "harbor",
+      "fromOutlet": 0,
+      "toNodeId": "ending_check"
+    },
+    {
+      "id": "check_ending",
+      "fromNodeId": "ending_check",
+      "fromOutlet": 0,
+      "toNodeId": "ending"
+    }
   ],
   "playerVariables": [],
   "saveVariables": []

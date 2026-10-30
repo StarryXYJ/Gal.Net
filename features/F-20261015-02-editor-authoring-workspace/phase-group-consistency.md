@@ -36,7 +36,7 @@
 
 材料目录：`artifacts/group-consistency-gc1/`，包括各轮 TRX、最终项目日志、`source-hashes.json` 与临时快照路径。已知基线失败与首次构建失败均保留，最终结果未以旧 DLL 或直接反射调用替代标准测试宿主。
 
-本阶段自审结论：**pass-with-follow-up**，没有发现阻止 GC1 交付的问题；GC2–GC5 的原始问题仍属于后续必需工作，专项审核对整个 Group 一致性改造的 blocked 结论没有据此撤销。正式当前事实已同步到 [历史与保存](../../docs/spec/editor-history-and-save.md#作者内容提交通知)、[Group 编辑](../../docs/spec/editor-groups.md) 和 [场景目标查询](../../docs/spec/editor-scene-targets.md)。
+本阶段自审结论：**pass-with-follow-up**，没有发现阻止 GC1 交付的问题；GC2–GC5 的原始问题仍属于后续必需工作，专项审核对整个 Group 一致性改造的 blocked 结论没有据此撤销。正式当前事实已同步到 [历史与保存](../../docs/spec/editor/history-and-save.md#作者内容提交通知)、[Group 编辑](../../docs/spec/editor/groups.md) 和 [场景目标查询](../../docs/spec/editor/scene-targets.md)。
 
 ### 当前边界
 

@@ -6,8 +6,8 @@ using GalNet.Core.Variable;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Variables;
 using GalNet.Sample.Avalonia.Services;
-using GalNet.Sample.Avalonia.ViewModels;
-using GalNet.Sample.Avalonia.Views;
+using GalNet.Avalonia.GameHost.ViewModels;
+using GalNet.Avalonia.GameHost.Views;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;

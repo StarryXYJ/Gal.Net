@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.Json;
 
 namespace GeneralTest.Architecture;
 
@@ -18,8 +19,10 @@ public class ProjectDependencyTests
             ["GalNet.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Runtime", "GalNet.Presentation.Abstractions"],
             ["GalNet.Runtime"] = ["GalNet.Core"],
             ["GalNet.Debugging"] = ["GalNet.Runtime"],
+            ["GalNet.Avalonia.Debugging"] = ["GalNet.Avalonia.GameHost", "GalNet.Debugging"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Media.Audio"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
+            ["GalNet.Input.Sdl3"] = ["GalNet.Presentation.Abstractions"],
             ["GalNet.Media.Miniaudio"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Media.Audio"],
             ["GalNet.Media.LibVlc"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
@@ -33,13 +36,15 @@ public class ProjectDependencyTests
                 "GalNet.Editor.Abstraction",
                 "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
-                "GalNet.Assets"
+                "GalNet.Assets",
+                "GalNet.Storage.FileSystem"
             ],
-            ["GalNet.Avalonia.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.Media.Miniaudio", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
+            ["GalNet.Avalonia.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.Media.Miniaudio", "GalNet.Input.Sdl3", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
             ["GalNet.Avalonia.Themes"] = ["GalNet.Contracts.Builtins", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
             ["GalNet.Avalonia.GameView"] =
             ["GalNet.Contracts.Builtins",
+                "GalNet.Media.LibVlc",
                 "GalNet.Avalonia.Controls", "GalNet.Avalonia.Rendering",
                 "GalNet.Presentation.Abstractions", "GalNet.Core", "GalNet.Assets"
             ],
@@ -95,6 +100,8 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Presentation.Tests"] =
             ["GalNet.Contracts.Builtins", "GalNet.Media.Miniaudio",
+                "GalNet.Avalonia.GameHost",
+                "GalNet.Avalonia.Debugging",
                 "GalNet.Media.LibVlc",
                 "GalNet.SchemaGenerator",
                 "GalNet.Assets",
@@ -119,6 +126,7 @@ public class ProjectDependencyTests
                 "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
                 "GalNet.Sample.Avalonia",
+                "GalNet.Sample.CrossPlatform",
                 "GalNet.Storage.FileSystem"
             ]
         };
@@ -235,6 +243,48 @@ public class ProjectDependencyTests
     }
 
     [Test]
+    public void SampleCompositionRootsDoNotDependOnOneAnotherOrOnTheRemovedPlayerProject()
+    {
+        var desktop = ReadProjectReferences(FindProjectFile("GalNet.Sample.Avalonia"));
+        var cross = ReadProjectReferences(FindProjectFile("GalNet.Sample.CrossPlatform"));
+        Assert.That(desktop, Does.Not.Contain("GalNet.Sample.CrossPlatform"));
+        Assert.That(cross, Does.Not.Contain("GalNet.Sample.Avalonia"));
+        Assert.That(desktop.Concat(cross), Does.Not.Contain("GalNet.Sample.Player"));
+        Assert.That(File.Exists(Path.Combine(RepositoryRoot, "src/Samples/GalNet.Sample.Player/GalNet.Sample.Player.csproj")), Is.False);
+        var source = Path.Combine(RepositoryRoot, "src");
+        var staleLocks = Directory.EnumerateFiles(source, "packages.lock*.json", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(path, source))
+            .Where(path =>
+            {
+                using var json = JsonDocument.Parse(File.ReadAllText(path));
+                return json.RootElement.GetProperty("dependencies").EnumerateObject()
+                    .Any(graph => graph.Value.EnumerateObject()
+                        .Any(package => package.Name.Equals("galnet.sample.player", StringComparison.OrdinalIgnoreCase)));
+            }).Select(path => Path.GetRelativePath(RepositoryRoot, path)).ToArray();
+        Assert.That(staleLocks, Is.Empty, "Removed projects must also be pruned from committed lockfiles.");
+    }
+
+    [Test]
+    public void ReusablePlayerLibrariesDoNotDependOnSampleProjectsOrFormCycles()
+    {
+        var complete = new HashSet<string>(StringComparer.Ordinal);
+        var visiting = new HashSet<string>(StringComparer.Ordinal);
+        void Visit(string project)
+        {
+            Assert.That(project, Does.Not.StartWith("GalNet.Sample"), "Reusable player libraries cannot depend on a Sample or its contracts.");
+            if (complete.Contains(project)) return;
+            Assert.That(visiting.Add(project), Is.True, $"Project dependency cycle at {project}.");
+            foreach (var reference in ReadProjectReferences(FindProjectFile(project))) Visit(reference);
+            visiting.Remove(project);
+            complete.Add(project);
+        }
+        Visit("GalNet.Avalonia.GameHost");
+        Visit("GalNet.Avalonia.GameView");
+        Visit("GalNet.Storage.FileSystem");
+        Visit("GalNet.Avalonia.Debugging");
+    }
+
+    [Test]
     public void Runtime_DoesNotPerformFileSystemIo()
     {
         var directory = Path.GetDirectoryName(FindProjectFile("GalNet.Runtime"))!;
@@ -269,7 +319,8 @@ public class ProjectDependencyTests
             .Descendants("ProjectReference")
             .Select(reference => (string?)reference.Attribute("Include"))
             .Where(include => !string.IsNullOrWhiteSpace(include))
-            .Select(include => Path.GetFullPath(Path.Combine(projectDirectory, include!)))
+            // MSBuild accepts both separators on every host.
+            .Select(include => Path.GetFullPath(Path.Combine(projectDirectory, include!.Replace('\\', '/'))))
             .Select(path => Path.GetFileNameWithoutExtension(path)!)
             .Distinct(StringComparer.Ordinal)
             .Order()

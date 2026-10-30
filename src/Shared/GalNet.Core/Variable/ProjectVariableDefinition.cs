@@ -40,27 +40,11 @@ public sealed class ProjectVariableDefinition
         }
     }
 
-    /// <summary>Creates an independent declaration while preserving the variable UID and typed value.</summary>
-    public ProjectVariableDefinition Clone()
+    /// <summary>Copies author content without normalizing names; immutable typed values may be shared.</summary>
+    public ProjectVariableDefinition Clone() => new()
     {
-        return new ProjectVariableDefinition
-        {
-            Name = Name,
-            Description = Description,
-            DefaultValue = new Variable
-            {
-                Uid = DefaultValue.Uid,
-                Name = Name,
-                Value = CloneValue(DefaultValue)
-            }
-        };
-    }
-
-    private static VariableValue CloneValue(Variable variable) => variable.Type switch
-    {
-        VariableType.Bool => VariableValue.From(variable.AsBool()),
-        VariableType.Int => VariableValue.From(variable.AsInt()),
-        VariableType.Float => VariableValue.From(variable.AsFloat()),
-        _ => VariableValue.From(variable.AsString())
+        Name = Name,
+        Description = Description,
+        DefaultValue = DefaultValue.Clone()
     };
 }

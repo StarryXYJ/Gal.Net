@@ -1,0 +1,12 @@
+{
+  "version": "3.4.18",
+  "release": "https://github.com/libsdl-org/SDL/releases/tag/release-3.4.18",
+  "source": {
+    "url": "https://www.libsdl.org/release/SDL3-3.4.18.tar.gz",
+    "sha256": "9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3"
+  },
+  "win-x64": {
+    "url": "https://www.libsdl.org/release/SDL3-3.4.18-win32-x64.zip",
+    "sha256": "75c2c0fc74e7d1206aaedc22893a35887332f4f85f5c8b74fddc10d177985f2c"
+  }
+}

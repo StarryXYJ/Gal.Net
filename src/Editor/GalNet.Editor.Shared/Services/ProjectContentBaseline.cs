@@ -32,8 +32,15 @@ internal sealed class ProjectContentBaseline
         Sequence(a.Conditions, b.Conditions, (x, y) => x.Id == y.Id && x.Expression == y.Expression);
     private static bool Edge(EditorGraphEdgeDto a, EditorGraphEdgeDto b) =>
         a.Id == b.Id && a.FromNodeId == b.FromNodeId && a.FromOutlet == b.FromOutlet && a.ToNodeId == b.ToNodeId;
-    private static bool Entry(EditorEntryData a, EditorEntryData b) =>
-        a.StableId == b.StableId && a.Type == b.Type && a.Condition == b.Condition && Map(a.Parameters, b.Parameters, JsonElement.DeepEquals);
+    private static bool Entry(EditorEntryData a, EditorEntryData b)
+    {
+        if (a.StableId != b.StableId || a.Type != b.Type || a.Condition != b.Condition || a.Parameters.Count != b.Parameters.Count)
+            return false;
+        // Enumerate the concrete dictionary: the interface-based Map boxes once per entry.
+        foreach (var (name, value) in a.Parameters)
+            if (!b.Parameters.TryGetValue(name, out var other) || !JsonElement.DeepEquals(value, other)) return false;
+        return true;
+    }
     private static bool Variable(ProjectVariableDefinition a, ProjectVariableDefinition b) =>
         a.Name == b.Name && a.Description == b.Description && a.DefaultValue.Uid == b.DefaultValue.Uid &&
         a.DefaultValue.Name == b.DefaultValue.Name && a.DefaultValue.Type == b.DefaultValue.Type &&

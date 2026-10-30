@@ -16,7 +16,7 @@ ProjectContentSession.FileDocuments 按会话 ID 持有文件。删除仅将 Exi
 
 适用于作者文件查询、结构化文件编辑器及任何消费 FileDocuments 的服务。不要按路径删除历史身份，不要用删除记录遮蔽新有效文档，也不要忽略删除遮罩并重新读取未保存删除的磁盘内容。长期身份按文件 ID，路径只用于定位当前内容。
 
-关联：docs/spec/editor-history-and-save.md；docs/spec/editor-game-localization.md。
+关联：docs/spec/editor/history-and-save.md；docs/spec/editor/localization.md。
 
 ## 2026-10-20 P2：保存期望也必须按有效路径身份归并
 

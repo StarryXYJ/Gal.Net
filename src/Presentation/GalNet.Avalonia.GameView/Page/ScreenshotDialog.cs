@@ -21,6 +21,40 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
     private Button SaveButton = null!;
     private TextBlock ErrorBlock = null!;
     private bool _initialized;
+    private TopLevel? _owner;
+
+    protected override void OnAttachedToVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _owner = TopLevel.GetTopLevel(this);
+        if (_owner is not null) _owner.SizeChanged += OnOwnerSizeChanged;
+        UpdateSizing();
+    }
+
+    protected override void OnDetachedFromVisualTree(global::Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        if (_owner is not null) _owner.SizeChanged -= OnOwnerSizeChanged;
+        _owner = null;
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    private void OnOwnerSizeChanged(object? sender, SizeChangedEventArgs e) => UpdateSizing();
+
+    private void UpdateSizing()
+    {
+        if (!_initialized) return;
+        if (_viewModel is { CanChooseDestination: false } && _owner is not null)
+        {
+            MaxWidth = Math.Min(480, Math.Max(1, _owner.ClientSize.Width - 32));
+            MaxHeight = Math.Max(1, _owner.ClientSize.Height - 24);
+            Preview.Height = Math.Clamp(_owner.ClientSize.Height - 270, 48, 160);
+        }
+        else
+        {
+            MaxWidth = MaxHeight = double.PositiveInfinity;
+            Preview.Height = 284;
+        }
+    }
 
     protected void InitializeDialog()
     {
@@ -60,6 +94,7 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
         if (DataContext is not ScreenshotDialogViewModel viewModel) return;
 
         _viewModel = viewModel;
+        UpdateSizing();
         DirectoryBox.Text = viewModel.DirectoryPath;
         FileNameBox.Text = viewModel.FileName;
         IncludeUiBox.IsChecked = viewModel.IncludeUi;
@@ -75,6 +110,8 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
     {
         if (!_initialized) return;
         DetachHandlers();
+        if (_owner is not null) _owner.SizeChanged -= OnOwnerSizeChanged;
+        _owner = null;
         _viewModel = null;
         _previewVersion++;
         Preview.Source = null;
@@ -123,8 +160,11 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
         var viewModel = _viewModel;
         if (viewModel is null) return;
 
-        viewModel.DirectoryPath = DirectoryBox.Text?.Trim() ?? string.Empty;
-        viewModel.FileName = FileNameBox.Text?.Trim() ?? string.Empty;
+        if (viewModel.CanChooseDestination)
+        {
+            viewModel.DirectoryPath = DirectoryBox.Text?.Trim() ?? string.Empty;
+            viewModel.FileName = FileNameBox.Text?.Trim() ?? string.Empty;
+        }
         viewModel.IncludeUi = IncludeUiBox.IsChecked == true;
         SaveButton.IsEnabled = false;
         try

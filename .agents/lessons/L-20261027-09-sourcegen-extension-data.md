@@ -4,7 +4,7 @@
 - 日期：2026-10-27
 - 适用范围：System.Text.Json 源生成 metadata，含 JsonExtensionData 的 DTO
 - 来源：引擎 AOT 实现，GalleryAnnotation 未知字段保留回归
-- 文档：docs/manual/native-aot.md、docs/spec/assets.md
+- 文档：docs/manual/publishing/native-aot.md、docs/spec/content/assets.md
 
 ## 现象与根因
 

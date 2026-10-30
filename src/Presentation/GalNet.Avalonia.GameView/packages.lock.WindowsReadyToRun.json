@@ -177,6 +177,16 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.media.libvlc": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "LibVLCSharp": "[3.10.0, )"
+        }
+      },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {

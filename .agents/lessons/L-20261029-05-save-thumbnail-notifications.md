@@ -2,7 +2,7 @@
 
 - 状态：confirmed
 - 来源：2026-10-29 Sample 保存卡顿跟进（独立修复）
-- 关联：docs/spec/control.md，AvaloniaGameSession，SaveSlotsPageViewModel
+- 关联：docs/spec/presentation/game-view.md，AvaloniaGameSession，SaveSlotsPageViewModel
 
 ## 现象与根因
 

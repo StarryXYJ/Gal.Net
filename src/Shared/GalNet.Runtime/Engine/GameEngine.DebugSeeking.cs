@@ -23,7 +23,6 @@ public sealed partial class GameEngine
     {
         private readonly GameDebugOptions _options;
         private readonly GameSnapshot _initialScene;
-        private readonly Dictionary<string, GameSnapshot> _entrances = new(StringComparer.Ordinal);
         private readonly SemaphoreSlim _seeks = new(1, 1);
         private CancellationTokenSource? _seekCancellation;
         private TaskCompletionSource? _seekCompletion;
@@ -31,6 +30,9 @@ public sealed partial class GameEngine
         private bool _suppressEntrance;
         private GameDebugSeek? _seek;
         private bool _preparingReplay;
+        private int _replayedInstructions;
+        private GameDebugReplayStats? _lastReplay;
+        internal void RecordReplayInstruction() => _replayedInstructions++;
         private Queue<GameDebugRouteEdge> _route = new();
         internal bool Replaying => _seek is not null;
         internal bool SuppressReadProgress => _preparingReplay || Replaying;
@@ -43,7 +45,7 @@ public sealed partial class GameEngine
             Interlocked.Increment(ref _generation);
             if (!debugRestore)
             {
-                CancelSeek(); ClearEntrances();
+                CancelSeek(); _entrances.Clear(); _lastReplay = null;
                 _seek = null; _route.Clear(); _preparingReplay = false; _suppressEntrance = false;
             }
             Paused = debugRestore;
@@ -52,7 +54,7 @@ public sealed partial class GameEngine
         {
             if (_suppressEntrance) { _suppressEntrance = false; return; }
             if (Replaying) return;
-            if (_engine.EntryIndex == 0) StoreEntrance(group);
+            if (_engine.EntryIndex == 0) _entrances.Capture(group, CaptureScene);
         }
         private GameSnapshot CaptureScene()
         {
@@ -123,10 +125,9 @@ public sealed partial class GameEngine
                         baseline = _engine._runtime.CreateSnapshot();
                         fromCurrent = true;
                     }
-                    else if (_entrances.TryGetValue(start, out var entrance))
+                    else if (_entrances.TryGet(start, out var entrance))
                     {
-                        baseline = SnapshotCopy.Clone(entrance);
-                        _entranceUse[start] = ++_cacheClock;
+                        baseline = entrance;
                         cacheHit = true;
                     }
                     else if (_initialScene.NodeId == start) baseline = SnapshotCopy.Clone(_initialScene);

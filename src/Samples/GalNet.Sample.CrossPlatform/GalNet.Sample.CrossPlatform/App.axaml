@@ -1,0 +1,23 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:semi="https://irihi.tech/semi"
+             xmlns:loc="using:DynamicLocalization.Core"
+             xmlns:typography="using:GalNet.Avalonia.Themes"
+             x:Class="GalNet.Sample.CrossPlatform.App"
+             RequestedThemeVariant="Default">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.DataTemplates>
+        <DataTemplate DataType="loc:LocalizedString" x:DataType="loc:LocalizedString">
+            <TextBlock Text="{Binding Value}" />
+        </DataTemplate>
+    </Application.DataTemplates>    
+
+    <Application.Styles>
+        <semi:SemiTheme />
+        <semi:UrsaSemiTheme />
+        <Style Selector=":is(Window)">
+            <Setter Property="FontFamily" Value="{x:Static typography:GameTypography.UiFontFamily}" />
+        </Style>
+    </Application.Styles>
+</Application>

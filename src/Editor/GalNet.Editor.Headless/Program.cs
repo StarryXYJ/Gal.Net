@@ -48,6 +48,34 @@ internal static class Program
                 WriteJson(new ToolResult(_operationId, true, descriptor, []));
                 return 0;
             }
+            if (_operationId == "distribution.compose")
+            {
+                var result = await GameDistributionComposer.ComposeAsync(invocation.Get("--runtime")!, invocation.Get("--content")!, invocation.Get("--output")!);
+                WriteJson(new ToolResult(_operationId, true, result, []));
+                return 0;
+            }
+            if (_operationId == "distribution.build-compose")
+            {
+                using var cancellation = new CancellationTokenSource();
+                ConsoleCancelEventHandler cancel = (_, e) => { e.Cancel = true; cancellation.Cancel(); };
+                Console.CancelKeyPress += cancel;
+                try
+                {
+                    var result = await new BuildComposeService().BuildAsync(new(invocation.Get("--app-project")!,
+                        invocation.Get("--content")!, invocation.Get("--output")!, invocation.Get("--runtime-id")!,
+                        invocation.Get("--entry-point")!, invocation.Get("--version")!, invocation.Get("--configuration") ?? "Release",
+                        invocation.Get("--sample-flavor") ?? "Player", invocation.Get("--publish-profile"), invocation.Get("--sdk-version"),
+                        invocation.Get("--miniaudio-native"), invocation.Get("--media-directory")), cancellation.Token);
+                    WriteJson(result);
+                    return result.Success ? 0 : 5;
+                }
+                catch (OperationCanceledException error)
+                {
+                    WriteJson(new ToolResult(_operationId, false, error.Data["buildReport"], [new("build.cancelled", "error", "Build cancelled; owned build processes were stopped.")]));
+                    return 130;
+                }
+                finally { Console.CancelKeyPress -= cancel; }
+            }
             args = new[] { _operationId }.Concat(invocation.Positionals)
                 .Concat(invocation.Options.SelectMany(pair => new[] { pair.Key, pair.Value })).ToArray();
 

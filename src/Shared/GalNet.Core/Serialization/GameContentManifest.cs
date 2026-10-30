@@ -13,6 +13,7 @@ public sealed record GameContentManifest
     public List<GalpakFileEntry> BasePaks { get; init; } = [];
     public List<StoryPackageManifest> Stories { get; init; } = [];
     public GalpakFileEntry? LocalizationPak { get; init; }
+    public List<GalpakFileEntry> ContractFiles { get; init; } = [];
 }
 
 public sealed record StoryPackageManifest(string PackageId, List<GalpakFileEntry> Parts);

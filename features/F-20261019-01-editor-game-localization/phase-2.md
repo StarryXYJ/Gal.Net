@@ -65,4 +65,4 @@ TRX 位于 Temp/localization-p2-results/；以三个项目名称的结果文件�
 - 全项目查询仍为按需快照和文件读取，未做大项目性能验收。
 - 工作树中另有并行 Timeline/UI 改动，未重置、提交或将其归入本 feature。
 
-当前事实见 [规范](../../docs/spec/editor-game-localization.md)；下一阶段为 P3 角色 Dock 与可输入 speaker。
+当前事实见 [规范](../../docs/spec/editor/localization.md)；下一阶段为 P3 角色 Dock 与可输入 speaker。

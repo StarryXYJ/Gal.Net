@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
+    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Themes/GalNet.Avalonia.Themes.csproj" />
+    <ProjectReference Include="../../GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj" />
+    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true'" />
+    <AvaloniaResource Include="Assets\**" />
+    <EmbeddedResource Include="Localization/*.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <PackageReference Include="Avalonia.Fonts.Inter" />
+    <PackageReference Include="AvaloniaUI.DiagnosticsSupport">
+      <IncludeAssets Condition="'$(EnableGameDebugging)' != 'true'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(EnableGameDebugging)' != 'true'">All</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Irihi.Ursa.Themes.Semi" />
+    <PackageReference Include="Semi.Avalonia" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+</Project>

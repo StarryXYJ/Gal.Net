@@ -1,15 +1,58 @@
 # GalNet Agent Knowledge
+- [Android 导出契约构建身份](lessons/L-20261030-18-android-export-contract-build-identity.md)：Android preview 的内容导出 Headless 必须与 Android 契约使用同一 Version 和 ContinuousIntegrationBuild；源生成 Contracts.Builtins 即使版本相同也可能字节不同。locked restore 保持提交的双 ABI 图，最终发布才传单 ABI RID。
+- 移动端玩家 UI 方向已延期保存于 [F-20261030-03](../features/F-20261030-03-mobile-player-ui/design.md)：桌面保持原版，仅局部研究对白/底栏跨画布与触屏适配；先确认 Classic 横屏对照稿再实施。本轮 UI 改造已撤回，当前未实现，不得据此继续改代码。
+- [ComboBox 本地化控件选项](lessons/L-20261030-17-combobox-localized-control-items.md)：Control 选项的选中区可能只是 VisualBrush 镜像；popup 关闭释放本地化绑定会清空镜像。使用数据 key + ItemTemplate，回归覆盖真实本地化和关闭后的文字。
+- [Android 更新签名](lessons/L-20261030-16-android-update-signature.md)：不同构建上下文不能假定同一开发密钥；覆盖安装前核对实际 APK 证书，显式使用旧密钥保留 profile，不用卸载绕过签名不匹配。
+- 2026-10-30 模板结构 P6b–P6e 当前 Sample 范围已收尾：Player 删除，两个 Sample 独立定制，可选 Avalonia.Debugging 可排除；28 锁图/呈现/两种集成/架构通过。Win/Linux 六角色发布、两宿主×两 flavor 原生会话/落盘/退出通过（Linux 26.04.1/WSLg/本机媒体），Windows Developer 各 3 条真实调试通过。69a88546 快照正常 NDK 双 ABI 各 114 Mono AOT；ARM64 保留数据更新，启动/重进/立绘/触摸有自动证据，其余本轮功能由用户确认通过。独立模板、P7 专项及延期平台继续追踪，见 feature summary。
+- [删除工程与锁图](lessons/L-20261030-15-prune-project-lock-nodes.md)：移除 ProjectReference 后普通/locked restore 仍可能保留无用 Project 节点；按每个 profile 正确参数 force-evaluate，再 locked 验证，并检查包 hash/框架键。P6c 增加结构化锁图门禁。
+- [UI 来源与语言回退](lessons/L-20261030-14-localization-bootstrap-fallback.md)：合并通用/项目嵌入文案后，AttachGame 保留精确文化来源，由最外层统一回退；提前回退会遮住默认语言的外部翻译。P6c 有英文缺键覆盖的失败/修复回归。
+- [TRX Explicit 执行证据](lessons/L-20261030-12-trx-explicit-test-evidence.md)：NUnit 的 notExecuted 可能为 0 而仍有 Explicit 未运行；保留原始计数并记录 total-executed，设备/GUI/AOT 边界单独报告。
+- [进程树清理失败](lessons/L-20261030-13-process-tree-cleanup-failure.md)：taskkill 失败后不能无限 wait；检查退出码与有界等待，验证自有父子退出且无关进程存活，macOS 不能依赖 /proc。
+- [重复呈现当前页](lessons/L-20261030-11-current-page-presenter.md)：相同 scoped control 重复呈现时不能清空其当前 presenter；回归检查窗口视觉树，不能只看 VM、Content 或 Android PID。后台重进曾在三种主题复现。
+- [Android 沙盒规范路径](lessons/L-20261030-10-android-sandbox-path.md)：Android 平台根使用 FilesDir.CanonicalPath 后再执行严格链接检查；内容准备失败需有 profile logger 之前的 logcat 回退。REDMI K80 Pro / Android 16 的 Release Mono AOT 已通过基础启动/剧情音视频/触摸 smoke，完整移动验收继续追踪。
+- [资源路径重试边界](lessons/L-20261030-09-asset-path-failure-retry.md)：空句柄可能来自读取/解码失败，不能直接判定旧 ID 映射失效；共享完成须保留是否找到文件，仅查找失败重查路径，并验证 ID/路径并发和显式后续恢复。
+- [内容克隆与名称规范化](lessons/L-20261030-08-content-clone-normalization.md)：克隆必须保留全部持久字段；变量名称同步属于显式作者操作，不能在保存快照中隐式改写，否则保存成功后仍可能 dirty。
+- [dirty 字典枚举分配](lessons/L-20261030-07-dirty-dictionary-enumeration.md)：高频 Entry 参数比较通过 IReadOnlyDictionary foreach 会每条目装箱；直接遍历具体字典保留完整内容比较，分配回归应按条目规模验证，不能靠历史事件缓存掩盖直接修改。
+- 2026-10-30 跨平台 P6a：Sample.Player 统一承载原/新 Sample 主视图、语言资源、截图和公共组合；资源所有者改为 SamplePlayerServices.Assembly。SamplePlayerSession 在 UI 线程异步拥有/释放 scope，取消语言选择并允许会话重建；平台 galpak 流安装到 SHA256 分版缓存，profile 按 projectId 稳定。Windows 两宿主与 WSLg 新宿主启动退出通过，Android 两 ABI 各 116 程序集 Mono AOT/完整 galpak 打包通过；冻结源码 CI 2206 通过/2 个既有 Editor 失败，当前 HEAD Debug Integration 191 通过。独立模板、移动媒体/生命周期/设备及延期平台仍待验收；见跨平台 feature 总结与 CrossPlatform/README.md。
+- [Windows 临时目录 ACL](lessons/L-20261030-05-python-tempfile-restricted-acl.md)：本机 Python 3.14 的 tempfile 私有限制 ACL 会阻止受限进程访问；用已授权工作区内继承 ACL 的独立目录，并校验清理边界。
+- 正式文档已按 quick-start、manual（Editor/Sample/扩展/发布/开发）和 spec（架构/运行时/内容/呈现/Editor）分类；入口 docs/README.md。docs/navigation.json 定义统一导航，scripts/docs/sync_wiki.py 校验并生成完整 Wiki 正文与树形侧栏；正文仅在 docs 编辑。此次主仓库与 Wiki 均按用户要求待发布。见 features/F-20261030-02-documentation-structure/summary.md。
+- [Benchmark 成功证据](lessons/L-20261030-05-benchmark-success-evidence.md)：BDN 子工程构建失败可能仍返回 0；入口检查 Summary/Report，验收实际执行数。PAK 12 项有效基线已保存，P3a verified。
+- [流测试替身重载](lessons/L-20261030-04-stream-test-double-overloads.md)：当前 MemoryStream 派生类型的 Span 读取可回调数组重载；观察/取消替身用组合避免递归。项目质量计划 P2 已验证有界解压与取消传递，Assets/Core/Architecture 共 394 项通过；P3 待建 BenchmarkDotNet 基线，正式文档仍由用户后续整理。
+- [Android 桌面 native 回退](lessons/L-20261030-06-android-desktop-native-fallback.md)：Android RID 回退会误收 glibc SDL；当前 Android 宿主显式排除三种桌面 SDL 资产，复建并核对 APK，不能用生成成功或屏蔽 XA0141 代替目标 native 验证。
+- [共享加载的待交付引用](lessons/L-20261030-03-pending-asset-delivery.md)：资源回收需同时等待句柄引用与 PendingWaiters 归零；用可控调度覆盖首个句柄释放早于第二个请求领取。项目质量计划见 features/F-20261030-01-project-quality/phase-plan.md；P1 已验证，正式文档由用户后续整理。
+- 2026-10-30 跨平台推进：用户将手柄/macOS/iOS 验收后移，允许移动 Mono AOT，不以 NativeAOT 或延期平台阻挡共享宿主/Desktop/Android。当前 Ubuntu 26.04.1/WSLg 以核验 SDK 10.0.401、干净源码快照完成 Linux 原生 build-compose（galpak/目录及仓库外独立宿主）；三包 hash/权限/契约、两种 Sample 原生会话与确认退出、Windows/Linux 保护测试各 4 项通过。媒体仅本机开发探针，24.04 基线/完整媒体仍待验收；证据见跨平台 feature 执行记录及 probes/source-compose。
+- [SDK 名称大小写](lessons/L-20261030-02-sdk-name-case.md)：Microsoft.NET.Sdk 使用标准大小写；Windows cross-publish 不能代替 Linux 原生 SDK。隔离 SDK/无 bin/obj 源快照揭示并修复 Editor 的 MSB4236。
+- 2026-10-30 桌面手柄：GameHost 已用自有窄绑定 SDL3 替换 XInput，固定 native 包 3.4.18.1 / SDL 3.4.18；UI 主线程共享 input 租约，失焦/断连 Cancel、回中立后重新武装，标签不改位置绑定。Windows/WSLg 正式探针各 3×40 与缺库降级、外部 NuGet 资产/许可传递通过；真实手柄、macOS/移动仍待验收。见 control.md 与跨平台 feature 总结。
+- [SDL 输入事件所有权](lessons/L-20261030-01-sdl-input-event-ownership.md)：状态轮询也须清理自有 joystick/gamepad 输入事件；只清 0x600–0x6ff，保留无关事件，GalNet 主线程共享租约，拒绝接管外部 input owner。
+- [源码发布的 profile 还原图](lessons/L-20261029-16-source-build-restore-graphs.md)：SDK/restore/publish 分步记录；Desktop 使用单数 RuntimeIdentifier，现有 WindowsReadyToRun 沿用 -r 锁图，不关闭 locked restore。
+- [跨主机 so 筛选](lessons/L-20261029-17-cross-host-shared-object-filter.md)：Windows 的 *.so* 会误匹配 System.Net.Sockets.dll；用 Ordinal 的 .so/.so. 文件名规则再验 ELF。
+
+- [Windows 原子发布句柄冲突](lessons/L-20261029-15-windows-publication-sharing.md)：独立 Move 探针确认短暂冲突；FilePublication 仅 Windows 5/32/33 有界重试，保持原子性与取消，回滚不继承取消。真实句柄回归及两种分发 40 次导出通过。
+
+- [WSLg 图形驱动选择](lessons/L-20261029-14-wsl-renderer-selection.md)：当前 Ubuntu 24.04.3 默认 llvmpipe，进程级 GALLIUM_DRIVER=d3d12 已确认 Intel UHD 硬件驱动及 Sample 启动/退出；scripts/samples/run-wsl-sample.sh 保留原 manual-profile。用户随后确认新入口 blur 人工复测通过、音频正常；尚无帧耗时测量。
+
+- Linux 本地候选入口：scripts/release/Publish-Linux.ps1、prepare-linux-media.py、package-linux.py；Ubuntu 24.04.3 / WSLg 已验证 tar 权限/hash、独立 Editor/Sample 正常退出、包内 VLC/FFmpeg 像素与 CLI 两种导出/安装。许可及对应源码可用性、原生 Linux 桌面/完整媒体仍待验收；可选 .NET LTTng 追踪不在支持范围。见 docs/manual/publishing/engine-release.md。
+
+- [跨平台默认字体](lessons/L-20261029-13-portable-default-font.md)：UI 跟随宿主默认字体，显式 CJK 回退统一优先 Noto/思源黑体（用户要求避免专有字体依赖）；Sample 显式选择已注册的内置 Inter，不能假定 WithInterFont 自动改变默认。Ubuntu 24.04.3 / WSLg 已验证窗口、会话及确认退出；Inter 不含中文，中文显示仍需 CJK 字体。
+
+- 2026-10-29 跨平台 P3a：剧情像素视频、Gallery 播放/缩略图、Editor 音频预览均通过 Media.LibVlc.LibVlcFactory 初始化；singleton 配置冻结 native/plugin 路径，各播放器仍独立释放。Windows 私有 VLC 已原生验证；Linux 默认 system loader 仅为开发基线，Core.Initialize(directory) 不支持 Linux，不能据此声称私有部署成功。Editor 默认契约目录须显式部署 Core、Builtins、Project.Contracts 完整闭包。
+
+- 2026-10-29 跨平台发行工具：compose 支持 win-x64 ZIP/目录、linux-x64 tar.gz/Unix 目录与完整内容，保持布局 v1 和严格契约；build-compose 显式 csproj/apphost/版本，经 SDK、锁定还原和普通自包含发布封装后复用 compose。Windows 宿主到 Windows/Linux 目标的真实 Sample 均已解包、验 hash、启动并正常退出；Editor.Shared 515 项通过，取消会停止自有 SDK 进程树。Linux 宿主 SDK、定制工程矩阵和 macOS 仍待验收；旧 dev.9/dev.10 候选未更新。已完成总结和剩余计划见 features/F-20261029-05-cross-platform-applications/。
+- [SkiaSharp 与 R2R 原生字体验收](lessons/L-20261029-12-skia-r2r-native-fonts.md)：当前 win-x64/.NET 10/SkiaSharp 3.119.4 发布仅将 SkiaSharp 保持 IL，应用继续 R2R；真实窗口连续启动/正常退出不能由 PE 头检查替代。
+
+- 2026-10-29 跨平台 feature P1：用户明确不考虑向后兼容；galpak/目录统一包含全部剧情分片，installation.json v4 索引基础 PAK、localization.pak 和剧情 PAK，content/GPAK 仍 v3。安装器只接受完整 v4，不再提供旧归档安装或旁置剧情导出。Editor 仅提供 galpak/内容文件夹，目录模式在所选输出目录创建 pak；资源覆盖补丁显式独立导出。早期 v3 封装记录中的旧归档兼容与旁置剧情规则已被本项取代。见 features/F-20261029-05-cross-platform-applications。
+- [重复安装的源完整性](lessons/L-20261029-11-reinstall-source-integrity.md)：命中正确安装目录仍须验证本次归档 payload hash，不能以目标缓存命中替代源完整性校验。
 
 - [模态背景静态标题](lessons/L-20261029-10-disabled-title-foreground.md)：禁用背景容器会改变标题继承的前景画刷；静态标题显式绑定 TextPrimary，弹窗验证须挂载真实主页并检查 Color/Opacity，不能只截空背景。
 
-- 2026-10-29 CI 发布门禁：release.yml 的 validate-source 在 tag push 后先 fetch master，Test-ReleaseRef.ps1 校验规范版本 tag、checkout HEAD 和 origin/master 祖先归属；build 依赖门禁，publish 只允许 tag push 且 build 成功。主分支普通 push 只跑 CI，手动运行只生成候选。Test-ReleaseGuards.ps1 的 17 项用例覆盖真实临时 Git 图和模拟七 ZIP 上传；Push 在创建 draft 前检查七 ZIP。见 docs/manual/release-packaging.md。
+- 2026-10-29 CI 发布门禁：release.yml 的 validate-source 在 tag push 后先 fetch master，Test-ReleaseRef.ps1 校验规范版本 tag、checkout HEAD 和 origin/master 祖先归属；build 依赖门禁，publish 只允许 tag push 且 build 成功。主分支普通 push 只跑 CI，手动运行只生成候选。Test-ReleaseGuards.ps1 的 17 项用例覆盖真实临时 Git 图和模拟七 ZIP 上传；Push 在创建 draft 前检查七 ZIP。见 docs/manual/publishing/engine-release.md。
 
-- 2026-10-29 内置文档封装：新 galpak v3 固定 pak/game.pak 入口，含 content v3、installation 索引、settings、Gallery、characters、layout 六文档；localization.pak 每文化一个平铺文本条目。使用独立 document GPAK catalog，不加入资源覆盖。新安装 I18n/<culture> 仅外置覆盖；作者与 content v2 旧安装仍用 I18n/External。导出/安装保留 I18n、ResourcePatches、StoryPatches/<buildId> 空目录，ZIP 显式保存；兼容 v1/v2 galpak 和 content v2 读取。只读 CLI game inspect 供脚本读取 packed/legacy 描述；Sample profile 身份从 game.pak 读取 projectId。见 docs/spec/file-formats.md、docs/spec/i18n.md、features/F-20261029-02-packed-game-documents。
+- 2026-10-29 内置文档封装：新 galpak v3 固定 pak/game.pak 入口，含 content v3、installation 索引、settings、Gallery、characters、layout 六文档；localization.pak 每文化一个平铺文本条目。使用独立 document GPAK catalog，不加入资源覆盖。新安装 I18n/<culture> 仅外置覆盖；作者与 content v2 旧安装仍用 I18n/External。导出/安装保留 I18n、ResourcePatches、StoryPatches/<buildId> 空目录，ZIP 显式保存；兼容 v1/v2 galpak 和 content v2 读取。只读 CLI game inspect 供脚本读取 packed/legacy 描述；Sample profile 身份从 game.pak 读取 projectId。见 docs/spec/content/file-formats.md、docs/spec/content/localization.md、features/F-20261029-02-packed-game-documents。
 - [损坏内容与启动探测](lessons/L-20261029-08-invalid-data-startup-fallback.md)：InvalidDataException 不派生 IOException；profile 身份探测显式回退，正式内容加载仍报错。
 
 - [自包含平台程序集](lessons/L-20261029-07-self-contained-platform-assemblies.md)：自包含 lib 混放 framework 与业务 DLL；契约依赖收集按 runtimepack deps 识别平台归属，不能按 corelib 同目录排除 Core/Builtins。
 
-- 2026-10-29 桌面发行布局：应用根只留入口 EXE 和目录；SDK apphost 直接指向 lib/<app>.dll，运行时与原生依赖都在 lib，清单/说明/许可在 docs。Sample 默认加载同级 pak，用户 profile 按内容 projectId 的摘要定位；玩家关闭普通参数，EnableLaunchArguments 默认跟随 EnableGameDebugging，开发发行加 -SampleFlavor Developer。galpak 统一 pak/ 外层、内部路径相对内容根；安装显式目标不追加第二层 pak。见 docs/manual/release-packaging.md、docs/spec/file-formats.md 与 features/F-20261029-01-desktop-package-layout。
+- 2026-10-29 桌面发行布局：应用根只留入口 EXE 和目录；SDK apphost 直接指向 lib/<app>.dll，运行时与原生依赖都在 lib，清单/说明/许可在 docs。Sample 默认加载同级 pak，用户 profile 按内容 projectId 的摘要定位；玩家关闭普通参数，EnableLaunchArguments 默认跟随 EnableGameDebugging，开发发行加 -SampleFlavor Developer。galpak 统一 pak/ 外层、内部路径相对内容根；安装显式目标不追加第二层 pak。见 docs/manual/publishing/engine-release.md、docs/spec/content/file-formats.md 与 features/F-20261029-01-desktop-package-layout。
 - [原生退出确认](lessons/L-20261029-06-native-exit-confirmation.md)：WM_CLOSE 只打开确认遮罩；测试须在自有 HWND 确认退出，再验证零退出码和落盘，不能用强杀替代。
 
 - [预览效果像素边界](lessons/L-20261029-04-bounded-scene-capture.md)：外层缩图不限制 CPU 效果纹理；逻辑尺寸与像素尺寸分开，正式截图仍保持完整分辨率。
@@ -21,7 +64,7 @@
 
 - [持久字段与保存基线](lessons/L-20261029-01-content-baseline-field-completeness.md)：新增字段必须进入手写相等比较；仅改 Group.storyPackage 应 dirty，局部保存其他配置不能抹掉它。
 
-- 2026-10-28 内容打包：项目唯一 Graph，graph/group 为保留 ID 资源；GPAK v3、content v2、save v5。本体闭包先行，各剧情包只减本体；默认 128 MiB 未压缩软阈值（用户后续调大），整片缓冲不保证内存上限。资源矩阵定义在 settings 的 galnet.resourceOverrides，矩阵修改经项目事务即时持久化且撤销/重做落盘，独立导出不 Save All，运行 priority/hash 降序显式映射、会话冻结。图集旧档按覆盖来源重新解析选择意图。文本/人物整体在本体，存档保守要求准备时全部剧情包；Gallery 补丁延期。见 docs/manual/content-packaging.md、features/F-20261028-01-content-packaging/summary.md。
+- 2026-10-28 内容打包：项目唯一 Graph，graph/group 为保留 ID 资源；GPAK v3、content v2、save v5。本体闭包先行，各剧情包只减本体；默认 128 MiB 未压缩软阈值（用户后续调大），整片缓冲不保证内存上限。资源矩阵定义在 settings 的 galnet.resourceOverrides，矩阵修改经项目事务即时持久化且撤销/重做落盘，独立导出不 Save All，运行 priority/hash 降序显式映射、会话冻结。图集旧档按覆盖来源重新解析选择意图。文本/人物整体在本体，存档保守要求准备时全部剧情包；Gallery 补丁延期。见 docs/manual/editor/content-packaging.md、features/F-20261028-01-content-packaging/summary.md。
 
 - [可选参数与二进制 API](lessons/L-20261028-04-optional-parameter-binary-api.md)：新增可选参数仍改变 CLR 签名；公开契约保留旧签名转发，并用旧 consumer 装载当前 Core 验证。
 
@@ -31,7 +74,7 @@
 
 - [原生发布载荷](lessons/L-20261028-01-native-publish-payload.md)：RID/托管符号开关不能保证 native NuGet 内容自动裁掉多余架构与 PDB；在 manifest 前过滤最终应用载荷，并验收所需 x64 native 文件仍在。
 
-- 本地 CI 入口为 `scripts/ci/Invoke-CI.ps1`（默认 All，可 Coverage），Actions 调用同一脚本；SDK 精确固定为 global.json 版本。`scripts/release/Release.ps1` 生成并验收 5 个聚合 NuGet 与 Windows x64 R2R 的 Editor、纯/整合 Sample、Contracts 四 ZIP；包归属见 packaging/packages.json，操作见 docs/manual/release-packaging.md。桌面 Sample AOT 尚未通过严格链接，不能从 Headless 自检推导支持；F-20261027-04 的 summary 保留未完成项。
+- 本地 CI 入口为 `scripts/ci/Invoke-CI.ps1`（默认 All，可 Coverage），Actions 调用同一脚本；SDK 精确固定为 global.json 版本。`scripts/release/Release.ps1` 生成并验收 5 个聚合 NuGet 与 Windows x64 R2R 的 Editor、纯/整合 Sample、Contracts 四 ZIP；包归属见 packaging/packages.json，操作见 docs/manual/publishing/engine-release.md。桌面 Sample AOT 尚未通过严格链接，不能从 Headless 自检推导支持；F-20261027-04 的 summary 保留未完成项。
 
 - [Solution fixture 配置](lessons/L-20261027-11-solution-fixture-configuration.md)：solution 外引用工程可能回到 Debug，测试却读取 Release；契约 fixture 已加入 GalNet.slnx，验证构建日志和实际输出配置。
 - [源生成 init 默认值](lessons/L-20261027-12-generated-init-defaults.md)：音轨/Bus 精简 JSON 会丢失 init 属性初始化值；显式 JsonConstructor 可选参数保留容量/增益默认值，不放宽校验或改成可变 DTO。
@@ -42,21 +85,21 @@
 
 - [数值模板与作者草稿](lessons/L-20261027-05-numeric-template-drafts.md)：NumericUpDown 的模板/Value 初始化不能成为作者输入；借用主题时由字段上下文拥有原始文字与提交，TextBox.PropertyChanged 同步捕获，验证挂载无草稿及输入后立即 Enter。
 
-- 2026-10-27 Group Problems 按作者历史/相关依赖自动检查内存工作版，代次阻止旧结果发布，合法待提交不计条目错误。Editor numeric 默认保留文字的上下框，显式 numericupdown/numerictext 与 slider+精确输入；long/ulong/decimal 保留文本。前导小数点仅在类型化数字编辑入口规范化，JSON 源码仍严格。规范见 docs/spec/editor-groups.md、control.md；证据见 features/F-20261023-01-editor-uiux/follow-up-group-diagnostics-numeric-20261027.md。
+- 2026-10-27 Group Problems 按作者历史/相关依赖自动检查内存工作版，代次阻止旧结果发布，合法待提交不计条目错误。Editor numeric 默认保留文字的上下框，显式 numericupdown/numerictext 与 slider+精确输入；long/ulong/decimal 保留文本。前导小数点仅在类型化数字编辑入口规范化，JSON 源码仍严格。规范见 docs/spec/editor/groups.md、control.md；证据见 features/F-20261023-01-editor-uiux/follow-up-group-diagnostics-numeric-20261027.md。
 
-- 2026-10-27 音频创作：类型 ComboBox/目录参数表单，apply 隐藏自动身份，stop/update 选择剧情位置之前的直接挂载实例；显式 all 与参数 patch 更新已实现。复用 Scene 作者语义、Graph/前缀分析和项目查询，AudioEffect 域按 scope/target/instance 限定，AudioEffects/AudioComplete/AudioRevision 独立于视觉候选。见 docs/spec/editor-scene-targets.md、docs/manual/audio-mixing.md、features/F-20261027-01-audio-mixer/authoring-summary.md；既有 Timeline Flyout 测试保留。
+- 2026-10-27 音频创作：类型 ComboBox/目录参数表单，apply 隐藏自动身份，stop/update 选择剧情位置之前的直接挂载实例；显式 all 与参数 patch 更新已实现。复用 Scene 作者语义、Graph/前缀分析和项目查询，AudioEffect 域按 scope/target/instance 限定，AudioEffects/AudioComplete/AudioRevision 独立于视觉候选。见 docs/spec/editor/scene-targets.md、docs/manual/editor/audio.md、features/F-20261027-01-audio-mixer/authoring-summary.md；既有 Timeline Flyout 测试保留。
 
 - [构建完成后再启动 no-build 测试](lessons/L-20261027-04-build-before-no-build-tests.md)：session_id 表示仍在运行；同一输出根的构建/测试重叠会锁定 DLL 并可能验证旧产物，必须确认 build exit_code=0 后再启动测试。
 
 - [Timeline 停止与事件收尾](lessons/L-20261027-03-timeline-stop-event-cleanup.md)：完成轨道不等于执行末帧事件；停止需等待完整收尾，循环初始化/迭代/结束清理分别处理，初始化期间的停止也必须生效。
 
-- 2026-10-27 音频 PCM：实例拥有 gain/淡入淡出/结束处理，Track 管理顺序/随机和循环队列，Bus 实际汇总后执行共享效果。Media.Audio 为跨平台混音/DSP，Media.Miniaudio 为 Windows x64 设备/解码；LibVLC 仅保留视频/Gallery。默认项目 section v2（audioBuses/busId），音频状态 tracks/seffects v2、channels v1；SEffect scope/targetId 与真实滤波/混响见 docs/manual/audio-mixing.md。实现和验收限制见 features/F-20261027-01-audio-mixer/summary.md。
+- 2026-10-27 音频 PCM：实例拥有 gain/淡入淡出/结束处理，Track 管理顺序/随机和循环队列，Bus 实际汇总后执行共享效果。Media.Audio 为跨平台混音/DSP，Media.Miniaudio 为 Windows x64 设备/解码；LibVLC 仅保留视频/Gallery。默认项目 section v2（audioBuses/busId），音频状态 tracks/seffects v2、channels v1；SEffect scope/targetId 与真实滤波/混响见 docs/manual/editor/audio.md。实现和验收限制见 features/F-20261027-01-audio-mixer/summary.md。
 
 - [分数延迟环绕边界](lessons/L-20261027-02-fractional-audio-delay-wrap.md)：float 负分数位置加长度后可能舍入到长度本身；使用 double 并复核上边界，默认参数与非默认参数均验证。
 
-- 2026-10-27 默认视觉库：模板部署为项目 shader 资产，defaultVisualPrograms 仅用于创作填充；预设保存显式 program/blurProgram GUID 并编译为 timeline.play。CPU/GPU 层链注入当前 layerZ，texture 参数租约归效果实例。project visuals install 显式补入且不覆盖已有绑定/占用路径。见 docs/manual/default-visuals.md 和 features/F-20261026-03-default-visual-library；[采样像素与视觉 QA](lessons/L-20261027-01-shader-sampling-visual-qa.md)。
+- 2026-10-27 默认视觉库：模板部署为项目 shader 资产，defaultVisualPrograms 仅用于创作填充；预设保存显式 program/blurProgram GUID 并编译为 timeline.play。CPU/GPU 层链注入当前 layerZ，texture 参数租约归效果实例。project visuals install 显式补入且不覆盖已有绑定/占用路径。见 docs/manual/editor/default-visuals.md 和 features/F-20261026-03-default-visual-library；[采样像素与视觉 QA](lessons/L-20261027-01-shader-sampling-visual-qa.md)。
 
-- 2026-10-26 Sample 扩展边界：默认会话通过 IAvaloniaPlayerSettings/IPlayerStartup 消费项目偏好；默认页面 VM 可扩展、DI 使用 TryAdd。AttachPlayer/AttachRun 接入项目借用绑定并优先异步释放。外部剧情变量走 Engine.SetVariablesAsync/UpdateVariablesAsync，同步提交显式 scope 值并合入稳定快照；业务模块自行定义复杂状态恢复。AvaloniaPlayerLocalization 归 Avalonia.GameHost，中立 JSON 查询归 GameHost，Sample 不再共享 GameLocalizationProvider 源文件。见 features/F-20261026-02-sample-extensibility 与 docs/manual/customize-avalonia-sample.md。
+- 2026-10-26 Sample 扩展边界：默认会话通过 IAvaloniaPlayerSettings/IPlayerStartup 消费项目偏好；默认页面 VM 可扩展、DI 使用 TryAdd。AttachPlayer/AttachRun 接入项目借用绑定并优先异步释放。外部剧情变量走 Engine.SetVariablesAsync/UpdateVariablesAsync，同步提交显式 scope 值并合入稳定快照；业务模块自行定义复杂状态恢复。AvaloniaPlayerLocalization 归 Avalonia.GameHost，中立 JSON 查询归 GameHost，Sample 不再共享 GameLocalizationProvider 源文件。见 features/F-20261026-02-sample-extensibility 与 docs/manual/extensions/customize-sample.md。
 
 - [Ready 与宿主活动状态](lessons/L-20261026-06-ready-is-not-session-end.md)：Ready 是恢复/Seek 的中间准备状态，默认宿主保留已有 IsPlaying，不应触发返回标题。
 
@@ -112,27 +155,27 @@
 
 ## 项目事实（已从仓库文档确认）
 
-- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频混音/DSP 在 Media.Audio，Windows 适配在 Media.Miniaudio；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture.md。
+- 宿主分层已落地：GameHost 提供 GameSession/IGameRun/GameRun、PlayerSession、PlayerPreferences/PlayerStartup；Avalonia.GameHost 提供默认页面会话、运行绑定、展示组合、资源预加载和设置/输入/窗口适配。Sample 仅保留项目配置、启动适配、本地化和调试。中立应用接口在 Presentation.Abstractions.Application，共享音频混音/DSP 在 Media.Audio，Windows 适配在 Media.Miniaudio；项目删除与 ProjectTools.Windows 已移除。见 docs/spec/architecture/modules.md。
 
 - 解决方案入口是 `GalNet.slnx`。
-- `docs/spec/` 描述已经实现的稳定事实；`docs/manual/` 描述二次开发路径；`features/` 保留实现过程和历史。
+- `docs/spec/` 描述已经实现的稳定事实；`docs/manual/` 分类描述 Editor/Sample 使用、项目扩展、发布与开发操作；`features/` 保留实现过程和历史。
 - Runtime/Core 应保持与 Avalonia、WPF、Skia、具体文件系统和其他平台实现解耦。
-- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 14 个组件模块，包含 custom.invoke 的固定双字符串 schema。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime.md、docs/spec/entry-types.md 和 docs/manual/。
+- Entry 契约与执行已分离：IEntryModule 只含 schema/composite，IPrimitiveModule 按领域共享状态并贡献完整指令 ID；GameRegistration 独立注册，AddBuiltins 为完整内置运行入口；独立 GalNet.Contracts.Builtins 只依赖 Core，CreateAllModules 返回 14 个组件模块，包含 custom.invoke 的固定双字符串 schema。可选 schema、部分内置实现或全自定义；仅完整 ID 排他。同前缀和 schema 模块名可重复。音频用 AudioRuntime + IAudioPlaybackHost 组合，不强制继承。见 docs/spec/runtime/execution.md、docs/spec/runtime/entries.md 和 docs/manual/。
 - 当前 GameSnapshot 版本为 4，不兼容旧版；持久数据在注册式 GameState 表中，快照为 StateId → version/JSON payload；读档先验证，再取消旧 scope 并替换整个状态根。Engine 不拥有执行 view，宿主先释放 Engine，再异步释放 view 与后端。
-- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/spec/runtime.md 和 docs/spec/architecture.md。
-- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture.md。GameContent.Configuration 保存版本化 section 文档；默认作者模型位于可选 Contracts.Builtins，项目/安装加载器通过 GameContentLoadOptions 接收 schema 与文化代码投影。
-- 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/control.md`。
+- Engine 提供终态 StopAsync 和 StateChanged，覆盖玩家推进、Choice 与阻塞实例自然完成；GameHost 仅协调应用会话，不复制 Engine 执行机制。AvaloniaGamePresenters 只组合端口，AvaloniaGamePresentation 管理平台资源。见 docs/spec/runtime/execution.md 和 docs/spec/architecture/modules.md。
+- Presentation.Defaults 已删除，空 NullGameView 位于展示抽象的 View 命名空间；当前程序集布局见 docs/spec/architecture/modules.md。GameContent.Configuration 保存版本化 section 文档；默认作者模型位于可选 Contracts.Builtins，项目/安装加载器通过 GameContentLoadOptions 接收 schema 与文化代码投影。
+- 旧的 `GalNet.Control` 与 `GalNet.Control.Abstraction` 已完成迁移并删除；当前共享 Avalonia 游戏页面唯一入口是 `GalNet.Avalonia.GameView`，页面架构见 `docs/spec/presentation/game-view.md`。
 - 持久条目先在 `GameState.Update` 中修改唯一数据记录，再通知展示层；模块通过 PrimitiveRegistry.State/Restore/ValidateState 声明状态、恢复依赖和校验，宿主使用展示抽象 StateRestoreSession 统一恢复、等待和逆序清理。旧 SceneState/Active* 镜像与 Builtins 中央 replay 已删除。
 - 视觉扩展应通过展示抽象和渲染端口接入；不要把平台类型或渲染资源泄漏进 Core/Runtime。
 - 新增 feature 的长期实现意图记录在其自身 feature 目录；只有已验证的稳定事实才合并到 docs/spec/。
 
-- 玩家变量桥接实现为 Runtime.Variables.PlayerVariableService，存储通过 IPlayerVariableStore 注入；Variable.Clone 保留 Uid，VariableValue 不可变，可共享。Runtime loader/SaveManager 不执行文件 I/O。见 docs/spec/architecture.md。
-- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；中立 JSON 文本源归 GameHost.Content，DynamicLocalization 适配归 Avalonia.GameHost.AvaloniaPlayerLocalization。见 docs/spec/i18n.md。
-- Assets 的 AssetFileMaterializer 经 IAssetManager acquire 字节实体化媒体；Core 的 AssetFileLease 持有文件租约。Sample 将同一实例供音频/视频/Gallery 使用，最后租约释放才删除文件。见 docs/spec/assets.md。
-- 已读进度 MarkRead 只写 Runtime ReadProgressIndex；文件实现默认 2 秒批量提交，失败保留 dirty revision 并重试。Engine StopAsync、Sample 存档和进度对象销毁均等待 flush，失败向调用者传播；后台失败可读 LastPersistenceError。见 docs/spec/runtime.md。
+- 玩家变量桥接实现为 Runtime.Variables.PlayerVariableService，存储通过 IPlayerVariableStore 注入；Variable.Clone 保留 Uid，VariableValue 不可变，可共享。Runtime loader/SaveManager 不执行文件 I/O。见 docs/spec/architecture/modules.md。
+- Runtime.I18n.GameTextResolver 提供 culture-first、父文化与默认文化回退，只依赖宿主查询委托；中立 JSON 文本源归 GameHost.Content，DynamicLocalization 适配归 Avalonia.GameHost.AvaloniaPlayerLocalization。见 docs/spec/content/localization.md。
+- Assets 的 AssetFileMaterializer 经 IAssetManager acquire 字节实体化媒体；Core 的 AssetFileLease 持有文件租约。Sample 将同一实例供音频/视频/Gallery 使用，最后租约释放才删除文件。见 docs/spec/content/assets.md。
+- 已读进度 MarkRead 只写 Runtime ReadProgressIndex；文件实现默认 2 秒批量提交，失败保留 dirty revision 并重试。Engine StopAsync、Sample 存档和进度对象销毁均等待 flush，失败向调用者传播；后台失败可读 LastPersistenceError。见 docs/spec/runtime/execution.md。
 
-- 核心重构当前边界：Runtime 仅引用 Core；场景/音频/Gallery/差分图片契约与纯算法归 Contracts.Builtins，音频执行与按 GameState 根隔离的场景管理归 Primitives.Builtins。Core 的 keySpace 身份索引按状态注册选择，不认识场景类型。GameContent/加载配置与 Gallery 玩家组合归 GameHost。见 docs/spec/architecture.md。
-- 项目模型与运行输入：ProjectConfiguration 提供版本化 section/普通 DTO，Editor 通用表单、命令、历史、保存、导出和安装使用项目 schema，未知 JSON 保留。宿主通过 SelectProjectOptions 显式投影，Engine 只消费 PlaybackOptions，音频只消费 AudioConfiguration/AudioMixOptions，文本直接接收速度。变量声明只保存在作者 Graph。见 docs/manual/new-presentation-layer.md。
+- 核心重构当前边界：Runtime 仅引用 Core；场景/音频/Gallery/差分图片契约与纯算法归 Contracts.Builtins，音频执行与按 GameState 根隔离的场景管理归 Primitives.Builtins。Core 的 keySpace 身份索引按状态注册选择，不认识场景类型。GameContent/加载配置与 Gallery 玩家组合归 GameHost。见 docs/spec/architecture/modules.md。
+- 项目模型与运行输入：ProjectConfiguration 提供版本化 section/普通 DTO，Editor 通用表单、命令、历史、保存、导出和安装使用项目 schema，未知 JSON 保留。宿主通过 SelectProjectOptions 显式投影，Engine 只消费 PlaybackOptions，音频只消费 AudioConfiguration/AudioMixOptions，文本直接接收速度。变量声明只保存在作者 Graph。见 docs/manual/extensions/new-presentation-layer.md。
 - AudioConfiguration/AudioMixOptions 位于 Contracts.Builtins.Audio，允许任意 Bus/Track 及空/未路由 Track；混音为 master/bus/track，快进保留由显式 PreserveDuringCatchUp 控制。Sample/模板显式选择三 Bus 示例，默认模块不注入固定轨道。
 - EntryDefinition.DynamicParameters 是唯一参数源，Parameters/Defaults/Options 副本及旧 ABI 适配已删除；具体编辑器投影位于 Editor.Abstraction.Schemas，Effect/SEffect 基础约束共用 ValueValidation，领域 stage/scope 继续分别拥有。
 
@@ -161,7 +204,7 @@
 
 - 2026-10-18 P6e2 已验证：共享 Avalonia TimelineCanvas/Model 与 Editor 无损 JSON 修改分层，树/画布共用扁平可见行和纵向滚动；关键帧多选/框选/整帧移动、首键保护/明确碰撞替换、时长/FPS/保秒重定时与裁剪均单历史，源变化取消旧手势。六项目 901 项回归、解决方案构建、格式/源码指纹通过；6 项原生媒体环境未执行。见 [phase-6e2](../features/F-20261015-02-editor-authoring-workspace/phase-6e2.md)。下一步 P6e3 曲线/切线，P6e4 事件/剩余状态与引用，实时预览不列阶段。
 
-- 2026-10-18 P6e1 已验证：Editor.Shared 的 SceneTargetAnalysis 对作者快照做纯有限事实分析，Group 入口固定点、确定交/可能并、条件/未知语义/循环预算与跨类型身份冲突保守处理；ProjectSceneTargets 整代缓存，不执行游戏。Timeline 对象/属性树支持建/移轨道、未知初值和偏移首键、旧行失效；GUI 创建者自动内部 ID，Entry 粘贴按语义槽位重映射内部引用。解决方案构建、同源码 656 项回归、格式/指纹通过；一次未修改文件面板指针测试偶发已记录，隔离及完整重跑通过，根因未确认。见 [phase-6e1](../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md)、[当前查询规范](../docs/spec/editor-scene-targets.md)。下一步 P6e2 画布/关键帧，P6e3 曲线；P6e4 事件/剩余语义、通用 Locator、Graph/转场复制和缺目标核验。只提供固定内置能力子集，未分析 Timeline/转场不当无影响；实时预览不列阶段。
+- 2026-10-18 P6e1 已验证：Editor.Shared 的 SceneTargetAnalysis 对作者快照做纯有限事实分析，Group 入口固定点、确定交/可能并、条件/未知语义/循环预算与跨类型身份冲突保守处理；ProjectSceneTargets 整代缓存，不执行游戏。Timeline 对象/属性树支持建/移轨道、未知初值和偏移首键、旧行失效；GUI 创建者自动内部 ID，Entry 粘贴按语义槽位重映射内部引用。解决方案构建、同源码 656 项回归、格式/指纹通过；一次未修改文件面板指针测试偶发已记录，隔离及完整重跑通过，根因未确认。见 [phase-6e1](../features/F-20261015-02-editor-authoring-workspace/phase-6e1.md)、[当前查询规范](../docs/spec/editor/scene-targets.md)。下一步 P6e2 画布/关键帧，P6e3 曲线；P6e4 事件/剩余语义、通用 Locator、Graph/转场复制和缺目标核验。只提供固定内置能力子集，未分析 Timeline/转场不当无影响；实时预览不列阶段。
 
 - 2026-10-18 P6d 已验证：Timeline 默认底部单实例 Dock 跟随活动 Group Entry，项目 scope 的 EntrySelectionContext/TimelineEditSession 不借用页面字段 lease；已有轨道 NumericUpDown 按当前帧覆盖/插键，保留切线/未知 JSON，单次项目历史。旧行在切换/删除/换类型/关闭后失效，保存和切语言保留未确认输入；切 Entry/帧/根值及关闭 Dock 明确取消。644 项相关回归、解决方案构建、格式与源码指纹通过。见 [phase-6d](../features/F-20261015-02-editor-authoring-workspace/phase-6d.md)。下一步 P6e 目标/属性能力、对象树、创建轨道与画布/曲线；P6f animate 自定义曲线，P7 统一关闭协调。当前仅 Timeline 行隐藏 handle，Group JSON 仍是修复入口；实时预览不列阶段。
 
@@ -169,7 +212,7 @@
 
 - 2026-10-18 P6b 已验证：普通生成 DTO 对象/列表、presence/null/default、JSON 回退、懒创建/释放接入共享层和 Group 页，879 项回归通过，6 项原生媒体环境用例未执行，解决方案构建/格式/源码指纹通过。详见 [phase-6b](../features/F-20261015-02-editor-authoring-workspace/phase-6b.md)。剩余 P6 为未知 Entry JSON 修改、状态查询/Locator 和 AnimationPlan 等复杂定制；后者按用户要求留后续阶段。
 
-- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。P5a Group 交互已验证（搜索/键盘插入、批量、折叠拖放、尾部取消选择），614 项相关回归通过，6 个媒体环境用例未执行。P5b 多选剪贴板/批量删除与移动已验证，493 项相关回归和解决方案构建通过，含异步剪贴板保护与集合补偿故障测试。P5c 独立变量面板及声明/引用单历史已验证，611 项相关回归和解决方案构建通过；玩家/存档页签、草稿/应用、说明、引用诊断与补全刷新已接通。P5d Entry 字段与新增入口迁移已验证，614 项相关回归及解决方案构建通过；字段历史按稳定 ID/作者 JSON 执行，不保留页面，旧表单在删除/换类型及撤销后不复活。P5e GUI 作者草稿保存已验证，635 项相关回归、解决方案构建与格式/源码指纹通过；Authoring 保留未知/不完整条目 JSON，默认 Complete 与 CLI 校验/编译仍严格。P5 整体 verified，后续继续 P6 状态查询/Locator 和复杂值功能、P7 验收。游戏预览另立 feature。当前实现见 docs/spec/editor-graph.md、editor-groups.md、editor-variables.md、editor-files.md 和 editor-history-and-save.md。
+- [F-20261015-02 Editor 创作工作区](../features/F-20261015-02-editor-authoring-workspace/phase-plan.md)：P1a/P1b/P2/P2i/P3/P4a/P4b 已验证，P4b 隔离构建与 383 项相关回归通过。项目单栈、Graph、文件事务/双版本文档协调、metadata/引用保护、文件树/网格、路径块/全局文件名搜索、项目文本缓冲与四语已接通；P6a 已提前完成共享 DTO UI 基础，610 项相关回归通过，另 6 项媒体环境用例未执行；三层注册、默认表单、多 DTO 面板与两个宿主已接入。P5a Group 交互已验证（搜索/键盘插入、批量、折叠拖放、尾部取消选择），614 项相关回归通过，6 个媒体环境用例未执行。P5b 多选剪贴板/批量删除与移动已验证，493 项相关回归和解决方案构建通过，含异步剪贴板保护与集合补偿故障测试。P5c 独立变量面板及声明/引用单历史已验证，611 项相关回归和解决方案构建通过；玩家/存档页签、草稿/应用、说明、引用诊断与补全刷新已接通。P5d Entry 字段与新增入口迁移已验证，614 项相关回归及解决方案构建通过；字段历史按稳定 ID/作者 JSON 执行，不保留页面，旧表单在删除/换类型及撤销后不复活。P5e GUI 作者草稿保存已验证，635 项相关回归、解决方案构建与格式/源码指纹通过；Authoring 保留未知/不完整条目 JSON，默认 Complete 与 CLI 校验/编译仍严格。P5 整体 verified，后续继续 P6 状态查询/Locator 和复杂值功能、P7 验收。游戏预览另立 feature。当前实现见 docs/spec/editor/graph.md、editor-groups.md、editor-variables.md、editor-files.md 和 editor-history-and-save.md。
 
 - F-20261015-03 模块化游戏状态：GameSnapshot v4；状态 catalog 随 view 组合，Engine 接入；中立 Layer/EffectInstance/ParticleEmitterInstance 直接作为唯一可变数据记录，属性变更必须在 State.Update，编码形成隔离快照。LoopAnimationState 保存类型化 request/plan；停止控制与播放 identity 仅运行期持有。音频 AudioTrackState/AudioSEffectState 包含暂停、队列与空闲效果，所有轨道按稳定检查点从头恢复；不恢复 seek/淡化时钟，玩家设置不回滚。恢复首帧不重复一次性事件，暂停声音在 Resume 前不启动后端。七个相关项目 665 项测试、解决方案构建与 CLI 实际项目校验/编译通过；新档验证见 [feature summary](../features/F-20261015-03-modular-game-state/summary.md)。
 
@@ -184,11 +227,11 @@
 
 - [F-20261011-02-player-page-layout](../features/F-20261011-02-player-page-layout/summary.md) 已补齐三套内置主题的全部普通页面 XAML View，主题目录自行维护布局、共享 ViewModel/命令；页面无外框，主题内导航位置一致。对白名字比正文大4，Classic/Paper 26/22、Minimal 24/20；默认 GameView 页面回退已由 F-20261011-03 删除。
 
-- [F-20261011-01-game-ui-themes](../features/F-20261011-01-game-ui-themes/summary.md) 已完成启动期主题组合：可选 Themes 提供三布局/三配色，页面顺序已由 F-20261011-03 收敛为共享 GamePage→主题→宿主→完整性校验；GamePage 是稳定 TemplatedControl，四个 PART_* 承载其自有内容，派生页与 Runtime 保持同一 Scoped 实例。样式应用于玩家根，官方主题局部 Fluent 与宿主 Semi 隔离。当前无运行期切换；配置/契约见 Themes README 和 docs/spec/control.md。
+- [F-20261011-01-game-ui-themes](../features/F-20261011-01-game-ui-themes/summary.md) 已完成启动期主题组合：可选 Themes 提供三布局/三配色，页面顺序已由 F-20261011-03 收敛为共享 GamePage→主题→宿主→完整性校验；GamePage 是稳定 TemplatedControl，四个 PART_* 承载其自有内容，派生页与 Runtime 保持同一 Scoped 实例。样式应用于玩家根，官方主题局部 Fluent 与宿主 Semi 隔离。当前无运行期切换；配置/契约见 Themes README 和 docs/spec/presentation/game-view.md。
 
 - [F-20261009-02-video-entries](../features/F-20261009-02-video-entries/feature.md) 已实现剧情视频图层、阻塞分段 seek、停止/替换清理和非阻塞视频定义恢复。平台视频必须经 AssetManager 获取，解码帧通过租约进入场景管线；播放游标不入存档。验证见 feature summary。
 
-- [F-20261010-02-runtime-i18n](../features/F-20261010-02-runtime-i18n/summary.md) Phase 1–5 已实现。Sample 用 Core 2.1.2 + ReflectionBinding；每 JSON 独立 provider，culture-first 查询内嵌/包内/External/额外源；首次选择在 Engine 前原子保存 locale/count。设置切换不重译当前剧情。安装器保留 External 并拒绝覆盖不同包，导出不包含第三方文件。当前契约见 `docs/spec/i18n.md`，人工 GUI 全程与原生媒体 opt-in 验证限制见 summary。
+- [F-20261010-02-runtime-i18n](../features/F-20261010-02-runtime-i18n/summary.md) Phase 1–5 已实现。Sample 用 Core 2.1.2 + ReflectionBinding；每 JSON 独立 provider，culture-first 查询内嵌/包内/External/额外源；首次选择在 Engine 前原子保存 locale/count。设置切换不重译当前剧情。安装器保留 External 并拒绝覆盖不同包，导出不包含第三方文件。当前契约见 `docs/spec/content/localization.md`，人工 GUI 全程与原生媒体 opt-in 验证限制见 summary。
 
 - `F-20260926-01-gallery-meta-pages` 的实现、正式文档与示例 Gallery 解锁 smoke test 已完成；其外部阻塞项 `EditorSettingsSerializationTests.LastDockLayout_RoundTripsAsAString` 已由 `F-20260929-04-quality-baseline` 修复，Gallery feature 可按自身流程收尾。
 - [F-20260916-02-audio-system](../features/F-20260916-02-audio-system/feature.md) 已完成首期：轨道逻辑、`AudioRuntime`、`IAudioPlaybackHost`、Avalonia LibVLC host、语音文本 composite 和 Sample 验收已落地。Runtime 只能传 asset ID；平台 host 必须经 `IAssetManager` 实体化临时媒体文件。后续 [F-20261009-01-track-seffects](../features/F-20261009-01-track-seffects/feature.md) 增加 host 注册的 `SEffectCatalog`、`seffect.gain` 与基于 LibVLC equalizer 的 `seffect.lowPass` / `seffect.highPass`；后续已实现轨道/SEffect 存档与玩家音量，见 F-20261015-03；item scope、音频参数动画和角色默认轨道仍未实现。
@@ -308,7 +351,7 @@
 
 - [文件路径复用与删除身份](lessons/L-20261019-04-file-document-path-reuse.md)：FileDocuments 按会话 ID 持有历史；删除后同路径新建可同时保留旧记录，路径查询须优先有效身份并保留删除遮罩。
 
-- 2026-10-20 游戏本地化 P2 已验证：字段标记/只读索引之上，LocalizationDocumentStore 与数据操作接入单栈和双版本文件事务；相关 JSON 草稿校验/重基与冲突保留、catalog/metadata 专属管理、角色编号持久预留完成。新增 21 项通过，完整相关回归 495 通过、3 个 P6e3 已记录 UI 失败；构建/格式/任务源码指纹通过。P3 角色 UI、P4 表单映射、P5 多语言表格、P6 交换后续。见 features/F-20261019-01-editor-game-localization/phase-2.md 与 docs/spec/editor-game-localization.md。
+- 2026-10-20 游戏本地化 P2 已验证：字段标记/只读索引之上，LocalizationDocumentStore 与数据操作接入单栈和双版本文件事务；相关 JSON 草稿校验/重基与冲突保留、catalog/metadata 专属管理、角色编号持久预留完成。新增 21 项通过，完整相关回归 495 通过、3 个 P6e3 已记录 UI 失败；构建/格式/任务源码指纹通过。P3 角色 UI、P4 表单映射、P5 多语言表格、P6 交换后续。见 features/F-20261019-01-editor-game-localization/phase-2.md 与 docs/spec/editor/localization.md。
 
 - [嵌套语义引用使用 wire 名](lessons/L-20261020-02-nested-semantic-wire-name.md)：FieldDescriptor.Id 不等于嵌套作者 JSON 属性名；按值契约 JsonTypeInfo 定位，重建字段须保留 Semantic。P3 索引大小写与真实列表角色改 key 测试已确认。
 
@@ -316,7 +359,7 @@
 
 - 2026-10-20 游戏本地化 P3 已 verified：角色 Dock、开发语言姓名/key、speaker 姓名/key 搜索与失焦创建、跨全部 Group/嵌套引用改 key、一次历史与旧值显式导入完成。新增 14 项全通过；相关回归 759 通过、3 项 P6e3 已记录 UI 失败，完整构建 0 错误。正文/分支默认语言映射及复制身份 P4、多语言表格/语言 P5、交换/完整校验 P6 待续；见 features/F-20261019-01-editor-game-localization/phase-3.md。
 
-- 用户协作约定（2026-10-20）：每个实施阶段验证结束后提交 Git，包含本阶段相关代码、测试和文档，并报告 commit；不要混入其他任务改动。
+- 用户协作约定（2026-10-20，2026-10-29 补充）：每个可验证实施阶段完成后提交相关代码、测试和文档，并报告 commit；不要混入其他任务改动。同时精简计划，把已完成步骤归并成阶段总结（结果、验证、commit/证据入口），计划只保留剩余任务、依赖和退出条件。保留详细执行历史及未验收项，不把子范围通过写成整体完成。当前跨平台 feature 的索引为 features/F-20261029-05-cross-platform-applications/progress-summary.md 与 phase-plan.md。
 
 - 用户修订：本地化 feature 不考虑向后兼容；旧 Speakers、角色迁移 UI/服务与回调已删除（d2e4b82），后续只支持当前作者及剪贴板格式。
 - [文本历史与不可撤销编号](lessons/L-20261020-05-text-history-reserved-number.md)：同文件的 characterHighWater 仅允许单调重基，文本历史不能回退编号；其他 metadata 严格校验。
@@ -329,19 +372,19 @@
 - [项目级 Dock 草稿生命周期](lessons/L-20261021-03-project-owned-dock-drafts.md)：实际菜单 CloseDocument 会主动 Dispose Context；项目级草稿模型须保留到 scope 结束，并用真实开关路径验证。
 - [历史队列执行时重查](lessons/L-20261021-04-history-admission-recheck.md)：入队后仍可因前序操作改变原文或语言；单元格及开发语言预览的 guard 必须进入实际 Redo 边界，两种交错已复现并验证。
 
-- 2026-10-21 游戏本地化 P5 已 verified：项目级 i18n Dock、角色/全部 Group/分支虚拟化多语言表格、语言新增/调序、开发语言缺译预览及切换、单元格状态/草稿保留/Save All 和历史队列执行时重查完成。I18nLocale 统一 CultureInfo 名称，支持脚本子标签标准大小写。新增 17 项通过，正常解决方案构建 0 错误；Core/Runtime/Editor.Shared/Architecture/Presentation/Editor 合计 1039 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。四语各 882 key、格式/17 源码指纹/文档链接通过。见 features/F-20261019-01-editor-game-localization/phase-5.md 与 docs/manual/game-localization.md；P6 导入导出及发布前完整校验待续。
+- 2026-10-21 游戏本地化 P5 已 verified：项目级 i18n Dock、角色/全部 Group/分支虚拟化多语言表格、语言新增/调序、开发语言缺译预览及切换、单元格状态/草稿保留/Save All 和历史队列执行时重查完成。I18nLocale 统一 CultureInfo 名称，支持脚本子标签标准大小写。新增 17 项通过，正常解决方案构建 0 错误；Core/Runtime/Editor.Shared/Architecture/Presentation/Editor 合计 1039 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。四语各 882 key、格式/17 源码指纹/文档链接通过。见 features/F-20261019-01-editor-game-localization/phase-5.md 与 docs/manual/editor/localization.md；P6 导入导出及发布前完整校验待续。
 
-- 2026-10-21 Editor 写入口与状态已收口：GUI dirty 唯一来源为 ProjectContentSession 的内容/保存基线比较，Document 与 GalProject 不再持有 dirty 标记；变量声明通过 VariableAuthoringService，IVariableDefinitionService 仅返回保留 UID 的独立快照并通知刷新。Preview 只编辑运行时当前值，旧声明表单、Workspace 快照补历史和 PushAlreadyApplied 已删除，不保留兼容层。见 features/F-20261021-01-editor-state-simplification/summary.md、docs/spec/editor-variables.md 与 docs/spec/editor-history-and-save.md。
+- 2026-10-21 Editor 写入口与状态已收口：GUI dirty 唯一来源为 ProjectContentSession 的内容/保存基线比较，Document 与 GalProject 不再持有 dirty 标记；变量声明通过 VariableAuthoringService，IVariableDefinitionService 仅返回保留 UID 的独立快照并通知刷新。Preview 只编辑运行时当前值，旧声明表单、Workspace 快照补历史和 PushAlreadyApplied 已删除，不保留兼容层。见 features/F-20261021-01-editor-state-simplification/summary.md、docs/spec/editor/variables.md 与 docs/spec/editor/history-and-save.md。
 
 - [组合查询的完整性原因](lessons/L-20261021-05-query-completeness-causes.md)：内部保留语义未知与对象能力缺失的区别；停止效果可消除后者，不能抹掉前者。candidate，见双路径回归。
 
 - [架构项目发现排除构建输出](lessons/L-20261021-06-architecture-project-discovery.md)：递归 csproj 枚举须排除任意层级 bin/obj；保留临时仓库副本复验 45 项通过，不能靠删除其他任务产物修复测试。
-- 2026-10-21 游戏本地化 P6 已 verified，feature P1–P6 完成：单语言模板/平铺 JSON 导入导出、项目交换 GUID、稳定 key 与源文指纹、选择预览、明确空串、整批单次历史及执行时证据重查；完整 project.validate/build 增加包内默认语言和角色语义校验，未知范围 warning/Complete=false。身份预留可能在输出失败后保留，旧文本历史须保留新身份（见文本历史 lesson）。新增 20 项通过，正常解决方案构建 0 错误；完整相关回归 1180 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。原生文件选择/IME 和大项目性能阈值仍待人工验收。当前契约见 docs/spec/editor-game-localization.md，操作见 docs/manual/game-localization.md，交付与自审见 features/F-20261019-01-editor-game-localization/summary.md、review.md；不保留旧格式兼容。
+- 2026-10-21 游戏本地化 P6 已 verified，feature P1–P6 完成：单语言模板/平铺 JSON 导入导出、项目交换 GUID、稳定 key 与源文指纹、选择预览、明确空串、整批单次历史及执行时证据重查；完整 project.validate/build 增加包内默认语言和角色语义校验，未知范围 warning/Complete=false。身份预留可能在输出失败后保留，旧文本历史须保留新身份（见文本历史 lesson）。新增 20 项通过，正常解决方案构建 0 错误；完整相关回归 1180 通过、2 项 P6e3 既有布局失败，另有 6 个视频环境跳过。原生文件选择/IME 和大项目性能阈值仍待人工验收。当前契约见 docs/spec/editor/localization.md，操作见 docs/manual/editor/localization.md，交付与自审见 features/F-20261019-01-editor-game-localization/summary.md、review.md；不保留旧格式兼容。
 
 - [作者参数线格式](lessons/L-20261021-07-author-parameter-wire-format.md)：测试作者 JSON 必须按字段 schema/converter 编码；Animate 的字符串布尔与嵌套 Timeline 的 JSON bool 不可混用，保留坏格式拒绝与有效夹具 Complete 断言。
 
 - [透明 hover 与预乘 alpha（已废止）](lessons/L-20261024-01-transparent-hover-interpolation.md)：全局自定义画刷过渡会影响 Group entry 等非按钮容器；Editor 已恢复 Ursa/Semi 原生 hover 反馈。
-- 2026-10-24 Editor UIUX：Core `[Common]` → `EditorHints.IsCommon`，共享表单默认 All，Group 显式 Common；独立 Inspector 绑定与项目 EntryEditSession 草稿，辅助工具不清空详情。保存/检查状态分离，Problems 用当前快照与稳定 ID 导航；三套手动布局及最大化恢复不进入作者历史。契约、使用与证据见 features/F-20261023-01-editor-uiux/summary.md、docs/manual/editor-authoring-workspace.md。真实 DPI/原生 IME 仍需人工验收；旧页面绑定失效规则仍保留，不用复用控件/旧绑定解决草稿保留。
+- 2026-10-24 Editor UIUX：Core `[Common]` → `EditorHints.IsCommon`，共享表单默认 All，Group 显式 Common；独立 Inspector 绑定与项目 EntryEditSession 草稿，辅助工具不清空详情。保存/检查状态分离，Problems 用当前快照与稳定 ID 导航；三套手动布局及最大化恢复不进入作者历史。契约、使用与证据见 features/F-20261023-01-editor-uiux/summary.md、docs/manual/editor/projects-and-workspace.md。真实 DPI/原生 IME 仍需人工验收；旧页面绑定失效规则仍保留，不用复用控件/旧绑定解决草稿保留。
 - [Dock 焦点与 Inspector](lessons/L-20261024-02-dock-focus-and-inspector.md)：已活动文档跨区域返回只改变 FocusedDockable；详情跟随须同时处理焦点和激活，并防后台选择抢占及辅助工具覆盖解锁目标。
 - [外部调试子进程监控生命周期](lessons/L-20261024-03-external-debug-child-monitor-lifetime.md)：断开调试不能等待未终止的外部进程退出；Editor 存活时仍需排空重定向输出并隔离旧会话事件。candidate，待运行复现。
 - [异步构建的同步前缀](lessons/L-20261024-04-sync-build-work-ui-thread.md)：Task API 首个 await 前的验证、扫描与编译仍会阻塞调用线程；先在 UI 线程捕获安全快照，再后台运行纯构建工作。candidate，待大项目运行复现。
@@ -350,7 +393,7 @@
 - [Benchmark 条件引用与还原图](lessons/L-20261025-02-benchmark-restore-graph.md)：Benchmark 使用独立 bin/benchmark、obj/benchmark 和锁文件；切换条件依赖后不能跳过 restore，以实际运行验证 deps。
 
 - [Avalonia benchmark 退出码](lessons/L-20261025-03-avalonia-benchmark-exitcode.md)：窗口生命周期可覆盖提前设置的 Environment.ExitCode；宿主返回后的 finally 重申失败，脚本同时验证退出码与 Ready。
-- CPU 启动事件：Benchmark=true 启用独立 GalNet.Diagnostics 与方法内 #if BENCHMARK 埋点，普通宿主无诊断依赖；scripts/benchmark-startup.ps1 自动采集 Editor/Sample，契约和用法见 docs/spec/cpu-benchmark.md、docs/manual/cpu-benchmark.md。
+- CPU 启动事件：Benchmark=true 启用独立 GalNet.Diagnostics 与方法内 #if BENCHMARK 埋点，普通宿主无诊断依赖；scripts/benchmark-startup.ps1 自动采集 Editor/Sample，契约和用法见 docs/spec/architecture/diagnostics.md、docs/manual/development/cpu-benchmark.md。
 
 - [角色姓名文本与身份](lessons/L-20261025-04-character-name-key-identity.md)：DisplayNameKey 允许共享，角色草稿按 ID 与姓名文本组合区分；仅始终唯一的姓名文本可辅助跟随改名，提交仍检查原基线。
 - 2026-10-25 Editor 面板：变量以项目级 VariablePanelState 保存作用域选择与 UID 草稿，角色用 CharacterPanelState 隔离共享姓名身份；视图和 transient VM 正常释放，Save All 仍只保存两者已应用声明。本地化筛选保留单元格身份，冻结上下文保持单套虚拟化行；见 features/F-20261023-01-editor-uiux/phase-ui-20261025.md。
@@ -358,10 +401,10 @@
 - [启动固定快照交错对照](lessons/L-20261025-05-paired-startup-baselines.md)：机器缓存/负载可使同一 exe 跨轮大幅漂移；固定 SHA256、AB/BA 配对和同一 ready 口径，不用单次 smoke 宣称收益。
 - Editor 启动在 MainWindow 构造完成时准备欢迎页；Loaded 不再重置导航。20 对交错实验确认小幅收益，主题与 Acrylic 探测均回退；见 features/F-20261025-01-cpu-startup-benchmark/experiments.md。
 
-- [ReadyToRun 与契约身份](lessons/L-20261025-06-r2r-contract-identity.md)：发布转换必须排除严格契约闭包并验证原始字节。Editor/Sample 的 WindowsReadyToRun 配置隔离 bin/obj/lock；仅发布程序获得预编译收益，见 docs/manual/ready-to-run.md。
+- [ReadyToRun 与契约身份](lessons/L-20261025-06-r2r-contract-identity.md)：发布转换必须排除严格契约闭包并验证原始字节。Editor/Sample 的 WindowsReadyToRun 配置隔离 bin/obj/lock；仅发布程序获得预编译收益，见 docs/manual/publishing/ready-to-run.md。
 - 启动调用栈：scripts/profile-startup.ps1 显式打开 Benchmark 的 GalNet-CPU EventPipe 镜像，scripts/analyze-startup-trace.cs 对齐 JIT/采样；采样只做诊断，收益仍用无采样固定快照交错比较。
 
-- [TraceEvent 事件保留](lessons/L-20261025-07-traceevent-retained-events.md)：迭代器复用事件对象；立即提取字段，或 Clone 后再保留。原生启动诊断使用 scripts/profile-startup-native.ps1 和 analyze-startup-native.cs，拒绝已有 WPR 会话和丢事件 trace，见 docs/manual/cpu-benchmark.md。
+- [TraceEvent 事件保留](lessons/L-20261025-07-traceevent-retained-events.md)：迭代器复用事件对象；立即提取字段，或 Clone 后再保留。原生启动诊断使用 scripts/profile-startup-native.ps1 和 analyze-startup-native.cs，拒绝已有 WPR 会话和丢事件 trace，见 docs/manual/development/cpu-benchmark.md。
 
 - Editor 正常 Main 在 Avalonia 初始化前启动两个 Task.Run：设置读取与本地化数据准备；完成后交给 UI/DI，文化/主题/控件仍在 UI 线程，设计器保留同步回退。20 对复核改善约 4.1%；WGL 探测未达收益门槛，默认 ANGLE 保持，见 features/F-20261025-01-cpu-startup-benchmark/parallel-native.md。
 
@@ -372,14 +415,16 @@
 - [同步捕获待提交输入](lessons/L-20261025-09-textchanging-local-input.md)：Avalonia TextChanged 在渲染后异步触发；TextChanging 同步更新本地输入，作者提交仍只在失焦/明确保存边界进行。
 
 - [静态引用不完整警告](lessons/L-20261025-11-static-reference-warning.md)：References 正常带 references.partial warning；消费方按 error/实际引用拒绝，并保留 ReferencesComplete=false，不能用诊断总数判失败。
-- 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/external-project-authoring.md。
+- 外部项目创作：CLI project.apply 使用期望哈希和原生文件清单，同事务发布 Graph/Group/资源/本地化；产品 Skill 在 skills/galnet-project-authoring，随 CLI 分发。Editor 通用热重载采纳干净项目，在同一 scope 推进所有基线并清除旧历史；本地草稿冲突保留，Contracts DLL 仍需重开。见 features/F-20261025-02-external-project-authoring/summary.md 与 docs/manual/editor/external-tools.md。
 
 - 2026-10-26 引擎核心重构已完整验收：P0–P6、R1–R8 verified，1789 项普通与 10 项原生测试通过；完整构建/locked restore/格式通过。当前架构事实见前述及 docs/spec，分阶段提交与原始失败证据见 features/F-20261026-01-engine-core-simplification/summary.md。性能专项按用户要求延期。
 
-- [原生音频 UTF-8 ABI](lessons/L-20261027-06-native-audio-utf8-abi.md)：Windows miniaudio 窄字符 fopen 使用 ANSI；统一 UTF-8 ABI 后内部转宽字符，托管/原生同步升级。跨平台构建与 AOT 限制见 docs/manual/cross-platform-backends.md。
+- [原生音频 UTF-8 ABI](lessons/L-20261027-06-native-audio-utf8-abi.md)：Windows miniaudio 窄字符 fopen 使用 ANSI；统一 UTF-8 ABI 后内部转宽字符，托管/原生同步升级。跨平台构建与 AOT 限制见 docs/manual/extensions/media-and-platform-backends.md。
 
 - [完整 MSVC 工具集选择](lessons/L-20261027-07-complete-msvc-toolsets.md)：按目标架构检查编译器、头文件和 CRT，再显式选择并存工具集；Windows ARM64 原生库已用 14.44 交叉编译并核对 PE/ABI，x64 保持 14.51。
-- [NativeAOT 与编译工具隔离](lessons/L-20261027-08-aot-build-tool-isolation.md)：标准 PublishAot 不能污染 netstandard 源生成器，restore 图和开发锁需隔离；复用 Headless Sample 自检，见 docs/manual/native-aot.md。
+- [NativeAOT 与编译工具隔离](lessons/L-20261027-08-aot-build-tool-isolation.md)：标准 PublishAot 不能污染 netstandard 源生成器，restore 图和开发锁需隔离；复用 Headless Sample 自检，见 docs/manual/publishing/native-aot.md。
 - [源生成 extension data](lessons/L-20261027-09-sourcegen-extension-data.md)：GalleryAnnotation 的 init 字典触发构造绑定限制，改用 set 并验证未知字段往返。
 
-- 2026-10-29 默认播放器对白历史/重播/已读颜色：历史正文只在实际保存时进入 GameSnapshot.Attachments，host.dialogue.history 状态只保留计数；同 Group、同 rawId 的相邻 audio.play 与文本按本次执行关联，重播使用独立后端 voice，任何有效继续均停止。阅读前导不能成为半句稳定快照，见 [阅读前导快照边界](lessons/L-20261029-09-reading-preamble-checkpoints.md)、docs/spec/control.md、runtime.md 和 features/F-20261029-03-dialogue-history。
+- 2026-10-29 默认播放器对白历史/重播/已读颜色：历史正文只在实际保存时进入 GameSnapshot.Attachments，host.dialogue.history 状态只保留计数；同 Group、同 rawId 的相邻 audio.play 与文本按本次执行关联，重播使用独立后端 voice，任何有效继续均停止。阅读前导不能成为半句稳定快照，见 [阅读前导快照边界](lessons/L-20261029-09-reading-preamble-checkpoints.md)、docs/spec/presentation/game-view.md、runtime.md 和 features/F-20261029-03-dialogue-history。
+
+- [Android VLC 16 KB 页](lessons/L-20261030-07-android-vlc-page-alignment.md)：官方稳定 native 也可能只有 4 KB 对齐；核对实际 APK 全部 ELF LOAD/架构及 zipalign，预发布依赖/设备运行分开记录。跨平台 P7a 的移动媒体/后台独立检查点已接线，Win/Linux native 视频各 5 项通过；Android 双 ABI Mono AOT/完整内容载荷通过，设备及 iOS 编译仍待验。

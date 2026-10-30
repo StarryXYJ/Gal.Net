@@ -13,8 +13,8 @@
 
 ## 2. 当前事实与接入依据
 
-- [资源规范](../../docs/spec/assets.md)：资源以 `.meta.id` 为正式身份，类型通过冻结的资源类型 catalog 注册；资源识别和 decoder 分离，发行资源由 PAK 提供。
-- [条目规范](../../docs/spec/entry-types.md)：契约和执行模块分离，项目显式选择 schema 和实现；新增能力不能只注册编辑器 UI。
+- [资源规范](../../docs/spec/content/assets.md)：资源以 `.meta.id` 为正式身份，类型通过冻结的资源类型 catalog 注册；资源识别和 decoder 分离，发行资源由 PAK 提供。
+- [条目规范](../../docs/spec/runtime/entries.md)：契约和执行模块分离，项目显式选择 schema 和实现；新增能力不能只注册编辑器 UI。
 - `src/Shared/GalNet.Core/Scene/Layer.cs`：Layer 已有 AssetId、变换、透明度、显示模式和可选 Flipbook，属于可动画场景实例。
 - `src/Shared/GalNet.Primitives.Builtins/Modules/BuiltinLayerModule.cs`：`builtin.layers` 已负责 Layer 状态和非视频可见图层恢复，Normal 与 CatchUp 共用状态操作。
 - `src/Shared/GalNet.Primitives.Builtins/RuntimeActions/BuiltinRuntimeActions.Layers.cs`：状态修改后通知 presenter；现有 ReplaceLayer 重建 Layer，不会自动保留未来新增的差分状态。
@@ -218,7 +218,7 @@ P1 没有改变前文匹配规则。具体实现和验证见 [P1 记录](phase-1
 - 项目范围 validate 与 build 使用本地编译器检查图集；GamePackageExporter 打包编译归档，包内校验沿用相同 catalog，不修改通用 PAK 格式。
 - 资源事务对移动/复制改写已知 folder；导入生成 sidecar；发布前验证投影快照，破坏默认图等情况在写盘前拒绝，撤销/重做沿用同一文件事务。显式 metadata 的类型优先于扩展名。
 
-这落实了第 7 节的作者准备层：准备发生在本地资源 provider 和事务预检，不放进 runtime decoder，也不把目录扫描引入 Core。当前没有为 P3 添加执行入口或 Layer 状态。稳定资源事实见[资源规范](../../docs/spec/assets.md)，验证见 [P2 记录](phase-2.md)。
+这落实了第 7 节的作者准备层：准备发生在本地资源 provider 和事务预检，不放进 runtime decoder，也不把目录扫描引入 Core。当前没有为 P3 添加执行入口或 Layer 状态。稳定资源事实见[资源规范](../../docs/spec/content/assets.md)，验证见 [P2 记录](phase-2.md)。
 
 ## 14. P3 已实现接口与恢复
 

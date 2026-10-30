@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Reflection;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;
 using GalNet.Core.Services;
@@ -14,14 +15,42 @@ public sealed class AvaloniaPlayerLocalization(CultureService cultureService,
     private readonly Dictionary<string, LocalizedString> _strings = new(StringComparer.Ordinal);
     private TextProvider? _gameProvider;
     private readonly ILocalizationProvider[] _bootstrapProviders = bootstrapProviders?.ToArray() ?? [];
+    private LocalizedTextSource[]? BootstrapSources { get; init; }
 
     public CultureService CultureService { get; } = cultureService;
 
     public string this[string key] => CultureService[key];
 
+    /// <summary>Loads common player UI text followed by project-owned resource assemblies.</summary>
+    public static AvaloniaPlayerLocalization FromEmbeddedResources(IEnumerable<Assembly> resourceAssemblies,
+        string defaultCulture = "en-US")
+    {
+        var cultureService = new CultureService();
+        var sources = resourceAssemblies.Prepend(typeof(AvaloniaPlayerLocalization).Assembly).Distinct()
+            .SelectMany(assembly =>
+            {
+                var provider = new JsonLocalizationProvider();
+                provider.Initialize(new JsonLocalizationProviderOptions
+                {
+                    BasePath = "Localization",
+                    UseEmbeddedResources = true,
+                    Assembly = assembly
+                });
+                return provider.GetAvailableCultures().Select(culture => new LocalizedTextSource(
+                    culture, key => provider.TryGetString(key, culture, out var value) ? value : null));
+            }).ToArray();
+        // One provider preserves ordered overrides even when JSON providers share a Name.
+        var bootstrap = new TextProvider(new GameTextResolver(sources, CultureInfo.GetCultureInfo(defaultCulture),
+            () => cultureService.CurrentCulture), "GalNet.UI");
+        cultureService.RegisterProvider(bootstrap);
+        cultureService.SetCulture(defaultCulture);
+        return new(cultureService, [bootstrap]) { BootstrapSources = sources };
+    }
+
     public void AttachGame(GameContent content, IEnumerable<GameLocalizationSource>? additionalSources = null)
     {
-        var sources = _bootstrapProviders.SelectMany(provider => provider.GetAvailableCultures().Select(culture =>
+        // Content overrides must see exact source cultures before default-culture fallback.
+        var sources = BootstrapSources?.AsEnumerable() ?? _bootstrapProviders.SelectMany(provider => provider.GetAvailableCultures().Select(culture =>
             new LocalizedTextSource(culture, key => provider.TryGetString(key, culture, out var value) ? value : null)));
         var provider = new TextProvider(content.Localization.CreateResolver(
             () => CultureService.CurrentCulture, sources, additionalSources));
@@ -55,9 +84,9 @@ public sealed class AvaloniaPlayerLocalization(CultureService cultureService,
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = null;
     }
 
-    private sealed class TextProvider(GameTextResolver resolver) : ILocalizationProvider
+    private sealed class TextProvider(GameTextResolver resolver, string name = "GalNet.Game") : ILocalizationProvider
     {
-        public string Name => "GalNet.Game";
+        public string Name => name;
         public IEnumerable<CultureInfo> GetAvailableCultures() => resolver.AvailableCultures;
         public string GetString(string key, CultureInfo culture) => resolver.GetString(key, culture);
         public bool TryGetString(string key, CultureInfo culture, out string? value) => resolver.TryGetString(key, culture, out value);

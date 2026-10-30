@@ -27,4 +27,13 @@
     <!-- Both output trees are generated, regardless of the active build mode. -->
     <DefaultItemExcludes>$(DefaultItemExcludes);$(MSBuildProjectDirectory)/obj/**;$(MSBuildProjectDirectory)/bin/**</DefaultItemExcludes>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(PublishProfile)' == 'Desktop' And '$(Benchmark)' != 'true'">
+    <!-- Cross-target restores must not rewrite the normal/Windows R2R graph. -->
+    <!-- Passed globally by publishing tools: the SDK clears RuntimeIdentifier
+         while building portable ProjectReferences, but restore used the target RID. -->
+    <GalNetDesktopPublishTarget Condition="'$(GalNetDesktopPublishTarget)' == ''">unspecified</GalNetDesktopPublishTarget>
+    <BaseIntermediateOutputPath>obj/publish/Desktop/$(GalNetDesktopPublishTarget)/</BaseIntermediateOutputPath>
+    <BaseOutputPath>bin/publish/Desktop/$(GalNetDesktopPublishTarget)/</BaseOutputPath>
+    <NuGetLockFilePath>$(MSBuildProjectDirectory)/packages.lock.Desktop.$(GalNetDesktopPublishTarget).json</NuGetLockFilePath>
+  </PropertyGroup>
 </Project>

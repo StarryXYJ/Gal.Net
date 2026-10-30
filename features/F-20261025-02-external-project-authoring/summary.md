@@ -30,8 +30,8 @@ TRX 位于 `artifacts/external-authoring/{shared-results,editor-results,final-re
 
 ## 正式文档
 
-- [使用手册](../../docs/manual/external-project-authoring.md)
-- [历史与保存](../../docs/spec/editor-history-and-save.md#外部内容热重载)
-- [文件操作](../../docs/spec/editor-files.md)
+- [使用手册](../../docs/manual/editor/external-tools.md)
+- [历史与保存](../../docs/spec/editor/history-and-save.md#外部内容热重载)
+- [文件操作](../../docs/spec/editor/project-and-files.md)
 - [CLI](../../src/Editor/GalNet.Editor.Headless/README.md)
 - [产品创作 Skill](../../skills/galnet-project-authoring/SKILL.md)

@@ -1,6 +1,6 @@
 # 实施设计
 
-依据 [长期设计](../../docs/design/game-ui-themes.md)，采用启动期固定配置。
+依据 [长期设计](https://github.com/StarryXYJ/Gal.Net/blob/79df06fd7a55084c552860b167bca0f38a650f69/docs/design/game-ui-themes.md)，采用启动期固定配置。
 
 IGameLayoutTheme 位于 GameView 的组合命名空间，提供 Avalonia 样式入口和页面注册方法。AddAvaloniaGameViewPages 保留旧调用兼容性，增加主题参数；主题先注册普通页与 Gallery 覆盖，宿主回调最后覆盖。最终 View 类型自动补充 Scoped DI 注册，避免开发者覆盖映射却遗漏 View 注册。
 

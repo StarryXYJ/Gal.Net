@@ -52,7 +52,7 @@ public sealed class PakFileProvider : IAssetProvider
 
         var data = File.ReadAllBytes(path);
         Verify(data);
-        return Archive.Deserialize(archiveName, data, _resourceTypes);
+        return Archive.DeserializeOwned(archiveName, data, _resourceTypes);
     }
 
     public async Task<IArchive> OpenArchiveAsync(string archiveName, CancellationToken ct = default)
@@ -66,7 +66,7 @@ public sealed class PakFileProvider : IAssetProvider
 
         var data = await File.ReadAllBytesAsync(path, ct);
         Verify(data);
-        return Archive.Deserialize(archiveName, data, _resourceTypes);
+        return Archive.DeserializeOwned(archiveName, data, _resourceTypes, ct);
     }
 
     private bool TryGetPakPath(string archiveName, out string path)

@@ -25,6 +25,6 @@ Core/Runtime 不依赖 Themes。保护原有 Sample csproj 的 DependentUpon 修
 - [phase-plan.md](phase-plan.md)
 - [review.md](review.md)
 - [summary.md](summary.md)
-- [长期设计](../../docs/design/game-ui-themes.md)
+- [长期设计](https://github.com/StarryXYJ/Gal.Net/blob/79df06fd7a55084c552860b167bca0f38a650f69/docs/design/game-ui-themes.md)
 
 默认示例选择 Classic + Ocean，另提供 Minimal、Paper 布局与 Rose、Mono 配色；名称属于实施默认值，不增加玩家选择流程。

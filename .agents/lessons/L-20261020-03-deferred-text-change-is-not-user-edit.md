@@ -18,4 +18,4 @@ CharacterFieldEditor 改订阅同步的 TextBox.TextProperty PropertyChanged，�
 
 任何把输入框变更自动映射为草稿、失焦保存或创建记录的自定义编辑器。禁止用只覆盖属性赋值瞬间的 bool guard 假定延迟事件已被抑制；必须用同步属性事件或明确版本/期望值判定，并通过真实挂载、旧异常值和编辑其他字段的测试验证不会无意写入。
 
-关联：docs/spec/editor-game-localization.md；features/F-20261019-01-editor-game-localization/phase-3.md。
+关联：docs/spec/editor/localization.md；features/F-20261019-01-editor-game-localization/phase-3.md。

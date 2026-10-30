@@ -163,6 +163,9 @@ public sealed class EditorAssetManager : IAssetManager, IEditorAssetChanges
         public Generation(IReadOnlyList<IAssetProvider> providers, IEnumerable<Action<AssetManager>> decoders)
         {
             Providers = providers; Manager = new(providers); Manager.RegisterImageVariantsDecoder();
+            Manager.Diagnostic += diagnostic => Serilog.Log.ForContext<EditorAssetManager>().Warning(diagnostic.Exception,
+                "Asset {AssetStage} failed ({AssetFailure}): ID={AssetId}, Path={AssetPath}, Provider={AssetProvider}, SourceID={SourceAssetId}, Target={AssetTargetType}",
+                diagnostic.Stage, diagnostic.Kind, diagnostic.AssetId, diagnostic.Path, diagnostic.Provider, diagnostic.SourceAssetId, diagnostic.TargetType?.FullName);
             foreach (var register in decoders) register(Manager);
         }
         public AssetManager Manager { get; }

@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="using:GalNet.Game.Controls"
         xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
-        xmlns:views="using:GalNet.Sample.Avalonia.Views"
+        xmlns:player="using:GalNet.Avalonia.GameHost.Views"
         xmlns:ursa="https://irihi.tech/ursa"
         x:Class="GalNet.Sample.Avalonia.Views.MainWindow"
         Width="1280" Height="720" MinWidth="800" MinHeight="500"
@@ -12,36 +12,7 @@
         Icon="/Assets/avalonia-logo.ico"
         Title="{loc:Localize App.Title}">
 
-  <Grid x:Name="PlayerRoot" Classes="galnet-player" Background="{DynamicResource GalNet.Brush.Background}">
-    <Grid x:Name="PlayerContent">
-      <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"
-                               DesignWidth="1920"
-                               DesignHeight="1080" />
-      <views:LanguageSelectionView x:Name="LanguageSelection" IsVisible="False" />
-      <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
-                 Foreground="{DynamicResource GalNet.Brush.TextPrimary}" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
-    </Grid>
-    <Grid x:Name="ExitConfirmation" IsVisible="False" Background="#66000000" KeyboardNavigation.TabNavigation="Cycle">
-      <Border Width="360" Margin="24" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center"
-              CornerRadius="6" Background="{DynamicResource GalNet.Brush.Surface}"
-              BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" BoxShadow="0 8 24 0 #26000000">
-        <StackPanel Spacing="24">
-          <StackPanel Spacing="8">
-            <TextBlock Text="{loc:Localize Exit.Title}" FontSize="18" FontWeight="SemiBold" />
-            <TextBlock Text="{loc:Localize Exit.Message}" FontSize="14" LineHeight="22"
-                       Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" />
-          </StackPanel>
-          <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
-            <Button x:Name="CancelExitButton" Content="{loc:Localize Common.Cancel}" Click="OnCancelExit"
-                    FontSize="14" FontWeight="Normal" MinWidth="80" MinHeight="34" Padding="16,6" CornerRadius="4" HorizontalContentAlignment="Center" />
-            <Button x:Name="ConfirmExitButton" Grid.Column="1" Classes="player-primary" Content="{loc:Localize Title.Exit}" Click="OnConfirmExit"
-                    FontSize="14" FontWeight="Normal" MinWidth="80" MinHeight="34" Padding="16,6" CornerRadius="4" HorizontalContentAlignment="Center"
-                    Background="{DynamicResource GalNet.Brush.Primary}" Foreground="{DynamicResource GalNet.Brush.OnPrimary}" BorderBrush="{DynamicResource GalNet.Brush.Primary}" />
-          </Grid>
-        </StackPanel>
-      </Border>
-    </Grid>
-  </Grid>
+  <player:PlayerView x:Name="PlayerControl" />
   <ursa:UrsaWindow.Resources>
     <!-- Caption buttons live in WindowDrawnDecorations, outside the content template. -->
     <SolidColorBrush x:Key="CaptionButtonForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
@@ -55,15 +26,5 @@
     <SolidColorBrush x:Key="TitleBarBackground" Color="{DynamicResource GalNet.Palette.BackgroundColor}" />
     <SolidColorBrush x:Key="WindowBackground" Color="{DynamicResource GalNet.Palette.BackgroundColor}" />
   </ursa:UrsaWindow.Resources>
-  <ursa:UrsaWindow.Styles>
-    <Style Selector="Button.player-primary">
-      <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Primary}" />
-      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.OnPrimary}" />
-      <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Primary}" />
-    </Style>
-    <Style Selector="Button.player-primary:pointerover /template/ ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
-      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.OnPrimary}" />
-    </Style>
-  </ursa:UrsaWindow.Styles>
+
 </ursa:UrsaWindow>

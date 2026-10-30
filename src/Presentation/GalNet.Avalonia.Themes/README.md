@@ -83,9 +83,9 @@ DialoguePresenter 保留 PART_Typewriter，NvlPresenter 保留 PART_Lines 和 PA
 
 ## 统一 UI 字体
 
-内置三布局共用 `GameTypography.UiFontFamily`，由 `GameLayoutTheme.CreateStyles()` 注入 `GalNet.Theme.FontFamily`。Windows 优先微软雅黑 UI / 微软雅黑，macOS 优先苹方简体，其他平台优先 Noto Sans CJK SC / Noto Sans SC / 文泉驿微米黑。Paper 保留自己的布局、字号和配色，但不再单独指定 Georgia。
+内置三布局共用 `GameTypography.UiFontFamily`，由 `GameLayoutTheme.CreateStyles()` 注入 `GalNet.Theme.FontFamily`，使用宿主默认字体。各平台的显式中文字符回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不再显式选择微软雅黑或苹方；这些字体不是窗口启动的前提。未命中时仍由平台选择可用字形，不能据此保证系统不会使用其自带字体。Paper 保留自己的布局、字号和配色，但不再单独指定 Georgia。
 
-宿主可在 AppBuilder 使用 `.With(GameTypography.CreateFontManagerOptions())` 接入相同的中文回退策略。官方 Sample 同时为应用内所有 Window 设置该 FontFamily，覆盖玩家页面以外的窗口；日志等显式设置的等宽字体保留，并可借助字体管理器回退显示中文。
+宿主可在 AppBuilder 使用 `.With(GameTypography.CreateFontManagerOptions())` 接入相同的中文回退策略，默认沿用系统字体；也可传入 `defaultFamilyName` 指定已部署的字体。官方 Sample 配合 `.WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以随应用分发的 Inter 作为默认字体，不依赖系统安装同名字体。Inter 不包含中文字形，中文仍需系统 CJK 字体或宿主部署的中文字体。Sample 同时为应用内所有 Window 设置该 FontFamily，覆盖玩家页面以外的窗口；日志等显式设置的等宽字体保留，并可借助字体管理器回退显示中文。
 
 此配置使用系统已安装字体，不附带字体文件；在无中文字体的 Linux 部署上仍需安装相应字体。当前 Windows 已验证中文、标点和粗体字形及三布局渲染；其他系统需单独验证。Editor 自身的默认字体不由此设置修改。
 
@@ -120,4 +120,4 @@ GameThemeTests 覆盖九种组合的页面加载、Skia headless 渲染、配色
 
 对话框每次通过 DI 构造独立实例，并由截图服务释放；普通页面保持 Scoped。通用玩家样式与工具栏位于 Common，GameView 的 Page 目录仅保留 GameShell 导航宿主、GamePage 行为控件和 ScreenshotDialog 行为基类。
 
-宿主可通过 `GameScreenshotRequest.CapturePreviewPngAsync` 提供小图预览，正式保存仍使用 `CapturePngAsync`；不提供新回调的宿主保持原路径。GameShell 预览上限为 720×405，同一弹窗分别缓存包含界面/仅场景两种结果，正式导出保持原分辨率。自定义场景捕获应同时缩小场景效果中间纹理，而非仅在最终 Image 上缩放。完整契约见 [control.md](../../../docs/spec/control.md#截图对话框契约)。
+宿主可通过 `GameScreenshotRequest.CapturePreviewPngAsync` 提供小图预览，正式保存仍使用 `CapturePngAsync`；不提供新回调的宿主保持原路径。GameShell 预览上限为 720×405，同一弹窗分别缓存包含界面/仅场景两种结果，正式导出保持原分辨率。自定义场景捕获应同时缩小场景效果中间纹理，而非仅在最终 Image 上缩放。完整契约见 [control.md](../../../docs/spec/presentation/game-view.md#截图对话框契约)。

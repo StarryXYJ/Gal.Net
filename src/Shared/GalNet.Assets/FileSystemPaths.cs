@@ -36,7 +36,7 @@ public static class FileSystemPaths
         {
             current = Path.Combine(current, component);
             if ((File.Exists(current) || Directory.Exists(current)) && (File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0)
-                throw new InvalidDataException(message);
+                throw new InvalidDataException($"{message} Path: '{current}'.");
         }
     }
 }

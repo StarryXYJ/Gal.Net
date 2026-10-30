@@ -317,10 +317,22 @@
           "GalNet.Core": "[1.0.0, )"
         }
       },
+      "galnet.avalonia.debugging": {
+        "type": "Project",
+        "dependencies": {
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
+          "GalNet.Avalonia.GameHost": "[1.0.0, )",
+          "GalNet.Debugging": "[1.0.0, )",
+          "Irihi.Ursa": "[2.1.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )",
+          "Serilog": "[4.2.0, )"
+        }
+      },
       "galnet.avalonia.gamehost": {
         "type": "Project",
         "dependencies": {
           "Avalonia.Controls.ColorPicker": "[12.0.5, )",
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
@@ -329,12 +341,14 @@
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
           "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Input.Sdl3": "[1.0.0, )",
           "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Media.Miniaudio": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Storage.FileSystem": "[1.0.0, )"
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {
@@ -347,6 +361,7 @@
           "GalNet.Avalonia.Rendering": "[1.0.0, )",
           "GalNet.Contracts.Builtins": "[1.0.0, )",
           "GalNet.Core": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
@@ -404,6 +419,7 @@
           "GalNet.Debugging": "[1.0.0, )",
           "GalNet.Editor.Abstraction": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },
@@ -414,6 +430,15 @@
           "GalNet.Core": "[1.0.0, )",
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )"
+        }
+      },
+      "galnet.input.sdl3": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "SDL3-CS.Linux": "[3.4.18.1, )",
+          "SDL3-CS.MacOS": "[3.4.18.1, )",
+          "SDL3-CS.Windows": "[3.4.18.1, )"
         }
       },
       "galnet.media.audio": {
@@ -484,6 +509,7 @@
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
+          "GalNet.Avalonia.Debugging": "[1.0.0, )",
           "GalNet.Avalonia.GameHost": "[1.0.0, )",
           "GalNet.Avalonia.GameView": "[1.0.0, )",
           "GalNet.Avalonia.Themes": "[1.0.0, )",
@@ -505,6 +531,24 @@
           "Serilog.Sinks.Console": "[6.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )",
           "VideoLAN.LibVLC.Windows": "[3.0.23.1, )"
+        }
+      },
+      "galnet.sample.crossplatform": {
+        "type": "Project",
+        "dependencies": {
+          "Avalonia": "[12.0.5, )",
+          "Avalonia.Fonts.Inter": "[12.0.5, )",
+          "Avalonia.Themes.Fluent": "[12.0.5, )",
+          "AvaloniaUI.DiagnosticsSupport": "[2.2.3, )",
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
+          "GalNet.Avalonia.Debugging": "[1.0.0, )",
+          "GalNet.Avalonia.GameHost": "[1.0.0, )",
+          "GalNet.Avalonia.Themes": "[1.0.0, )",
+          "GalNet.Project.Contracts": "[1.0.0, )",
+          "Irihi.Ursa.Themes.Semi": "[2.1.0, )",
+          "Semi.Avalonia": "[12.0.1, )",
+          "Serilog.Sinks.Console": "[6.0.0, )",
+          "Serilog.Sinks.File": "[7.0.0, )"
         }
       },
       "galnet.storage.filesystem": {
@@ -672,6 +716,24 @@
         "requested": "[10.0.0, )",
         "resolved": "10.0.0",
         "contentHash": "L3AdmZ1WOK4XXT5YFPEwyt0ep6l8lGIPs7F5OOBZc77Zqeo01Of7XXICy47628sdVl0v/owxYJTe86DTgFwKCA=="
+      },
+      "SDL3-CS.Linux": {
+        "type": "CentralTransitive",
+        "requested": "[3.4.18.1, )",
+        "resolved": "3.4.18.1",
+        "contentHash": "0D5kTnaNnHKvLAOvzPJRIbyWDYq09ePVJZqlsPxp5HjM3jw0wIzyv9uLb+tPKuNiTq1nl5Zzbj1YjpjjWbGWxw=="
+      },
+      "SDL3-CS.MacOS": {
+        "type": "CentralTransitive",
+        "requested": "[3.4.18.1, )",
+        "resolved": "3.4.18.1",
+        "contentHash": "dkxWPh1Yh1h6zGLNczE+9sF+lKgN6y529WTffeCWmn1MYZgvjS+aH5jrSUIhGnQze8NxG+jt6AlQ+MSCQmWaCQ=="
+      },
+      "SDL3-CS.Windows": {
+        "type": "CentralTransitive",
+        "requested": "[3.4.18.1, )",
+        "resolved": "3.4.18.1",
+        "contentHash": "baR3Y/1FgnevQyIfo2pDwIXF8idzqf17pDOF87qZrykBxQ0nlTzYCyu6H6GZsZdm06rQuqPU8p2NZ3qAvuvRpw=="
       },
       "Semi.Avalonia": {
         "type": "CentralTransitive",

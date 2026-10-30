@@ -71,4 +71,4 @@ dotnet test test/GalNet.IntegrationTests/GalNet.IntegrationTests.csproj --no-bui
 
 采用用户最新素材名替代原计划的 smile/coat 示例；算法中原始五名称仍由 P1/P3 测试覆盖。常量前缀 xy 本身是第一维，需要额外较短的 solo 来演示削减；两张 classroom 的缺组合则演示显式 Default。无语义或算法改变。
 
-补齐 [图集手册](../../docs/manual/image-variants.md)，并清除 [assets](../../docs/spec/assets.md) / [entry-types](../../docs/spec/entry-types.md) 中“专属 UI 尚未实现”的过时描述。P5 收尾和验收映射见 [summary](summary.md)；实施者自查与限制见 [review](review.md)。异步 Step 的已复现经验记入 `.agents/lessons/L-20261023-02-debug-step-async-presentation.md`。
+补齐 [图集手册](../../docs/manual/editor/image-variants.md)，并清除 [assets](../../docs/spec/content/assets.md) / [entry-types](../../docs/spec/runtime/entries.md) 中“专属 UI 尚未实现”的过时描述。P5 收尾和验收映射见 [summary](summary.md)；实施者自查与限制见 [review](review.md)。异步 Step 的已复现经验记入 `.agents/lessons/L-20261023-02-debug-step-async-presentation.md`。

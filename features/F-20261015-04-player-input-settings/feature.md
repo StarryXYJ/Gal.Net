@@ -83,7 +83,7 @@ Sample 的设置页面在现有“游戏、画面、音频”等一级设置项�
 
 ## 相关链接
 
-- [Avalonia 游戏页面规范](../../docs/spec/control.md)
+- [Avalonia 游戏页面规范](../../docs/spec/presentation/game-view.md)
 - [玩家快速与自动播放、追帧跳过和分类设置](../F-20261011-04-playback-settings/feature.md)
 - [现有播放器设置服务](../../src/Presentation/GalNet.Avalonia.GameView/Services/IPlayerSettingsService.cs)
 - [Sample 设置服务](../../src/Samples/GalNet.Sample.Avalonia/Services/SamplePlayerSettingsService.cs)

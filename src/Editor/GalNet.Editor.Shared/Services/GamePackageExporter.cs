@@ -11,6 +11,7 @@ using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.Core.Entry;
 using GalNet.Core.Serialization;
+using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Services;
 
@@ -54,7 +55,7 @@ public static class GamePackageExporter
                 Directory.CreateDirectory(Safe(publish, directory));
             await VerifyDirectoryAsync(publish, prepared.Base.Concat(prepared.Stories), resourceTypes, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            Directory.Move(publish, target);
+            await FilePublication.MoveDirectoryAsync(publish, target, cancellationToken).ConfigureAwait(false);
             publish = null;
             return GameContentExportResult.Succeeded(target);
         }
@@ -63,13 +64,13 @@ public static class GamePackageExporter
         finally { Cleanup(stage); Cleanup(publish); }
     }
 
+    /// <summary>Exports a standalone archive containing the base game and all declared story parts.</summary>
     public static async Task<GamePackageExportResult> ExportAsync(string projectId, string projectName, string projectRoot,
         string outputDirectory, IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, IEntryCatalog entryCatalog,
         ProjectConfigurationSchema? configurations = null, CancellationToken cancellationToken = default)
     {
         string? stage = null;
         string? temporary = null;
-        string? storyStage = null;
         try
         {
             var source = Path.GetFullPath(projectRoot);
@@ -80,10 +81,11 @@ public static class GamePackageExporter
             var target = Path.Combine(output, SafeName(projectName) + ".galpak");
             temporary = target + ".export-" + Guid.NewGuid().ToString("N") + ".tmp";
             var prepared = await PrepareAsync(projectId, projectName, source, stage, resourceTypes, galleryTypes, entryCatalog, configurations, cancellationToken);
+            var payloads = prepared.Base.Concat(prepared.Stories).ToArray();
             await using (var file = File.Create(temporary))
             using (var zip = new ZipArchive(file, ZipArchiveMode.Create))
             {
-                foreach (var payload in prepared.Base)
+                foreach (var payload in payloads)
                 {
                     var entry = zip.CreateEntry("pak/" + payload.Path, CompressionLevel.NoCompression);
                     await using var input = File.OpenRead(Safe(stage, payload.StagedPath));
@@ -94,37 +96,16 @@ public static class GamePackageExporter
                 foreach (var directory in PackedGameDocuments.ExtensionDirectories(prepared.BuildId))
                     zip.CreateEntry("pak/" + directory + "/");
             }
-            await VerifyZipAsync(temporary, prepared.Base, resourceTypes, cancellationToken);
-            if (prepared.Stories.Length > 0)
-            {
-                var stories = Path.Combine(output, "StoryPatches");
-                Directory.CreateDirectory(stories);
-                var destination = Path.Combine(stories, prepared.BuildId);
-                if (!Directory.Exists(destination))
-                {
-                    storyStage = Path.Combine(stories, ".export-" + Guid.NewGuid().ToString("N"));
-                    Directory.CreateDirectory(storyStage);
-                    foreach (var payload in prepared.Stories)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        File.Copy(Safe(stage, payload.StagedPath), Path.Combine(storyStage, Path.GetFileName(payload.Path)));
-                    }
-                    Directory.Move(storyStage, destination);
-                    storyStage = null;
-                }
-                foreach (var payload in prepared.Stories)
-                    await VerifyFileAsync(Safe(output, payload.Path), payload, resourceTypes, cancellationToken);
-            }
-            Directory.CreateDirectory(Path.Combine(output, "StoryPatches", prepared.BuildId));
+            await VerifyZipAsync(temporary, payloads, resourceTypes, cancellationToken);
             await File.WriteAllBytesAsync(Path.Combine(output, SafeName(projectName) + ".layout.json"), prepared.Layout, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            File.Move(temporary, target, true);
+            await FilePublication.MoveFileAsync(temporary, target, overwrite: true, cancellationToken).ConfigureAwait(false);
             temporary = null;
             return GamePackageExportResult.Succeeded(target);
         }
         catch (OperationCanceledException) { return GamePackageExportResult.Failed("Export canceled."); }
         catch (Exception error) when (ExportError(error)) { return GamePackageExportResult.Failed(error.Message); }
-        finally { Cleanup(stage); Cleanup(storyStage); if (temporary is not null && File.Exists(temporary)) File.Delete(temporary); }
+        finally { Cleanup(stage); if (temporary is not null && File.Exists(temporary)) File.Delete(temporary); }
     }
 
     private static async Task<Prepared> PrepareAsync(string projectId, string projectName, string source, string stage,
@@ -150,11 +131,13 @@ public static class GamePackageExporter
             var complete = options.DeclaredCompleteResources.Select(id => available.Any(file => StringComparer.OrdinalIgnoreCase.Equals(file.Id, id)) ? id : StoryResourceIds.Group(id)).ToArray();
             var plan = ContentPackagePlanner.Plan(available, roots, types, options.MaxPakBytes, complete, token);
             var content = ContentFiles(privateStage, gallery).ToArray();
+            var contracts = ReadContractIdentity(source, catalog);
             using var buildHash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             buildHash.AppendData(Encoding.UTF8.GetBytes(projectId + "\n"));
             // The same logical resources can be split differently after a default/algorithm change.
             // Keep immutable story directories distinct for those physical part sets as well.
             buildHash.AppendData("galnet-content-v3/gpak-v3/documents-v1/brotli\n"u8);
+            buildHash.AppendData(JsonSerializer.SerializeToUtf8Bytes(contracts, CompactOptions));
             buildHash.AppendData(JsonSerializer.SerializeToUtf8Bytes(plan.Paks.Select(part => new
             {
                 part.PackageId,
@@ -229,10 +212,11 @@ public static class GamePackageExporter
                 BuildId = buildId,
                 BasePaks = baseline.Select(file => file.Entry).ToList(),
                 Stories = storyEntries.Select(pair => new StoryPackageManifest(pair.Key, pair.Value)).ToList(),
-                LocalizationPak = languagePayload.Entry
+                LocalizationPak = languagePayload.Entry,
+                ContractFiles = contracts
             };
             baseline.Add(languagePayload);
-            var manifest = new GalpakManifest(3, projectId, projectName, DateTimeOffset.UnixEpoch, baseline.Select(file => file.Entry).ToArray());
+            var manifest = new GalpakManifest(4, projectId, projectName, DateTimeOffset.UnixEpoch, baseline.Concat(stories).Select(file => file.Entry).ToArray());
             var report = JsonSerializer.SerializeToUtf8Bytes(new { buildId, resources = layout, unused = plan.Unused.Select(file => new { file.Id, file.Path, file.TypeId }) }, JsonOptions);
             var documents = new Dictionary<string, byte[]>(StringComparer.Ordinal)
             {
@@ -254,6 +238,16 @@ public static class GamePackageExporter
     {
         using var document = JsonDocument.Parse(DecodeJson(bytes));
         return JsonSerializer.SerializeToUtf8Bytes(document.RootElement);
+    }
+
+    private static List<GalpakFileEntry> ReadContractIdentity(string projectRoot, IEntryCatalog catalog)
+    {
+        var captured = ProjectSchemaContext.GetContractIdentity(catalog);
+        if (captured is null) return [];
+        var directory = Path.Combine(projectRoot, ProjectSchemaContext.ContractsDirectory);
+        if (!captured.SequenceEqual(ProjectContractSource.ReadIdentity(directory)))
+            throw new InvalidOperationException("Project contracts changed. Reopen the project before exporting.");
+        return captured.ToList();
     }
 
     private static string DecodeJson(byte[] bytes) => LocalizationJson.Decode(bytes);

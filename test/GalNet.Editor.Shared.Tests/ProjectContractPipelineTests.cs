@@ -15,6 +15,34 @@ namespace GalNet.Editor.Shared.Tests;
 public sealed class ProjectContractPipelineTests
 {
     [Test]
+    public async Task ExportDoesNotStampAnOldCatalogWithChangedDependencyBytes()
+    {
+        using var schema = ProjectSchemaContext.Load(_root);
+        var dependency = Path.Combine(_root, "Contracts/SchemaDependency.dll");
+        var bytes = File.ReadAllBytes(dependency); bytes[^1] ^= 1; File.WriteAllBytes(dependency, bytes);
+        var types = BuiltinResourceTypes.CreateCatalog();
+        var result = await GamePackageExporter.ExportAsync("changed-contract", "Changed", _root, Path.Combine(_root, "Output"),
+            types, GalNet.Contracts.Builtins.Gallery.BuiltinGalleryTypes.CreateCatalog(types), schema.Catalog, schema.Configurations);
+        Assert.That(result.Success, Is.False);
+        Assert.That(result.Error, Does.Contain("contracts changed"));
+        Assert.That(Directory.GetFiles(Path.Combine(_root, "Output"), "*.galpak"), Is.Empty);
+    }
+
+    [Test]
+    public async Task FrameworkDllBesideContractUsesTheHostsJsonElementIdentity()
+    {
+        File.Copy(typeof(JsonElement).Assembly.Location, Path.Combine(_root, "Contracts/System.Text.Json.dll"));
+        Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"bundle","type":"custom.bundle","parameters":{}}]}""");
+        using var schema = ProjectSchemaContext.Load(_root);
+        var result = await new ProjectContentBuilder(schema.Catalog, configurations: schema.Configurations).BuildAsync(_root);
+        Assert.That(result.CompiledGroupCount, Is.EqualTo(1));
+        using var group = JsonDocument.Parse(File.ReadAllBytes(Path.Combine(result.OutputPath, "Graph/groups/a.galgroup")));
+        Assert.That(group.RootElement.GetProperty("entries")[0].GetProperty("typeId").GetString(), Is.EqualTo("custom.example"));
+        using var snapshot = ProjectContractSource.Prepare(Path.Combine(_root, "Contracts"));
+        Assert.That(File.Exists(Path.Combine(snapshot.DirectoryPath, "System.Text.Json.dll")), Is.False);
+    }
+
+    [Test]
     public async Task ActualCliValidationAndCompilationStillRejectAnAuthoringSavedUnknownType()
     {
         Put("Graph/groups/a.rawgalgroup", """{"version":2,"kind":"Raw","entries":[{"id":"opaque","type":"future.custom","parameters":{"payload":[null,{"kept":true}]}}]}""");

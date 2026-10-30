@@ -22,9 +22,11 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Game.Controls.Forms;
 using GalNet.GameHost.Content;
+using GalNet.Media.LibVlc;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Variables;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace GalNet.Editor.Composition;
 
@@ -32,6 +34,7 @@ public static class EditorServiceCollectionExtensions
 {
     public static IServiceCollection AddEditorServices(this IServiceCollection services)
     {
+        services.TryAddSingleton(_ => LibVlcFactory.Default);
         services.AddScoped<ProjectSchemaSession>();
         services.AddScoped<ExternalGameDebugClient>();
         services.AddScoped<ProjectDebugPreparation>();

@@ -1,0 +1,26 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="using:GalNet.Avalonia.Debugging.Views"
+             xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
+             x:Class="GalNet.Avalonia.Debugging.Views.DebugToolsOverlay">
+  <Grid RowDefinitions="Auto,*">
+    <views:DebugMenuView x:Name="DebugMenu" />
+    <ContentControl x:Name="GameContentHost" Grid.Row="1"
+                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+    <ContentControl x:Name="LogContent" Grid.RowSpan="2" IsVisible="False"
+                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+    <Grid x:Name="PromptLayer" Grid.RowSpan="2" IsVisible="False" Background="#66000000">
+      <Border MaxWidth="480" Margin="24" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center"
+              CornerRadius="6" Background="{DynamicResource GalNet.Brush.Surface}">
+        <StackPanel Spacing="16">
+          <TextBlock x:Name="PromptTitle" FontSize="18" TextWrapping="Wrap" />
+          <TextBlock x:Name="PromptMessage" TextWrapping="Wrap" />
+          <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+            <Button x:Name="CancelPromptButton" Content="{loc:Localize Common.Cancel}" Click="OnCancelPrompt" />
+            <Button x:Name="ConfirmPromptButton" Content="{loc:Localize Onboarding.Confirm}" Click="OnConfirmPrompt" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+    </Grid>
+  </Grid>
+</UserControl>

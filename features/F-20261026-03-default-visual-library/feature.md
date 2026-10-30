@@ -32,4 +32,4 @@
 - [阶段计划](phase-plan.md)
 - [交付总结](summary.md)
 - [交付自审与后续边界](review.md)
-- [使用手册](../../docs/manual/default-visuals.md)
+- [使用手册](../../docs/manual/editor/default-visuals.md)
