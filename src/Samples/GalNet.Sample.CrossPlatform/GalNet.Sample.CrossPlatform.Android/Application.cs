@@ -18,7 +18,9 @@ namespace GalNet.Sample.CrossPlatform.Android
 
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
-            var privateRoot = FilesDir!.AbsolutePath;
+            // Android may expose its private storage through a system-owned alias.
+            // Use the physical sandbox root before applying the content link checks.
+            var privateRoot = FilesDir!.CanonicalPath;
             App.ConfigurePlatformServices = services => services.AddSingleton(new LibVlcFactory(new() { UseSystemLibraries = true }));
             App.PrepareLaunchAsync = async token =>
             {

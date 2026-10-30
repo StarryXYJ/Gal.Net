@@ -143,6 +143,8 @@ public partial class App : Application, IAsyncDisposable
         catch (OperationCanceledException) when (_stopping || generation != _generation) { }
         catch (Exception error)
         {
+            // Content preparation can fail before the profile logger is created.
+            if (_logger is null) Console.Error.WriteLine(error);
             GameLog.Logger.Error(error, "Cross-platform player startup failed");
             if (!_stopping && generation == _generation && _mount is not null)
                 _mount.Content = new TextBlock { Text = error.Message, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(24) };

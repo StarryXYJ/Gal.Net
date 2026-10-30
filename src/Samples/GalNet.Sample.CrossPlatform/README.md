@@ -7,7 +7,7 @@
 | `GalNet.Sample.Player` | 共享源码库；不包含桌面入口或调试窗口 |
 | CrossPlatform 共享 App | 会话组合、Activity 视图重挂载、scope 重建和关闭 |
 | Desktop | Windows/Linux/macOS 入口；Windows/WSLg 启动、会话和正常退出已验证，macOS 验收延期 |
-| Android | Asset 流安装和沙盒目录；双 ABI 原生音频/VLC、完整内容与 Release Mono AOT 已发布；音频焦点/返回/后台检查点已接入，设备运行待验 |
+| Android | ARM64 真机已安装启动，语言页、剧情视频叠加立绘、声音与触摸推进通过基础 smoke；存读档/Gallery/生命周期完整验收待补 |
 | iOS | Bundle 内容、静态音频/VLC、AVAudioSession 与生命周期已接入；尚未在 Mac 构建/运行 |
 | Browser | 保留原工程，不在本 feature 支持范围内 |
 
@@ -34,9 +34,13 @@ $android = 'src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.
 dotnet publish $android -c Release -p:UseMonoRuntime=true -p:PublishAot=false -p:RunAOTCompilation=true -p:GalNetBuildMiniaudio=false -p:GalNetAndroidNdkDirectory='C:/Android/sdk/ndk/29.0.14206865' -p:GalNetCMakePath='C:/tools/cmake.exe' -p:GalNetNinjaPath='C:/tools/ninja.exe' -p:GalNetGamePackage='C:/path/game.galpak'
 ```
 
-本轮 Release 在 ARM64/x86_64 各完成 115 程序集 Mono AOT，包含真实 GameTestCase 全部内容及两种架构的 miniaudio、LibVLC、C++ 运行库。没有全局压制裁剪/AOT/XA0141 警告。`PublishAot` 与 `RunAOTCompilation` 的 Mono AOT 不同；NativeAOT 不作为前置。Android 的 LibVLC 固定官方 `VideoLAN.LibVLC.Android 3.7.0-beta`（内含 3.0.22-rc1）：此前稳定包 3.6.5 的 native LOAD 只有 4 KB 对齐；当前候选的全部 ELF LOAD 及 APK zipalign 均通过 16 KB 检查。此预发布依赖和设备播放结果继续追踪，不能据此宣布商店发布完成。
+P7a Release 在 ARM64/x86_64 各完成 115 程序集 Mono AOT，包含真实 GameTestCase 全部内容及两种架构的 miniaudio、LibVLC、C++ 运行库。没有全局压制裁剪/AOT/XA0141 警告。`PublishAot` 与 `RunAOTCompilation` 的 Mono AOT 不同；NativeAOT 不作为前置。Android 的 LibVLC 固定官方 `VideoLAN.LibVLC.Android 3.7.0-beta`（内含 3.0.22-rc1）：此前稳定包 3.6.5 的 native LOAD 只有 4 KB 对齐；当前候选的全部 ELF LOAD 及 APK zipalign 均通过 16 KB 检查。此预发布依赖和设备播放结果继续追踪，不能据此宣布商店发布完成。
 
-Android/iOS 均排除桌面 SDL 资产。`probes/mobile/verify-android-package.py` 位于本 feature 中，可核对完整资产流、两种 ABI、媒体/音频、AOT、ELF 对齐和 SHA256；它明确记录 `deviceTested=false`。最终本地签名候选在 `out/cross-platform-p7-android-final/`；没有连接的设备，本轮未运行 APK。
+Android/iOS 均排除桌面 SDL 资产。`probes/mobile/verify-android-package.py` 位于本 feature 中，只检查完整资产流、两种 ABI、媒体/音频、AOT、ELF 对齐和 SHA256，报告中的 `deviceTested=false` 不代表独立设备报告。2026-10-30 的新候选在 `GalNet.Sample.CrossPlatform.Android/bin/Release/net10.0-android/org.galnet.sample-Signed.apk`，双 ABI 各 117 程序集 Mono AOT；在 REDMI K80 Pro / Android 16 / ARM64 已通过基础启动、剧情视频与立绘合成，用户确认声音/触摸正常。完整移动验收仍待补，证据见 feature 执行记录及 `out/android-device-validation/device.json`。
+
+Android 宿主使用 `FilesDir.CanonicalPath` 取得沙盒根，再执行安装器的严格目录链接检查。不要通过关闭 `RequireNoLinks` 解决平台路径别名问题。内容准备早于 profile 日志初始化，失败时同时向标准错误输出完整异常，便于从 logcat 定位。
+
+Rider 需要安装 JetBrains 的 Android Support 插件才能生成 Android 运行配置；.NET Android workload 本身不会提供 Rider 插件。小米/Redmi 真机除 USB 调试外，还需开启 USB 安装并及时允许手机上的安装确认；`INSTALL_FAILED_USER_RESTRICTED` 应先检查手机安装限制和确认弹窗。
 
 iOS 在装有 Xcode/对应 workload 的 Mac 上构建，传入 `GalNetGamePackage`、`GalNetBuildMiniaudio=false` 和可执行的 `GalNetCMakePath`。`IosNativeAudio.targets` 为 ios-arm64 / iossimulator-arm64 / iossimulator-x64 构建静态音频并 ForceLoad；共享托管适配在 iOS 从主程序解析 native 符号。宿主引用官方 iOS LibVLC 3.6.1，默认使用 Mono 运行时。静态链接、SDK/API、AOT 和签名尚未在 Mac 验证，不能把源代码接线记为成功发布。
 

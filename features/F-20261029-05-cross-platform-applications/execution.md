@@ -381,3 +381,19 @@ Windows 两轮 raw publish 自有副本清理时保留报告/日志与后续 P1 
 补强“已有玩家槽不被检查点改写、Continue 优先新检查点”后，发现 ClearPlayerState 删除磁盘槽后未刷新 UI 列表，CanContinue 仍为 true；增加 RefreshSlotsAsync，并保留首次失败 log（integration-clear-first.log）。
 
 P7a 可验证切片完成；P6/P7 整体仍 in-progress。移动设备/AOT 回调、iOS 编译/链接/签名、触摸/方向/性能和最终桌面完整流程继续追踪，不能把以上测试或 APK 生成升级为五平台完整支持。
+
+## 2026-10-30：P7b Android 真机安装与基础运行（verified 切片）
+
+纯 USB 在此前多次 I/O/EOF 掉线后，本次先通过 1 MiB 随机文件的手机端 SHA256 校验，随后约 3.8 秒完成约 134 MB APK 传输。此前传输故障的根因仍未确定，不归因于 Rider 插件安装。首次安装被 `INSTALL_FAILED_USER_RESTRICTED` 拒绝；用户开启 USB 安装并及时确认弹窗后成功。Rider 另外缺 Android Support 插件，安装后已生成 `XamarinAndroidProject` 运行配置。
+
+设备为 REDMI K80 Pro（24122RKC7C）、Android 16 / API 36、ARM64、4 KB 页。本地签名 Release 候选成功安装，但第一次启动首屏显示 `Extension directories cannot be symbolic links`。Android 私有根改为 `FilesDir.CanonicalPath`；安装器的 `RequireNoLinks` 检查保持启用，并在异常中补具体路径。内容准备早于 profile logger 初始化时，App 回退到标准错误输出完整异常。路径祖先保护回归 9/9 通过。
+
+新候选基于 `352d1678` 加本次修复。使用同一 Release 契约在自有 GameTestCase 副本重新导出，未修改原作者项目或放宽严格契约。双 ABI 各完成 117 程序集 Mono AOT，载荷检查、两架构 native ELF/16 KB LOAD 与 `zipalign -c -P 16 4` 通过，无桌面 SDL；APK SHA256 `4f29e276830748904f386e2a147b0b580976eee42f4b0c648ae1e8426f085c07`，嵌入内容 SHA256 `c5e41778083ba7c5e4c77bf6bd525acb1693309692d9cab71714d7a22fb89bee`。
+
+原 out 下 NDK 工具缓存已被外部清理，本轮没有重新编译 native。两 ABI miniaudio 的现存 obj 工件先与旧 `e1d98c6d` APK 对应条目逐字节核对，再通过本地临时 targets 复用；native 源码未改，未把该临时构建入口加入正式工程。首次受限重建因 Avalonia 构建日志目录无写权限失败，正常构建权限下重试通过；没有压制 AOT/裁剪/native 诊断。
+
+真机复测进入语言选择，随后实际显示剧情视频与叠加立绘，用户明确确认声音和触摸推进正常。应用 PID 日志未发现未处理异常、启动失败或生命周期失败。横屏画面是基础观察，不代表方向重建/安全区完整验收；声音与触摸为用户人工证据。
+
+证据：`out/android-device-validation/` 的 `install-usb-confirmation-retry.log`、`install-path-fix.log`、`first-launch.png`、`path-fix.png`、`title.png`（实际已进入剧情的视频画面）、`playback-logcat.log`、`path-tests.log`、`path-fix-package-verification.json` 与 `device.json`。新 APK 保留在 Android 工程 `bin/Release/net10.0-android/org.galnet.sample-Signed.apk`。静态检查脚本自身仍标 `deviceTested=false`，设备证据单独记录。
+
+本切片仅完成安装、内容初始化、语言页与基础剧情音视频/触摸 smoke。存读档、Gallery、音频焦点/耳机路由、后台检查点/进程结束恢复、方向/安全区/性能、x86_64 运行、生产签名/AAB 与 iOS 均未验收；P6/P7 整体继续 in-progress。

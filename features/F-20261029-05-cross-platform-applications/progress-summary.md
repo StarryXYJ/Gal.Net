@@ -79,3 +79,11 @@ Windows Integration 193/193、Presentation 313/313、GameHost 10/10 通过，真
 证据：`out/cross-platform-p7-tools/`；最终 APK `out/cross-platform-p7-android-final/org.galnet.sample-Signed.apk`；可复现载荷检查见 [移动探针](probes/mobile/verify-android-package.py)。稳定 Android VLC 3.6.5 的 4 KB native 已明确失败，当前固定官方 3.7.0-beta（3.0.22-rc1），未压制诊断，须继续设备验证及稳定版替换。
 
 没有连接 Android 设备，APK 本轮未运行；iOS 没有 Mac/Xcode 编译/链接/运行证据，生产签名/AAB、移动触摸/方向/性能及完整桌面验收仍待补。Linux 为 Ubuntu 26.04.1 隔离 SDK/既有本机媒体上的切片回归，不代替新整仓库发行、24.04 最低基线或公开再分发审查。P6/P7 整体继续 in-progress。
+
+## P7b — Android 真机基础运行
+
+2026-10-30 在 REDMI K80 Pro / Android 16 / ARM64 通过纯 USB 安装 Release Mono AOT 候选。修复首次内容初始化的目录链接报错：Android 先使用 `FilesDir.CanonicalPath`，保留严格链接检查；补启动日志回退和具体路径诊断。祖先链接保护回归 9/9 通过，新包两 ABI 各 117 程序集实际 AOT，完整内容/原生架构/16 KB 对齐通过；未改 native，复用与旧 APK 字节核对一致的音频库。
+
+真机语言选择、剧情视频与立绘叠加已显示，用户确认声音和触摸推进正常，应用日志无未处理异常。候选及 hash/原生复用方式/失败记录见 execution.md P7b 与 `out/android-device-validation/`。此前 USB 掉线原因仍未确定；Rider 启动项缺失已通过安装 Android Support 插件解决。
+
+基础 smoke 已完成；存读档、Gallery、音频焦点/路由、后台检查点及进程终止恢复、方向/安全区/性能、x86_64 运行和签名发布仍待补，不宣称移动完整验收。iOS/macOS/真实手柄继续按用户决定延期。

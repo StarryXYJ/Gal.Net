@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [Android 沙盒规范路径](lessons/L-20261030-10-android-sandbox-path.md)：Android 平台根使用 FilesDir.CanonicalPath 后再执行严格链接检查；内容准备失败需有 profile logger 之前的 logcat 回退。REDMI K80 Pro / Android 16 的 Release Mono AOT 已通过基础启动/剧情音视频/触摸 smoke，完整移动验收继续追踪。
 - [资源路径重试边界](lessons/L-20261030-09-asset-path-failure-retry.md)：空句柄可能来自读取/解码失败，不能直接判定旧 ID 映射失效；共享完成须保留是否找到文件，仅查找失败重查路径，并验证 ID/路径并发和显式后续恢复。
 - [内容克隆与名称规范化](lessons/L-20261030-08-content-clone-normalization.md)：克隆必须保留全部持久字段；变量名称同步属于显式作者操作，不能在保存快照中隐式改写，否则保存成功后仍可能 dirty。
 - [dirty 字典枚举分配](lessons/L-20261030-07-dirty-dictionary-enumeration.md)：高频 Entry 参数比较通过 IReadOnlyDictionary foreach 会每条目装箱；直接遍历具体字典保留完整内容比较，分配回归应按条目规模验证，不能靠历史事件缓存掩盖直接修改。

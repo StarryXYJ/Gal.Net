@@ -32,6 +32,8 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 ## 范围
 
+2026-10-30 P7b 增量：Android ARM64 真机安装、语言选择、剧情视频叠加立绘通过基础 smoke，用户确认声音与触摸正常。已修复 Android 沙盒路径初始化报错；完整移动验收仍进行中，见执行记录 P7b。
+
 | 交付物 | 平台与能力 |
 | --- | --- |
 | Editor | Windows、Linux、macOS；项目创作、保存、内容导出、媒体预览和外部调试 |
