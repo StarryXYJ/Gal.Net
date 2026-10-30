@@ -13,7 +13,7 @@
 | Composite 条目 | `CompositeEntry` | 只存在于 authoring/编译期，通过 `Compile(EntryCompileContext)` 展开为有序 primitive。 |
 | 条目定义 | `EntryDefinition` | 条目类型、分类、参数 schema、默认值、可选值与 primitive/composite 分类的注册信息。 |
 | Entry 模块 | `IEntryModule` | 持有冻结 `PrimitiveEntries` 与 `CompositeEntries` 的模块。 |
-| Primitive 定义 | `PrimitiveEntryBase` | 一个 primitive 的参数 schema 与 instance 工厂。 |
+| Primitive 定义 | `PrimitiveEntryBase` | 一个 primitive 的作者参数契约；执行工厂由 `IPrimitiveModule` 独立注册。 |
 | Primitive 实例 | `PrimitiveInstance` | 一次 primitive 调用产生的运行状态，暴露 blocking、skippable、completed、BatchId、dispatch 和 skip。 |
 | target profile | `TargetProfileEntryCatalog` | 组合根为某个编辑或运行目标冻结的一组 Entry 模块及其 schema；它决定哪些 primitive/composite 可作者化和编译，未挂载类型不会回退到全局内置目录。 |
 | 原始组文件 | `.rawgalgroup` | 编辑器保存的 Group 源文件，可含 primitive 和 composite，`kind` 为 `Raw`。 |

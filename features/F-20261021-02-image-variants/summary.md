@@ -29,12 +29,12 @@
 
 ## 当前文档
 
-- [资源格式与编译](../../docs/spec/assets.md)
-- [指令契约](../../docs/spec/entry-types.md)
-- [状态与恢复](../../docs/spec/runtime.md)
-- [编辑文件会话](../../docs/spec/editor-files.md)
-- [场景对象分析](../../docs/spec/editor-scene-targets.md)
-- [创建/配置/切换手册](../../docs/manual/image-variants.md)
+- [资源格式与编译](../../docs/spec/content/assets.md)
+- [指令契约](../../docs/spec/runtime/entries.md)
+- [状态与恢复](../../docs/spec/runtime/execution.md)
+- [编辑文件会话](../../docs/spec/editor/project-and-files.md)
+- [场景对象分析](../../docs/spec/editor/scene-targets.md)
+- [创建/配置/切换手册](../../docs/manual/editor/image-variants.md)
 - [可运行示例及检查点](../../GameTestCase/README.md#image-variants-walkthrough)
 
 ## 限制与后续

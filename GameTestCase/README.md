@@ -1,6 +1,6 @@
 # Compiled-content runtime and presentation smoke test
 
-Both routes now finish with the default visual library showcase in `Graph/groups/ending.rawgalgroup`: bloom, vignette, grading, Z-based rack focus, character motion, synchronized shake, animated radial/directional speed lines, impact, wipe, blur and image-mask transitions. The editable default shaders live in `Assets/Effects/Default/`; see [the visual authoring manual](../docs/manual/default-visuals.md).
+Both routes now finish with the default visual library showcase in `Graph/groups/ending.rawgalgroup`: bloom, vignette, grading, Z-based rack focus, character motion, synchronized shake, animated radial/directional speed lines, impact, wipe, blur and image-mask transitions. The editable default shaders live in `Assets/Effects/Default/`; see [the visual authoring manual](../docs/manual/editor/default-visuals.md).
 
 This Raw-authoring game exercises the compiled runtime slice:
 
@@ -69,7 +69,7 @@ Each atlas directory contains only its own images; unrelated assets are not scan
 The descriptor IDs are `a1000000000000000000000000000020` (portrait) and
 `a1000000000000000000000000000021` (classroom). Use these image-variants resources
 in `variants.show`; each image still has its own sprite ID. See
-[the authoring guide](../docs/manual/image-variants.md) for creation and editing.
+[the authoring guide](../docs/manual/editor/image-variants.md) for creation and editing.
 
 From the repository root, validate and rebuild with the current project contracts:
 

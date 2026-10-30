@@ -15,4 +15,4 @@
 禁止做法：为发布加速放宽严格契约哈希；仅检查编译通过或 schema 语义相同就宣称身份安全；把 Benchmark 与普通构建的契约哈希跨模式比较。
 
 来源：features/F-20261025-01-cpu-startup-benchmark/runtime-profile.md。
-正式操作：docs/manual/ready-to-run.md。
+正式操作：docs/manual/publishing/ready-to-run.md。

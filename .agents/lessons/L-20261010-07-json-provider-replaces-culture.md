@@ -20,4 +20,4 @@ DynamicLocalization.Core 2.1.2 的 `JsonLocalizationProvider.LoadJsonString` 将
 
 不要把“后文件重复 key 生效”当作“逐文件增量合并”的证据。版本变更必须同时测试重复 key、独有 key 保留和父 culture 回退。
 
-关联文档：`features/F-20261010-02-runtime-i18n/design.md`、`docs/spec/i18n.md`。
+关联文档：`features/F-20261010-02-runtime-i18n/design.md`、`docs/spec/content/localization.md`。

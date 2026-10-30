@@ -10,4 +10,4 @@
 - 验证：SampleWindowThemeTests 检查实际装饰资源与玩家前景色一致，并验证退出遮罩的取消焦点、Escape 和结果。窗口装饰的像素与系统交互仍需原生桌面验证；Headless 资源断言不替代原生截图。
 - 禁止：把 Window 内容树中的 Button 选择器当成所有窗口装饰按钮的覆盖；为了取到标题栏控件而给整个 Window 挂上播放器 FluentTheme。
 - 依据：Ursa.Avalonia v2.1.0 的 UrsaWindow.axaml（独立 KEY_URSAWINDOW_DRAWN_DECORATIONS）；本次 artifacts/sample-ui-tests/sample-window.trx 与 artifacts/sample-ui-captures/Sample-ExitConfirmation.png。
-- 正式文档：docs/spec/control.md、docs/manual/customize-avalonia-sample.md。
+- 正式文档：docs/spec/presentation/game-view.md、docs/manual/extensions/customize-sample.md。

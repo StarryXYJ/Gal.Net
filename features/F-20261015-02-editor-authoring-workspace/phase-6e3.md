@@ -49,7 +49,7 @@
 
 证据目录：`C:/Users/Starry/.codex/visualizations/2026/10/15/01a13e35-d53c-7270-b753-7b67a4eee31c/timeline-validation`。脚本 validate-key-details.ps1；构建 key-details-final-solution-build.log；TRX/日志 key-details-final-GalNet*；指纹 key-details-final-source-sha256.json；格式 key-details-final-format-verify.log；真实控件截图 timeline-key-details.png。聚焦结果 key-details-focused.trx 包含新建的 3 个用例及原画布指针用例。
 
-正式行为见 [Group/Timeline](../../docs/spec/editor-groups.md)、[i18n](../../docs/spec/i18n.md)。未修改开工时已有的 feature.md 与 group-property-editor-design.md 设计改动。P6e3a 退出条件满足；后续 P6e3b 当前结果见下文，P6e4 事件/剩余语义与 P6f animate 自定义曲线随后推进。
+正式行为见 [Group/Timeline](../../docs/spec/editor/groups.md)、[i18n](../../docs/spec/content/localization.md)。未修改开工时已有的 feature.md 与 group-property-editor-design.md 设计改动。P6e3a 退出条件满足；后续 P6e3b 当前结果见下文，P6e4 事件/剩余语义与 P6f animate 自定义曲线随后推进。
 
 ## P6e3b 实施决策（2026-10-19）
 

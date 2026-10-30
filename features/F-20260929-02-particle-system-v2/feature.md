@@ -46,5 +46,5 @@ updated: 2026-09-29
 
 - [设计](design.md)
 - [实施计划](phase-plan.md)
-- [渲染/粒子计划](../../docs/design/render-effects-pipeline-plan.md)
-- [Runtime 规范](../../docs/spec/runtime.md)
+- [渲染/粒子计划](https://github.com/StarryXYJ/Gal.Net/blob/192acc7b7b0f964b3be4af146e0297de6f4d1662/docs/design/render-effects-pipeline-plan.md)
+- [Runtime 规范](../../docs/spec/runtime/execution.md)

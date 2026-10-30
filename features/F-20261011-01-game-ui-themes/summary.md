@@ -33,9 +33,9 @@ Controls 的基础模板使用 ControlTheme 与中性回退资源。官方布局
 ## 文档
 
 - [Themes 配置与扩展](../../src/Presentation/GalNet.Avalonia.Themes/README.md)
-- [当前游戏页面规范](../../docs/spec/control.md)
-- [开发者手册](../../docs/development.md)
-- [长期设计与落地差异](../../docs/design/game-ui-themes.md)
-- [ADR 0003](../../docs/adr/0003-startup-game-layout-themes.md)
+- [当前游戏页面规范](../../docs/spec/presentation/game-view.md)
+- [开发者手册](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md)
+- [长期设计与落地差异](https://github.com/StarryXYJ/Gal.Net/blob/79df06fd7a55084c552860b167bca0f38a650f69/docs/design/game-ui-themes.md)
+- [ADR 0003](https://github.com/StarryXYJ/Gal.Net/blob/a50f75acea33d6ab3992b02f64c1a21a7f02ac09/docs/adr/0003-startup-game-layout-themes.md)
 
 lesson：Headless session 的 async Dispatch 应 await using 清理，避免同步 Dispose 自等待；已记录在 .agents/lessons/L-20261011-01-headless-session-cleanup.md。

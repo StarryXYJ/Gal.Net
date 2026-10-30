@@ -28,7 +28,7 @@
 
 - [CLI README](../../src/Editor/GalNet.Editor.Headless/README.md)：完整命令及协议，help --json 为当前机器事实源。
 - [Sample.Contracts](../../src/Samples/GalNet.Sample.Contracts/README.md)：构建部署、静态模块组合及单平台截图示例。
-- [架构](../../docs/spec/architecture.md)、[Entry](../../docs/spec/entry-types.md)、[文件格式](../../docs/spec/file-formats.md)、[开发手册](../../docs/development.md)、[ADR-0004](../../docs/adr/0004-project-entry-contract-assembly.md)：已验证事实。
+- [架构](../../docs/spec/architecture/modules.md)、[Entry](../../docs/spec/runtime/entries.md)、[文件格式](../../docs/spec/content/file-formats.md)、[开发手册](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md)、[ADR-0004](https://github.com/StarryXYJ/Gal.Net/blob/46c5a2b109c8f84f8dd92f8f97095ec84e63cdbf/docs/adr/0004-project-entry-contract-assembly.md)：已验证事实。
 
 ## 边界与后续
 

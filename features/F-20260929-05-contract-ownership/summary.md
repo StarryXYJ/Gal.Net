@@ -35,8 +35,8 @@ updated: 2026-09-29
 
 ## 正式文档
 
-- [ADR-0001：运行时与存储契约归属](../../docs/adr/0001-runtime-storage-contract-ownership.md)
-- [当前架构](../../docs/spec/architecture.md) 已记录 Runtime 对 Storage.Abstractions 的迁移期例外和架构测试规则。
+- [ADR-0001：运行时与存储契约归属](https://github.com/StarryXYJ/Gal.Net/blob/2e9ce29e491bd60a15939d0197fc426ccec7919e/docs/adr/0001-runtime-storage-contract-ownership.md)
+- [当前架构](../../docs/spec/architecture/modules.md) 已记录 Runtime 对 Storage.Abstractions 的迁移期例外和架构测试规则。
 
 ## 后续工作
 

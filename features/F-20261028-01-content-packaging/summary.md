@@ -45,11 +45,11 @@ P5 实际挂载控件验证选择器、定位、矩阵多列滚动/编辑、撤�
 
 ## 当前文档
 
-- [作者操作](../../docs/manual/content-packaging.md)
-- [资源契约](../../docs/spec/assets.md)
-- [发布格式](../../docs/spec/file-formats.md)
-- [运行时与存档](../../docs/spec/runtime.md)
-- [文本边界](../../docs/spec/i18n.md)
-- [Sample 章节与首页扩展](../../docs/manual/customize-avalonia-sample.md)
+- [作者操作](../../docs/manual/editor/content-packaging.md)
+- [资源契约](../../docs/spec/content/assets.md)
+- [发布格式](../../docs/spec/content/file-formats.md)
+- [运行时与存档](../../docs/spec/runtime/execution.md)
+- [文本边界](../../docs/spec/content/localization.md)
+- [Sample 章节与首页扩展](../../docs/manual/extensions/customize-sample.md)
 
 每阶段独立 Git 提交：P1 `a3ae72bd`、P2 `a7f08962`、P3 `f97bca72`、P4 `5b2c1a74`、P5 `043638d9`；P6 为本记录所在的最终收尾提交。

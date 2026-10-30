@@ -4,7 +4,7 @@
 - 日期：2026-10-27
 - 适用范围：以 ProjectReference 挂载 netstandard 源生成器的 NativeAOT 宿主
 - 来源：引擎 AOT 实现与用户要求复用 Headless Sample
-- 文档：docs/manual/native-aot.md
+- 文档：docs/manual/publishing/native-aot.md
 
 ## 现象与根因
 

@@ -40,7 +40,7 @@ Runtime 不依赖网络/Editor/Avalonia；可选 GalNet.Debugging 依赖 Runtime
 
 ## 正式文档
 
-- [外部游戏调试接入与使用](../../docs/manual/external-game-debugging.md)
-- [运行时规范](../../docs/spec/runtime.md)
-- [Editor Graph 运行标记](../../docs/spec/editor-graph.md)
-- [架构与程序集边界](../../docs/spec/architecture.md)
+- [外部游戏调试接入与使用](../../docs/manual/editor/preview-and-debugging.md)
+- [运行时规范](../../docs/spec/runtime/execution.md)
+- [Editor Graph 运行标记](../../docs/spec/editor/graph.md)
+- [架构与程序集边界](../../docs/spec/architecture/modules.md)

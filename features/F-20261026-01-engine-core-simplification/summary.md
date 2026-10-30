@@ -66,11 +66,11 @@ P6 保持 in-progress，待具备目录符号链接特权、正确 WebAssembly S
 
 本次公开 API 有破坏性变化，仓库内调用方已同步迁移；外部项目的 Contracts DLL 需要使用新 Core/Contracts 重新构建，不保留旧二进制适配。
 
-- [架构](../../docs/spec/architecture.md)
-- [运行时](../../docs/spec/runtime.md)
-- [Entry 与参数](../../docs/spec/entry-types.md)
+- [架构](../../docs/spec/architecture/modules.md)
+- [运行时](../../docs/spec/runtime/execution.md)
+- [Entry 与参数](../../docs/spec/runtime/entries.md)
 - [术语](../../docs/glossary.md)
-- [接入表现层](../../docs/manual/new-presentation-layer.md)
+- [接入表现层](../../docs/manual/extensions/new-presentation-layer.md)
 
 ## R1：执行协议与管理类型归位
 
@@ -123,7 +123,7 @@ AudioConfiguration 在组合/加载入口验证并复制分组与轨道，声明
 
 新增回归覆盖配置集合隔离、空/未分组/任意分组、同组两轨的独立混音、各层静音、当前/后续 voice、与名称无关的快进策略、大增益饱和、动态偏好恢复/隐藏控件/重新配置、Editor 历史与重开及包安装。初轮发现 DTO 空串属性初始化值仍导出 schema 默认，按现有 lesson 改为构造函数初始化，并扩展所有音频/语音 schema 的缺省/null 回归。
 
-最终验证 1752 项通过、4 项既有符号链接权限失败、3 项跳过；Core 152、Runtime 141、Builtins 185、Editor 323、Editor.Shared 422（3 失败/2 跳过）、Integration 123（1 失败）、Presentation 243、Architecture 49、Assets 57（1 跳过）、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。完整解决方案构建通过；最后仅迁移遗漏的测试轨道目标及复合测试断言，分别重建并重跑 Builtins/Integration。C# 空白格式和 git diff 检查通过，无依赖/锁文件变更。原生媒体、显式外进程及符号链接权限限制继续保留。日志位于忽略产物 artifacts/engine-core-audit/r3-*.log。正式行为见 [runtime](../../docs/spec/runtime.md)、[entry-types](../../docs/spec/entry-types.md)，接入见 [new-presentation-layer](../../docs/manual/new-presentation-layer.md)。完整自定义项目 section 和领域归属仍归 R4/R5，本阶段不将其计为完成。
+最终验证 1752 项通过、4 项既有符号链接权限失败、3 项跳过；Core 152、Runtime 141、Builtins 185、Editor 323、Editor.Shared 422（3 失败/2 跳过）、Integration 123（1 失败）、Presentation 243、Architecture 49、Assets 57（1 跳过）、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。完整解决方案构建通过；最后仅迁移遗漏的测试轨道目标及复合测试断言，分别重建并重跑 Builtins/Integration。C# 空白格式和 git diff 检查通过，无依赖/锁文件变更。原生媒体、显式外进程及符号链接权限限制继续保留。日志位于忽略产物 artifacts/engine-core-audit/r3-*.log。正式行为见 [runtime](../../docs/spec/runtime/execution.md)、[entry-types](../../docs/spec/runtime/entries.md)，接入见 [new-presentation-layer](../../docs/manual/extensions/new-presentation-layer.md)。完整自定义项目 section 和领域归属仍归 R4/R5，本阶段不将其计为完成。
 
 ## R4a：变量单一数据源与仓库输入
 
@@ -147,7 +147,7 @@ R4a 收尾时默认输出不再占用，普通 GalNet.slnx 完整构建也通过
 
 初轮全量回归暴露 caada23 中的语言显示名称输入问题：设置显示字符串触发过滤，候选列表已清空，旧候选匹配无法取得代码。保留新的 Code 绑定，只恢复显示字符串回退的代码提取，单独提交。另去掉 DirectProjectPersistence 为复制配置进行的 JSON 编解码往返，使用文档 Clone；本地化索引单次取得文化代码，避免每条文本重新解码配置。
 
-R4c 仍需完成通用 section 编辑/历史及自有 DTO 的完整导出、安装、运行与预览链路，R4 整体尚未完成。正式协议见 [file-formats](../../docs/spec/file-formats.md)、[runtime](../../docs/spec/runtime.md)，接入见 [new-presentation-layer](../../docs/manual/new-presentation-layer.md)。
+R4c 仍需完成通用 section 编辑/历史及自有 DTO 的完整导出、安装、运行与预览链路，R4 整体尚未完成。正式协议见 [file-formats](../../docs/spec/content/file-formats.md)、[runtime](../../docs/spec/runtime/execution.md)，接入见 [new-presentation-layer](../../docs/manual/extensions/new-presentation-layer.md)。
 
 最终全量回归 1770 项通过、4 项既有符号链接权限失败、3 项跳过：Core 166、Runtime 141、Builtins 185、Editor 323、Editor.Shared 424、Integration 125、Presentation 243、Architecture 49、Assets 57、GameHost 6、Debugging 10、Diagnostics 1、Storage 22、Generator 18。普通解决方案构建通过，无依赖或锁文件变更；格式和 diff 检查通过。格式工具的 MSBuild 工作区因沙箱命名管道权限不可用，使用 folder 模式完成格式化与只读核验。初轮语言名称失败日志保留，独立修复提交为 `2a92fb6`，最终完整 GUI 回归通过。原生媒体/显式外进程未执行；符号链接环境限制不隐藏。证据位于忽略产物 artifacts/engine-core-audit/r4b-final-build.log、r4b-final-tests.log/trx 与 r4b-format-verify.log。
 

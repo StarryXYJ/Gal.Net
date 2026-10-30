@@ -30,4 +30,4 @@
 - [设计](design.md)
 - [阶段计划](phase-plan.md)
 - [实现总结](summary.md)
-- 当前基础：[历史与保存](../../docs/spec/editor-history-and-save.md)、[文件操作](../../docs/spec/editor-files.md)、[CLI](../../src/Editor/GalNet.Editor.Headless/README.md)。
+- 当前基础：[历史与保存](../../docs/spec/editor/history-and-save.md)、[文件操作](../../docs/spec/editor/project-and-files.md)、[CLI](../../src/Editor/GalNet.Editor.Headless/README.md)。

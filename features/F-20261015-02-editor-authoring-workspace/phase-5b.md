@@ -24,4 +24,4 @@
 
 复核了全批预检、先写后删、稳定锚点/新身份、项目历史不引用页面、通知失败补偿与四语生命周期。仅推进本切片，不将 P5 或 P6 宣称完成。构建使用当前源码工作树，隔离目录只隔离输出；另一任务 GameTestCase/shader/ComplexPrimitiveOptions/PlayerInputTests/entry-types/runtime 改动保留并排除本阶段提交。
 
-当前正式行为见 [Group 规范](../../docs/spec/editor-groups.md)；下一步为变量编辑及剩余作者绑定迁移，状态查询和专业动画工具继续后续安排。
+当前正式行为见 [Group 规范](../../docs/spec/editor/groups.md)；下一步为变量编辑及剩余作者绑定迁移，状态查询和专业动画工具继续后续安排。

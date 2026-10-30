@@ -2,7 +2,7 @@
 
 日期：2026-10-21。状态：accepted-for-implementation；已验证部分见阶段记录，其余不表示已实现。用户明确约束见 [feature.md](feature.md)。
 
-2026-10-22 实施结果：核心范围已完成，实际 API/默认值以 [Runtime 规范](../../docs/spec/runtime.md) 和[接入手册](../../docs/manual/external-game-debugging.md) 为准。本文保留最初的建议及开放问题作为设计历史；最终采用保留当前变量、目标前暂停、目标作者范围一次条件豁免、最近自然入口 LRU 缓存和全量轮询。固定/热点前缀预计算延期。验收边界见 [phase-6.md](phase-6.md)。
+2026-10-22 实施结果：核心范围已完成，实际 API/默认值以 [Runtime 规范](../../docs/spec/runtime/execution.md) 和[接入手册](../../docs/manual/editor/preview-and-debugging.md) 为准。本文保留最初的建议及开放问题作为设计历史；最终采用保留当前变量、目标前暂停、目标作者范围一次条件豁免、最近自然入口 LRU 缓存和全量轮询。固定/热点前缀预计算延期。验收边界见 [phase-6.md](phase-6.md)。
 
 2026-10-24 补充：Editor 本地启动测试需为连接等待和调试请求设上限，并将 Editor 侧启动阶段、请求时长、进程输出与退出状态写入 profile 内的有界会话日志。超时只解除 Editor 操作等待，不自动杀 App；后续状态轮询用来确认迟到连接或仍在运行的操作。详见 [phase-liveness-diagnostics.md](phase-liveness-diagnostics.md)。
 

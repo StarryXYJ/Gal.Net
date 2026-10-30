@@ -12,4 +12,4 @@
 
 适用：调试、回放、回滚、存档精简及跨模块快照工厂。
 
-来源：features/F-20261028-01-content-packaging/phase-6.md；docs/spec/runtime.md。
+来源：features/F-20261028-01-content-packaging/phase-6.md；docs/spec/runtime/execution.md。

@@ -19,4 +19,4 @@
 
 适用于 single-flight 加载后向多个消费者分发引用/租约的缓存。不要把“加载任务完成”等同于“所有消费者已取得引用”，也不要用随机压力重跑代替确定性交错测试。
 
-关联：src/Shared/GalNet.Assets/AssetManager.cs、test/GalNet.Assets.Tests/AssetPipelineTests.cs、docs/spec/assets.md。
+关联：src/Shared/GalNet.Assets/AssetManager.cs、test/GalNet.Assets.Tests/AssetPipelineTests.cs、docs/spec/content/assets.md。

@@ -33,4 +33,4 @@ Do not serialize live particles, GPU resources, platform controls, tasks, or pre
 - `src/GalNet.Sample.Avalonia/Services/SampleGameSessionService.cs`
 - `test/GeneralTest/Runtime/BuiltinPrimitiveInstanceTests.cs`
 - `test/GeneralTest/Runtime/GameRuntimeSnapshotTests.cs`
-- `docs/spec/runtime.md`
+- `docs/spec/runtime/execution.md`

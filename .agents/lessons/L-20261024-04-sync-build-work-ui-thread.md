@@ -20,4 +20,4 @@ Editor 调试准备直接从 UI 命令调用 `ProjectContentBuilder.BuildAsync`�
 ## 关联文档
 
 - `features/F-20261021-03-external-game-debugging/phase-liveness-diagnostics.md`
-- `docs/manual/external-game-debugging.md`
+- `docs/manual/editor/preview-and-debugging.md`

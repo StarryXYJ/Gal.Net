@@ -55,11 +55,11 @@
 
 ## P1 — verified
 
-修复字符串表达式、非法条件定位与限量诊断，失败/空值赋值保留原变量，音频诊断观察者不影响清理；现有可选展示降级和关键指令失败规则保留。Runtime 120、Builtins 177 项通过；实现与验证见 ExpressionEvaluatorTests、AudioRuntimeTests、BuiltinPrimitiveInstanceTests 及 [runtime 规范](../../docs/spec/runtime.md)。
+修复字符串表达式、非法条件定位与限量诊断，失败/空值赋值保留原变量，音频诊断观察者不影响清理；现有可选展示降级和关键指令失败规则保留。Runtime 120、Builtins 177 项通过；实现与验证见 ExpressionEvaluatorTests、AudioRuntimeTests、BuiltinPrimitiveInstanceTests 及 [runtime 规范](../../docs/spec/runtime/execution.md)。
 
 ## P2 — verified
 
-检查点在锁外隔离发布，推进分批让出且可取消，Engine 改为异步读档并先准备验证候选再提交；宿主、调试和测试调用方已迁移。Runtime 125、Builtins 177、GameHost 5、Presentation 243 项通过；Integration 122 通过、1 项因 Windows 无创建符号链接特权失败（ScreenshotEntryTests:169）。完整解决方案构建另遇 Avalonia 遥测权限/WebAssembly 包哈希问题，最终构建在 P6 复核。行为证据见 GameEngineLifecycleTests 和 [runtime 规范](../../docs/spec/runtime.md)。
+检查点在锁外隔离发布，推进分批让出且可取消，Engine 改为异步读档并先准备验证候选再提交；宿主、调试和测试调用方已迁移。Runtime 125、Builtins 177、GameHost 5、Presentation 243 项通过；Integration 122 通过、1 项因 Windows 无创建符号链接特权失败（ScreenshotEntryTests:169）。完整解决方案构建另遇 Avalonia 遥测权限/WebAssembly 包哈希问题，最终构建在 P6 复核。行为证据见 GameEngineLifecycleTests 和 [runtime 规范](../../docs/spec/runtime/execution.md)。
 
 ## P3 — verified
 
@@ -99,19 +99,19 @@ primitive/呈现仅借用 IGameContext，Engine 管理 IGameRuntime 与 IPrimiti
 
 执行/Choice/快进/播放端口归 Core.Execution，音频后端端口归 Core.Audio，IGameRuntime/GameRestorePoint 下移 Runtime.Runtime；Runtime 项目只依赖 Core，调用方与锁图已迁移，无兼容包装或行为变更。音频领域整体迁移仍归 R5。
 
-893 项相关回归通过，1 项集成夹具受既有符号链接权限限制；普通桌面解决方案构建、locked restore、格式和架构门禁通过。34 个锁文件仅有项目依赖变化，第三方版本/哈希和目标框架键保持不变；Browser/R2R/原生平台验证限制见 [summary](summary.md#r1执行协议与管理类型归位)。证据含 Runtime 的 ExecutionBoundaryTests（自定义分发器执行/恢复、编译产物依赖检查）与 ProjectDependencyTests，正式边界见 [architecture](../../docs/spec/architecture.md)。
+893 项相关回归通过，1 项集成夹具受既有符号链接权限限制；普通桌面解决方案构建、locked restore、格式和架构门禁通过。34 个锁文件仅有项目依赖变化，第三方版本/哈希和目标框架键保持不变；Browser/R2R/原生平台验证限制见 [summary](summary.md#r1执行协议与管理类型归位)。证据含 Runtime 的 ExecutionBoundaryTests（自定义分发器执行/恢复、编译产物依赖检查）与 ProjectDependencyTests，正式边界见 [architecture](../../docs/spec/architecture/modules.md)。
 
 ### R2 — verified
 
 Engine 只接收/更新不可变 PlaybackOptions，音频只接收隔离轨道定义和 AudioMixOptions，文本消费速度值，保存服务接收槽位数；IGameContext/GameRuntime 不再携带设置容器。默认偏好模型上移 Avalonia.GameHost，PlayerSession 不持有完整设置；删除无用设置类型/服务和 SfxChannelCount 的 UI/CLI/复制路径。GameContent.Settings/作者 ProjectSettings 的整体迁移仍归 R4，自定义分组声明与单轨控制仍归 R3。
 
-1645 项相关测试通过，4 项为既有符号链接权限失败，2 项跳过；当前完整解决方案构建、locked restore、格式与 diff 检查通过。覆盖显式配置更新/拒绝、集合隔离、已有/后续 voice、默认偏好清空重绑和存档容量。证据见 [summary](summary.md#r2设置模型与模块配置解耦)、PlaybackModeTests、AudioRuntimeTests、TypedBuiltinAuthoringTests、SampleLocalizationTests、SampleSaveSessionTests；接入示例见 [manual](../../docs/manual/new-presentation-layer.md#从项目设置映射模块配置)。
+1645 项相关测试通过，4 项为既有符号链接权限失败，2 项跳过；当前完整解决方案构建、locked restore、格式与 diff 检查通过。覆盖显式配置更新/拒绝、集合隔离、已有/后续 voice、默认偏好清空重绑和存档容量。证据见 [summary](summary.md#r2设置模型与模块配置解耦)、PlaybackModeTests、AudioRuntimeTests、TypedBuiltinAuthoringTests、SampleLocalizationTests、SampleSaveSessionTests；接入示例见 [manual](../../docs/manual/extensions/new-presentation-layer.md#从项目设置映射模块配置)。
 
 ### R3 — verified
 
 分组/轨道任意声明，允许空配置/未分组；不可变 AudioConfiguration 在入口统一校验，master/group/track 混音影响当前及后续 voice，快进保留为显式轨道策略。删除固定分类与指令默认目标；Sample/模板明确选择三分组，默认 UI 和 Editor 复用同一声明。
 
-1752 项测试通过，4 项既有符号链接权限失败、3 项跳过；完整解决方案构建、空白格式与 diff 检查通过。最终修正后的 Builtins 185 项全通过，Integration 123 通过/1 项权限失败。证据含 AudioConfigurationTests、AudioRuntimeTests、ProjectAudioSettingsTests、SampleLocalizationTests 与 GameInstallationTests；记录见 [summary](summary.md#r3自定义音频分组与轨道)，规范见 [runtime](../../docs/spec/runtime.md) 和[接入手册](../../docs/manual/new-presentation-layer.md)。原生/外进程环境项继续保留，完整自定义 section/领域归位归 R4/R5。
+1752 项测试通过，4 项既有符号链接权限失败、3 项跳过；完整解决方案构建、空白格式与 diff 检查通过。最终修正后的 Builtins 185 项全通过，Integration 123 通过/1 项权限失败。证据含 AudioConfigurationTests、AudioRuntimeTests、ProjectAudioSettingsTests、SampleLocalizationTests 与 GameInstallationTests；记录见 [summary](summary.md#r3自定义音频分组与轨道)，规范见 [runtime](../../docs/spec/runtime/execution.md) 和[接入手册](../../docs/manual/extensions/new-presentation-layer.md)。原生/外进程环境项继续保留，完整自定义 section/领域归位归 R4/R5。
 
 ### R4 — verified
 
@@ -142,7 +142,7 @@ Entry 仅保存 DynamicParameterTable，编辑器按需投影；效果基础约�
 
 ## 参考
 
-- [运行时规范](../../docs/spec/runtime.md)
-- [架构规范](../../docs/spec/architecture.md)
-- [Entry 契约](../../docs/spec/entry-types.md)
+- [运行时规范](../../docs/spec/runtime/execution.md)
+- [架构规范](../../docs/spec/architecture/modules.md)
+- [Entry 契约](../../docs/spec/runtime/entries.md)
 - 本计划依据 2026-10-26 会话中的核心审查及用户修订：功能/低耦合/精简优先，专项性能工作延期。

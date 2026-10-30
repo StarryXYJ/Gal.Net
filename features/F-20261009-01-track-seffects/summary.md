@@ -27,4 +27,4 @@ completed: 2026-10-09
 - registry 在 host 创建时固定；它支持按平台组合注册，不支持剧情运行中加载任意 DLL/DSP。
 - 仅 track scope；item scope、参数动画、编辑器动态表单、pan/pitch/spatial、bus/master DSP 和存档恢复仍未实现。
 
-正式事实已同步至 [音频系统设计](../../docs/design/audio-system-design.md)、[Runtime 规范](../../docs/spec/runtime.md) 与 [Entry 类型](../../docs/spec/entry-types.md)。
+正式事实已同步至 [音频系统设计](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/design/audio-system-design.md)、[Runtime 规范](../../docs/spec/runtime/execution.md) 与 [Entry 类型](../../docs/spec/runtime/entries.md)。

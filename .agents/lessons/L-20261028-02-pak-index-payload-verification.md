@@ -12,4 +12,4 @@
 
 适用：PAK 安装、导入、资源索引和任何以 metadata-only 优化装载的流程。
 
-来源：features/F-20261028-01-content-packaging/phase-4.md；docs/spec/assets.md。
+来源：features/F-20261028-01-content-packaging/phase-4.md；docs/spec/content/assets.md。

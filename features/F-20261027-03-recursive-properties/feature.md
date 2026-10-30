@@ -81,10 +81,10 @@
 
 - [前期讨论草案](../F-20261023-01-editor-uiux/design-recursive-properties-20261027.md)：历史设计输入，尚非本 feature 的正式 design。
 - [UI/UX 后续及警告定位证据](../F-20261023-01-editor-uiux/follow-up-group-diagnostics-numeric-20261027.md)。
-- [当前字段与条目契约](../../docs/spec/entry-types.md)。
-- [当前共享表单能力](../../docs/spec/control.md#schema-字段表单)。
-- [当前本地化索引规则](../../docs/spec/editor-game-localization.md#只读作者索引)。
-- [Group 编辑与问题定位](../../docs/spec/editor-groups.md)。
-- [项目历史与保存](../../docs/spec/editor-history-and-save.md)。
+- [当前字段与条目契约](../../docs/spec/runtime/entries.md)。
+- [当前共享表单能力](../../docs/spec/presentation/game-view.md#schema-字段表单)。
+- [当前本地化索引规则](../../docs/spec/editor/localization.md#只读作者索引)。
+- [Group 编辑与问题定位](../../docs/spec/editor/groups.md)。
+- [项目历史与保存](../../docs/spec/editor/history-and-save.md)。
 
 后续流程：design → phase-plan → implement → review → closeout。各阶段生成其实际产物和证据后再更新状态。

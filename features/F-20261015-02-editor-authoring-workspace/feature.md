@@ -174,11 +174,11 @@ P6e2 用户反馈进一步收敛交互：持续显示轨道的绝对值/叠加�
 - [galgroup 编辑交互与控件扩展补充设计](group-editing-design.md)：用户追加第 1–5 点纳入 P5；第 6 点仅设计，底层保留 handle，作者选择可读场景目标。
 - [实施 Phase Plan](phase-plan.md)
 - [Feature 实施流程](../../.agents/skills/galnet-feature-implement/SKILL.md)
-- [当前架构](../../docs/spec/architecture.md)
-- [文件格式](../../docs/spec/file-formats.md)
-- [资源](../../docs/spec/assets.md)
-- [Entry 类型](../../docs/spec/entry-types.md)
-- [Dock 工作区](../../docs/spec/dock-design.md)
+- [当前架构](../../docs/spec/architecture/modules.md)
+- [文件格式](../../docs/spec/content/file-formats.md)
+- [资源](../../docs/spec/content/assets.md)
+- [Entry 类型](../../docs/spec/runtime/entries.md)
+- [Dock 工作区](../../docs/spec/editor/dock.md)
 - [Editor 职责拆分](../F-20260929-10-editor-responsibility-split/summary.md)：已有职责抽取，本次重新设计交互和所有权，不改写该 feature 的完成状态。
 - [Editor/CLI 操作](../F-20261013-01-editor-cli-operations/summary.md)：复用项目契约、查询、校验、编译和文件操作基础，不沿用其未要求文件撤销的范围限制。
 - [参数契约共用与 Sample 简化](../F-20261013-02-parameter-and-sample-simplification/summary.md)：复用值描述、schema 表单及专属编辑器基础。
@@ -189,11 +189,11 @@ Group 补充第 1–5 点已验证：搜索/键盘类型选择、顶部批量和
 
 ### P5b 实施进度（2026-10-17）
 
-Entry 多选、剪切/复制/粘贴/副本、批量删除和多选拖放已验证，批量为单条项目历史；失败剪贴板/源变化/晚返回与集合补偿已覆盖。解决方案构建成功，493 项相关回归通过，whitespace/IDE0005 verify 与源码指纹核对通过。见 [phase-5b.md](phase-5b.md) 和 [Group 当前规范](../../docs/spec/editor-groups.md)。P5 变量编辑与剩余作者绑定迁移仍 planned，P6 状态查询/复杂值和游戏预览范围不变。
+Entry 多选、剪切/复制/粘贴/副本、批量删除和多选拖放已验证，批量为单条项目历史；失败剪贴板/源变化/晚返回与集合补偿已覆盖。解决方案构建成功，493 项相关回归通过，whitespace/IDE0005 verify 与源码指纹核对通过。见 [phase-5b.md](phase-5b.md) 和 [Group 当前规范](../../docs/spec/editor/groups.md)。P5 变量编辑与剩余作者绑定迁移仍 planned，P6 状态查询/复杂值和游戏预览范围不变。
 
 ### P5c 实施进度（2026-10-17）
 
-统一变量面板已验证：查看菜单入口，玩家/存档页签，声明/初值/说明草稿与显式应用，按 UID 的项目历史、明确引用重命名及删除保护、候选诊断、已打开 Group 投影/补全/诊断刷新。说明字段纳入严格 Graph 格式与克隆/保存往返。解决方案构建成功，611 项相关测试通过，格式及源码指纹门禁通过，见 [phase-5c.md](phase-5c.md) 和 [变量当前规范](../../docs/spec/editor-variables.md)。剩余 Entry 作者绑定迁移、旧 Preview 路径与 P6/P7 范围继续单列，P5 整体不标记完成。
+统一变量面板已验证：查看菜单入口，玩家/存档页签，声明/初值/说明草稿与显式应用，按 UID 的项目历史、明确引用重命名及删除保护、候选诊断、已打开 Group 投影/补全/诊断刷新。说明字段纳入严格 Graph 格式与克隆/保存往返。解决方案构建成功，611 项相关测试通过，格式及源码指纹门禁通过，见 [phase-5c.md](phase-5c.md) 和 [变量当前规范](../../docs/spec/editor/variables.md)。剩余 Entry 作者绑定迁移、旧 Preview 路径与 P6/P7 范围继续单列，P5 整体不标记完成。
 
 ### P5d 实施进度（2026-10-18）
 
@@ -217,4 +217,4 @@ P6e4b 已验证（2026-10-20）：事件独立行、受限搜索类型选择、�
 
 ### P6e4c4 实施进度（2026-10-21）
 
-播放实例 Locator 与停止字段已接通：播放控制和场景对象独立查询，共用选择控件与项目代次；显示本地化类型/来源、支持英文类型搜索，语言切换保留域，旧引用/旧选择与单历史保存行为已验证。纯查询 100 项及真实选择器专项通过，隔离构建和七项目 1239 项回归通过，保留两项既有 Group 布局失败，6 项原生媒体未执行。证据见 [phase-6e4.md](phase-6e4.md)，稳定行为见 [场景目标规范](../../docs/spec/editor-scene-targets.md)。P6e4c 继续剩余内置语义及缺目标运行时独立核验，实时预览不列 Phase。
+播放实例 Locator 与停止字段已接通：播放控制和场景对象独立查询，共用选择控件与项目代次；显示本地化类型/来源、支持英文类型搜索，语言切换保留域，旧引用/旧选择与单历史保存行为已验证。纯查询 100 项及真实选择器专项通过，隔离构建和七项目 1239 项回归通过，保留两项既有 Group 布局失败，6 项原生媒体未执行。证据见 [phase-6e4.md](phase-6e4.md)，稳定行为见 [场景目标规范](../../docs/spec/editor/scene-targets.md)。P6e4c 继续剩余内置语义及缺目标运行时独立核验，实时预览不列 Phase。

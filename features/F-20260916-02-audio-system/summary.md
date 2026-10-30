@@ -28,4 +28,4 @@ completed: 2026-09-30
 - 本期只实现 host 可验证的 `seffect.gain`；SEffect catalog、参数编辑器、动画及其他 DSP 后续另立 feature。
 - 不实现 bus CRUD、玩家音量设置、音频存档恢复、角色默认 vocal track、seek、自然结尾交叉淡化或无缝循环。
 
-正式长期设计见 [音频系统设计](../../docs/design/audio-system-design.md)，过程设计见 [design.md](design.md) 与 [phase-plan.md](phase-plan.md)。
+正式长期设计见 [音频系统设计](https://github.com/StarryXYJ/Gal.Net/blob/f17a5934c291d5669ea6615b928321bdf9a2aa02/docs/design/audio-system-design.md)，过程设计见 [design.md](design.md) 与 [phase-plan.md](phase-plan.md)。

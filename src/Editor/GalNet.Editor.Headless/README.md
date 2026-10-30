@@ -2,9 +2,9 @@
 
 `game inspect <content-directory>` 无需作者项目或契约，只读返回安装内容的 projectId、buildId 和分包描述。支持 game.pak 固定入口和旧 content.json；此命令读取描述，不执行全部资源载荷或游戏运行校验。
 
-默认视觉资源可通过 `project visuals install <project> [--dry-run]` 显式补入；保留已有绑定与作者修改，需先部署当前项目契约。使用方式见[默认视觉库](../../../docs/manual/default-visuals.md)。
+默认视觉资源可通过 `project visuals install <project> [--dry-run]` 显式补入；保留已有绑定与作者修改，需先部署当前项目契约。使用方式见[默认视觉库](../../../docs/manual/editor/default-visuals.md)。
 
-外部 Agent 创作 Skill 随 CLI 分发在 `Skills/galnet-project-authoring/`，支持文本转 Group、给对白补演出和资源导入。完整使用流程及 Editor 热重载见[外部工具创作](../../../docs/manual/external-project-authoring.md)。
+外部 Agent 创作 Skill 随 CLI 分发在 `Skills/galnet-project-authoring/`，支持文本转 Group、给对白补演出和资源导入。完整使用流程及 Editor 热重载见[外部工具创作](../../../docs/manual/editor/external-tools.md)。
 
 ```text
 project apply <project> <manifest-file> [--dry-run]
@@ -29,7 +29,7 @@ help --search group --json
 
 普通 help 输出文字；其他结果及错误在 stdout 输出协议版本 1 的 JSON `{ protocolVersion, operationId, success, data, diagnostics }`。操作失败返回非零退出码。`help --search` 没有匹配时正常返回空列表。
 
-发行工具入口：`compose` 使用预编译运行包，无需 SDK；`build-compose` 指定应用 csproj、内容、RID、apphost 文件名与版本，检查 SDK 后锁定还原、发布和严格合包。源码模式支持 Windows/Linux x64，Linux 需要显式的目标音频库和私有媒体闭包；参数见 `help build-compose`，完整流程见 [发行打包](../../../docs/manual/release-packaging.md)。失败保留结构化步骤、退出码及日志位置；取消停止自有构建进程树。旧内容的契约身份不匹配时必须重新导出。
+发行工具入口：`compose` 使用预编译运行包，无需 SDK；`build-compose` 指定应用 csproj、内容、RID、apphost 文件名与版本，检查 SDK 后锁定还原、发布和严格合包。源码模式支持 Windows/Linux x64，Linux 需要显式的目标音频库和私有媒体闭包；参数见 `help build-compose`，完整流程见 [发行打包](../../../docs/manual/publishing/engine-release.md)。失败保留结构化步骤、退出码及日志位置；取消停止自有构建进程树。旧内容的契约身份不匹配时必须重新导出。
 
 项目概况和查询采用 `project info`、`graph nodes`、`graph node`、`group entries` 等分组入口。旧 commands、summary、create、nodes、node、entries 扁平命令已删除，不提供兼容别名。可调用的入口以 `help --json` 为准，尚未实现的阶段不提前公开。
 
@@ -80,7 +80,7 @@ group compile <project> --file Graph/groups/example.rawgalgroup --output Output/
 
 build/export 使用项目 DLL 的同一 catalog，先校验原始 Graph 和目标 Group 再编译。共享 ProjectContentBuilder 和 GamePackageExporter 要求显式传入 catalog，没有内置默认值或兼容重载。缺契约或契约未声明的 entry 明确失败；部分组件不会自动补成内置全集。输出拒绝作者目录、Contracts、项目根/祖先和链接路径；导出的 galpak 包含编译内容，不包含工具 DLL。execute 已切换项目 catalog；其无损写入边界与新增生命周期命令在后续阶段完善。
 
-execute 的文档加载和保存只接受当前格式：不补 ID、不迁移变量，不过滤未知参数。未知 Graph/Group/settings 字段、重复属性、缺稳定 ID 或无法无损转换的参数会阻止写入；原始查询仍可用于检查这些文件。空字符串参数保留。dryRun 使用同一待保存内容校验且不创建文件；加载后源文件或 settings 改变会要求重新加载。Graph、Group 和 settings 统一暂存后发布，后续发布失败会恢复此前改动并清理临时文件；不承诺进程崩溃或跨进程整体原子性。删除 Group 并删除 entries 时同步删除作者文件，保留 entries 时保留孤立文件。资产文件操作仍是单独执行，不能混入文档批次；它与 GUI 共用项目文件预检、metadata、引用检查及持久事务，执行前需要有效作者文档。CLI 不保留 GUI Undo 栈，未知引用不自动重写，详见 [项目文件操作](../../../docs/spec/editor-files.md)。
+execute 的文档加载和保存只接受当前格式：不补 ID、不迁移变量，不过滤未知参数。未知 Graph/Group/settings 字段、重复属性、缺稳定 ID 或无法无损转换的参数会阻止写入；原始查询仍可用于检查这些文件。空字符串参数保留。dryRun 使用同一待保存内容校验且不创建文件；加载后源文件或 settings 改变会要求重新加载。Graph、Group 和 settings 统一暂存后发布，后续发布失败会恢复此前改动并清理临时文件；不承诺进程崩溃或跨进程整体原子性。删除 Group 并删除 entries 时同步删除作者文件，保留 entries 时保留孤立文件。资产文件操作仍是单独执行，不能混入文档批次；它与 GUI 共用项目文件预检、metadata、引用检查及持久事务，执行前需要有效作者文档。CLI 不保留 GUI Undo 栈，未知引用不自动重写，详见 [项目文件操作](../../../docs/spec/editor/project-and-files.md)。
 
 Editor 打开项目时也必须加载 Contracts DLL。ProjectSchemaSession 由项目 DI scope 持有，catalog、文档仓库、Graph 编辑、文件操作和保存协调器均按项目解析，entry 快捷键从该项目集合生成。关闭/切换项目释放契约上下文；契约或打开监听器失败时清理 scope，不能继续沿用旧项目 catalog。预览使用同一 catalog，按选定集合注册内置实现，并在启动前检查实际编译内容的指令。加载不会提供自定义 entry 的平台执行实现，缺少实现时明确失败。
 

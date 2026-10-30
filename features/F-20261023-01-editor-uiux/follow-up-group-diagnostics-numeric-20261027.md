@@ -37,7 +37,7 @@ Phase 1：诊断状态、自动检查与定位；Phase 2：数字输入与控件
 
 检查覆盖沿用现有 Graph/Group/本地化与场景静态规则，不把运行期和所有资源解码问题声称为静态可判定。无法唯一识别的复杂同名嵌套子字段仍定位到根字段。原生桌面 IME、DPI 与辅助技术体验保留人工验收边界。
 
-正式规范同步：[Group 编辑](../../docs/spec/editor-groups.md)、[共享表单](../../docs/spec/control.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)；接入示例见 [创作工作区手册](../../docs/manual/editor-authoring-workspace.md#选择数值编辑器)。
+正式规范同步：[Group 编辑](../../docs/spec/editor/groups.md)、[共享表单](../../docs/spec/presentation/game-view.md)、[历史与保存](../../docs/spec/editor/history-and-save.md)；接入示例见 [创作工作区手册](../../docs/manual/extensions/parameter-editors.md#选择数值编辑器)。
 
 ## 本地化分析警告定位修正（2026-10-27）
 

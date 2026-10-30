@@ -23,7 +23,7 @@
 
 ## 正式文档
 
-- 已将可复用的推荐流程和文档职责边界同步至 [Feature 工作流与 Agent 知识维护](../../docs/design/feature-workflow.md)。
+- 已将可复用的推荐流程和文档职责边界同步至 [Feature 工作流与 Agent 知识维护](https://github.com/StarryXYJ/Gal.Net/blob/80693d3dff17255fa93fbf31e4e3f26480020cb9/docs/design/feature-workflow.md)。
 - 已在同一文档补充快速通道的适用范围、产物和降级条件。
 
 ## 验证

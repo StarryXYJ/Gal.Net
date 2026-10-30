@@ -39,7 +39,7 @@ Debug Sample、Release 集成项目构建通过；Release locked restore 通过�
 - 手写不同源音频不自动关联；选择界面保留原有快捷键约束，可用工具栏进入历史。
 - 本次未执行全仓发行打包、原生视频显式用例或人工扬声器试听；共享后端的原生能力不由 Headless 验证代替。
 
-规范见 [control](../../docs/spec/control.md)、[runtime](../../docs/spec/runtime.md)，接入说明见 [定制 Sample](../../docs/manual/customize-avalonia-sample.md#对白历史与重播)。
+规范见 [control](../../docs/spec/presentation/game-view.md)、[runtime](../../docs/spec/runtime/execution.md)，接入说明见 [定制 Sample](../../docs/manual/sample/saves-history-and-gallery.md#对白历史与重播)。
 
 ## 后续修正：历史纯显示与确认按钮本地化
 

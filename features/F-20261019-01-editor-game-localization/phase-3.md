@@ -33,7 +33,7 @@
 
 三个失败均为 [P6e3 已记录](../F-20261015-02-editor-authoring-workspace/phase-6e3.md) 的目录点击、列表尾部空间和行宽用例：BrowserAddressBlocksDropAndGlobalSearchExitFollowSelection、GroupToolbarBatchesAreSingleHistoryStepsAndSpaceInsertsOneAtCapturedAnchor、GroupTransformAndColorUseRealControlsSingleHistoryAndLosslessSave。其中目录点击在前一轮完整重跑通过、最终重跑失败，保留其偶发记录；未修改这些测试或把相关并行布局改动混入本 feature。P3 verified 只代表本阶段验收成立，不代表当前工作树全绿。
 
-20 个任务 C# 文件 whitespace verify 通过；25 个任务 C#/XAML/UI JSON 文件最终 SHA-256 与测试前一致，清单为 Temp/localization-p3-final-sources.json。四语各有相同的 23 个角色 UI key，文档链接与 git diff --check 通过。两条 agent lesson 分别记录实际 wire 名与程序化 TextBox 刷新边界，正式行为同步到 [spec](../../docs/spec/editor-game-localization.md)。
+20 个任务 C# 文件 whitespace verify 通过；25 个任务 C#/XAML/UI JSON 文件最终 SHA-256 与测试前一致，清单为 Temp/localization-p3-final-sources.json。四语各有相同的 23 个角色 UI key，文档链接与 git diff --check 通过。两条 agent lesson 分别记录实际 wire 名与程序化 TextBox 刷新边界，正式行为同步到 [spec](../../docs/spec/editor/localization.md)。
 
 ## 边界
 

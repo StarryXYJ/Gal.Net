@@ -42,7 +42,7 @@ GameLocalizationPanelService 投影现有索引和作者文档，同分类共享
 
 Presentation 日志另有 6 个视频环境用例跳过（TRX 发现 249、执行 243）。Editor 两项失败为 GroupToolbarBatchesAreSingleHistoryStepsAndSpaceInsertsOneAtCapturedAnchor 的尾部留白 0 < 40、GroupTransformAndColorUseRealControlsSingleHistoryAndLosslessSave 的宽度 482 >= 480，均已在 [P6e3](../F-20261015-02-editor-authoring-workspace/phase-6e3.md) 记录，不隐藏或宣称全绿。最后补充的队列保护只改 GUI 服务和测试，复跑完整 Editor 验证；其余模块保持前次通过的源码。
 
-17 个 C#/XAML/四语资源文件的最终源码指纹一致，C# whitespace 验证通过；四种 UI 语言各 882 个 key 一致，文档相对链接、Git diff whitespace 检查通过。使用说明同步至 [manual](../../docs/manual/game-localization.md)，当前契约同步至 [spec](../../docs/spec/editor-game-localization.md)。本地证据：Temp/localization-p5-final-solution.log、Temp/localization-p5-final-results/、Temp/localization-p5-results/p5-queue-before.trx 与 p5-queue-fixed.trx、Temp/localization-p5-format-verify.log、Temp/localization-p5-sources.json；不提交 Temp。
+17 个 C#/XAML/四语资源文件的最终源码指纹一致，C# whitespace 验证通过；四种 UI 语言各 882 个 key 一致，文档相对链接、Git diff whitespace 检查通过。使用说明同步至 [manual](../../docs/manual/editor/localization.md)，当前契约同步至 [spec](../../docs/spec/editor/localization.md)。本地证据：Temp/localization-p5-final-solution.log、Temp/localization-p5-final-results/、Temp/localization-p5-results/p5-queue-before.trx 与 p5-queue-fixed.trx、Temp/localization-p5-format-verify.log、Temp/localization-p5-sources.json；不提交 Temp。
 
 提交暂存时工作区又出现其他变量/历史相关并行修改，未纳入本阶段。上述构建与回归对应验证时的源码快照，不扩展为后续并行工作树的构建结论；本阶段 17 个源码文件在提交前再次核对无漂移。
 

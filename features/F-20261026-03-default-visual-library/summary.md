@@ -44,7 +44,7 @@
 
 ## 文档与提交
 
-- [使用手册](../../docs/manual/default-visuals.md)、[Entry 规范](../../docs/spec/entry-types.md)、[资源规范](../../docs/spec/assets.md)。
+- [使用手册](../../docs/manual/editor/default-visuals.md)、[Entry 规范](../../docs/spec/runtime/entries.md)、[资源规范](../../docs/spec/content/assets.md)。
 - P1 `398f2cbb`：初始化 shader 与用途绑定。
 - P2 `f8d33f4c`：图层 Z 与租约纹理绑定。
 - P3 `882af07b`：转场、演出及作者集成。

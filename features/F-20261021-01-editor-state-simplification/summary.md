@@ -33,6 +33,6 @@ Release 配置，关闭 Avalonia telemetry 与共享编译器，相关构建串�
 
 ## 文档与边界
 
-规范同步到 [变量编辑](../../docs/spec/editor-variables.md)、[历史与保存](../../docs/spec/editor-history-and-save.md) 和 [Graph](../../docs/spec/editor-graph.md)。Workspace fixture 同步到真实 ContentSession 保存基线，避免继续依赖已删除的人工 dirty 标记。
+规范同步到 [变量编辑](../../docs/spec/editor/variables.md)、[历史与保存](../../docs/spec/editor/history-and-save.md) 和 [Graph](../../docs/spec/editor/graph.md)。Workspace fixture 同步到真实 ContentSession 保存基线，避免继续依赖已删除的人工 dirty 标记。
 
 独立 UndoRedoHistory 仍可使用无项目的游标 checkpoint；生产 GUI 绑定内容会话，不使用游标判定 dirty。CLI 变量引用策略、事件刷新范围、缓存版本化和文件监听优化不在本次范围。已知两项 Group 布局问题留待独立任务。

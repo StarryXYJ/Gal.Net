@@ -36,7 +36,7 @@ updated: 2026-09-29
 
 ## 正式文档
 
-- [Feature 工作流与 Agent 知识维护](../../docs/design/feature-workflow.md) 已改用仓库相对路径。
+- [Feature 工作流与 Agent 知识维护](https://github.com/StarryXYJ/Gal.Net/blob/80693d3dff17255fa93fbf31e4e3f26480020cb9/docs/design/feature-workflow.md) 已改用仓库相对路径。
 - [Feature 索引](../README.md) 已改用仓库相对路径。
 
 ## 后续工作

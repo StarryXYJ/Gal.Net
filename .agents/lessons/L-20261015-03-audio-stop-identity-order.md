@@ -10,4 +10,4 @@
 
 适用：音频停止、重绑、恢复和销毁。禁止在后端 Stop 返回后才撤销全部旧身份。单项停止先从活动集合删除，避免同步终态事件推进队列。
 
-发现方式：代码检查后加入 fake host 在 Stop 内立即回调 Ended 的测试；Runtime 回归 84 项通过。相关契约见 docs/spec/runtime.md。
+发现方式：代码检查后加入 fake host 在 Stop 内立即回调 Ended 的测试；Runtime 回归 84 项通过。相关契约见 docs/spec/runtime/execution.md。

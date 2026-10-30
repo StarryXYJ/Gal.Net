@@ -20,4 +20,4 @@ ScreenshotDialog 约定具名控件，加载 XAML 后 InitializeDialog；共享�
 
 限制：未运行原生 LibVLC opt-in 用例，未人工验证系统文件选择器或所有 DPI/字体环境；没有运行期主题切换。普通页面删除与必需主题参数属于源码 API 变更，外部宿主应显式选择内置主题或提供完整自定义主题。
 
-正式文档：[control](../../docs/spec/control.md)、[开发手册](../../docs/development.md)、[主题设计](../../docs/design/game-ui-themes.md)、[Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。过程经验独立保存于 .agents/lessons/L-20261011-02-editor-avalonia-alias.md。
+正式文档：[control](../../docs/spec/presentation/game-view.md)、[开发手册](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md)、[主题设计](https://github.com/StarryXYJ/Gal.Net/blob/79df06fd7a55084c552860b167bca0f38a650f69/docs/design/game-ui-themes.md)、[Themes README](../../src/Presentation/GalNet.Avalonia.Themes/README.md)。过程经验独立保存于 .agents/lessons/L-20261011-02-editor-avalonia-alias.md。

@@ -44,4 +44,4 @@
 
 CLI 执行文件命令现在也加载作者文档，损坏文档阻止文件发布；未添加旧行为兼容。CLI 仍仅暴露现有资产命令，通用项目文件操作通过 typed service 提供给后续 GUI。普通文本内容页、完整文件树/网格、原生文件对话框验收均在 P4b。
 
-事务提供可核对恢复与补偿，不承诺断电/跨进程整体原子性。结构 staging 当前同步执行，P7 再测大型项目交互；完整游戏预览仍另立 feature。正式规则见 [项目文件操作](../../docs/spec/editor-files.md)、[历史与保存](../../docs/spec/editor-history-and-save.md)、[资源](../../docs/spec/assets.md) 和 [目录格式](../../docs/spec/file-formats.md)。
+事务提供可核对恢复与补偿，不承诺断电/跨进程整体原子性。结构 staging 当前同步执行，P7 再测大型项目交互；完整游戏预览仍另立 feature。正式规则见 [项目文件操作](../../docs/spec/editor/project-and-files.md)、[历史与保存](../../docs/spec/editor/history-and-save.md)、[资源](../../docs/spec/content/assets.md) 和 [目录格式](../../docs/spec/content/file-formats.md)。

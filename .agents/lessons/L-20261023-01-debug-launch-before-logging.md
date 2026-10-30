@@ -8,4 +8,4 @@
 - 正确做法：组合根顶层捕获日志初始化前的异常，输出 stderr 并以非零码退出；Editor 监控自己启动的进程，持续排空并限制保留的 stderr，按会话隔离错误，断开后取消监控而不杀进程。
 - 适用范围：外部 App 调试启动及其他先校验后初始化日志的 CLI/GUI 入口。
 - 禁止：将没有日志视为没有错误；直接信任预期哈希；为方便连接取消真实契约校验。
-- 文档：docs/manual/external-game-debugging.md。
+- 文档：docs/manual/editor/preview-and-debugging.md。

@@ -19,7 +19,7 @@
 | 身份和通知 | 工作版本恢复保留作者对象身份；边移除/页面释放解除事件；遗留条目监听在项目历史执行时不补记账，结束刷新前值，避免页面重建后撤销重入 |
 | 排队有效性 | 排队期间起始节点或输出口失效时，执行前重新校验，失败不创建孤立节点/文件，不推进历史 |
 
-正式行为见 [Graph 基础编辑](../../docs/spec/editor-graph.md)。经验记录：[Headless 拖动状态](../../.agents/lessons/L-20261016-01-headless-drag-modifiers.md)、[结构基线捕获](../../.agents/lessons/L-20261016-02-structure-baseline-capture.md)。
+正式行为见 [Graph 基础编辑](../../docs/spec/editor/graph.md)。经验记录：[Headless 拖动状态](../../.agents/lessons/L-20261016-01-headless-drag-modifiers.md)、[结构基线捕获](../../.agents/lessons/L-20261016-02-structure-baseline-capture.md)。
 
 ## 验证
 

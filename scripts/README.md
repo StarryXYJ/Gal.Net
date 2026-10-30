@@ -6,7 +6,8 @@
 - `samples/`：运行 Headless 与 Avalonia Sample。
 - `performance/`：启动 benchmark、trace 分析和 native profile。
 - `maintenance/`：仓库代码量统计等维护工具。
+- `docs/`：正式文档导航、链接校验、完整 Wiki 生成与回归测试。
 - `ci/`：本地与 Actions 共用的 restore、format、build、test 入口。
 - `release/`：五个聚合 NuGet、Editor/Sample/Contracts ZIP、独立消费和分发验收、产物索引与单独上传。
 
-本地 CI / Release 用法见 [`docs/manual/release-packaging.md`](../docs/manual/release-packaging.md)。先运行 `ci/Invoke-CI.ps1 -Coverage`，再运行 `release/Release.ps1 -Version 0.1.0-dev.1`。GitHub Release 由 `vMAJOR.MINOR.PATCH` 或 `vMAJOR.MINOR.PATCH-preview.N` tag 触发；手动 workflow_dispatch 仅构建候选。桌面 AOT 尚未通过验收，`Test-DesktopAot.ps1` 用于严格诊断。
+本地构建与测试见[开发验证](../docs/manual/development/build-and-test.md)，Release 见[引擎发布](../docs/manual/publishing/engine-release.md)，文档整理与 Wiki 生成见[文档维护](../docs/manual/development/documentation.md)。GitHub Release 由正式版本 tag 与主分支归属共同控制，手动 workflow_dispatch 仅构建候选。桌面 AOT 尚未通过完整验收，`Test-DesktopAot.ps1` 用于严格诊断。

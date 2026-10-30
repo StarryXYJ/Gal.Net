@@ -12,4 +12,4 @@
 
 验证：修改 fixture 后同一真实 GUI 草稿保存、重开、字段编辑、Entry/Graph 复制和 Undo/Redo 用例通过；p5e-editor-focused.trx 为修复后 2/2，首次失败堆栈保留在本轮工具输出及 phase-5e 记录。
 
-适用：已有 DI 集成 fixture、新增服务策略、临时 fault decorator、production 注册回归。关联 docs/spec/editor-groups.md 与 phase-5e.md。
+适用：已有 DI 集成 fixture、新增服务策略、临时 fault decorator、production 注册回归。关联 docs/spec/editor/groups.md 与 phase-5e.md。

@@ -19,4 +19,4 @@ GalpakInstaller 发现已有安装的文件 hash 和 game.pak 均匹配时直接
 
 适用于带幂等复用的安装、缓存导入和内容合包。不要用目标缓存命中、ZIP 条目大小或 MetadataIndex 验证替代本次源载荷校验；不要为拒绝坏归档删除正确的目标目录。
 
-相关文档：docs/spec/file-formats.md、features/F-20261029-05-cross-platform-applications/environment-matrix.md。
+相关文档：docs/spec/content/file-formats.md、features/F-20261029-05-cross-platform-applications/environment-matrix.md。

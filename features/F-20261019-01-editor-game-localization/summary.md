@@ -1,6 +1,6 @@
 # 默认开发语言创作、角色表与游戏 i18n 面板
 
-状态：done；2026-10-21。P1–P6 与取消兼容的 P3a 均已 verified。操作入口和当前契约以 [使用说明](../../docs/manual/game-localization.md)、[Editor 游戏本地化](../../docs/spec/editor-game-localization.md)、[i18n](../../docs/spec/i18n.md) 为准；[设计](design.md) 保留取舍，[审核](review.md) 记录结论和限制。
+状态：done；2026-10-21。P1–P6 与取消兼容的 P3a 均已 verified。操作入口和当前契约以 [使用说明](../../docs/manual/editor/localization.md)、[Editor 游戏本地化](../../docs/spec/editor/localization.md)、[i18n](../../docs/spec/content/localization.md) 为准；[设计](design.md) 保留取舍，[审核](review.md) 记录结论和限制。
 
 项目 TargetLocale 控制普通创作原文，Editor UI 语言独立。DTO 的 LocalizedText/CharacterReference 语义由 generator 传到嵌套字段，统一索引所有作者 Group、角色与稳定分支选项。当前作者 JSON 保留稳定文本 key 和 Entry GUID，移动不重建，复制得到独立身份并携带各语言译文；自定义未标记字符串不被推断。
 

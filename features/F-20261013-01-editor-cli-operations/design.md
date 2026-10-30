@@ -141,8 +141,8 @@ CLI 一次加载项目契约，向 validate/build/export 传递同一 catalog。
 
 - [需求](feature.md)
 - [阶段计划](phase-plan.md)
-- [ADR-0002](../../docs/adr/0002-entry-schema-execution-registration.md)
-- [开发文档](../../docs/development.md)
+- [ADR-0002](https://github.com/StarryXYJ/Gal.Net/blob/e650ee511a1e2511f0c82110b954e255110a2fd5/docs/adr/0002-entry-schema-execution-registration.md)
+- [开发文档](https://github.com/StarryXYJ/Gal.Net/blob/5334af5b04f3fcc23ddea3fc1ed5fc502eff5eb1/docs/development.md)
 
 ### 项目回收的外层边界
 

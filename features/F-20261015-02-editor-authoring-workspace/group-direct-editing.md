@@ -17,4 +17,4 @@
 - 全量运行较慢，首次无超时上限的运行主动中止后，以 45 秒无进展超时重跑，最终 4 分 48 秒完成，未触发挂起保护。
 - 默认输出目录因运行中的 Editor 锁定而构建失败，改用 `-p:OutputPath=bin/GroupNoDialog/` 完成编译。沙箱中的 testhost 连接超时，调整为允许本地测试进程通信后核心用例和 Shared 测试执行通过。
 
-当前规范见 [Group 编辑](../../docs/spec/editor-groups.md#直接编辑与问题诊断) 和 [场景引用诊断](../../docs/spec/editor-scene-targets.md#作者关系与引用诊断)。
+当前规范见 [Group 编辑](../../docs/spec/editor/groups.md#直接编辑与问题诊断) 和 [场景引用诊断](../../docs/spec/editor/scene-targets.md#作者关系与引用诊断)。

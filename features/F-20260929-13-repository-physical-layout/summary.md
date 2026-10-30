@@ -43,5 +43,5 @@
 ## 文档同步
 
 - [根 README](../../README.md)
-- [架构 spec](../../docs/spec/architecture.md)
+- [架构 spec](../../docs/spec/architecture/modules.md)
 - [维护性路线图](../F-20260929-03-maintainability-roadmap/phase-plan.md)

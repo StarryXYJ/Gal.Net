@@ -41,9 +41,9 @@ Feature 的 Gallery、资源 metadata、PAK、发行安装、Preview 与 Avaloni
 
 ## 同步的正式文档
 
-- [资源](../../docs/spec/assets.md)
-- [项目与发布格式](../../docs/spec/file-formats.md)
-- [架构](../../docs/spec/architecture.md)
-- [Avalonia 页面](../../docs/spec/control.md)
-- [条目类型](../../docs/spec/entry-types.md)
+- [资源](../../docs/spec/content/assets.md)
+- [项目与发布格式](../../docs/spec/content/file-formats.md)
+- [架构](../../docs/spec/architecture/modules.md)
+- [Avalonia 页面](../../docs/spec/presentation/game-view.md)
+- [条目类型](../../docs/spec/runtime/entries.md)
 - [术语表](../../docs/glossary.md)

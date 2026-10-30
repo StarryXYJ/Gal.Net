@@ -14,4 +14,4 @@
 
 适用范围：时间区间归属、阶梯/离散插值、曲线与 Runtime 一致性。禁止仅测试区间中点或末键便宣称边界一致。
 
-关联：features/F-20261015-02-editor-authoring-workspace/phase-6e3.md；docs/spec/editor-groups.md。
+关联：features/F-20261015-02-editor-authoring-workspace/phase-6e3.md；docs/spec/editor/groups.md。

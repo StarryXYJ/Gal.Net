@@ -1,0 +1,392 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/StarryXYJ/Gal.Net",
+  "root": {
+    "source": "README.md",
+    "id": "Home",
+    "title": "GalNet 文档",
+    "children": [
+      {
+        "source": "quick-start/README.md",
+        "id": "Quick-Start",
+        "title": "快速开始",
+        "children": [
+          {
+            "source": "quick-start/requirements.md",
+            "id": "Quick-Start-Requirements",
+            "title": "环境与依赖"
+          },
+          {
+            "source": "quick-start/run-sample.md",
+            "id": "Quick-Start-Run-Sample",
+            "title": "运行 Sample"
+          },
+          {
+            "source": "quick-start/first-project.md",
+            "id": "Quick-Start-First-Project",
+            "title": "创建第一个项目"
+          },
+          {
+            "source": "quick-start/build-from-source.md",
+            "id": "Quick-Start-Build-From-Source",
+            "title": "首次源码构建"
+          }
+        ]
+      },
+      {
+        "source": "manual/README.md",
+        "id": "Manual",
+        "title": "操作手册",
+        "children": [
+          {
+            "source": "manual/editor/README.md",
+            "id": "Manual-Editor",
+            "title": "Editor 使用",
+            "children": [
+              {
+                "source": "manual/editor/projects-and-workspace.md",
+                "id": "Manual-Editor-Projects-And-Workspace",
+                "title": "Editor 创作工作区"
+              },
+              {
+                "source": "manual/editor/story-editing.md",
+                "id": "Manual-Editor-Story-Editing",
+                "title": "剧情、分支、变量与角色"
+              },
+              {
+                "source": "manual/editor/resources.md",
+                "id": "Manual-Editor-Resources",
+                "title": "导入与管理资源"
+              },
+              {
+                "source": "manual/editor/image-variants.md",
+                "id": "Manual-Editor-Image-Variants",
+                "title": "创建和使用图片差分图集"
+              },
+              {
+                "source": "manual/editor/audio.md",
+                "id": "Manual-Editor-Audio",
+                "title": "音频创作与播放"
+              },
+              {
+                "source": "manual/editor/default-visuals.md",
+                "id": "Manual-Editor-Default-Visuals",
+                "title": "默认视觉资源与演出预设"
+              },
+              {
+                "source": "manual/editor/localization.md",
+                "id": "Manual-Editor-Localization",
+                "title": "编辑游戏文本与翻译"
+              },
+              {
+                "source": "manual/editor/preview-and-debugging.md",
+                "id": "Manual-Editor-Preview-And-Debugging",
+                "title": "对接外部游戏调试"
+              },
+              {
+                "source": "manual/editor/content-packaging.md",
+                "id": "Manual-Editor-Content-Packaging",
+                "title": "游戏内容分包与资源补丁"
+              },
+              {
+                "source": "manual/editor/external-tools.md",
+                "id": "Manual-Editor-External-Tools",
+                "title": "外部工具创作与热重载"
+              }
+            ]
+          },
+          {
+            "source": "manual/sample/README.md",
+            "id": "Manual-Sample",
+            "title": "Sample 使用",
+            "children": [
+              {
+                "source": "manual/sample/startup-and-content.md",
+                "id": "Manual-Sample-Startup-And-Content",
+                "title": "Sample 启动与内容路径"
+              },
+              {
+                "source": "manual/sample/gameplay-and-settings.md",
+                "id": "Manual-Sample-Gameplay-And-Settings",
+                "title": "游戏操作与玩家设置"
+              },
+              {
+                "source": "manual/sample/saves-history-and-gallery.md",
+                "id": "Manual-Sample-Saves-History-And-Gallery",
+                "title": "存档、对白历史与 Gallery"
+              },
+              {
+                "source": "manual/sample/platform-support.md",
+                "id": "Manual-Sample-Platform-Support",
+                "title": "平台支持与验证范围"
+              }
+            ]
+          },
+          {
+            "source": "manual/extensions/README.md",
+            "id": "Manual-Extensions",
+            "title": "Sample 与宿主扩展",
+            "children": [
+              {
+                "source": "manual/extensions/customize-sample.md",
+                "id": "Manual-Extensions-Customize-Sample",
+                "title": "定制 Avalonia Sample"
+              },
+              {
+                "source": "manual/extensions/pages-and-themes.md",
+                "id": "Manual-Extensions-Pages-And-Themes",
+                "title": "页面与主题扩展"
+              },
+              {
+                "source": "manual/extensions/actions-and-contracts.md",
+                "id": "Manual-Extensions-Actions-And-Contracts",
+                "title": "用通用原语调用项目逻辑"
+              },
+              {
+                "source": "manual/extensions/settings-and-variables.md",
+                "id": "Manual-Extensions-Settings-And-Variables",
+                "title": "设置、变量与会话扩展"
+              },
+              {
+                "source": "manual/extensions/parameter-editors.md",
+                "id": "Manual-Extensions-Parameter-Editors",
+                "title": "DTO 字段提示与参数控件"
+              },
+              {
+                "source": "manual/extensions/external-debugging.md",
+                "id": "Manual-Extensions-External-Debugging",
+                "title": "游戏宿主接入外部调试"
+              },
+              {
+                "source": "manual/extensions/new-presentation-layer.md",
+                "id": "Manual-Extensions-New-Presentation-Layer",
+                "title": "接入新的表现层"
+              },
+              {
+                "source": "manual/extensions/media-and-platform-backends.md",
+                "id": "Manual-Extensions-Media-And-Platform-Backends",
+                "title": "跨平台后端接入"
+              },
+              {
+                "source": "manual/extensions/editor-panels.md",
+                "id": "Manual-Extensions-Editor-Panels",
+                "title": "扩展 Editor 面板"
+              }
+            ]
+          },
+          {
+            "source": "manual/publishing/README.md",
+            "id": "Manual-Publishing",
+            "title": "构建与发布",
+            "children": [
+              {
+                "source": "manual/publishing/game-distribution.md",
+                "id": "Manual-Publishing-Game-Distribution",
+                "title": "组合内容与应用，分发游戏"
+              },
+              {
+                "source": "manual/publishing/engine-release.md",
+                "id": "Manual-Publishing-Engine-Release",
+                "title": "本地 CI 与发布"
+              },
+              {
+                "source": "manual/publishing/ready-to-run.md",
+                "id": "Manual-Publishing-Ready-To-Run",
+                "title": "使用 Windows ReadyToRun 发布"
+              },
+              {
+                "source": "manual/publishing/native-aot.md",
+                "id": "Manual-Publishing-Native-Aot",
+                "title": "NativeAOT 发布与扩展契约"
+              }
+            ]
+          },
+          {
+            "source": "manual/development/README.md",
+            "id": "Manual-Development",
+            "title": "项目开发",
+            "children": [
+              {
+                "source": "manual/development/build-and-test.md",
+                "id": "Manual-Development-Build-And-Test",
+                "title": "构建、测试与本地 CI"
+              },
+              {
+                "source": "manual/development/cli.md",
+                "id": "Manual-Development-Cli",
+                "title": "使用项目工具 CLI"
+              },
+              {
+                "source": "manual/development/cpu-benchmark.md",
+                "id": "Manual-Development-Cpu-Benchmark",
+                "title": "测量 CPU 启动"
+              },
+              {
+                "source": "manual/development/documentation.md",
+                "id": "Manual-Development-Documentation",
+                "title": "文档维护与 Wiki 同步"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "source": "spec/README.md",
+        "id": "Spec",
+        "title": "技术规范",
+        "children": [
+          {
+            "source": "spec/architecture/README.md",
+            "id": "Spec-Architecture",
+            "title": "架构设计",
+            "children": [
+              {
+                "source": "spec/architecture/modules.md",
+                "id": "Spec-Architecture-Modules",
+                "title": "GalNet 架构"
+              },
+              {
+                "source": "spec/architecture/lifecycles.md",
+                "id": "Spec-Architecture-Lifecycles",
+                "title": "组合、生命周期与所有权"
+              },
+              {
+                "source": "spec/architecture/diagnostics.md",
+                "id": "Spec-Architecture-Diagnostics",
+                "title": "CPU 性能事件"
+              }
+            ]
+          },
+          {
+            "source": "spec/runtime/README.md",
+            "id": "Spec-Runtime",
+            "title": "运行时规范",
+            "children": [
+              {
+                "source": "spec/runtime/entries.md",
+                "id": "Spec-Runtime-Entries",
+                "title": "条目类型与 target profile"
+              },
+              {
+                "source": "spec/runtime/execution.md",
+                "id": "Spec-Runtime-Execution",
+                "title": "运行时参考"
+              },
+              {
+                "source": "spec/runtime/state-and-save.md",
+                "id": "Spec-Runtime-State-And-Save",
+                "title": "运行状态、快照与存档"
+              }
+            ]
+          },
+          {
+            "source": "spec/content/README.md",
+            "id": "Spec-Content",
+            "title": "内容与资源规范",
+            "children": [
+              {
+                "source": "spec/content/assets.md",
+                "id": "Spec-Content-Assets",
+                "title": "资源文件管理"
+              },
+              {
+                "source": "spec/content/file-formats.md",
+                "id": "Spec-Content-File-Formats",
+                "title": "项目与发布格式"
+              },
+              {
+                "source": "spec/content/localization.md",
+                "id": "Spec-Content-Localization",
+                "title": "国际化"
+              }
+            ]
+          },
+          {
+            "source": "spec/presentation/README.md",
+            "id": "Spec-Presentation",
+            "title": "呈现与宿主规范",
+            "children": [
+              {
+                "source": "spec/presentation/game-host.md",
+                "id": "Spec-Presentation-Game-Host",
+                "title": "游戏宿主与玩家会话"
+              },
+              {
+                "source": "spec/presentation/game-view.md",
+                "id": "Spec-Presentation-Game-View",
+                "title": "Avalonia 游戏页面"
+              },
+              {
+                "source": "spec/presentation/media.md",
+                "id": "Spec-Presentation-Media",
+                "title": "媒体后端契约"
+              }
+            ]
+          },
+          {
+            "source": "spec/editor/README.md",
+            "id": "Spec-Editor",
+            "title": "Editor 技术规范",
+            "children": [
+              {
+                "source": "spec/editor/project-and-files.md",
+                "id": "Spec-Editor-Project-And-Files",
+                "title": "Editor 项目文件操作"
+              },
+              {
+                "source": "spec/editor/graph.md",
+                "id": "Spec-Editor-Graph",
+                "title": "Editor Graph 编辑"
+              },
+              {
+                "source": "spec/editor/groups.md",
+                "id": "Spec-Editor-Groups",
+                "title": "Editor Group 编辑交互"
+              },
+              {
+                "source": "spec/editor/variables.md",
+                "id": "Spec-Editor-Variables",
+                "title": "Editor 变量面板"
+              },
+              {
+                "source": "spec/editor/history-and-save.md",
+                "id": "Spec-Editor-History-And-Save",
+                "title": "Editor 项目历史与保存"
+              },
+              {
+                "source": "spec/editor/localization.md",
+                "id": "Spec-Editor-Localization",
+                "title": "Editor 游戏本地化基础"
+              },
+              {
+                "source": "spec/editor/scene-targets.md",
+                "id": "Spec-Editor-Scene-Targets",
+                "title": "Editor 场景目标查询"
+              },
+              {
+                "source": "spec/editor/dock.md",
+                "id": "Spec-Editor-Dock",
+                "title": "Dock 面板与布局契约"
+              },
+              {
+                "source": "spec/editor/debugging.md",
+                "id": "Spec-Editor-Debugging",
+                "title": "外部调试状态与缓存契约"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "source": "philosophy.md",
+        "id": "Philosophy",
+        "title": "设计理念与架构概览"
+      },
+      {
+        "source": "glossary.md",
+        "id": "Glossary",
+        "title": "GalNet 术语表"
+      }
+    ]
+  }
+}

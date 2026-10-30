@@ -461,6 +461,7 @@ riderModule.iml
 !.vscode/extensions.json
 
 # Project-specific
+/wiki/
 /artifacts/benchmarks/
 /out/
 !/scripts/release/
