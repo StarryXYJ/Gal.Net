@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.Json;
 using GalNet.Assets.Provider;
 using GalNet.Contracts.Builtins.Assets;
@@ -177,12 +178,125 @@ public sealed class AssetPipelineTests
         Assert.ThrowsAsync<ObjectDisposedException>(async () => await manager.AcquireAsync<DisposableAsset>("sprite"));
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void Pending_acquire_keeps_the_asset_alive_after_the_first_handle_is_released(bool byPath)
+    {
+        var file = new GameFile("sprite", "a.png", "sprite", new SpriteAssetMeta { Id = "sprite", TypeId = "sprite", Path = "a.png" }, "sprite"u8.ToArray());
+        using var manager = new AssetManager([new InlineProvider(file)]);
+        var decoder = new ControlledDecoder();
+        manager.RegisterDecoder<DisposableAsset>("sprite", decoder);
+        using var firstContext = new QueuedContext();
+        using var secondContext = new QueuedContext();
+        var first = firstContext.Run(() => manager.AcquireAsync<DisposableAsset>("sprite"));
+        var second = secondContext.Run(() => byPath
+            ? manager.AcquireByPathAsync<DisposableAsset>("a.png")
+            : manager.AcquireAsync<DisposableAsset>("sprite"));
+
+        decoder.Release.SetResult();
+        firstContext.PumpUntil(() => first.IsCompleted);
+        using var firstHandle = first.GetAwaiter().GetResult();
+        Assert.That(firstHandle, Is.Not.Null);
+        firstHandle!.Dispose();
+        Assert.That(firstHandle.Value.Disposed, Is.False, "A pending acquire still owns delivery of the loaded asset.");
+
+        secondContext.PumpUntil(() => second.IsCompleted);
+        using var secondHandle = second.GetAwaiter().GetResult();
+        Assert.That(secondHandle, Is.Not.Null);
+        Assert.That(secondHandle!.Value, Is.SameAs(firstHandle.Value));
+        Assert.That(decoder.DecodeCount, Is.EqualTo(1));
+        secondHandle.Dispose();
+        Assert.That(firstHandle.Value.DisposeCount, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Last_cancelled_waiter_releases_the_asset_after_the_first_handle_is_released()
+    {
+        var file = new GameFile("sprite", "a.png", "sprite", new SpriteAssetMeta { Id = "sprite", TypeId = "sprite", Path = "a.png" }, "sprite"u8.ToArray());
+        using var manager = new AssetManager([new InlineProvider(file)]);
+        var decoder = new ControlledDecoder();
+        manager.RegisterDecoder<DisposableAsset>("sprite", decoder);
+        using var firstContext = new QueuedContext();
+        using var secondContext = new QueuedContext();
+        using var cancellation = new CancellationTokenSource();
+        var first = firstContext.Run(() => manager.AcquireAsync<DisposableAsset>("sprite"));
+        var second = secondContext.Run(() => manager.AcquireAsync<DisposableAsset>("sprite", cancellation.Token));
+
+        cancellation.Cancel();
+        decoder.Release.SetResult();
+        firstContext.PumpUntil(() => first.IsCompleted);
+        using var firstHandle = first.GetAwaiter().GetResult();
+        Assert.That(firstHandle, Is.Not.Null);
+        firstHandle!.Dispose();
+        Assert.That(firstHandle.Value.Disposed, Is.False);
+
+        secondContext.PumpUntil(() => second.IsCompleted);
+        Assert.Throws<TaskCanceledException>(() => second.GetAwaiter().GetResult());
+        Assert.That(firstHandle.Value.DisposeCount, Is.EqualTo(1));
+        using var reloaded = manager.AcquireAsync<DisposableAsset>("sprite").GetAwaiter().GetResult();
+        Assert.That(reloaded!.Value, Is.Not.SameAs(firstHandle.Value));
+        Assert.That(decoder.DecodeCount, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void Manager_disposal_releases_the_asset_and_rejects_pending_delivery()
+    {
+        var file = new GameFile("sprite", "a.png", "sprite", new SpriteAssetMeta { Id = "sprite", TypeId = "sprite", Path = "a.png" }, "sprite"u8.ToArray());
+        using var manager = new AssetManager([new InlineProvider(file)]);
+        var decoder = new ControlledDecoder();
+        manager.RegisterDecoder<DisposableAsset>("sprite", decoder);
+        using var firstContext = new QueuedContext();
+        using var secondContext = new QueuedContext();
+        var first = firstContext.Run(() => manager.AcquireAsync<DisposableAsset>("sprite"));
+        var second = secondContext.Run(() => manager.AcquireAsync<DisposableAsset>("sprite"));
+
+        decoder.Release.SetResult();
+        firstContext.PumpUntil(() => first.IsCompleted);
+        using var firstHandle = first.GetAwaiter().GetResult();
+        Assert.That(firstHandle, Is.Not.Null);
+        firstHandle!.Dispose();
+        manager.Dispose();
+
+        secondContext.PumpUntil(() => second.IsCompleted);
+        Assert.Throws<ObjectDisposedException>(() => second.GetAwaiter().GetResult());
+        Assert.That(firstHandle.Value.DisposeCount, Is.EqualTo(1));
+    }
+
     private sealed record Decoded(string Value);
 
     private sealed class DisposableAsset : IDisposable
     {
-        public bool Disposed { get; private set; }
-        public void Dispose() => Disposed = true;
+        public int DisposeCount { get; private set; }
+        public bool Disposed => DisposeCount > 0;
+        public void Dispose() => DisposeCount++;
+    }
+
+    /// <summary>Controls delivery order without sleeps or relying on thread-pool timing.</summary>
+    private sealed class QueuedContext : SynchronizationContext, IDisposable
+    {
+        private readonly BlockingCollection<(SendOrPostCallback Callback, object? State)> _queue = new();
+
+        public override void Post(SendOrPostCallback d, object? state) => _queue.Add((d, state));
+
+        public T Run<T>(Func<T> action)
+        {
+            var previous = Current;
+            SetSynchronizationContext(this);
+            try { return action(); }
+            finally { SetSynchronizationContext(previous); }
+        }
+
+        public void PumpUntil(Func<bool> completed)
+        {
+            while (!completed())
+            {
+                if (!_queue.TryTake(out var work, TimeSpan.FromSeconds(5)))
+                    throw new TimeoutException("No continuation was posted for the pending acquire.");
+                Run(() => { work.Callback(work.State); return true; });
+            }
+        }
+
+        public void Dispose() => _queue.Dispose();
     }
 
     private sealed class ConstantDecoder(string result) : IAssetDecoder<Decoded>

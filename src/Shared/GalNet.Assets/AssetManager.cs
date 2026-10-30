@@ -360,12 +360,8 @@ public sealed class AssetManager : IAssetManager
                     _inFlight.Remove(key);
                 }
 
-                if (load.Completed && _cache.TryGetValue(key, out var entry) &&
-                    ReferenceEquals(entry.Owner, load) && entry.RefCount == 0)
-                {
-                    _cache.Remove(key);
-                    assetToDispose = entry.Data as IDisposable;
-                }
+                if (load.Completed && _cache.TryGetValue(key, out var entry) && ReferenceEquals(entry.Owner, load))
+                    assetToDispose = DetachUnusedAssetLocked(key, entry);
             }
             cancellationToDispose = TryDetachCancellationLocked(load);
         }
@@ -461,7 +457,13 @@ public sealed class AssetManager : IAssetManager
     {
         if (!_cache.TryGetValue(key, out var entry) || entry.RefCount <= 0) return null;
         entry.RefCount--;
-        if (entry.RefCount > 0) return null;
+        return DetachUnusedAssetLocked(key, entry);
+    }
+
+    private IDisposable? DetachUnusedAssetLocked(CacheKey key, CacheEntry entry)
+    {
+        // Completed loads stay alive until every waiter receives a handle or abandons delivery.
+        if (entry.RefCount > 0 || entry.Owner is { PendingWaiters: > 0 }) return null;
         _cache.Remove(key);
         return entry.Data as IDisposable;
     }
