@@ -20,11 +20,11 @@ public sealed class Archive : IPakArchive
     });
     private readonly Dictionary<string, EntryDescriptor> _entries;
     private readonly Dictionary<string, string> _pathToId;
-    private readonly byte[] _dataSection;
+    private readonly ArraySegment<byte> _dataSection;
     private readonly PakDescriptor _descriptor;
     private bool _disposed;
 
-    private Archive(string name, byte[] dataSection, Dictionary<string, EntryDescriptor> entries,
+    private Archive(string name, ArraySegment<byte> dataSection, Dictionary<string, EntryDescriptor> entries,
         Dictionary<string, string> pathToId, PakDescriptor descriptor)
     {
         Name = name;
@@ -48,7 +48,8 @@ public sealed class Archive : IPakArchive
         ObjectDisposedException.ThrowIf(_disposed, this);
         ct.ThrowIfCancellationRequested();
         if (!_entries.TryGetValue(assetId.Trim(), out var entry)) return null;
-        using var source = new MemoryStream(_dataSection, (int)entry.Offset, (int)entry.StoredLength, writable: false);
+        using var source = new MemoryStream(_dataSection.Array!, _dataSection.Offset + (int)entry.Offset,
+            (int)entry.StoredLength, writable: false);
         var data = CompressionHelper.Decompress(source, entry.Compression, (int)entry.OriginalLength, ct);
         if (data.LongLength != entry.OriginalLength || CryptoHelper.HashSHA256(data) != entry.Hash)
             throw new InvalidDataException($"PAK resource '{assetId}' failed size/hash verification.");
@@ -76,7 +77,15 @@ public sealed class Archive : IPakArchive
     public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes) =>
         Deserialize(name, pakData, resourceTypes, CancellationToken.None);
 
-    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes, CancellationToken ct)
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes, CancellationToken ct) =>
+        Deserialize(name, pakData, resourceTypes, ownsData: false, ct);
+
+    /// <summary>Takes exclusive ownership of a fresh provider buffer; the caller must never reuse or modify it.</summary>
+    internal static Archive DeserializeOwned(string name, byte[] pakData, IResourceTypeCatalog resourceTypes,
+        CancellationToken ct = default) => Deserialize(name, pakData, resourceTypes, ownsData: true, ct);
+
+    private static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes,
+        bool ownsData, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         try
@@ -114,16 +123,19 @@ public sealed class Archive : IPakArchive
                 if (!entries.TryAdd(id, entry) || !paths.TryAdd(AssetPathHelper.Normalize(path), id))
                     throw new InvalidDataException("Duplicate PAK resource ID or logical path.");
             }
-            var data = pakData[(int)stream.Position..];
+            var dataOffset = (int)stream.Position;
+            var dataLength = pakData.Length - dataOffset;
             long position = 0;
             foreach (var entry in entries.Values)
             {
-                if (entry.Offset != position || entry.StoredLength > data.LongLength - position)
+                if (entry.Offset != position || entry.StoredLength > dataLength - position)
                     throw new InvalidDataException("Invalid PAK data block range.");
                 position += entry.StoredLength;
             }
-            if (position != data.LongLength) throw new InvalidDataException("Unexpected PAK trailing bytes.");
+            if (position != dataLength) throw new InvalidDataException("Unexpected PAK trailing bytes.");
             ValidateTargets(descriptor, entries.Keys);
+            var data = ownsData ? new ArraySegment<byte>(pakData, dataOffset, dataLength)
+                : new ArraySegment<byte>(pakData[dataOffset..]);
             var archive = new Archive(name, data, entries, paths, descriptor);
             foreach (var id in entries.Where(pair => pair.Value.Metadata.TypeId == ImageVariantsCodec.ResourceType).Select(pair => pair.Key))
                 archive.GetAsset(id, ct);
