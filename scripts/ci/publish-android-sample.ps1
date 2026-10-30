@@ -64,6 +64,25 @@ function Test-AndroidContentContracts([string]$HeadlessProject, [string]$Content
     return [ordered]@{ content = $ContentRoot; inspectionLog = $inspectionLog; contracts = $verified }
 }
 
+function New-GameTestCaseExportSource([string]$ContractSource) {
+    $source = Join-Path $repoRoot 'GameTestCase'
+    $staging = Join-Path $OutputDirectory 'gametestcase-source'
+    New-Item -ItemType Directory -Path $staging | Out-Null
+    foreach ($name in @('Assets', 'Graph', 'I18n', 'settings.json')) {
+        $item = Join-Path $source $name
+        if (!(Test-Path -LiteralPath $item)) { continue }
+        Copy-Item -LiteralPath $item -Destination (Join-Path $staging $name) -Recurse -Force
+    }
+    $contracts = Join-Path $staging 'Contracts'
+    New-Item -ItemType Directory -Path $contracts -Force | Out-Null
+    foreach ($name in @('GalNet.Core.dll', 'GalNet.Contracts.Builtins.dll', 'GalNet.Project.Contracts.dll')) {
+        $sourceFile = Join-Path $ContractSource $name
+        if (!(Test-Path -LiteralPath $sourceFile -PathType Leaf)) { throw "Android contract build is missing $sourceFile." }
+        Copy-Item -LiteralPath $sourceFile -Destination (Join-Path $contracts $name)
+    }
+    return $staging
+}
+
 try {
     $sdk = (& dotnet --version).Trim()
     $expectedSdk = (Get-Content -LiteralPath (Join-Path $repoRoot 'global.json') -Raw | ConvertFrom-Json).sdk.version
@@ -75,7 +94,6 @@ try {
     $properties = @(
         '-p:Configuration=Release',
         "-p:RuntimeIdentifier=$RuntimeIdentifier",
-        "-p:RuntimeIdentifiers=$RuntimeIdentifier",
         '-p:UseMonoRuntime=true',
         '-p:PublishAot=false',
         '-p:RunAOTCompilation=true',
@@ -94,19 +112,39 @@ try {
         '-m:1',
         '-nr:false'
     )
+    # The committed Android lock graph carries both supported ABIs. Restore the
+    # graph without an RID override, then use the singular RID only when
+    # building/publishing the preview APK. The Android project mirrors that
+    # singular RID to RuntimeIdentifiers during the no-restore build so VLC
+    # assets remain architecture-specific without rewriting the locked graph.
+    $restoreProperties = @(
+        '-p:Configuration=Release',
+        '-p:EnableGameDebugging=false',
+        '-p:EnableLaunchArguments=false',
+        '-p:NuGetAudit=false',
+        '-m:1',
+        '-nr:false'
+    )
 
-    Invoke-AndroidDotNet 'restore-headless' @('restore', $headless, '--locked-mode', '-p:Configuration=Release', '-p:NuGetAudit=false', '-m:1', '-nr:false')
-    Invoke-AndroidDotNet 'build-headless' @('build', $headless, '-c', 'Release', '--no-restore', '-p:UseSharedCompilation=false', '-m:1', '-nr:false')
+    Invoke-AndroidDotNet 'restore-headless' @('restore', $headless, '--locked-mode', '-p:Configuration=Release', "-p:Version=$Version", '-p:NuGetAudit=false', '-m:1', '-nr:false')
+    Invoke-AndroidDotNet 'build-headless' @('build', $headless, '-c', 'Release', '--no-restore', "-p:Version=$Version", '-p:ContinuousIntegrationBuild=true', '-p:UseSharedCompilation=false', '-m:1', '-nr:false')
+    Invoke-AndroidDotNet 'restore-android' (@('restore', $android) + $restoreProperties + @('--locked-mode'))
+    Invoke-AndroidDotNet 'build-android-contracts' (@('build', $android, '-c', 'Release', '--no-restore') + $properties)
+    $androidContractDirectory = Join-Path (Split-Path -Parent $android) "bin/Release/net10.0-android/$RuntimeIdentifier"
+    $exportSource = New-GameTestCaseExportSource $androidContractDirectory
     Invoke-AndroidDotNet 'export-gametestcase' @('run', '--project', $headless, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore',
-        '--', 'project', 'export', (Join-Path $repoRoot 'GameTestCase'), '--output', $contentOutput)
-    $galpak = Join-Path $contentOutput 'GameTestCase.galpak'
-    if (!(Test-Path -LiteralPath $galpak -PathType Leaf)) { throw "GameTestCase export did not produce $galpak." }
+        '--', 'export', $exportSource, '--output', $contentOutput)
+    $exportReport = Get-Content -LiteralPath (Join-Path $logs 'export-gametestcase.log') -Raw | ConvertFrom-Json
+    $galpak = [IO.Path]::GetFullPath([string]$exportReport.data.packagePath)
+    $relativeGalpak = [IO.Path]::GetRelativePath($contentOutput, $galpak)
+    if ([string]::IsNullOrWhiteSpace($galpak) -or [IO.Path]::IsPathRooted($relativeGalpak) -or $relativeGalpak -eq '..' -or $relativeGalpak.StartsWith("..$([IO.Path]::DirectorySeparatorChar)") -or [IO.Path]::GetExtension($galpak) -cne '.galpak' -or !(Test-Path -LiteralPath $galpak -PathType Leaf)) {
+        throw "GameTestCase export did not produce a galpak under $contentOutput."
+    }
     $installedContent = Join-Path $OutputDirectory 'installed-content'
     Invoke-AndroidDotNet 'install-gametestcase' @('run', '--project', $headless, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore',
         '--', 'galpak', 'install', $galpak, '--output', $installedContent)
 
     $publishProperties = @($properties) + @("-p:GalNetGamePackage=$galpak")
-    Invoke-AndroidDotNet 'restore-android' (@('restore', $android) + $publishProperties + @('--locked-mode'))
     $publish = Join-Path $OutputDirectory 'publish'
     Invoke-AndroidDotNet 'publish-android' (@('publish', $android, '-c', 'Release', '--no-restore', '-o', $publish) + $publishProperties)
     $contractVerification = Test-AndroidContentContracts $headless $installedContent $android $RuntimeIdentifier

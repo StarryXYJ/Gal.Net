@@ -543,3 +543,11 @@ ARM64 APK：`out/cross-platform-p6e/android-arm64/org.galnet.sample-Signed.apk`�
 自动视频推进探针最后因前台已回桌面而未完成，保护逻辑没有截取桌面，也没有据此记视频通过。随后用户明确“我都测试过了，可以收尾了”，因此本轮音视频等剩余基础功能按用户人工验收通过收尾，不继续操作手机或补造自动证据。该确认限定本轮 Sample 功能，不推导生产签名、iOS、macOS、真实手柄或完整 P7 专项已通过。
 
 新增证据：`android-device-smoke.json` 中的 landscape/back-1/home/back-2/playback-frame-1/playback-frame-2/touch-advance，相关 PNG/window 文件、`android-playback-runtime.log` 及 `android-device-acceptance.json`。P6b–P6e 当前 Sample 切片已归入 summary.md；剩余计划只保留延期/专项任务。独立审核未新增，review.md 的本次增量是实现自审与验收记录。
+
+## 2026-10-30：preview CI 本地执行
+
+应用 CI 已按当前范围收敛为 Windows/Linux 的 Editor、CLI、CrossPlatform Player、CrossPlatform Developer raw publish，独立 NuGet 外部消费者门禁，以及 Android ARM64 的无调试、内置 GameTestCase Mono AOT。此轮本地复验中，应用载荷检查 7/7、发布 guard 17 项、release plan 19 项、Windows 四个真实 raw publish，以及包含 `GalNet.Avalonia.Debugging` 的六个 NuGet 包和五类外部消费者均通过。
+
+Android 初次执行依次暴露并修正三类不应被绕过的问题：不能以单 ABI 覆盖提交的双 ABI locked restore 图；导出工具和 Android 契约必须使用同一 preview 版本与 `ContinuousIntegrationBuild`，以保持含源生成 Contracts.Builtins 的严格字节身份；CLI 导出文件名必须读取其结构化 `packagePath`，不能假定项目目录名。最终 `out/local-ci-preview-20261030/android-arm64-final8/android-publish.json` 通过：SDK 10.0.401、locked restore、三份内容/Android 运行时契约逐字节匹配、完整 galpak、ARM64-only APK、114 个 Mono AOT 程序集、无桌面 SDL、原生 ABI 与 APK/ELF 16 KB 对齐均已验证。APK SHA256 为 `8aff008dd03d47e7d71b7e439c64557ec3dab254c7d6d73810cb9c4daddb27bb`。
+
+此记录仅证明本地 preview 构建和载荷门禁；Windows/Linux GitHub runner 的 PR 矩阵、正式 release tag 及真实设备/桌面验收仍需分别执行。
