@@ -31,3 +31,9 @@
 原生完整拖动/还原/最小化/边缘缩放/全屏/多屏矩阵未完成；本次只验证标准 Ursa 标题栏 role 和上述 Windows 切片。Linux/macOS 原生窗口、Android/iOS 设备未在本次重新验证，不把 Headless 或库配置检查当成跨平台交互已通过。日志打开的原生证据采用菜单路径，不将快捷键作为成功证据。
 
 正式操作说明已同步 CrossPlatform README 与 `docs/manual/extensions/customize-sample.md`；复用经验补充到现有窗口装饰 lesson，不覆盖其他进行中的阶段记录。
+
+## 调试按钮高亮增量
+
+用户要求顶部 Debug 按钮接近右上角普通 Caption 按钮的反馈，前景色不变，仅改变背景。DebugMenuView 只覆盖具名顶层按钮的模板状态：悬停、选择和展开使用玩家文字色的 8% 背景，按下使用 14% 背景；选中时的 HeaderPresenter 前景色继续绑定该按钮原 Foreground，不采用 Semi 的高亮文字色。下拉菜单项及关闭按钮的红色反馈均未修改。
+
+两个桌面 Sample 分别在 Light/Dark 宿主下，通过实际 Headless 鼠标移入、按下和展开后移出检查渲染模板的背景及文字颜色。定向 Integration 回归 11 项通过，TRX：`artifacts/window-chrome-tests/results/debug-caption.trx`。这次增量没有另做原生设备截图验收。

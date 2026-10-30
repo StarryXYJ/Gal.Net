@@ -69,9 +69,11 @@ public sealed class CrossPlatformWindowChromeTests
     }
 
 #if GALNET_GAME_DEBUG
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task BothDesktopSamplesKeepDiagnosticsInTheUrsaTitleBarBeforeGameStartup(bool crossPlatform)
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public async Task BothDesktopSamplesKeepDiagnosticsInTheUrsaTitleBarBeforeGameStartup(bool crossPlatform, bool darkHost)
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
@@ -98,7 +100,7 @@ public sealed class CrossPlatformWindowChromeTests
                 desktop.CompleteStartup("Game directory was not found.");
                 window = desktop;
             }
-            window.RequestedThemeVariant = ThemeVariant.Dark;
+            window.RequestedThemeVariant = darkHost ? ThemeVariant.Dark : ThemeVariant.Light;
             try
             {
                 window.Show();
@@ -112,6 +114,7 @@ public sealed class CrossPlatformWindowChromeTests
                 Assert.That(((ISolidColorBrush)menu.Background!).Color,
                     Is.EqualTo(((ISolidColorBrush)window.FindResource("GalNet.Brush.Background")!).Color));
                 var header = (MenuItem)menu.Items[0]!;
+                AssertCaptionHighlight(window, header);
                 var clear = (MenuItem)header.Items[0]!;
                 var saves = (MenuItem)header.Items[3]!;
                 Assert.That(clear.IsEnabled || saves.IsEnabled, Is.False);
@@ -143,6 +146,39 @@ public sealed class CrossPlatformWindowChromeTests
             }
             return true;
         }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    private static void AssertCaptionHighlight(Window window, MenuItem header)
+    {
+        var surface = header.GetVisualDescendants().OfType<Border>().First(control => control.Name == "PART_LayoutRoot");
+        var text = header.GetVisualDescendants().OfType<global::Avalonia.Controls.Presenters.ContentPresenter>()
+            .First(control => control.Name == "PART_HeaderPresenter");
+        var foreground = ((ISolidColorBrush)text.Foreground!).Color;
+        var point = header.TranslatePoint(new Point(header.Bounds.Width / 2, header.Bounds.Height / 2), window)!.Value;
+        var away = new Point(window.ClientSize.Width / 2, window.ClientSize.Height / 2);
+        window.MouseMove(point);
+        window.UpdateLayout();
+        AssertHighlight("CaptionButtonPointeroverBackground");
+        window.MouseDown(point, MouseButton.Left);
+        window.UpdateLayout();
+        AssertHighlight("CaptionButtonPressedBackground");
+        window.MouseUp(point, MouseButton.Left);
+        header.IsSubMenuOpen = true;
+        window.MouseMove(away);
+        window.UpdateLayout();
+        AssertHighlight("CaptionButtonPointeroverBackground");
+        header.IsSubMenuOpen = false;
+        header.IsSelected = false;
+        window.UpdateLayout();
+
+        void AssertHighlight(string captionResource)
+        {
+            var expected = (ISolidColorBrush)window.FindResource(captionResource)!;
+            var actual = (ISolidColorBrush)surface.Background!;
+            Assert.That(actual.Color, Is.EqualTo(expected.Color));
+            Assert.That(actual.Opacity, Is.EqualTo(expected.Opacity));
+            Assert.That(((ISolidColorBrush)text.Foreground!).Color, Is.EqualTo(foreground));
+        }
     }
 #endif
 }
