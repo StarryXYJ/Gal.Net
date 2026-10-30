@@ -17,6 +17,8 @@ SDK 固定 `10.0.401`，Avalonia `12.0.5`；子解决方案导入根目录的中
 
 ## 桌面开发
 
+桌面 CrossPlatform 窗口默认隐藏系统标题栏和窗口边框。该设置仅位于 `Views/MainWindow.axaml`；若项目需要系统原生标题栏，可移除 `WindowDecorations="None"` 或改为 `Full`，不会影响共享宿主、Avalonia Sample 或移动端。
+
 在仓库根执行：
 
 ```powershell
