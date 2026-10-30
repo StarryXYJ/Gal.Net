@@ -184,6 +184,19 @@
         "resolved": "17.14.0",
         "contentHash": "z2GYXGG6LjGoumT59xSB2dMnqSwQBjkxdDJmSJHwy5nPtZ435GXa6wj5hz/lRrAZ7NyXXxZNXVsiHXzHRru5eA=="
       },
+      "Microsoft.Extensions.Logging.Abstractions": {
+        "type": "Transitive",
+        "resolved": "8.0.0",
+        "contentHash": "arDBqTgFCyS0EvRV7O3MZturChstm50OJ0y9bDJvAcmEPJm0FFpFyjU/JLYyStNGGey081DvnQYlncNX5SJJGA==",
+        "dependencies": {
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.0"
+        }
+      },
+      "Microsoft.IO.RecyclableMemoryStream": {
+        "type": "Transitive",
+        "resolved": "3.0.1",
+        "contentHash": "s/s20YTVY9r9TPfTrN5g8zPF1YhwxyqO6PxUkrYTGI2B+OGPe9AdajWZrLhFqXIvqIW23fnUE4+ztrUWNU1+9g=="
+      },
       "Microsoft.Testing.Extensions.Telemetry": {
         "type": "Transitive",
         "resolved": "1.5.3",
@@ -308,6 +321,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia.Controls.ColorPicker": "[12.0.5, )",
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
@@ -322,7 +336,8 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Storage.FileSystem": "[1.0.0, )"
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {
@@ -493,7 +508,6 @@
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Project.Contracts": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Sample.Player": "[1.0.0, )",
           "GalNet.Storage.FileSystem": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "Irihi.Ursa.Themes.Semi": "[2.1.0, )",
@@ -505,15 +519,21 @@
           "VideoLAN.LibVLC.Windows": "[3.0.23.1, )"
         }
       },
-      "galnet.sample.player": {
+      "galnet.sample.crossplatform": {
         "type": "Project",
         "dependencies": {
+          "Avalonia": "[12.0.5, )",
+          "Avalonia.Fonts.Inter": "[12.0.5, )",
+          "Avalonia.Themes.Fluent": "[12.0.5, )",
+          "AvaloniaUI.DiagnosticsSupport": "[2.2.3, )",
           "CommunityToolkit.Mvvm": "[8.4.1, )",
-          "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Avalonia.GameHost": "[1.0.0, )",
           "GalNet.Avalonia.Themes": "[1.0.0, )",
           "GalNet.Project.Contracts": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
+          "Irihi.Ursa.Themes.Semi": "[2.1.0, )",
+          "Semi.Avalonia": "[12.0.1, )",
+          "Serilog.Sinks.Console": "[6.0.0, )",
+          "Serilog.Sinks.File": "[7.0.0, )"
         }
       },
       "galnet.storage.filesystem": {
@@ -592,6 +612,16 @@
         "contentHash": "QfbziOuzNQzMd0uCbe//p4o1u6EAesEpX41fUCULBaLENd5OAT6iU0GiN9gzhSzVfSjHuxDcafXqJMxi3H3IhA==",
         "dependencies": {
           "Avalonia": "12.0.5"
+        }
+      },
+      "AvaloniaUI.DiagnosticsSupport": {
+        "type": "CentralTransitive",
+        "requested": "[2.2.3, )",
+        "resolved": "2.2.3",
+        "contentHash": "kQCInYusi2c9tjd9hV05Lln6Csbo07kiC672M3G7dsalDBe2j+pOk3We2nzdyy5ptQYy/9gQiC8ZaHhb6u/5Kw==",
+        "dependencies": {
+          "Microsoft.Extensions.Logging.Abstractions": "8.0.0",
+          "Microsoft.IO.RecyclableMemoryStream": "3.0.1"
         }
       },
       "CommunityToolkit.Mvvm": {

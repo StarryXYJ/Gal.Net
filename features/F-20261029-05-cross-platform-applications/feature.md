@@ -5,7 +5,7 @@
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
-- 最新结构决定（2026-10-30，P6b 已验证，其余待实施）：删除独立 `GalNet.Sample.Player` 项目；通用能力按职责归入 Presentation 等已有层，两个 Sample 各自保留 `SampleCustomization`、项目资源和平台接线，允许少量配置重复。可选调试能力从原 Sample 解耦后供宿主选择接入；见 design.md §8.1 与 phase-plan.md P6c–P6e。
+- 最新结构决定（2026-10-30，P6b/P6c 已验证）：已删除独立 `GalNet.Sample.Player` 项目；通用能力按职责归入现有层，两个 Sample 各有 `SampleCustomization`、项目资源和平台接线，允许少量配置重复。可选调试能力解耦与最终新产物复验仍待 P6d/P6e；见 design.md §8.1。
 - 当前进度：P2 已验证；Windows/Linux 的 compose 与原生宿主 build-compose 已闭环。P6a 已抽取共享 Sample.Player 并接入 CrossPlatform；P7a–P7c 已完成移动媒体/检查点接线、Android Release Mono AOT、ARM64 真机基础音视频/触摸、沉浸显示及后台重进切片。当前先按 P6b–P6e 重新整理模板源结构；独立模板生成、完整移动验收及 P1 原生 Editor 导出仍待补。手柄、macOS、iOS 验收按用户决定延期；旧 dev.9/dev.10 未更新，详见阶段总结和执行记录。
 
 ## 用户目标与已确认决策
@@ -157,4 +157,4 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 用户明确将独立模板延后，先使 Sample 可验收；Windows/Linux 继续已有证据的功能回归，macOS 与手柄验收延期。Android/iOS 先补功能，再做具备工具链与设备条件的平台验收；允许 Mono AOT。当前 Windows 环境缺 iOS 构建能力不阻挡其他实现，也不应记为 iOS 已支持。
 
-后续结构决定：用户接受取消独立 Player 工程、通用机制回到库层、两个主项目独立定制且允许少量配置重复。用户随后明确“开始吧”，已实施并验证 P6b；Player 仍保留临时项目配置/资源与委托，P6c–P6e 的独立配置、工程删除、通用调试和新发布产物复验继续待办。
+后续结构决定：用户接受取消独立 Player 工程、通用机制回到库层、两个主项目独立定制且允许少量配置重复。用户随后明确“开始吧”，已实施并验证 P6b/P6c；Player 工程、生产引用和源锁图节点已删除，两主项目独立配置。可选通用调试和最终新发布产物复验继续 P6d/P6e。

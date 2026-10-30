@@ -442,3 +442,28 @@ BundledGameInstaller 移入 Storage.FileSystem，保留非可寻址资产流、S
 证据根 `out/cross-platform-p6b/`：`architecture.log`、`storage.log`、`presentation-verified.log`、`integration.log`、`results/`、`cross-desktop-build.log` 和 `locked-*`；历史失败 log 保留。已同步宿主/架构 spec 与 Sample 定制/启动手册，只描述当前实现。
 
 本切片没有重新发布或运行 Android/Linux/macOS/iOS，不将旧 P7b/P7c 真机结果记作本次新代码验收。Player 工程仍保留临时配置、资源、项目 primitive 和委托，P6c 才删除；两主项目独立配置、可选通用调试和新发布产物/设备回归分别留在 P6c/P6d/P6e，独立模板生成继续延期。
+
+## 2026-10-30：P6c 两主项目定制入口与删除 Player（verified）
+
+原 SampleCustomization 不再转发公共 Sample 默认值；CrossPlatform 主项目新增同名配置入口。两边各自注册主题/页面、字段编辑器、内容 catalog、ProjectSchemas、执行实现、本地化及路径策略，允许声明性配置相似。CrossPlatform App 直接创建 AvaloniaPlayerHost，原窗口使用自己提供的资源/样式。两主项目互不引用，共同引用既有库和 Sample.Contracts；内容 schema、严格字节规则、projectId profile 身份未改。
+
+通用 UI 的 en-US/zh-CN 文案移至 GameHost，项目标题/说明由各主项目嵌入资源提供；CrossPlatform 有自己的标题。FromEmbeddedResources 按通用→项目顺序组合；启动期聚合为一个 provider，AttachGame 时仍保留原始精确文化来源。截图 primitive 的 dispatch/取消移入通用 ScreenshotPrimitiveInstance，项目只拥有契约注册/文件名校验和默认输出策略，不复制捕获机制。
+
+Player 工程、生产源码及项目/解决方案/CI 路径已删除；模板调用与现有测试迁移到通用 Host 或各 Sample 定制入口。清理源锁图中的旧节点，并结构化核对实际生成的原 Sample/CrossPlatform Desktop deps.json 没有 Player 运行时依赖；磁盘上的旧 bin/obj 不作为新依赖来源，也未递归清理其他任务缓存。
+
+验证：
+
+| 检查 | 结果 |
+| --- | --- |
+| Presentation | total=330、executed/passed=324、failed=0；未运行显式用例另计 |
+| Integration | total=205、executed/passed=196、failed=0；包含两配置入口独立页面/主题/文案和文化状态、原窗口/截图/后台回归 |
+| Architecture | 55/55；两个主项目互不引用、旧工程不存在，源锁图 JSON 无旧节点 |
+| CrossPlatform Desktop | Windows Debug locked restore/build 成功；无新增构建警告 |
+| 锁图 | 12 组 Desktop（四 RID×原 Sample Player/Developer/CrossPlatform）+2 组 R2R，force-evaluate 后逐项 locked 验证；普通玩家/开发版锁图补齐；既有包版本/contentHash 和框架/RID 键不变 |
+| 文档 | spec/manual 的当前入口/依赖/资源归属与 CrossPlatform README 已更新，docs check 通过 |
+
+有价值的失败/修正：聚合 UI provider 的内部默认语言回退被外层误当成当前文化命中，挡住外部英文覆盖；新回归先失败（Project English 而非 External English），保留精确文化来源后通过，见 L-20261030-14。普通 restore/locked 虽通过仍保留已删除 Player 的 Project 节点；通过 force-evaluate 真正重算后移除，并加源锁图门禁，见 L-20261030-15。没有手工删锁节点或放宽校验。
+
+普通过程失败也保留日志：ReadTextColor 测试迁移后遗漏 culture 本地变量导致编译失败；补回其 CultureService 引用后通过。缺键测试先按裸 key 断言，而库实际返回 #key#，修正预期而未改产品逻辑。架构测试重复插入检查块/using 导致编译失败，去重后复测；同时移除 P6b 中重复的已有 allowlist 条目。一次 PowerShell 单元素开关被展开成字符，使用显式参数重跑通过。
+
+证据根 `out/cross-platform-p6c/`：`integration.log`、`presentation-verified.log`、`architecture-final.log`、`results/`、`cross-desktop-build.log`、`fallback-before-fix.log`、`force-evaluate-probe.log`、`force-final-*`、`locked-final-*`。Android/iOS 平台源码改用自身 SampleCustomization，未重新发布/设备运行；Browser 不新增功能，只移除过时引用。通用调试仍留 P6d，最终新产物/设备验证留 P6e，不能据此宣布全平台验收。

@@ -10,7 +10,7 @@ using GalNet.Debugging;
 using GalNet.Editor.Shared.Services;
 using GalNet.GameHost;
 using GalNet.Runtime.Engine;
-using GalNet.Sample.Player.Presentation;
+using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;

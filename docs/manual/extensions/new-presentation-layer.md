@@ -82,7 +82,7 @@ var view = registration.AddBuiltinImplementations(projectCatalog,
 
 `ProjectSchemas.Configurations` 可返回 `ProjectConfigurationSchema`；未声明时为空。通过 `ConfigurationSection<MyOptions>` 为普通 DTO 显式提供 FieldDescriptor。配置统一使用标准 JSON 序列化和属性 converter，不另设生成 DTO 编解码入口。版本默认为 1，领域校验可通过声明时的委托提供。
 
-通过 `content.Configuration.Read(section)` 取得独立 DTO，修改后用 `content.Configuration.Set(section, options)` 发布；读取缺省配置不会写文件。运行模块继续接收由 DTO 投影的小配置。Storage 加载通过 `GameContentLoadOptions.Configurations` 显式选择 schema，并通过 `SelectDefaultCulture` 提供文化代码。默认 Sample 的共享组合见 SamplePlayerServices.CreateHostOptions（桌面 SampleCustomization 提供适配），默认字段定义见 DefaultProjectConfiguration；它们是可选示例，不由 Core/Runtime 自动选择。项目设置窗口按声明生成通用字段表单，复合值使用共享 JSON 编辑器；应用或保存全部时验证整份候选，一次提交可撤销的配置变更。未知数据保留，默认模型的语言声明继续在 I18n 面板维护。调试沿外部宿主路径进行。
+通过 `content.Configuration.Read(section)` 取得独立 DTO，修改后用 `content.Configuration.Set(section, options)` 发布；读取缺省配置不会写文件。运行模块继续接收由 DTO 投影的小配置。Storage 加载通过 `GameContentLoadOptions.Configurations` 显式选择 schema，并通过 `SelectDefaultCulture` 提供文化代码。默认 Sample 的组合见各自主项目的 SampleCustomization.CreateHostOptions，默认字段定义见 DefaultProjectConfiguration；它们是可选示例，不由 Core/Runtime 自动选择。项目设置窗口按声明生成通用字段表单，复合值使用共享 JSON 编辑器；应用或保存全部时验证整份候选，一次提交可撤销的配置变更。未知数据保留，默认模型的语言声明继续在 I18n 面板维护。调试沿外部宿主路径进行。
 
 CLI 可用 `execute <project> <patch.json>` 修改已声明的 section。例如：
 

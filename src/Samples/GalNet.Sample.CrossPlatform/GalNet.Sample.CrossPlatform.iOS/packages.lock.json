@@ -328,22 +328,13 @@
           "Avalonia.Themes.Fluent": "[12.0.5, )",
           "AvaloniaUI.DiagnosticsSupport": "[2.2.3, )",
           "CommunityToolkit.Mvvm": "[8.4.1, )",
-          "GalNet.Sample.Player": "[1.0.0, )",
+          "GalNet.Avalonia.GameHost": "[1.0.0, )",
+          "GalNet.Avalonia.Themes": "[1.0.0, )",
+          "GalNet.Project.Contracts": "[1.0.0, )",
           "Irihi.Ursa.Themes.Semi": "[2.1.0, )",
           "Semi.Avalonia": "[12.0.1, )",
           "Serilog.Sinks.Console": "[6.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )"
-        }
-      },
-      "galnet.sample.player": {
-        "type": "Project",
-        "dependencies": {
-          "CommunityToolkit.Mvvm": "[8.4.1, )",
-          "DynamicLocalization.Core": "[2.1.2, )",
-          "GalNet.Avalonia.GameHost": "[1.0.0, )",
-          "GalNet.Avalonia.Themes": "[1.0.0, )",
-          "GalNet.Project.Contracts": "[1.0.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
         }
       },
       "galnet.storage.filesystem": {

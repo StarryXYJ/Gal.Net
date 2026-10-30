@@ -8,7 +8,6 @@ on:
       - 'src/Shared/**'
       - 'src/Editor/**'
       - 'src/Samples/GalNet.Sample.Avalonia/**'
-      - 'src/Samples/GalNet.Sample.Player/**'
       - 'src/Samples/GalNet.Sample.CrossPlatform/**'
       - 'src/Samples/GalNet.Sample.Contracts/**'
       - 'scripts/ci/publish-applications.py'

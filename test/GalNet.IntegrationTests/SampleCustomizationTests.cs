@@ -17,7 +17,8 @@ using GalNet.Sample.Avalonia;
 #if GALNET_GAME_DEBUG
 using GalNet.Sample.Avalonia.Debug;
 #endif
-using GalNet.Sample.Player.Presentation;
+using GalNet.Sample.Avalonia.Presentation;
+using GalNet.Avalonia.GameHost.Presentation;
 using GalNet.Sample.Avalonia.Services;
 using GeneralTest.Integration;
 using Microsoft.Extensions.DependencyInjection;

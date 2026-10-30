@@ -3,7 +3,7 @@ using GalNet.Avalonia.GameHost;
 using GalNet.Core.Variable;
 using GalNet.GameHost;
 using GalNet.Runtime.Persistence;
-using GalNet.Sample.Player;
+using CrossSample = GalNet.Sample.CrossPlatform.SampleCustomization;
 using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +15,13 @@ namespace GalNet.IntegrationTests;
 [NonParallelizable]
 public sealed class SharedPlayerHostTests
 {
+    private static Task<AvaloniaPlayerHost> OpenHost(AvaloniaGameHostOptions options,
+        Action<IServiceCollection>? configure = null) => AvaloniaPlayerHost.CreateAsync(options, services =>
+    {
+        CrossSample.ConfigureServices(services);
+        configure?.Invoke(services);
+    });
+
     [Test]
     public Task ResourceFailuresReachPlayerLogsWithoutPreventingStartup() => SampleUiTests.RunAsync(async () =>
     {
@@ -30,7 +37,7 @@ public sealed class SharedPlayerHostTests
         Serilog.Log.Logger = logger;
         try
         {
-            var defaults = SamplePlayerServices.CreateHostOptions();
+            var defaults = CrossSample.CreateHostOptions();
             var options = new AvaloniaGameHostOptions
             {
                 CreateContentCatalogs = defaults.CreateContentCatalogs,
@@ -51,7 +58,7 @@ public sealed class SharedPlayerHostTests
                     CreateVideoPresenter = (_, _, _) => new UnusedVideo()
                 }
             };
-            await using var host = await SamplePlayerSession.CreateAsync(options);
+            await using var host = await OpenHost(options);
             var startup = host.InitializeAsync(Path.Combine(_root, "content"), Path.Combine(_root, "diagnostic-profile"));
             var language = host.Services.GetRequiredService<LanguageSelectionViewModel>();
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(15));
@@ -96,7 +103,7 @@ public sealed class SharedPlayerHostTests
         File.WriteAllText(Path.Combine(_root, "content/Graph/graph.json"),
             """{"version":2,"name":"Resume","rootNodeId":"main","nodes":[{"id":"main","type":"Branch","branchType":"Condition","conditions":[]}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
         var profile = Path.Combine(_root, "resume-profile");
-        var defaults = SamplePlayerServices.CreateHostOptions();
+        var defaults = CrossSample.CreateHostOptions();
         var options = new AvaloniaGameHostOptions
         {
             CreateContentCatalogs = defaults.CreateContentCatalogs,
@@ -109,9 +116,9 @@ public sealed class SharedPlayerHostTests
                 CreateVideoPresenter = (_, _, _) => new UnusedVideo()
             }
         };
-        async Task<SamplePlayerSession> Open()
+        async Task<AvaloniaPlayerHost> Open()
         {
-            var host = await SamplePlayerSession.CreateAsync(options);
+            var host = await OpenHost(options);
             var initialization = host.InitializeAsync(Path.Combine(_root, "content"), profile);
             var language = host.Services.GetRequiredService<LanguageSelectionViewModel>();
             while (!initialization.IsCompleted)
@@ -148,7 +155,7 @@ public sealed class SharedPlayerHostTests
     [Test]
     public Task MobileBackReturnsToHostWithoutAnExitPromptAndKeepsNavigationReusable() => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());
+        await using var host = await OpenHost(CrossSample.CreateHostOptions());
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         host.Services.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>().CanExit = false;
         Assert.That(await host.HandleBackAsync().WaitAsync(TimeSpan.FromSeconds(5)), Is.True);
@@ -162,7 +169,7 @@ public sealed class SharedPlayerHostTests
     [Test]
     public Task PlatformBackUsesPageCleanupAndCancelsAnExistingExitPrompt() => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());
+        await using var host = await OpenHost(CrossSample.CreateHostOptions());
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
         Assert.That(await host.HandleBackAsync(), Is.False);
@@ -211,7 +218,7 @@ public sealed class SharedPlayerHostTests
             var previous = PlayerTextExtension.Resolve;
             var marker = new AsyncMarker();
             InvalidOperationException? failure = null;
-            try { await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions(), services =>
+            try { await OpenHost(CrossSample.CreateHostOptions(), services =>
             {
                 services.AddSingleton(_ => marker);
                 services.AddScoped<IGameNavigationService>(provider =>
@@ -238,7 +245,7 @@ public sealed class SharedPlayerHostTests
     {
         await SampleUiTests.RunAsync(async () =>
         {
-            var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());
+            var host = await OpenHost(CrossSample.CreateHostOptions());
             var window = new Window { Content = host.View, Width = 800, Height = 500 };
             window.Show();
             try
@@ -268,9 +275,9 @@ public sealed class SharedPlayerHostTests
         {
             var content = Path.Combine(_root, "content");
             var profile = Path.Combine(_root, "profile");
-            async Task<SamplePlayerSession> Open()
+            async Task<AvaloniaPlayerHost> Open()
             {
-                var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());
+                var host = await OpenHost(CrossSample.CreateHostOptions());
                 var startup = host.InitializeAsync(content, profile);
                 var language = host.Services.GetRequiredService<LanguageSelectionViewModel>();
                 var deadline = DateTime.UtcNow.AddSeconds(5);

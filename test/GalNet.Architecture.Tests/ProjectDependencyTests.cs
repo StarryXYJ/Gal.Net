@@ -1,4 +1,5 @@
 using System.Xml.Linq;
+using System.Text.Json;
 
 namespace GeneralTest.Architecture;
 
@@ -25,18 +26,6 @@ public class ProjectDependencyTests
             ["GalNet.Media.LibVlc"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Assets", "GalNet.Presentation.Abstractions"],
             ["GalNet.Assets"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
             ["GalNet.Storage.FileSystem"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Runtime", "GalNet.Assets", "GalNet.GameHost"],
-            ["GalNet.Avalonia.GameHost"] =
-            [
-                "GalNet.Input.Sdl3", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.Media.Miniaudio",
-                "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Primitives.Builtins",
-                "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core",
-                "GalNet.Avalonia.Rendering", "GalNet.Contracts.Builtins"
-            ],
-            ["GalNet.Avalonia.GameView"] =
-            [
-                "GalNet.Media.LibVlc", "GalNet.Avalonia.Controls", "GalNet.Avalonia.Rendering",
-                "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core", "GalNet.Contracts.Builtins"
-            ],
             ["GalNet.Editor.Abstraction"] = ["GalNet.Core"],
             ["GalNet.Editor.DefaultContracts"] = ["GalNet.Contracts.Builtins"],
             ["GalNet.Editor.Shared"] =
@@ -135,6 +124,7 @@ public class ProjectDependencyTests
                 "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
                 "GalNet.Sample.Avalonia",
+                "GalNet.Sample.CrossPlatform",
                 "GalNet.Storage.FileSystem"
             ]
         };
@@ -248,6 +238,28 @@ public class ProjectDependencyTests
             .Select(reference => (string?)reference.Attribute("Include") ?? "").ToArray();
         Assert.That(packages.Where(name => name.StartsWith("Avalonia", StringComparison.Ordinal) ||
             name.StartsWith("SkiaSharp", StringComparison.Ordinal) || name.EndsWith(".Avalonia", StringComparison.Ordinal)), Is.Empty);
+    }
+
+    [Test]
+    public void SampleCompositionRootsDoNotDependOnOneAnotherOrOnTheRemovedPlayerProject()
+    {
+        var desktop = ReadProjectReferences(FindProjectFile("GalNet.Sample.Avalonia"));
+        var cross = ReadProjectReferences(FindProjectFile("GalNet.Sample.CrossPlatform"));
+        Assert.That(desktop, Does.Not.Contain("GalNet.Sample.CrossPlatform"));
+        Assert.That(cross, Does.Not.Contain("GalNet.Sample.Avalonia"));
+        Assert.That(desktop.Concat(cross), Does.Not.Contain("GalNet.Sample.Player"));
+        Assert.That(File.Exists(Path.Combine(RepositoryRoot, "src/Samples/GalNet.Sample.Player/GalNet.Sample.Player.csproj")), Is.False);
+        var source = Path.Combine(RepositoryRoot, "src");
+        var staleLocks = Directory.EnumerateFiles(source, "packages.lock*.json", SearchOption.AllDirectories)
+            .Where(path => !IsBuildOutput(path, source))
+            .Where(path =>
+            {
+                using var json = JsonDocument.Parse(File.ReadAllText(path));
+                return json.RootElement.GetProperty("dependencies").EnumerateObject()
+                    .Any(graph => graph.Value.EnumerateObject()
+                        .Any(package => package.Name.Equals("galnet.sample.player", StringComparison.OrdinalIgnoreCase)));
+            }).Select(path => Path.GetRelativePath(RepositoryRoot, path)).ToArray();
+        Assert.That(staleLocks, Is.Empty, "Removed projects must also be pruned from committed lockfiles.");
     }
 
     [Test]

@@ -16,7 +16,9 @@
 
 `Storage.FileSystem.BundledGameInstaller` 接受宿主拥有的内容流，将其复制、计算 hash 并交给正式安装器校验到分版缓存；不会关闭调用方的流。`GameProfilePaths.GetProfileDirectory(content, profileRoot)` 根据项目身份计算稳定目录，应用名与操作系统默认根由宿主决定。`SceneScreenshotWriter.SaveAsync` 捕获借用的 GamePage 并以不覆盖的方式发布 PNG，拒绝路径穿越/目录链接；项目 entry schema 和文件名业务约束由项目执行适配提供。
 
-当前两个 Sample 仍通过 `GalNet.Sample.Player` 的临时配置层接入上述机制。该工程保留项目主题、本地化资源、契约注册、默认目录策略和小型委托，不再拥有通用视图、语言选择、会话释放及包流安装实现。两主项目的独立配置和该临时工程的删除仍属于后续迁移。
+两个 Sample 各自通过主项目内的 `SampleCustomization` 注册主题、页面、项目契约/执行模块及默认目录策略；主项目之间没有引用关系。CrossPlatform 直接组合 `AvaloniaPlayerHost`，原桌面入口复用通用视图并保留自己的桌面窗口/调试接线。
+
+`AvaloniaPlayerLocalization.FromEmbeddedResources` 先加载 GameHost 的通用 UI 文案，再按顺序加载调用方提供的资源程序集。项目标题/说明由项目资源拥有，通用 UI 不包含 Sample 身份或调试文案。AttachGame 保留原始的精确文化来源，由最终 resolver 统一处理翻译覆盖、父文化和默认语言回退，避免内层提前回退遮住外部译文。
 
 运行状态与存档见[运行时状态](../runtime/state-and-save.md)，依赖和释放规则见[生命周期](../architecture/lifecycles.md)。使用与定制分别见 [Sample 手册](../../manual/sample/README.md)和[扩展入口](../../manual/extensions/customize-sample.md)。
 

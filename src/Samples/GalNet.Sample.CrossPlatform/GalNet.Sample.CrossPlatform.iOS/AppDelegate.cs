@@ -5,7 +5,6 @@ using Avalonia.Controls;
 using Avalonia.iOS;
 using Avalonia.Media;
 using GalNet.Avalonia.Themes;
-using GalNet.Sample.Player;
 using GalNet.Storage.FileSystem;
 using GalNet.Media.LibVlc;
 using Microsoft.Extensions.DependencyInjection;
@@ -116,7 +115,7 @@ public partial class AppDelegate : AvaloniaAppDelegate<App>
         {
             await using var package = File.OpenRead(Path.Combine(NSBundle.MainBundle.BundlePath, "game.galpak"));
             var content = await BundledGameInstaller.InstallAsync(package, Path.Combine(privateRoot, "content"), token);
-            var profile = SamplePlayerPaths.GetProfileDirectory(content, Path.Combine(privateRoot, "profiles"));
+            var profile = SampleCustomization.GetProfileDirectory(content, Path.Combine(privateRoot, "profiles"));
             return new PlayerLaunchPaths(content, profile, Path.Combine(profile, "screenshots"));
         };
         return base.CustomizeAppBuilder(builder)

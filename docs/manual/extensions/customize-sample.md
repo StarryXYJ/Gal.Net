@@ -1,12 +1,14 @@
 # 定制 Avalonia Sample
 
-`GalNet.Sample.Avalonia` 是桌面组合根示例，保留启动参数、项目选择和可选调试策略。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`；`GalNet.Sample.Player` 当前只保留两个 Sample 共用的临时项目配置与契约执行适配。它尚未删除，两个主项目独立配置的迁移仍待完成。
+`GalNet.Sample.Avalonia` 是桌面组合根示例，保留启动参数、项目选择和可选调试策略；CrossPlatform 的共享主项目负责其 Desktop/Android/iOS 组合。两个主项目各有 `SampleCustomization`，直接消费通用库和项目契约，不互相引用。
 
-从 `SamplePlayerServices` 调整共享玩家配置；桌面 `SampleCustomization` 继续提供组合适配入口。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期。不要把某个平台的 App、退出链和 DI scope 整份复制到其他入口。
+在所选主项目的 `SampleCustomization` 中调整主题/配色、页面映射、字段编辑器、HostOptions、catalog 和执行模块；少量相似配置允许分别维护。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期，不复制通用资源释放或检查点机制。
 
 直接接入通用宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，在 `configure` 中注册页面/主题、本地化、设置与启动服务。可以注册 `PlayerView` 工厂，在该实例的 Resources/Styles 应用自己的主题和文案资源；通用视图不会自动引用 Sample 资源或选择固定配色。窗口宿主也可以直接创建该视图并复用已有会话。
 
 包内内容流安装使用 `Storage.FileSystem.BundledGameInstaller`；稳定 profile 目录通过 `GameProfilePaths.GetProfileDirectory(content, profileRoot)` 计算，应用自行提供绝对根。项目截图 primitive 负责自己的 schema/参数，通用 `SceneScreenshotWriter.SaveAsync` 负责捕获与安全写入，两者不要求框架引用项目契约。
+
+通用 UI 文案由 GameHost 拥有；主项目的 `Localization/*.json` 保存项目标题/说明等覆盖。`AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(SampleCustomization).Assembly])` 加载通用 UI 后叠加项目资源；内容和外部翻译仍按既定文化优先级覆盖，换资源程序集不改变 profile 身份或内容契约。
 
 ## 调试构建与玩家发行
 
@@ -29,7 +31,7 @@ dotnet build src/Samples/GalNet.Sample.Avalonia -c Release -p:EnableGameDebuggin
 ## 推荐改造顺序
 
 1. **建立项目契约。** 复制或引用 `GalNet.Sample.Contracts`，在 `ProjectSchemas.Modules` 中列出项目允许的 `IEntryModule`。构建后用 `scripts/contracts/build-project-contracts.ps1` 部署到内容项目的 `Contracts/`。CLI/Editor 与玩家必须消费同一契约集合。
-2. **配置运行组合。** 在共享玩家的 `SamplePlayerServices` 中配置 catalog、执行模块、资源/玩家存储、音频 host 和项目启动策略；桌面入口通过 `SampleCustomization` 适配。把项目专属 primitive 注册在组合入口，不为一条业务能力修改通用 Session 或关闭链。
+2. **配置运行组合。** 在所选主项目的 `SampleCustomization` 中配置 catalog、执行模块、资源/玩家存储、音频 host 和项目启动策略。把项目专属 primitive 注册在组合入口，不为一条业务能力修改通用 Session 或关闭链。
 3. **定制外观。** 通过 `AddAvaloniaGameViewPages` 选择 `ClassicTheme`、`MinimalTheme` 或 `PaperTheme`，也可在 `configureViews` 覆盖单个页面。运行期主题切换不受支持。
 4. **扩展项目功能。** schema/DTO 与 composite 放在契约项目；执行模块放在 Avalonia 或项目执行程序集。参数 DTO 用 `GenerateFieldSchema`/字段特性生成 descriptor，平台控件仅在页面/设置工厂中处理。
 

@@ -20,7 +20,7 @@ public partial class MainWindow : UrsaWindow
         _settings = services.GetRequiredService<IAvaloniaPlayerSettings>();
         _settings.BindWindow(this);
         Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
-        GalNet.Sample.Player.SamplePlayerServices.ConfigureView(PlayerControl);
+        SampleCustomization.ConfigureView(PlayerControl);
         PlayerControl.Attach(shell, services.GetRequiredService<LanguageSelectionViewModel>());
         InitializeDebug(services);
         Closed += OnClosed;

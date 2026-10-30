@@ -38,7 +38,6 @@
   </Folder>
   <Folder Name="/src/Samples/">
     <Project Path="src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj" />
-    <Project Path="src/Samples/GalNet.Sample.Player/GalNet.Sample.Player.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj" />
     <Project Path="src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj" />
   </Folder>

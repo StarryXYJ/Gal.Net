@@ -103,3 +103,13 @@ Windows Integration 193/193、Presentation 313/313、GameHost 10/10 通过，真
 Windows 自动化实际执行：Presentation 322/322、Integration 195/195、架构 54/54、Storage 34/34。独立宿主测试没有 Sample.Contracts 引用；原窗口的主题/语言和截图、后台检查点回归通过。CrossPlatform Desktop Debug 构建通过；14 组既有 Desktop/R2R 配置 locked restore 通过，包版本/hash 与目标框架/RID 键不变。明确区分 TRX 的实际执行与未执行显式用例。
 
 规范/手册已同步 [宿主](../../docs/spec/presentation/game-host.md)、[模块边界](../../docs/spec/architecture/modules.md)、[定制](../../docs/manual/extensions/customize-sample.md)和 CrossPlatform README。证据在 `out/cross-platform-p6b/`，详见 execution.md。本轮没有重新发布/运行 Android、Linux、macOS 或 iOS；旧设备证据不升级为新代码通过。Player 的临时项目配置/资源及两个小型委托仍存在，P6c 删除；通用调试和最终发布设备矩阵仍待 P6d/P6e。
+
+## P6c — 两个主项目独立定制并删除 Player
+
+原 Sample 与 CrossPlatform 主项目各自拥有 `SampleCustomization`，直接配置主题/页面、字段编辑器、HostOptions、项目契约与执行模块；没有互相引用。CrossPlatform 直接使用 AvaloniaPlayerHost，平台目录/profile 规则仍由宿主提供。小型截图契约适配各项目自有，dispatch/取消/捕获写入机制共享。
+
+通用 UI 文案进入 GameHost，项目标题/说明分别由主项目 Localization 拥有；FromEmbeddedResources 保留项目/外部翻译覆盖及文化回退。调试文案暂留原 Sample，待可选调试模块一起迁移。已删除 Player 源码、工程、解决方案/CI 路径和锁图，两个实际桌面 deps.json 均无其运行时依赖。
+
+Presentation 实际执行 324/324、Integration 196/196、Architecture 55/55 通过；包括独立页面映射、不同项目标题/语言状态及 en-US/zh-CN 合并文案。14 组发布参数图强制重算后 locked 验证、普通玩家/开发版锁图和 CrossPlatform Desktop 构建通过；原包版本/hash 与框架/RID 键保持。既有媒体/检查点/截图测试通过，没有修改契约格式或 profile 键。
+
+保留并修复 UI 聚合 provider 提前回退遮住外部默认语言译文的问题；额外发现普通 locked restore 可保留无用 Project 节点，增加源锁图 JSON 门禁。失败和最终证据在 `out/cross-platform-p6c/`，详见 execution.md。未重新运行移动/非 Windows 应用；可选调试及最终平台产物复验继续 P6d/P6e，不把本次结构完成当作完整模板生成或五平台支持。

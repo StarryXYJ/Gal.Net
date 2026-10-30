@@ -6,8 +6,8 @@ using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.CrossPlatform.Views;
-using GalNet.Sample.Player;
-using GalNet.Sample.Player.Presentation;
+using GalNet.Avalonia.GameHost;
+using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -19,7 +19,7 @@ public partial class App : Application, IAsyncDisposable
 {
     private readonly CancellationTokenSource _lifetime = new();
     private readonly SemaphoreSlim _composition = new(1, 1);
-    private SamplePlayerSession? _player;
+    private AvaloniaPlayerHost? _player;
     private ContentControl? _mount;
     private Window? _window;
     private Task? _startup;
@@ -33,7 +33,7 @@ public partial class App : Application, IAsyncDisposable
     public static Func<CancellationToken, Task<PlayerLaunchPaths>> PrepareLaunchAsync { get; set; } = _ =>
     {
         var content = ApplicationPackageLayout.GetContentDirectory(ApplicationPackageLayout.FindApplicationRoot(AppContext.BaseDirectory));
-        return Task.FromResult(new PlayerLaunchPaths(content, SamplePlayerPaths.GetProfileDirectory(content)));
+        return Task.FromResult(new PlayerLaunchPaths(content, SampleCustomization.GetProfileDirectory(content)));
     };
 
     public Action? ExitRequested { get; set; }
@@ -47,7 +47,7 @@ public partial class App : Application, IAsyncDisposable
         {
             var window = new MainWindow { Content = CreateHostView() };
             _window = desktop.MainWindow = window;
-            window.Resources.MergedDictionaries.Add(SamplePlayerServices.PlayerPalette.CreateResources());
+            window.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
             var closing = false;
             var allowed = false;
             window.Closing += async (_, args) =>
@@ -127,9 +127,13 @@ public partial class App : Application, IAsyncDisposable
                             retainedFileCountLimit: 14, shared: true, formatProvider: CultureInfo.InvariantCulture).CreateLogger();
                     Log.Logger = _logger;
                 }
-                var options = SamplePlayerServices.CreateHostOptions(screenshotDirectory: title =>
+                var options = SampleCustomization.CreateHostOptions(screenshotDirectory: title =>
                     paths.ScreenshotDirectory ?? SampleScreenshotOutput.GetHostDirectory(title));
-                _player = await SamplePlayerSession.CreateAsync(options, ConfigurePlatformServices);
+                _player = await AvaloniaPlayerHost.CreateAsync(options, services =>
+                {
+                    SampleCustomization.ConfigureServices(services);
+                    ConfigurePlatformServices?.Invoke(services);
+                });
                 _player.Services.GetRequiredService<TitlePageViewModel>().CanExit =
                     !OperatingSystem.IsAndroid() && !OperatingSystem.IsIOS();
                 if (_window is not null) _player.BindWindow(_window);

@@ -81,6 +81,40 @@ public sealed class AvaloniaPlayerHostTests
             .Dispatch(async () => { await action(); return true; }, TestContext.CurrentContext.CancellationToken);
 
     [Test]
+    public void ProjectResourceFallbackDoesNotHideExternalDefaultCultureOverrides()
+    {
+        using var localization = AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(AvaloniaPlayerHostTests).Assembly]);
+        Assert.That(localization["App.Title"], Is.EqualTo("Independent host"));
+        Assert.That(localization["Settings.Title"], Is.EqualTo("Settings"));
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent
+        {
+            Graph = new(),
+            Localization = new()
+            {
+                ExternalSources = [new("en-US", "override", """{"Host.OnlyEnglish":"External English"}""")]
+            }
+        });
+        localization.ApplyCulture("zh-CN");
+        Assert.That(localization["Settings.Title"], Is.EqualTo("设置"));
+        Assert.That(localization["Host.OnlyEnglish"], Is.EqualTo("External English"),
+            "Default-culture fallback must apply after every source has checked the selected culture.");
+    }
+
+    [Test]
+    public void CommonUiResourcesContainNoSampleIdentityOrDebugText()
+    {
+        using var localization = AvaloniaPlayerLocalization.FromEmbeddedResources([]);
+        Assert.That(localization["Onboarding.Title"], Is.EqualTo("Choose your language"));
+        Assert.That(localization["Settings.Title"], Is.EqualTo("Settings"));
+        Assert.That(localization["App.Title"], Is.EqualTo("#App.Title#"));
+        Assert.That(localization["Debug.Menu"], Is.EqualTo("#Debug.Menu#"));
+        localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
+        localization.ApplyCulture("zh-CN");
+        Assert.That(localization["Settings.Title"], Is.EqualTo("设置"));
+        Assert.That(localization["App.Title"], Is.EqualTo("#App.Title#"));
+    }
+
+    [Test]
     public Task IndependentHostCanInitializeAndReopenWithItsOwnConfiguration() => Ui(async () =>
     {
         var previous = PlayerTextExtension.Resolve;

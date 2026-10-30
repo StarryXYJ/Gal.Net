@@ -22,7 +22,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
         => ApplicationPackageLayout.FindApplicationRoot(assemblyDirectory);
 
     internal static string GetDefaultProfileDirectory(string gameDirectory) =>
-        GalNet.Sample.Player.SamplePlayerPaths.GetProfileDirectory(gameDirectory);
+        SampleCustomization.GetProfileDirectory(gameDirectory);
 
     internal static GameLaunchOptions Parse(string[] args, string applicationDirectory)
     {

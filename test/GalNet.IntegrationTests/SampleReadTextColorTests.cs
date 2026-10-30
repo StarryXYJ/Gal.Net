@@ -1,8 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;
-using DynamicLocalization.Core;
-using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Settings;
@@ -25,17 +23,8 @@ public sealed class SampleReadTextColorTests
             var directory = Path.Combine(Path.GetTempPath(), "galnet-read-color-" + Guid.NewGuid().ToString("N"));
             try
             {
-                var provider = new JsonLocalizationProvider();
-                provider.Initialize(new JsonLocalizationProviderOptions
-                {
-                    BasePath = "Localization",
-                    UseEmbeddedResources = true,
-                    Assembly = typeof(GalNet.Sample.Player.SamplePlayerServices).Assembly
-                });
-                var culture = new CultureService();
-                culture.RegisterProvider(provider);
-                culture.SetCulture("en-US");
-                using var localization = new AvaloniaPlayerLocalization(culture, [provider]);
+                using var localization = SampleCustomization.CreateLocalizationService();
+                var culture = localization.CultureService;
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
                 var game = new GamePageViewModel(null!);
                 using (var settings = new AvaloniaPlayerSettingsService(localization, game))

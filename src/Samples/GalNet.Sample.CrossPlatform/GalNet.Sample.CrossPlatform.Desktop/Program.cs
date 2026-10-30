@@ -1,7 +1,6 @@
 ﻿using System;
 using Avalonia;
 using GalNet.Avalonia.Themes;
-using GalNet.Sample.Player;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.Sample.CrossPlatform.Desktop;
@@ -27,7 +26,7 @@ sealed class Program
                 { content = Path.GetFullPath(args[index]); hasContent = true; }
                 else throw new ArgumentException($"Unknown or incomplete launch argument: {args[index]}");
             }
-            var paths = new PlayerLaunchPaths(content, profile ?? SamplePlayerPaths.GetProfileDirectory(content));
+            var paths = new PlayerLaunchPaths(content, profile ?? SampleCustomization.GetProfileDirectory(content));
             App.PrepareLaunchAsync = _ => Task.FromResult(paths);
             return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }

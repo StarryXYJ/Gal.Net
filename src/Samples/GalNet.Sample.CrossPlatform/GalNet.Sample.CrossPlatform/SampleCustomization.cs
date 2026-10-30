@@ -1,6 +1,4 @@
 using GalNet.Contracts.Builtins.Assets;
-using DynamicLocalization.Core;
-using DynamicLocalization.Core.Providers;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Composition;
 using GalNet.Avalonia.GameView.Page;
@@ -19,15 +17,15 @@ using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Project.Contracts;
 using GalNet.GameHost.Content;
-using GalNet.Sample.Player.Presentation;
+using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Presentation.Abstractions.Application;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GalNet.Sample.Player;
+namespace GalNet.Sample.CrossPlatform;
 
 /// <summary>Project choices. The host owns services and resources; modules borrow platform ports.</summary>
-public static class SamplePlayerServices
+public static class SampleCustomization
 {
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
     public static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(PlayerPalette);
@@ -55,26 +53,19 @@ public static class SamplePlayerServices
                 provider.GetRequiredService<GamePageViewModel>(), editors: CreateFieldEditors()))
             .AddScoped<IPlayerStartup, AvaloniaPlayerStartup>()
             .AddScoped<LanguageSelectionViewModel>()
+            .AddScoped(_ => CreateView())
             .AddScoped<IAvaloniaPlayerSettings>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
             .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<IAvaloniaPlayerSettings>());
     }
 
     public static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
 
-    public static AvaloniaPlayerLocalization CreateLocalizationService()
-    {
-        var cultureService = new CultureService();
-        var provider = new JsonLocalizationProvider();
-        provider.Initialize(new JsonLocalizationProviderOptions
-        {
-            BasePath = "Localization",
-            UseEmbeddedResources = true,
-            Assembly = typeof(SamplePlayerServices).Assembly
-        });
-        cultureService.RegisterProvider(provider);
-        cultureService.SetCulture("en-US");
-        return new AvaloniaPlayerLocalization(cultureService, [provider]);
-    }
+    public static AvaloniaPlayerLocalization CreateLocalizationService() =>
+        AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(SampleCustomization).Assembly]);
+
+    public static string GetProfileDirectory(string content, string? profileRoot = null) =>
+        GalNet.Storage.FileSystem.GameProfilePaths.GetProfileDirectory(content,
+            profileRoot ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet"));
 
     public static (IResourceTypeCatalog Resources, IGalleryTypeCatalog Gallery) CreateContentCatalogs()
     {
@@ -85,8 +76,8 @@ public static class SamplePlayerServices
     public static AvaloniaGameHostOptions CreateHostOptions(Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null,
         Func<string, string>? screenshotDirectory = null) => new()
     {
-        GameTitle = "GalNet Avalonia Sample",
-        NoGameMessage = "Usage: GalNet.Sample.Avalonia <game-data-directory> [--profile <directory>]",
+        GameTitle = "GalNet CrossPlatform Sample",
+        NoGameMessage = "Usage: GalNet.Sample.CrossPlatform.Desktop <game-data-directory> [--profile <directory>]",
         CreateContentCatalogs = CreateContentCatalogs,
         AttachRun = attachRun,
         Content = new GameContentLoadOptions

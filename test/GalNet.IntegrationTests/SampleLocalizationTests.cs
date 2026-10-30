@@ -229,20 +229,7 @@ public sealed class SampleLocalizationTests
         finally { if (Directory.Exists(directory)) Directory.Delete(directory, true); }
     }
 
-    private static AvaloniaPlayerLocalization CreateLocalization()
-    {
-        var provider = new JsonLocalizationProvider();
-        provider.Initialize(new JsonLocalizationProviderOptions
-        {
-            BasePath = "Localization",
-            UseEmbeddedResources = true,
-            Assembly = typeof(GalNet.Sample.Player.SamplePlayerServices).Assembly
-        });
-        var culture = new CultureService();
-        culture.RegisterProvider(provider);
-        culture.SetCulture("en-US");
-        return new AvaloniaPlayerLocalization(culture, [provider]);
-    }
+    private static AvaloniaPlayerLocalization CreateLocalization() => SampleCustomization.CreateLocalizationService();
 
     [Test]
     public async Task SettingsSnapshotLanguagesAfterContentLoadWithoutWatchingProviders()
@@ -321,7 +308,7 @@ public sealed class SampleLocalizationTests
         {
             BasePath = "Localization",
             UseEmbeddedResources = true,
-            Assembly = typeof(GalNet.Sample.Player.SamplePlayerServices).Assembly
+            Assembly = typeof(SampleCustomization).Assembly
         });
 
         var cultureService = new CultureService();

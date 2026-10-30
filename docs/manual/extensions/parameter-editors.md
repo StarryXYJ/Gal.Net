@@ -2,7 +2,7 @@
 
 ## 注册 DTO 参数控件
 
-共享 UI 构建位于 GalNet.Avalonia.Controls 项目，命名空间为 GalNet.Game.Controls.Forms。共享玩家的 SamplePlayerServices.CreateFieldEditors 是组合入口，桌面 SampleCustomization 转发到它：先 CreateDefault，再 RegisterDto<T>、RegisterMember<T> 或 RegisterDefault<T>；内置已有类型用 ReplaceDefault<T>，最后 Freeze。每个工厂返回新的 FieldEditorLease，不能重用已挂载 Control。
+共享 UI 构建位于 GalNet.Avalonia.Controls 项目，命名空间为 GalNet.Game.Controls.Forms。两个 Sample 主项目各自的 SampleCustomization.CreateFieldEditors 是组合入口：先 CreateDefault，再 RegisterDto<T>、RegisterMember<T> 或 RegisterDefault<T>；内置已有类型用 ReplaceDefault<T>，最后 Freeze。每个工厂返回新的 FieldEditorLease，不能重用已挂载 Control。
 
 ~~~csharp
 var editors = EditorRegistry.CreateDefault();

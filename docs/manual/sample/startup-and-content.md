@@ -5,10 +5,11 @@
 | 工程 | 职责 |
 | --- | --- |
 | GalNet.Sample.Avalonia | 桌面入口，项目启动策略及可选开发调试工具 |
-| GalNet.Sample.Player | 迁移期间共用的项目配置/资源与契约适配；通用 UI/会话和内容安装已归库层，不是独立可执行程序 |
 | GalNet.Sample.CrossPlatform | Desktop/Android/iOS/Browser 平台宿主集合，实际验证范围见平台页 |
 | GalNet.Sample.Headless | 不含 Avalonia UI 的终端示例与引擎自检入口 |
 | GalNet.Sample.Contracts | 工具和玩家共享的项目作者契约 |
+
+两个 UI Sample 的主项目各有 `SampleCustomization`；主题、项目文案、契约及执行模块都在各自工程配置。通用玩家视图和会话协调来自 `Avalonia.GameHost`，无需额外的 Sample 玩家库。
 
 ## 桌面加载规则
 
