@@ -88,6 +88,11 @@ public partial class App : Application, IAsyncDisposable
             {
                 top.BackRequested -= OnPlatformBackRequested;
                 top.BackRequested += OnPlatformBackRequested;
+                if (OperatingSystem.IsAndroid() && top.InsetsManager is { } insets)
+                {
+                    insets.DisplayEdgeToEdgePreference = true;
+                    insets.IsSystemBarVisible = false;
+                }
             }
             _startup ??= StartAsync();
             await _startup;
@@ -125,7 +130,8 @@ public partial class App : Application, IAsyncDisposable
                 var options = SamplePlayerServices.CreateHostOptions(screenshotDirectory: title =>
                     paths.ScreenshotDirectory ?? SampleScreenshotOutput.GetHostDirectory(title));
                 _player = await SamplePlayerSession.CreateAsync(options, ConfigurePlatformServices);
-                _player.Services.GetRequiredService<TitlePageViewModel>().CanExit = !OperatingSystem.IsIOS();
+                _player.Services.GetRequiredService<TitlePageViewModel>().CanExit =
+                    !OperatingSystem.IsAndroid() && !OperatingSystem.IsIOS();
                 if (_window is not null) _player.BindWindow(_window);
                 _player.Services.GetRequiredService<TitlePageViewModel>().ExitRequested = () =>
                 {
@@ -182,6 +188,13 @@ public partial class App : Application, IAsyncDisposable
         if (_stopping || _player is null) return;
         if (await _player.HandleBackAsync())
         {
+            if (OperatingSystem.IsAndroid())
+            {
+                await _player.SuspendAsync();
+                ExitRequested?.Invoke();
+                return;
+            }
+            if (OperatingSystem.IsIOS()) return;
             await ShutdownAsync();
             ExitRequested?.Invoke();
         }

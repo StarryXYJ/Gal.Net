@@ -92,6 +92,8 @@ public sealed class SamplePlayerSession : IAsyncDisposable
             page.BackCommand.Execute(null);
         else if (navigation.CurrentViewModel is GamePageViewModel gameplay)
             gameplay.OpenSettingsCommand.Execute(null);
+        else if (!Services.GetRequiredService<TitlePageViewModel>().CanExit)
+            return true;
         else return await View.ConfirmExitAsync();
         return false;
     }

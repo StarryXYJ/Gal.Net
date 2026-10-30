@@ -15,8 +15,8 @@
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
 | P4 | in-progress | macOS 归档/签名延期；Windows/Linux 原生宿主合包和明确协议的仓库外工程已验证，其他定制工程不作通用支持承诺 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
-| P6 | in-progress | 共享玩家/平台内容入口与 Android Mono AOT 发布已总结；独立模板生成、Android 实际会话及完整宿主适配待补 |
-| P7 | in-progress | 媒体/检查点/移动事件接线及 Android 双 ABI 候选已总结；Android 设备、iOS 编译链接/设备和签名待验 |
+| P6 | in-progress | 独立模板生成延期；完整移动宿主适配及剩余平台验收待补 |
+| P7 | in-progress | Android 存读档/Gallery/进程恢复及剩余设备矩阵，iOS 编译链接/设备与签名待验 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
 
 单平台成功不使整阶段 verified。macOS 与手柄验收延期，移动先功能后验收，继续 Windows/Linux 和共享宿主；影响当前切片依赖选择的风险用对应构建/探针解决，延期平台风险保留。P6 集中接入后不维护第二份完整 Sample，不扩大到 Browser 验收。
@@ -78,7 +78,7 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **任务**：
   - Android 真机安装/内容初始化与基础剧情音视频/触摸 smoke 已总结；继续确认系统音频焦点、路由、系统返回与后台事件在目标 OS 的实际行为。iOS 在 Mac 验证静态 native 构建/链接及 AVAudioSession API，修复平台编译和运行问题。
   - 在移动设备验证已接入的共享像素视频、Gallery 与缩略图，覆盖停止/跳过/释放及 AOT 回调；Windows/Linux 真实媒体回归已总结。
-  - 触摸、安全区域、软键盘、方向与高 DPI；隐藏不可用桌面设置，验证可选移动手柄。
+  - 补触摸、安全区域、软键盘、方向与高 DPI 的完整矩阵；基础触摸、Android 系统栏收起/无退出按钮与后台重进已总结，继续验证不可用桌面设置及可选移动手柄。
   - 设备验证稳定检查点、后台时限、进程终止后的“继续”、新游戏/显式读档/清空状态与方向重建；测真实内容量的内存、视频帧耗时和释放。
   - Android 双 ABI Mono AOT APK 与完整 GameTestCase 已生成；补设备播放、生产签名/AAB 与 iOS 签名产物。跟踪 Android 官方 VLC 3.7.0-beta 的设备兼容与稳定版替换，不压制 native/AOT 诊断。
 - **测试**：真机启动、剧情/选择/存读档/音视频/Gallery、打断与恢复、进程被系统终止后恢复、方向切换；iOS AOT 回调/释放，Android 发布模式/R8 后播放；设备与性能数据逐项记录。

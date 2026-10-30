@@ -26,7 +26,7 @@ public class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioFocusChan
     {
         base.OnCreate(savedInstanceState);
         _audio = (AudioManager?)GetSystemService(AudioService);
-        if (Player is { } player) player.ExitRequested = Finish;
+        if (Player is { } player) player.ExitRequested = () => MoveTaskToBack(true);
         _noisy = new NoisyReceiver(() => Observe(() => Player?.InterruptAsync()));
         var filter = new IntentFilter(AudioManager.ActionAudioBecomingNoisy);
         if (OperatingSystem.IsAndroidVersionAtLeast(33)) RegisterReceiver(_noisy, filter, ReceiverFlags.NotExported);
@@ -91,7 +91,9 @@ public class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioFocusChan
     {
         if (_noisy is not null) { UnregisterReceiver(_noisy); _noisy.Dispose(); _noisy = null; }
         AbandonFocus();
-        if (IsFinishing) Observe(() => Player?.ShutdownAsync());
+        // Finishing an Activity does not terminate the Android application process.
+        // Keep its shared session reusable when the launcher creates another Activity.
+        if (IsFinishing) Observe(() => Player?.InterruptAsync());
         _focus?.Dispose();
         base.OnDestroy();
     }

@@ -885,6 +885,14 @@ public sealed partial class GameThemeTests
                 var host = shell.FindControl<TransitioningContentControl>("PageHost")!;
                 Assert.That(host.Content!.GetType().Namespace, Is.EqualTo($"GalNet.Avalonia.Themes.Layouts.{layout}"));
                 Assert.That(shell.Background, Is.Not.Null);
+                var title = (Control)host.Content;
+                foreach (var transition in new[] { NavigationTransition.None, NavigationTransition.None, NavigationTransition.CrossFade })
+                {
+                    await navigation.ResetToAsync<TitlePageViewModel>(transition);
+                    window.UpdateLayout();
+                    Assert.That(window.GetVisualDescendants(), Does.Contain(title),
+                        "Repeated background/title navigation must keep the current page visible.");
+                }
                 await navigation.NavigateAsync(services.GetRequiredService<SettingsPageViewModel>(), NavigationTransition.None);
                 window.UpdateLayout();
                 Assert.That(host.Content, Is.SameAs(services.GetRequiredService<IPageViewFactory>()

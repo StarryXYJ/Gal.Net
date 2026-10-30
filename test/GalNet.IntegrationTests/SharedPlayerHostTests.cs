@@ -146,6 +146,20 @@ public sealed class SharedPlayerHostTests
     });
 
     [Test]
+    public Task MobileBackReturnsToHostWithoutAnExitPromptAndKeepsNavigationReusable() => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());
+        var navigation = host.Services.GetRequiredService<IGameNavigationService>();
+        host.Services.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>().CanExit = false;
+        Assert.That(await host.HandleBackAsync().WaitAsync(TimeSpan.FromSeconds(5)), Is.True);
+        Assert.That(host.View.CancelExitConfirmation(), Is.False);
+        navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
+        Assert.That(await host.HandleBackAsync(), Is.False);
+        Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>());
+        Assert.That(await host.HandleBackAsync(), Is.True);
+    });
+
+    [Test]
     public Task PlatformBackUsesPageCleanupAndCancelsAnExistingExitPrompt() => SampleUiTests.RunAsync(async () =>
     {
         await using var host = await SamplePlayerSession.CreateAsync(SamplePlayerServices.CreateHostOptions());

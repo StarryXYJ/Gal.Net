@@ -50,7 +50,8 @@ iOS 在装有 Xcode/对应 workload 的 Mac 上构建，传入 `GalNetGamePackag
 - `SamplePlayerSession` 由 UI 线程创建、初始化和异步释放；关闭会取消尚在等待语言选择的初始化，随后停止运行、解绑窗口、拆下视图、释放 scope 和 root。构造失败也执行异步清理。
 - Activity 重建重新挂载现有视图。前后台、Android 音频焦点/耳机拔出和 iOS 音频中断/路由事件协调同一会话；iOS 后台检查点申请有限后台执行时间。
 - 暂停时停止 Gallery，串行保存稳定剧情检查点、进度与偏好，再释放剧情媒体并回到标题；恢复后由“继续”选择最新有效的检查点或手动存档。检查点位于独立 `profile/resume/saves`，不覆盖玩家槽；开始新游戏、显式读档或清空状态会移除旧检查点。不是任意媒体时间点的无缝恢复，也不依赖进程正常退出。
-- 系统返回通过 Avalonia `TopLevel.BackRequested` 进入页面 BackCommand，以执行页面清理；剧情页打开设置，标题显示退出确认，再次返回取消确认。安全区由 TopLevel 自动应用；没有窗口时桌面显示设置不可用，iOS 隐藏程序退出菜单。
+- 系统返回通过 Avalonia `TopLevel.BackRequested` 进入页面 BackCommand，以执行页面清理；剧情页打开设置。Android/iOS 隐藏程序退出菜单；Android 标题页的系统返回保存后台状态并退到桌面，保留可再次打开的共享会话，不永久 Shutdown App。桌面继续显示退出确认，再次返回取消确认。
+- Android 使用 InsetsManager 的 edge-to-edge 与隐藏系统栏设置收起顶部状态栏/底部导航栏；安全区仍由 TopLevel 自动保护刘海/挖孔。16:9 设计画布等比缩放到扩大的区域，长屏侧边留白不裁剪或拉伸消除。iOS 显示与设备行为尚未验证。
 - 剧情视频、Gallery 三种主题及缩略图共享 LibVLC CPU 像素回调，不创建 Gallery 原生子窗口；Windows/Linux 各 5 项真实解码、缩略图和释放用例通过。
 - `App.RestartAsync(clearPlayerState: true)` 重建当前应用中的会话，不启动第二个进程；关闭调用 `ShutdownAsync`。这两个入口由平台 UI 线程调用。
 - 公共注册/执行和资源在 `SamplePlayerServices`，项目可在其基础上定制；原桌面的 `SampleCustomization` 只组合桌面特有服务。嵌入式 UI 文本属于 `typeof(SamplePlayerServices).Assembly`，不再属于旧 Sample App 程序集。

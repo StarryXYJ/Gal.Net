@@ -397,3 +397,21 @@ P7a 可验证切片完成；P6/P7 整体仍 in-progress。移动设备/AOT 回�
 证据：`out/android-device-validation/` 的 `install-usb-confirmation-retry.log`、`install-path-fix.log`、`first-launch.png`、`path-fix.png`、`title.png`（实际已进入剧情的视频画面）、`playback-logcat.log`、`path-tests.log`、`path-fix-package-verification.json` 与 `device.json`。新 APK 保留在 Android 工程 `bin/Release/net10.0-android/org.galnet.sample-Signed.apk`。静态检查脚本自身仍标 `deviceTested=false`，设备证据单独记录。
 
 本切片仅完成安装、内容初始化、语言页与基础剧情音视频/触摸 smoke。存读档、Gallery、音频焦点/耳机路由、后台检查点/进程结束恢复、方向/安全区/性能、x86_64 运行、生产签名/AAB 与 iOS 均未验收；P6/P7 整体继续 in-progress。
+
+## 2026-10-30：P7c 移动退出策略、Android 全屏与后台重进
+
+用户真机反馈：桌面图标再次打开 Sample 显示空白；上下系统栏长期占用，四周留白偏大。用户随后确定移动端不提供退出按钮，Android 收起状态栏和底部导航栏。实现隐藏 Android/iOS 的 CanExit，Android 标题页系统返回不弹退出框，保存/暂停后 MoveTaskToBack；Activity finishing 仅中断媒体，不永久 Shutdown 仍存活的共享 App。桌面显式退出仍走原确认与释放流程。
+
+Android 挂载后通过 Avalonia InsetsManager 设置 edge-to-edge 和 IsSystemBarVisible=false，继续由 TopLevel 保护刘海/挖孔安全区。真机横屏截图的内容已铺满 1080 像素高度，状态栏和底部滑条不再常驻占位；2400×1080 屏幕仍保留 16:9 画布的侧边留白，没有裁剪或非等比拉伸。系统边缘手势的临时系统 UI 不属于永久隐藏承诺。
+
+首次重进复测仍显示空白背景，保留 `immersive-reopen-{1,2,3}.png` 失败截图，未把 PID 存活/launcher 返回成功当作通过。定位为 GameShell 重复呈现同一 scoped 页面时清空自己的 presenter；随后给 PageHost.Content 设置同一对象不触发更新。修复为相同目标引用直接完成呈现，其他页面仍保留旧 presenter 清理。三种主题的视觉树断言在修复前 3/3 失败；修复后完整 Presentation 非显式测试 313/313 通过，包含重复 None/None/CrossFade 和随后进入设置。
+
+测试环境修正：最初传入 GalNetBuildMiniaudio=false 且未部署 Windows native，完整 Presentation 有 4 项音频文件生命周期失败（309 通过）；补充正常日志/TRX 确认范围后，显式提供现存 win-x64 galnet_miniaudio.dll，313/313 通过。没有改音频业务实现或隐藏失败。共享宿主最终回归 7/7 通过，覆盖无退出能力时返回宿主、不显示确认框和后续可继续导航，以及桌面确认框/后台检查点等行为。
+
+最终 Release APK SHA256 `0f9328c69ca67f9771b0eabeca1e25c081259054a162930c8b570b48f3f6b040`；内容仍为 P7b 的 `c5e41778083ba7c5e4c77bf6bd525acb1693309692d9cab71714d7a22fb89bee`。两 ABI 各 117 程序集 Mono AOT、完整资产/架构/16 KB LOAD 与 zipalign 通过；native 继续按 P7b 的逐字节核对工件复用，未重新编译 native。手机已覆盖安装该候选。
+
+最终真机：cold launcher 启动、两次标题系统返回桌面后 launcher 重进、一次 Home 后 launcher 重进通过；同 PID 复用，截图均保留完整标题页、无退出按钮、无常驻系统栏，应用日志无未处理异常/生命周期失败。使用与桌面图标相同的 MAIN/LAUNCHER/NEW_TASK/RESET_TASK_IF_NEEDED Intent 验证重进，未声称自动点过实际桌面图标。
+
+补充的坐标设置页探针未处于预期标题页面：截图已进入剧情，随后 Back 观察到应用退到后台。此探针未完成预设步骤，不计为设置页真机通过；保留 `immersive-final-settings.png` 和工具结果，设置返回的自动化证据来自共享宿主/主题回归。后续设备操作应先确认当前页面，避免与用户手动游玩相互干扰。
+
+证据在 `out/android-device-validation/`：`icon-start-warm.png`（旧版空白）、`immersive-final-title.png`、`immersive-final-reopen-{1,2,3}.png`、`immersive-final-reopen.json`、`immersive-final-runtime.log`、`repeated-title-before-fix.log`、`presentation-with-native-final.log`、`presentation-results/`、`mobile-back-final-tests.log`、`immersive-final-package-verification.json`。本切片不替代剧情存读档/Gallery/进程被系统杀死恢复、音频焦点路由、完整安全区/方向/性能或 iOS 真机验收。

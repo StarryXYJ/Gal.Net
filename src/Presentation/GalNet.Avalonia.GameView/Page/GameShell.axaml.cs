@@ -166,6 +166,13 @@ public partial class GameShell : UserControl, IDisposable
             if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is SaveSlotsPageViewModel)
                 _savePreview = TryCaptureScene(page);
             targetContent = contentFactory();
+            if (ReferenceEquals(PageHost.Content, targetContent))
+            {
+                // A repeated reset (for example OnPause while already on the title)
+                // must not detach the page from its own current presenter.
+                completed.TrySetResult();
+                return;
+            }
             if (targetContent is Visual targetVisual &&
                 targetVisual.GetVisualParent() is ContentPresenter previousPresenter)
             {

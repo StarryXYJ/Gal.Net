@@ -87,3 +87,9 @@ Windows Integration 193/193、Presentation 313/313、GameHost 10/10 通过，真
 真机语言选择、剧情视频与立绘叠加已显示，用户确认声音和触摸推进正常，应用日志无未处理异常。候选及 hash/原生复用方式/失败记录见 execution.md P7b 与 `out/android-device-validation/`。此前 USB 掉线原因仍未确定；Rider 启动项缺失已通过安装 Android Support 插件解决。
 
 基础 smoke 已完成；存读档、Gallery、音频焦点/路由、后台检查点及进程终止恢复、方向/安全区/性能、x86_64 运行和签名发布仍待补，不宣称移动完整验收。iOS/macOS/真实手柄继续按用户决定延期。
+
+## P7c — 移动全屏与再次打开
+
+移动端按用户决定隐藏退出按钮；Android 标题系统返回保存/暂停后退到桌面，保留可重新挂载的会话，不永久关闭共享 App。Android 收起状态栏和底部导航栏，并保留刘海/挖孔安全区；16:9 画布等比扩大到全高，长屏侧边留白仍保留。
+
+修复重复切回同一 scoped 页面时清空当前 presenter 的空白页问题。三种主题失败回归先复现，再随完整 Presentation 313/313、共享宿主 7/7 通过；初次 4 项桌面音频失败来自测试目录缺 native，显式部署后全部通过。新 Release Mono AOT APK 双 ABI/内容/对齐检查通过，已安装手机；cold launcher 和 2×Back、1×Home 后同 PID 重进均显示正常标题，无退出按钮和常驻系统栏。证据和最终哈希见 execution.md P7c。完整移动与 iOS 验收继续追踪。
