@@ -38,7 +38,13 @@
 
 证据：`out/cross-platform-validation/20261030-sdl3/`；[正式探针入口](probes/sdl3-host/README.md)、[当前输入规范](../../docs/spec/control.md)、[部署说明](../../docs/manual/release-packaging.md)。Player/Developer 普通、Windows R2R 与 Linux Desktop 锁图已更新；本次 NuGet 是验证用本地候选，旧 dev.9 应用包、dev.10 CLI 和用户手测安装未更新。真实手柄、macOS、原生 Linux 桌面、最终应用发行矩阵与移动初始化仍待验收，P5 整体保持 in-progress。
 
-## 仍须保留的边界（继续追踪）
+## P4/P5 — 应用发布矩阵与 Linux SDK 宿主
+
+新增共享 Python 入口与路径触发的 Windows/Linux/macOS Intel/ARM CI 矩阵，实际构建 Editor、CLI、Player、Developer，检查自包含运行时、目标原生头、SDL 清单/许可和同宿主共享契约。Windows 首次生成 Desktop/win-x64 图后，默认 locked restore 路径通过；Linux 使用官方 SHA512 校验的隔离 SDK 10.0.401 和无 Windows bin/obj 的源码快照，四种实际发布及 locked restore 均通过。实跑发现 Editor 的 Microsoft.NET.SDK 大小写在 Linux 无法解析，已改为 Microsoft.NET.Sdk。
+
+证据：`out/cross-platform-validation/20261030-applications/`；[入口说明](../../scripts/ci/README-applications.md)。Windows 脚本保护测试 4/4 通过，覆盖已有输出保留、错误 SDK/native 拒绝、自有进程树超时及无关进程保留。macOS 两架构已生成锁图，未执行实际 macOS CI/运行/签名。原始 SDK 输出不等于完整私有媒体/最终归档，Linux 宿主 build-compose 与跨宿主构建上下文的契约字节等价仍独立追踪；不降低严格 hash 校验。
+
+## 仍须保留的边界（当前）
 
 P1 原生 Editor UI 两种导出、P0 移动风险探针、完整 Linux 媒体/Gallery/调试及原生桌面、公开再分发许可和对应源码可用性、Linux 宿主 SDK/定制工程矩阵、macOS/签名、实际手柄与最终桌面发行矩阵、跨平台模板和移动真机均未因此完成；具体待办在剩余计划中。
 

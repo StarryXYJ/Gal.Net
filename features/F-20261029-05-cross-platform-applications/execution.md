@@ -306,3 +306,20 @@ GameView 维持首个连接直至断开，统一按钮/轴、0.5/0.35 摇杆阈�
 清理自有 NuGet 候选、两轮封装目录、仓库外消费者隔离缓存约 2.00 GiB，保留构建/封装/消费者日志和候选哈希，见 nuget/cleanup.json；正式探针发布副本与包检查缓存按 stage-cleanup.json 清理。旧 dev.9/dev.10、本体手测安装、manual-profile 及用户 iOS lock 未触碰，项目正常 bin/obj 缓存保留。
 
 此切片证明实现与 Windows/WSLg 自动化交付。真实手柄、原生 Linux 桌面、macOS、移动、完整应用发行矩阵及 GUI 核心流程仍待验收；P5 整体 in-progress。完成项已从计划归并到总结，继续推进后续可独立实施项。
+
+## 2026-10-30：P4/P5 应用发布矩阵与真实 Linux SDK
+
+新增 scripts/ci/publish-applications.py：精确检查 global.json SDK，在匹配的原生宿主用 CMake 构建 miniaudio，或显式接收经目标头检查的 native；Desktop/RID 隔离锁图，分别 restore/publish --no-restore，真实发布 Editor、CLI、Sample Player/Developer，验证 apphost/CoreCLR/所需 native 的 PE/ELF/Mach-O 头、契约闭包、SDL SHA256 与通知、同宿主 Core/Builtins 字节一致性。每步记录退出码/时间/日志，输出逐文件 hash 的 application-publish.json。新增路径触发的 Application portability workflow，覆盖 Windows x64、Ubuntu x64、macOS Intel/ARM；仅保存报告和日志，不公开分发候选。
+
+本地执行结果归档于 out/cross-platform-validation/20261030-applications/：
+
+- Windows：四种实际普通自包含发布通过。首次显式生成 Desktop/win-x64 锁图，随后默认 locked restore 的完整四种发布通过，windows-publish.json 与 windows-logs/。
+- Linux 原生 SDK：按官方发布元数据下载精确 10.0.401 并核 SHA512，解到独立 ext4 临时目录；从已提交 6a6c3fb8 的 tar 快照起步，无 Windows bin/obj，记录 source.tar SHA256 和唯一 SDK 名称补丁。复用既有包缓存，使用 native Linux SDK/CMake 完成四种 locked restore/publish，linux-publish.json、linux-logs/、sdk-source.json、linux-source-archive.json、linux-source-patches.json。
+- Linux 首次失败：Editor 声明 Microsoft.NET.SDK，原生 resolver 找不到大小写敏感的 Microsoft.NET.Sdk 目录，MSB4236。修正标准大小写后完整矩阵通过；Windows 及 Windows cross-publish 不能发现此类宿主问题。首次失败保存在 linux-first-failure-logs/，见 L-20261030-02。
+- macOS：两架构 Editor/CLI/两 Sample flavor 的明确 Desktop 锁图还原完成；无实际 macOS 机器，尚未执行 macOS 发布、GUI、媒体、签名或该 CI job，不能把依赖还原写成目标平台成功。
+
+这些是 raw SDK 输出验证，不包含完整私有视频闭包、最终发行布局/归档、macOS .app/签名、内容安装和 GUI/device runtime。报告明确 runtimeTested=false、privateVideoClosureTested=false。各宿主内部的共享契约 hash 一致，但 Windows 工作树与 Linux Git archive 的 source/git/换行上下文不同，所得 DLL hash 不同；目前不把这两组当作跨宿主可互换工件，不降低严格合包检查。预编译内容和 source build 仍必须使用对应构建的契约，跨宿主发布的统一契约工件验证保留到剩余计划。
+
+Windows 两轮 raw publish 自有副本清理时保留报告/日志与后续 P1 所需的三份 Sample 契约；Linux 隔离 SDK、源码与 raw 发布暂供紧接的原生 build-compose 闭环使用，阶段结束一起清理，避免重复下载/构建。用户原包、手测 profile 和 iOS lock 不动。P4/P5 整体仍 in-progress，已验证部分归入总结。
+
+脚本保护验证：新增 test-application-publish.py 的输出保护、SDK/native 拒绝和自有进程树取消测试在 Windows 通过 4/4，记录在 windows-guards.log。超时仅停止测试自建父子进程，无关对照进程继续存活。首次运行请求因自动审批服务额度限制未执行；本次重新通过审批后运行成功。实际 Windows/Linux 四应用发布证据来自上述已完成运行；其后脚本加入逗号转义、可注入超时参数和进程退出检查，新增保护测试通过不等同于重新执行完整发布矩阵，Linux 保护测试仍待补。

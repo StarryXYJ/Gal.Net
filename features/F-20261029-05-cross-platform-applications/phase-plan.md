@@ -2,7 +2,7 @@
 
 - 更新：2026-10-30；整体 in-progress。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：桌面应用发布矩阵与 P1 原生 Editor 导出验收，继续 Linux SDK/完整媒体及移动风险探针；正式 SDL 自动化切片已总结。
+- 下一段：Linux 宿主 build-compose 与 P1 原生 Editor 导出验收，继续完整媒体及移动风险探针；应用矩阵配置、Windows/Linux 原生 SDK 发布已总结。
 
 ## 阶段状态与依赖
 
@@ -12,7 +12,7 @@
 | P1 | in-progress | 原生分发 Editor UI 的两种无 SDK 内容导出验收；实现和自动化已总结 |
 | P2 | verified | Windows 布局/严格合包已总结，无待办 |
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
-| P4 | in-progress | Linux 宿主 SDK/定制工程矩阵、macOS 归档与签名；Windows 宿主的 Windows/Linux 源码及预编译合包已总结 |
+| P4 | in-progress | Linux 宿主 build-compose/定制工程矩阵、macOS 归档与签名；原生 Linux SDK 普通发布与 Windows 宿主合包已总结 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
 | P6 | planned | 桌面稳定后集中接入 CrossPlatform；依赖 P1–P5 及移动探针结论 |
 | P7 | planned | 移动媒体、生命周期和真机；依赖 P6，复用 P5 动作层 |
@@ -38,7 +38,8 @@
 
 Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消清理及真实 Sample 启动退出已归入[阶段总结](progress-summary.md)。
 
-- 补 Linux 宿主原生 SDK 实跑和定制工程兼容矩阵；只声明满足显式 apphost、契约与布局协议的工程，不推断任意 csproj 均可用。
+- 补 Linux 宿主原生 SDK 的源码 build-compose 闭环和定制工程兼容矩阵；四种普通发布已总结。只声明满足显式 apphost、契约与布局协议的工程，不推断任意 csproj 均可用。
+- 明确跨宿主/源码上下文的契约工件来源与字节一致性；当前矩阵检查的是各宿主内部四种发布，不将源码快照与工作树的不同 DLL hash 自动当成可互换，保持严格内容门禁。
 - 补 macOS 归档及合法 bundle 内部链接；构建模式在最终修改后签名，合包保持既有签名，显式记录签名/公证状态。
 - 验证两种模式重新解包运行、缺 SDK、错误输入/失败清理/原输入保护、权限与链接恢复及 bundle 签名；无凭据仅生成候选。
 - 退出条件：声明矩阵内两种模式可复现，归档恢复后布局和功能正确；同步工具与定制宿主文档，不将未公证产物标为已公证。
@@ -48,7 +49,7 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **目标**：三平台共享标准手柄动作，完成桌面交付的完整验收。
 - **前置条件**：P0 SDL 探针、P3 原生部署；最终发行验证使用 P4 产物。
 - **涉及模块**：Avalonia.GameHost 输入适配、GameView 动作/提示、SDL native 部署与桌面 CI。
-- **剩余任务**：正式适配、动作边界和 native/NuGet 部署自动化已归入阶段总结；添加真实应用发布矩阵，覆盖展示/宿主改动触发，使用最终发行物补齐实际设备与桌面验收，分层记录自动化与人工证据。
+- **剩余任务**：适配/动作/native 与应用矩阵配置已总结；补矩阵 CI 的实际三平台执行及最终封包/运行，使用最终发行物补齐实际设备与桌面验收，分层记录自动化与人工证据。
 - **测试**：动作映射/连发/断连等共享行为自动化；三平台真实手柄与键鼠回归，确认无多余 SDL 窗口、后台输入和退出泄漏；Editor Dock、中文 IME、文件选择、全屏/多屏按平台人工验证。
 - **文档**：支持的标准手柄能力、已测设备、平台限制与桌面验收报告。
 - **风险**：SDL 事件循环冲突及设备布局差异；设备不可用仅保留未验收，不用模拟快照代替实机通过。

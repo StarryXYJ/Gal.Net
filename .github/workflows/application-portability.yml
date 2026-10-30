@@ -1,0 +1,66 @@
+name: Application portability
+
+on:
+  pull_request:
+    paths:
+      - 'src/Presentation/**'
+      - 'src/Infrastructure/**'
+      - 'src/Shared/**'
+      - 'src/Editor/**'
+      - 'src/Samples/GalNet.Sample.Avalonia/**'
+      - 'src/Samples/GalNet.Sample.Contracts/**'
+      - 'scripts/ci/publish-applications.py'
+      - 'Directory.*.props'
+      - 'Directory.Build.targets'
+      - 'global.json'
+      - '.github/workflows/application-portability.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: applications-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: SDK publish (${{ matrix.rid }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            rid: win-x64
+          - os: ubuntu-24.04
+            rid: linux-x64
+          - os: macos-15-intel
+            rid: osx-x64
+          - os: macos-15
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock*.json'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Publish and validate real application payloads
+        shell: pwsh
+        run: |
+          python scripts/ci/publish-applications.py --target '${{ matrix.rid }}' --output out/application-portability
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload publish reports and step logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-publish-${{ matrix.rid }}
+          path: |
+            out/application-portability/application-publish.json
+            out/application-portability/logs/
+          if-no-files-found: warn

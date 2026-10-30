@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [SDK 名称大小写](lessons/L-20261030-02-sdk-name-case.md)：Microsoft.NET.Sdk 使用标准大小写；Windows cross-publish 不能代替 Linux 原生 SDK。隔离 SDK/无 bin/obj 源快照揭示并修复 Editor 的 MSB4236。
 - 2026-10-30 桌面手柄：GameHost 已用自有窄绑定 SDL3 替换 XInput，固定 native 包 3.4.18.1 / SDL 3.4.18；UI 主线程共享 input 租约，失焦/断连 Cancel、回中立后重新武装，标签不改位置绑定。Windows/WSLg 正式探针各 3×40 与缺库降级、外部 NuGet 资产/许可传递通过；真实手柄、macOS/移动仍待验收。见 control.md 与跨平台 feature 总结。
 - [SDL 输入事件所有权](lessons/L-20261030-01-sdl-input-event-ownership.md)：状态轮询也须清理自有 joystick/gamepad 输入事件；只清 0x600–0x6ff，保留无关事件，GalNet 主线程共享租约，拒绝接管外部 input owner。
 - [源码发布的 profile 还原图](lessons/L-20261029-16-source-build-restore-graphs.md)：SDK/restore/publish 分步记录；Desktop 使用单数 RuntimeIdentifier，现有 WindowsReadyToRun 沿用 -r 锁图，不关闭 locked restore。
