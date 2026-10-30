@@ -272,7 +272,8 @@ public class ProjectDependencyTests
             .Descendants("ProjectReference")
             .Select(reference => (string?)reference.Attribute("Include"))
             .Where(include => !string.IsNullOrWhiteSpace(include))
-            .Select(include => Path.GetFullPath(Path.Combine(projectDirectory, include!)))
+            // MSBuild accepts both separators on every host.
+            .Select(include => Path.GetFullPath(Path.Combine(projectDirectory, include!.Replace('\\', '/'))))
             .Select(path => Path.GetFileNameWithoutExtension(path)!)
             .Distinct(StringComparer.Ordinal)
             .Order()

@@ -12,6 +12,8 @@ on:
       - 'src/Samples/GalNet.Sample.CrossPlatform/**'
       - 'src/Samples/GalNet.Sample.Contracts/**'
       - 'scripts/ci/publish-applications.py'
+      - 'scripts/ci/process_steps.py'
+      - 'scripts/ci/test-application-publish.py'
       - 'Directory.*.props'
       - 'Directory.Build.targets'
       - 'global.json'

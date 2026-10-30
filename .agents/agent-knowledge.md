@@ -1,4 +1,6 @@
 # GalNet Agent Knowledge
+- [TRX Explicit 执行证据](lessons/L-20261030-12-trx-explicit-test-evidence.md)：NUnit 的 notExecuted 可能为 0 而仍有 Explicit 未运行；保留原始计数并记录 total-executed，设备/GUI/AOT 边界单独报告。
+- [进程树清理失败](lessons/L-20261030-13-process-tree-cleanup-failure.md)：taskkill 失败后不能无限 wait；检查退出码与有界等待，验证自有父子退出且无关进程存活，macOS 不能依赖 /proc。
 - [重复呈现当前页](lessons/L-20261030-11-current-page-presenter.md)：相同 scoped control 重复呈现时不能清空其当前 presenter；回归检查窗口视觉树，不能只看 VM、Content 或 Android PID。后台重进曾在三种主题复现。
 - [Android 沙盒规范路径](lessons/L-20261030-10-android-sandbox-path.md)：Android 平台根使用 FilesDir.CanonicalPath 后再执行严格链接检查；内容准备失败需有 profile logger 之前的 logcat 回退。REDMI K80 Pro / Android 16 的 Release Mono AOT 已通过基础启动/剧情音视频/触摸 smoke，完整移动验收继续追踪。
 - [资源路径重试边界](lessons/L-20261030-09-asset-path-failure-retry.md)：空句柄可能来自读取/解码失败，不能直接判定旧 ID 映射失效；共享完成须保留是否找到文件，仅查找失败重查路径，并验证 ID/路径并发和显式后续恢复。

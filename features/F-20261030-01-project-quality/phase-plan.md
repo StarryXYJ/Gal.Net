@@ -32,7 +32,8 @@
 | P6a | GameEngine 职责整理 | 前述行为稳定；确认状态与锁所有者 | verified |
 | P6b | 内容会话协调职责整理 | P6a；单独评估发布/重载边界 | verified |
 | P7 | 资源错误诊断贯通 | 资源加载职责稳定 | verified |
-| P8 | 持续验证补齐 | 对应平台/测试可在 CI 重复运行 | planned |
+| P8a | 后端 PR 回归与运行证据 | P7；复用既有后端测试与 Headless 自检 | verified |
+| P8b | 发布后应用运行验证 | P8a；与跨平台发行/原生验收协同 | planned |
 
 ## P1：资源并发获取与释放
 
@@ -134,6 +135,8 @@ P7 验证后修订：新增按路径的共享失败测试确定性复现同批�
 
 模块：backend/application portability workflows、相关验证脚本。
 
+P8 执行拆分：P8a 将手动后端矩阵接入相关路径 PR，复用现有 Core/Assets/Runtime/GameHost/Storage/Audio/Architecture 测试及 Headless 自检，输出逐步日志、TRX 计数和 passed/failed/not_run 状态；缺失依赖、零测试或缺失结果不算成功。原生音频设备 Explicit 测试及 GUI/实机运行保持明确未验收。P8b 单独推进应用发布后启动/内容读取/正常退出，与并行跨平台工作衔接；本轮不将 raw SDK 发布视为 GUI 运行。两个入口共用已有受控进程执行逻辑，避免复制进程树取消实现；性能基准仍仅保留证据，不加耗时门禁。
+
 任务：将稳定后端回归接入相关路径 PR 检查；在已有发布矩阵上逐步补充真实启动、资源读取、正常退出。性能基准先保存证据，再按稳定性决定门禁，不盲设耗时阈值。
 
 验证：工作流触发范围、Linux/Windows 可重复执行、缺失依赖/未运行明确报告。与并行跨平台工作核对，复用其既有验收。
@@ -141,6 +144,8 @@ P7 验证后修订：新增按路径的共享失败测试确定性复现同批�
 风险：原生环境波动和 CI 时长。退出条件：发布成功与运行验证结果明确区分，关键后端变化自动获得回归证据。
 
 ## 执行记录
+
+- 2026-10-30 P8a verified：后端矩阵接入相关路径 PR，复用七个测试工程和真实 Headless 自检；输出逐项状态、日志、退出码、TRX 执行/未执行数与原生库 hash。提取共用进程执行器，修正清理失败后的无限等待；架构测试规范化 ProjectReference 分隔符，修复 Linux 的 21 项误报。冻结源码 Windows 639、Linux 635 项测试通过，两端 Headless 退出 0；各自明确记录 2/6 个未执行用例。入口保护 Windows 18 项通过、Linux 17 项通过/1 项 Windows 专属跳过。证据和限制见 [p8a-backend-regressions.md](p8a-backend-regressions.md)。GitHub/macOS runner、默认 CMake 分支及 GUI/设备/NativeAOT 未在本轮实际验收；P8b 发布应用运行验证仍 planned，正式 docs 后续整理。
 
 - 2026-10-30 P7 verified：AssetManager 增加独立于日志库的结构化诊断事件，保留阶段、分类、逻辑 ID/路径、实际 provider、覆盖源 ID、目标类型及原异常；编辑器各代资源 manager 和 Avalonia 玩家会话接入现有日志，Debug store 验证可显示完整异常。取消不误报，观察者逐个隔离并在锁外调用；provider 错误不再追加缺失。路径并发测试发现空句柄误触重复加载，改用共享完成结果的“是否找到文件”区分身份失效与读取/解码失败，真正失效仍重查、后续显式请求仍可恢复。新增 27 项用例；Assets 248、Architecture 53、Editor 资源身份 8、Release 宿主/安装集成 18、Debug 日志 3 项通过。证据、配置修正与范围见 [p7-resource-diagnostics.md](p7-resource-diagnostics.md)，经验见 `.agents/lessons/L-20261030-09-asset-path-failure-retry.md`。下一阶段 P8 持续验证补齐，正式 docs 后续整理。
 
