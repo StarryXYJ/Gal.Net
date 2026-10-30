@@ -27,7 +27,7 @@ public partial class App : Application, IAsyncDisposable
     private readonly SemaphoreSlim _composition = new(1, 1);
     private AvaloniaPlayerHost? _player;
     private ContentControl? _mount;
-    private Window? _window;
+    private MainWindow? _window;
     private Task? _startup;
     private bool _stopping;
     private Serilog.ILogger? _logger;
@@ -56,8 +56,8 @@ public partial class App : Application, IAsyncDisposable
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             var window = new MainWindow { Content = CreateHostView() };
-            _window = desktop.MainWindow = window;
-            window.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+            _window = window;
+            desktop.MainWindow = window;
             var closing = false;
             var allowed = false;
             window.Closing += async (_, args) =>
@@ -87,7 +87,14 @@ public partial class App : Application, IAsyncDisposable
 #if GALNET_GAME_DEBUG
         surface = _debugSurface ?? surface;
 #endif
-        var host = new Ursa.Controls.UrsaView { Content = surface };
+        ContentControl host = ApplicationLifetime is IClassicDesktopStyleApplicationLifetime
+            ? new ContentControl
+            {
+                Content = surface,
+                HorizontalContentAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch,
+                VerticalContentAlignment = global::Avalonia.Layout.VerticalAlignment.Stretch
+            }
+            : new Ursa.Controls.UrsaView { Content = surface };
         TopLevel.SetAutoSafeAreaPadding(host, true);
         _mount = host;
         TopLevel? top = null;
@@ -176,10 +183,15 @@ public partial class App : Application, IAsyncDisposable
                 };
                 Control surface = _player.View;
 #if GALNET_GAME_DEBUG
-                _debugSurface = _player.Services.GetRequiredService<DebugToolsOverlay>();
-                _debugSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
-                _debugSurface.GameContent = surface;
-                surface = _debugSurface;
+                if (_window is not null)
+                    _window.AttachDebugServices(_player.Services);
+                else
+                {
+                    _debugSurface = _player.Services.GetRequiredService<DebugToolsOverlay>();
+                    _debugSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+                    _debugSurface.GameContent = surface;
+                    surface = _debugSurface;
+                }
 #endif
                 if (_mount is not null) _mount.Content = surface;
                 initialization = _player.InitializeAsync(paths.ContentDirectory, paths.ProfileDirectory);
@@ -189,6 +201,7 @@ public partial class App : Application, IAsyncDisposable
             var ready = await initialization;
             if (_stopping || generation != _generation) return;
 #if GALNET_GAME_DEBUG
+            if (_player is not null) _player.Services.GetRequiredService<GameDebugViewModel>().IsGameReady = ready;
             if (_debugSurface is not null) _debugSurface.ToolsEnabled = ready;
             if (ready && DebugInvitation is { } invitation && _player is not null)
                 await _player.Services.GetRequiredService<AvaloniaExternalDebugSession>().ConnectAsync(invitation, _lifetime.Token);
@@ -283,6 +296,9 @@ public partial class App : Application, IAsyncDisposable
             if (_player is not null)
             {
                 if (clearPlayerState) await _player.Session.ClearPlayerStateAsync(_lifetime.Token);
+#if GALNET_GAME_DEBUG
+                _window?.DetachDebugServices();
+#endif
                 await _player.DisposeAsync();
                 _player = null;
 #if GALNET_GAME_DEBUG
@@ -316,6 +332,9 @@ public partial class App : Application, IAsyncDisposable
         {
             if (_player is not null)
             {
+#if GALNET_GAME_DEBUG
+                _window?.DetachDebugServices();
+#endif
                 try { await _player.DisposeAsync(); }
                 finally { _player = null; }
             }

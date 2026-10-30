@@ -22,7 +22,7 @@ public partial class MainWindow
         _debugViewModel = services.GetService<GameDebugViewModel>();
         _debugMenu = new DebugMenuView();
         LeftContent = _debugMenu;
-        _debugMenu.IsVisible = false;
+        _debugMenu.IsVisible = _debugLogStore is not null && _debugViewModel is not null;
         _debugMenu.DataContext = _debugViewModel;
         if (_debugViewModel is not null)
         {
@@ -33,8 +33,10 @@ public partial class MainWindow
         AddHandler(KeyDownEvent, OnKeyDown, RoutingStrategies.Tunnel);
     }
 
-    partial void CompleteDebugStartup(string? error) =>
-        _debugMenu.IsVisible = error is null && _debugLogStore is not null && _debugViewModel is not null;
+    partial void CompleteDebugStartup(string? error)
+    {
+        if (_debugViewModel is not null) _debugViewModel.IsGameReady = error is null;
+    }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
     {

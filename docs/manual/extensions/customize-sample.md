@@ -20,7 +20,11 @@ dotnet build src/Samples/GalNet.Sample.Avalonia -c Release -p:EnableGameDebuggin
 
 关闭时不编译调试服务、存档辅助工具、日志窗口和菜单，不引用 `GalNet.Avalonia.Debugging` 或 `GalNet.Debugging`，也不接入 Avalonia Developer Tools；普通文件日志继续保留。独立的 `EnableLaunchArguments` 定义 `GALNET_LAUNCH_ARGS`，默认跟随 `EnableGameDebugging`：桌面玩家版不编译内容路径、`--profile` 与调试参数解析，传入参数明确报错；开发版允许覆盖内容路径/profile。也可以在关闭游戏调试时显式开启普通参数；开启游戏调试则必须开启参数能力。
 
-通用调试位于可选 `GalNet.Avalonia.Debugging`。通过 `AddGameDebugTools` 注册，宿主在 `GameDebugHostOptions` 中提供重建/重启回调和可选的打开日志目录动作；项目特有 replay 策略也留在项目配置。原桌面 Sample 使用菜单和独立日志窗口，CrossPlatform 使用包裹游戏视图的 `DebugToolsOverlay`，确认与日志不需要额外窗口。移动端隐藏打开目录入口，资源重载通过原进程内的 scope 重建完成；移动远程调试的传输与邀请入口尚未验收。
+通用调试位于可选 `GalNet.Avalonia.Debugging`。通过 `AddGameDebugTools` 注册，宿主在 `GameDebugHostOptions` 中提供重建/重启回调和可选的打开日志目录动作；项目特有 replay 策略也留在项目配置。两个 Sample 的桌面窗口统一使用项目内的 `UrsaWindow`，调试菜单挂在 `LeftContent`，日志使用独立 Ursa 窗口；不要用整行内容菜单覆盖标题栏拖动区和窗口按钮。开发版启动前或内容加载失败后仍保留日志入口，游戏就绪后才启用清空数据和调试存档。CrossPlatform 在重建 scope 前解绑旧调试菜单、事件及日志窗口。
+
+自定义宿主在初始化完成后设置 `GameDebugViewModel.IsGameReady`，以控制清空数据和存档菜单的可用状态；日志和资源重载入口不依赖该状态。
+
+移动端使用包裹游戏视图的 `DebugToolsOverlay`，确认与日志不需要额外窗口，隐藏打开目录入口；资源重载通过原进程内的 scope 重建完成。移动远程调试的传输与邀请入口尚未验收。窗口装饰、调色板和桌面调试接线留在各 Sample 项目，不增加共享玩家窗口基类。
 
 本地化使用 `AvaloniaPlayerLocalization.FromEmbeddedResources` 时，将可选调试程序集放在项目资源程序集之前加载，使项目仍可覆盖通用文案；关闭调试时不加载该程序集。两个 Sample 的启用接线可直接作为示例。
 

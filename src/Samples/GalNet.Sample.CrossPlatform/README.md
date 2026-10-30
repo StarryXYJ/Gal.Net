@@ -17,7 +17,9 @@ SDK 固定 `10.0.401`，Avalonia `12.0.5`；子解决方案导入根目录的中
 
 ## 桌面开发
 
-桌面 CrossPlatform 窗口默认隐藏系统标题栏和窗口边框。该设置仅位于 `Views/MainWindow.axaml`；若项目需要系统原生标题栏，可移除 `WindowDecorations="None"` 或改为 `Full`，不会影响共享宿主、Avalonia Sample 或移动端。
+桌面 CrossPlatform 与 `GalNet.Sample.Avalonia` 统一使用 `UrsaWindow`。Ursa 绘制标题栏装饰，提供最小化、最大化/还原、关闭按钮及系统拖动区域；CrossPlatform 的按钮/标题栏颜色与玩家调色板一致。Headless 不生成原生窗口装饰，桌面交互需在实际窗口验证。
+
+如项目要改用 Avalonia 原生窗口装饰，只需在本项目将 `MainWindow.axaml` 根元素和 code-behind 基类从 `UrsaWindow` 改回 `Window`，并移除 Ursa caption 资源；共享宿主和其他 Sample 不受影响。
 
 在仓库根执行：
 
@@ -31,7 +33,9 @@ dotnet run --project src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.Cross
 
 Debug 默认开启 `EnableGameDebugging`，Release 默认关闭，`EnableLaunchArguments` 默认跟随调试开关。Desktop 玩家版拒绝启动参数；开发版接受内容目录、`--profile` 和外部调试邀请。启用调试必须同时启用参数能力。切换开关须重新 restore；普通玩家图使用 `packages.lock.NoGameDebugging.json`，Desktop 开发图使用 `packages.lock.Desktop.<rid>.Debugging.json`。
 
-可选 `GalNet.Avalonia.Debugging` 提供通用菜单、日志、调试存档及外部会话适配，普通宿主没有反向依赖。`SampleCustomization.CreateDebugOptions` 配置项目 replay 策略；App 提供原进程内的 scope 重建和桌面打开日志目录动作。共享 UI 使用 `DebugToolsOverlay`，移动端无需额外窗口，且隐藏打开目录入口；系统返回先取消确认/关闭日志。Activity 重建迁移整个容器。关闭调试后不包含调试模块、协议和资源，普通日志继续写入 profile。
+可选 `GalNet.Avalonia.Debugging` 提供通用菜单、日志、调试存档及外部会话适配，普通宿主没有反向依赖。`SampleCustomization.CreateDebugOptions` 配置项目 replay 策略；App 提供原进程内的 scope 重建和桌面打开日志目录动作。桌面与 Avalonia Sample 一样将菜单挂到 `UrsaWindow.LeftContent`，日志使用独立 Ursa 窗口；不会在游戏内容顶部插入整行菜单覆盖拖动区或窗口按钮。开发版启动前或内容加载失败后仍可查看日志，游戏就绪后才启用清空数据和调试存档。重建 scope 前解绑旧菜单、事件及日志窗口。
+
+移动端使用 `DebugToolsOverlay`，无需额外窗口，且隐藏打开目录入口；系统返回先取消确认/关闭日志。Activity 重建迁移整个容器。关闭调试后不包含调试模块、协议和资源，普通日志继续写入 profile。
 
 移动端调试 UI 的自动化验证不代表 Android/iOS 外部连接、邀请传输或设备验收已经完成。独立模板生成仍延期。
 

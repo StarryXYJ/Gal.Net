@@ -3,12 +3,14 @@
       xmlns:debug="using:GalNet.Avalonia.Debugging"
       xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
       x:Class="GalNet.Avalonia.Debugging.Views.DebugMenuView"
-      x:DataType="debug:GameDebugViewModel">
+      x:DataType="debug:GameDebugViewModel"
+      Background="{DynamicResource GalNet.Brush.Background}"
+      Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
   <MenuItem Header="{loc:Localize Debug.Menu}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
-    <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" />
+    <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" IsEnabled="{Binding IsGameReady}" />
     <MenuItem Header="{loc:Localize Debug.ReloadGameResources}" Command="{Binding ReloadGameResourcesCommand}" />
     <Separator />
-    <MenuItem Header="{loc:Localize Debug.Save}">
+    <MenuItem Header="{loc:Localize Debug.Save}" IsEnabled="{Binding IsGameReady}">
       <MenuItem Header="{loc:Localize Debug.SaveProgressOnly}" Command="{Binding SaveProgressOnlyCommand}" />
       <MenuItem Header="{loc:Localize Debug.SaveGalgroup}" Command="{Binding SaveGalGroupStartCommand}" />
     </MenuItem>

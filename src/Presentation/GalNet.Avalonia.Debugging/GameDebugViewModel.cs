@@ -6,6 +6,9 @@ namespace GalNet.Avalonia.Debugging;
 /// <summary>Command surface for optional sample debug tools; window-specific presentation stays in the host view.</summary>
 public sealed partial class GameDebugViewModel(GameDebugActions actions) : ObservableObject
 {
+    [ObservableProperty]
+    private bool _isGameReady;
+
     public event Func<GameDebugPrompt, Task<bool>>? ConfirmationRequested;
     public event Func<GameDebugNotification, Task>? NotificationRequested;
     public event Action? LogRequested;
