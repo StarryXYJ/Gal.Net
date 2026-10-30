@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using GalNet.Avalonia.GameView.MarkupExtensions;
 
 namespace GalNet.Avalonia.GameView.Input;
@@ -28,8 +29,7 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
             };
             if (device == PlayerInputDevice.Gamepad)
             {
-                var layout = new ComboBox { HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch };
-                layout.ItemsSource = new Control[] { Text("Input.SouthConfirms"), Text("Input.EastConfirms") };
+                var layout = Choice(["Input.SouthConfirms", "Input.EastConfirms"]);
                 _refresh.Add(() => layout.SelectedIndex = settings.EastConfirms ? 1 : 0);
                 layout.SelectionChanged += async (_, _) =>
                 {
@@ -55,8 +55,7 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
                     Control editor;
                     if (device == PlayerInputDevice.Touch)
                     {
-                        var combo = new ComboBox { HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch };
-                        combo.ItemsSource = new[] { "None" }.Concat(PlayerInputSettings.TouchGestures).Select(gesture => Text("Input.Touch." + gesture)).ToArray();
+                        var combo = Choice(new[] { "None" }.Concat(PlayerInputSettings.TouchGestures).Select(gesture => "Input.Touch." + gesture));
                         _refresh.Add(() =>
                         {
                             combo.IsEnabled = Available();
@@ -115,6 +114,12 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
         settings.Changed += Refresh;
         Refresh();
     }
+    private static ComboBox Choice(IEnumerable<string> keys) => new()
+    {
+        HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch,
+        ItemsSource = keys.ToArray(),
+        ItemTemplate = new FuncDataTemplate<string>((key, _) => Text(key))
+    };
     private static PlayerTextBlock Text(string? key) => new() { Key = key, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap };
     private void Refresh()
     {

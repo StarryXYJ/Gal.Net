@@ -108,6 +108,8 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 设置和首次语言选择的 ComboBox 沿用 Fluent 模板，默认、悬停、焦点、按下、禁用和弹出列表状态显式映射到玩家配色；弹出列表使用 Surface 底色、Selection 选中底色和 TextPrimary 文字，不依赖系统主题提供文字对比。
 
+操作设置的触屏手势和手柄确认布局以本地化 key 作为 ComboBox 数据项，由 ItemTemplate 分别创建选中区和弹出列表的文本控件，不共享 PlayerTextBlock 实例。关闭列表、提交设置或切换语言不应清空选中区文字；自定义编辑器卸载后仍正常释放本地化绑定。
+
 三套布局共用单外框 `SaveSlotCard`：预览铺满卡片，底部半透明信息区只显示名称和时间；悬停或内部焦点高亮整卡。有效存档的名称支持直接编辑，Enter/失焦提交、Escape 放弃。宿主通过可选 `ISaveSlotNamingSession` 接入；空槽、坏档和不支持改名的宿主保持只读。文件存档沿用原 `Description` 字段保存名称，`ISaveSlotNamingService` 只修改此字段，时间、预览和剧情快照保持原值。默认 PlayerSession 覆盖槽位时保留名称；改名不改变“继续游戏”按时间选择最近存档的顺序。
 
 GameShell 新生成的存档预览上限为 480×270；旧图按 480 宽度解码展示。默认会话整表刷新只发送一次集合 Reset，普通保存只替换目标槽位，其他行与已解码预览继续复用。`ISaveSlotInfoSource` 是存储的可选单槽元数据查询能力，PlayerSession 对未实现该接口的存储回退整表查询；文件存储实现直接查询并在后台序列化保存数据。

@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [ComboBox 本地化控件选项](lessons/L-20261030-17-combobox-localized-control-items.md)：Control 选项的选中区可能只是 VisualBrush 镜像；popup 关闭释放本地化绑定会清空镜像。使用数据 key + ItemTemplate，回归覆盖真实本地化和关闭后的文字。
 - [Android 更新签名](lessons/L-20261030-16-android-update-signature.md)：不同构建上下文不能假定同一开发密钥；覆盖安装前核对实际 APK 证书，显式使用旧密钥保留 profile，不用卸载绕过签名不匹配。
 - 2026-10-30 模板结构 P6b–P6e 当前 Sample 范围已收尾：Player 删除，两个 Sample 独立定制，可选 Avalonia.Debugging 可排除；28 锁图/呈现/两种集成/架构通过。Win/Linux 六角色发布、两宿主×两 flavor 原生会话/落盘/退出通过（Linux 26.04.1/WSLg/本机媒体），Windows Developer 各 3 条真实调试通过。69a88546 快照正常 NDK 双 ABI 各 114 Mono AOT；ARM64 保留数据更新，启动/重进/立绘/触摸有自动证据，其余本轮功能由用户确认通过。独立模板、P7 专项及延期平台继续追踪，见 feature summary。
 - [删除工程与锁图](lessons/L-20261030-15-prune-project-lock-nodes.md)：移除 ProjectReference 后普通/locked restore 仍可能保留无用 Project 节点；按每个 profile 正确参数 force-evaluate，再 locked 验证，并检查包 hash/框架键。P6c 增加结构化锁图门禁。
