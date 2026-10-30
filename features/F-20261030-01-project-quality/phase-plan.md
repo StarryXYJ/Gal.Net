@@ -27,7 +27,7 @@
 | P3c | PAK 导出优化 | P3a 数据、P3b 共享格式边界稳定 | verified |
 | P4a | 编辑器 dirty/恢复快照基线 | P3；确认编辑线程与保存锁契约 | verified |
 | P4b | dirty 参数比较分配优化 | P4a 测得每条目额外分配 | verified |
-| P4c | 编辑器恢复持久化优化 | P4a 测量和生命周期设计；P4b | planned |
+| P4c | 编辑器恢复持久化优化 | P4a 测量和生命周期设计；P4b | verified |
 | P5 | 持久化字段比较完整性 | P4 的基线设计稳定 | planned |
 | P6 | 核心协调器职责整理 | 前述行为稳定；逐个模块确认状态所有者 | planned |
 | P7 | 资源错误诊断贯通 | 资源加载职责稳定 | planned |
@@ -79,6 +79,8 @@ P3c 设计决定：保留现有单次读取/压缩及严格验证，先准备表
 
 P4a 测量后修订：dirty 查询在 1,000/10,000 条目时分别分配约 63/626 KiB，随条目数线性增长。先以 P4b 小切片验证 Entry 参数经 IReadOnlyDictionary 枚举产生的分配，仍逐项比较而不加缓存；原恢复持久化切片顺延为 P4c，与行为保持优化分开提交。
 
+P4c 实现选择：定时恢复只在 history capture guard 内克隆工作版，释放后等待后台串行持久化；沿用 PeriodicTimer 在等待时合并 tick，不新增定时快照队列。一个内部 writer 拥有接受顺序、完成错误和停止/排空；worker 仅接触脱离工作版的快照，不调用 UI 或 history。同步失败/结构/重载路径仍等待写完，保留既有返回时恢复材料可用的行为；关闭停止定时请求、排空并异步等待最后快照。直接 Dispose 停止接受并等待纯后台工作，不同步等待 UI continuation。新增确定性阻塞 writer 测试及同口径调用线程耗时基准，不把总写盘耗时误报为 UI 改善。
+
 模块：ProjectContentSession、ProjectRecoveryStore、ProjectContentBaseline。
 
 任务：测量大型 Graph/Group/文本文件的 dirty 查询、快照捕获、序列化和写盘成本；将一致快照捕获与后台串行持久化分开，合并重复恢复请求。按测量决定是否增加文档级比较缓存，不仅凭事件/历史游标推断 dirty。
@@ -128,6 +130,8 @@ P4a 测量后修订：dirty 查询在 1,000/10,000 条目时分别分配约 63/6
 风险：原生环境波动和 CI 时长。退出条件：发布成功与运行验证结果明确区分，关键后端变化自动获得回归证据。
 
 ## 执行记录
+
+- 2026-10-30 P4c verified：作者线程克隆后交给内部串行 writer；周期恢复释放 history guard 再等待，沿用 PeriodicTimer 合并 tick；关键同步恢复保留返回前完成，关闭/Dispose 排空且 worker 不回调 UI。新增六项恢复生命周期测试，Editor.Shared 521、Architecture 53 项通过，两规模夹具自检通过。专项修改前 2/2、修改后 4/4 基准成功；1k/10k 调用线程同步部分均值从 9.037/41.082 ms 降到 0.596/2.720 ms。同步完整恢复本轮为 8.278/45.579 ms，高于历史 5.853/42.528 ms；不宣称同步路径或总分配改善。单次 iteration 警告、分配计量边界及原始证据见 [benchmarks/editor-recovery-notes.md](benchmarks/editor-recovery-notes.md)。P4 已完成当前三个切片；下一阶段 P5 持久化字段比较契约，P5–P8 尚未实现。正式文档仍由用户后续整理。
 
 - 2026-10-30 P4b verified：Entry 参数改为直接遍历具体 Dictionary，避免接口枚举器每条目装箱；身份、参数数量、键查找与 JsonElement.DeepEquals 保持不变，没有缓存/额外 dirty 状态。收紧既有 500 Entry × 20 次读取分配测试至 30 KB，旧实现 654,080 B 失败；修正后 Editor.Shared 515、Architecture 53 项通过，基准两尺寸自检通过。六项 dirty 基准全部成功，10k 完整查询分配从约 640,760 B 降至 760 B，末尾参数变化为 704 B，分配不再随 Entry 数量增长；耗时仅小幅变化，不宣称数量级加速。报告见 [benchmarks/editor-baseline-notes.md](benchmarks/editor-baseline-notes.md)。下一阶段 P4c 恢复持久化仍 planned，P4 尚未整体完成。
 

@@ -22,5 +22,7 @@
 
     <ItemGroup>
         <EmbeddedResource Include="Visuals/Shaders/*.sksl" LogicalName="GalNet.Visuals.%(Filename)%(Extension)" />
+        <InternalsVisibleTo Include="GalNet.Editor.Shared.Tests" />
+        <InternalsVisibleTo Include="GalNet.Editor.Benchmarks" />
     </ItemGroup>
 </Project>

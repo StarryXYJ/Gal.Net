@@ -62,12 +62,16 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     }
     private Func<bool, CancellationToken, Task<IDisposable>>? _captureGuard;
     private readonly CancellationTokenSource _lifetime = new();
-    private ProjectRecoveryStore? _recovery;
+    private ProjectRecoveryWriter? _recovery;
+    private Exception? _recoveryCaptureError;
     private IDisposable? _closingRegistration;
     private Task? _recoveryLoop;
     private readonly object _recoverySync = new();
-    public Exception? LastRecoveryError { get; private set; }
+    public Exception? LastRecoveryError => _recoveryCaptureError ?? _recovery?.LastError;
     public Exception? LastNotificationError { get; private set; }
+
+    internal ProjectContentSession(IEditorDocumentService documents, IEditorDocumentRepository repository,
+        ProjectSessionOptions options, ProjectRecoveryWriter recovery) : this(documents, repository, options) => _recovery = recovery;
 
     public bool IsPublishing => !_disposed && _saveGate.CurrentCount == 0;
     public bool HasEditsSincePublication => IsPublishing && _publicationContent is { } captured &&
@@ -126,13 +130,15 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _contractsFingerprint = ExternalProjectSnapshotReader.ContractsFingerprint(project.RootPath);
         BaselineBytes = Serialize(Capture());
         _settingsBaseline = File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json"));
-        _recovery = new(project.RootPath, options ?? new());
+        var recoveryStore = new ProjectRecoveryStore(project.RootPath, options ?? new());
+        _recovery ??= new(document => recoveryStore.Capture(document));
         _closingRegistration = project.RegisterClosingCallback(async () =>
         {
             await SuspendAsync();
             _lifetime.Cancel();
             if (_recoveryLoop is not null) await _recoveryLoop;
-            if (IsDirty) CaptureRecovery();
+            if (IsDirty) await CaptureRecoveryAsync();
+            await _recovery.StopAsync();
         });
         _recoveryLoop = RunRecoveryAsync();
     }
@@ -347,13 +353,22 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
 
     public void ResumeSaves() => _suspended = false;
 
-    private void CaptureRecovery()
+    private void CaptureRecovery() => CaptureRecoveryAsync().GetAwaiter().GetResult();
+
+    // Capture on the author caller. Only the detached document crosses to the writer.
+    internal Task CaptureRecoveryAsync()
     {
         lock (_recoverySync)
         {
-            if (_disposed) return;
-            try { _recovery?.Capture(Capture()); LastRecoveryError = null; }
-            catch (Exception error) { LastRecoveryError = error; }
+            if (_disposed || _recovery is null) return Task.CompletedTask;
+            try
+            {
+                var snapshot = Capture();
+                var writing = _recovery.WriteAsync(snapshot);
+                _recoveryCaptureError = null;
+                return writing;
+            }
+            catch (Exception error) { _recoveryCaptureError = error; return Task.CompletedTask; }
         }
     }
 
@@ -366,8 +381,13 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             while (await timer.WaitForNextTickAsync(cancellationToken))
             {
                 if (_disposed || _suspended) continue;
-                using var lease = _captureGuard is null ? null : await _captureGuard(false, cancellationToken);
-                if (!_disposed && !_suspended && IsDirty) { CaptureRecovery(); NotifyChanged(); }
+                Task? writing = null;
+                using (var lease = _captureGuard is null ? null : await _captureGuard(false, cancellationToken))
+                    if (!_disposed && !_suspended && IsDirty) writing = CaptureRecoveryAsync();
+                if (writing is null) continue;
+                // Await outside the history gate. PeriodicTimer coalesces ticks while this write is pending.
+                await writing;
+                if (!_disposed) NotifyChanged();
             }
         }
         catch (OperationCanceledException) { }
@@ -545,6 +565,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             _disposed = true;
         }
         _lifetime.Cancel();
+        _recovery?.Dispose(); // Only the pure worker is joined; never wait for an author-context continuation.
         _closingRegistration?.Dispose();
         _drafts.Clear();
         _structureTransitions.Clear();

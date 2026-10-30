@@ -30,6 +30,21 @@ public class ContentBenchmarks : IDisposable
     private EditorEntryData _lastEntry = null!;
     private byte[] _lastText = [];
     private int _revision;
+    private Task _scheduledRecovery = Task.CompletedTask;
+
+    [IterationSetup(Target = nameof(RecoverySchedule))]
+    public void PrepareRecoverySchedule() => _documents.CurrentDocument.Name = (++_revision).ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+    // One request per iteration so the caller's synchronous work is measured without queue buildup.
+    [Benchmark]
+    public void RecoverySchedule() => _scheduledRecovery = _session.CaptureRecoveryAsync();
+
+    [IterationCleanup(Target = nameof(RecoverySchedule))]
+    public void CompleteRecoverySchedule()
+    {
+        _scheduledRecovery.GetAwaiter().GetResult();
+        if (_session.LastRecoveryError is { } failure) throw new InvalidDataException("Scheduled recovery failed.", failure);
+    }
 
     [Params(1000, 10000)]
     public int EntryCount { get; set; }
@@ -147,6 +162,13 @@ public class ContentBenchmarks : IDisposable
         var latest = Directory.GetFiles(Path.Combine(_root, ".galnet/editor/recovery"), "*.json").Single();
         if (ProjectRecoveryStore.Read(latest).Graph.Name != _documents.CurrentDocument.Name)
             throw new InvalidDataException("Session recovery did not retain the current revision.");
+        PrepareRecoverySchedule();
+        RecoverySchedule();
+        CompleteRecoverySchedule();
+        latest = Directory.GetFiles(Path.Combine(_root, ".galnet/editor/recovery"), "*.json")
+            .OrderDescending(StringComparer.Ordinal).First();
+        if (ProjectRecoveryStore.Read(latest).Graph.Name != _documents.CurrentDocument.Name)
+            throw new InvalidDataException("Scheduled recovery did not retain the current revision.");
     }
 
     [GlobalCleanup]

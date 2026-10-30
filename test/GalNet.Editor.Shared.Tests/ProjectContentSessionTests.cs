@@ -13,7 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
 
-public sealed class ProjectContentSessionTests
+public sealed partial class ProjectContentSessionTests
 {
     private string _root = null!;
     private EditorDocumentService _documents = null!;

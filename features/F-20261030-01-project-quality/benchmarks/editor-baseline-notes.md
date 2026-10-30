@@ -1,5 +1,7 @@
 # P4a：编辑器内容与恢复基线
 
+后续恢复后台持久化的实现、专项对比与验收见 [P4c 记录](editor-recovery-notes.md)。下文保留 P4a/P4b 当时的测量与决策。
+
 ## 测量口径
 
 基准工程：`benchmarks/GalNet.Editor.Benchmarks`，BenchmarkDotNet 0.15.8，.NET 10，1 launch / 3 warmup / 6 measured iterations，保持机器电源计划。生产实现为 P3c 后未改动的 Editor.Shared/Editor.Abstraction。基准只引用 Shared，不依赖 Avalonia 窗口。
