@@ -26,7 +26,7 @@
 | P3b | PAK 读取优化 | P3a 数据与完整性约束 | verified |
 | P3c | PAK 导出优化 | P3a 数据、P3b 共享格式边界稳定 | verified |
 | P4a | 编辑器 dirty/恢复快照基线 | P3；确认编辑线程与保存锁契约 | verified |
-| P4b | dirty 参数比较分配优化 | P4a 测得每条目额外分配 | planned |
+| P4b | dirty 参数比较分配优化 | P4a 测得每条目额外分配 | verified |
 | P4c | 编辑器恢复持久化优化 | P4a 测量和生命周期设计；P4b | planned |
 | P5 | 持久化字段比较完整性 | P4 的基线设计稳定 | planned |
 | P6 | 核心协调器职责整理 | 前述行为稳定；逐个模块确认状态所有者 | planned |
@@ -128,6 +128,8 @@ P4a 测量后修订：dirty 查询在 1,000/10,000 条目时分别分配约 63/6
 风险：原生环境波动和 CI 时长。退出条件：发布成功与运行验证结果明确区分，关键后端变化自动获得回归证据。
 
 ## 执行记录
+
+- 2026-10-30 P4b verified：Entry 参数改为直接遍历具体 Dictionary，避免接口枚举器每条目装箱；身份、参数数量、键查找与 JsonElement.DeepEquals 保持不变，没有缓存/额外 dirty 状态。收紧既有 500 Entry × 20 次读取分配测试至 30 KB，旧实现 654,080 B 失败；修正后 Editor.Shared 515、Architecture 53 项通过，基准两尺寸自检通过。六项 dirty 基准全部成功，10k 完整查询分配从约 640,760 B 降至 760 B，末尾参数变化为 704 B，分配不再随 Entry 数量增长；耗时仅小幅变化，不宣称数量级加速。报告见 [benchmarks/editor-baseline-notes.md](benchmarks/editor-baseline-notes.md)。下一阶段 P4c 恢复持久化仍 planned，P4 尚未整体完成。
 
 - 2026-10-30 P4a verified：独立 Editor.Benchmarks 工程锁定 BDN 0.15.8；1k/10k Entry、20 Group、约 1/10 MiB 文本，共 16/16 基准成功，退出码 0。两规模自检确认直接晚修改/还原、克隆隔离、恢复去重/往返；最终构建零警告/错误、locked restore 通过。10k 场景 dirty clean 2.815 ms / 625.74 KiB，克隆 5.607 ms，重复恢复 13.427 ms，session 完整恢复 42.528 ms / 约 67.8 MiB 累计分配。证据及限制见 [benchmarks/editor-baseline-notes.md](benchmarks/editor-baseline-notes.md)。无生产代码变更；下一切片先验证 dirty 枚举分配，恢复后台持久化随后处理。未把基准线程耗时当作真实窗口帧延迟。
 

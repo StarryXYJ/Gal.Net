@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [dirty 字典枚举分配](lessons/L-20261030-07-dirty-dictionary-enumeration.md)：高频 Entry 参数比较通过 IReadOnlyDictionary foreach 会每条目装箱；直接遍历具体字典保留完整内容比较，分配回归应按条目规模验证，不能靠历史事件缓存掩盖直接修改。
 - [Windows 临时目录 ACL](lessons/L-20261030-05-python-tempfile-restricted-acl.md)：本机 Python 3.14 的 tempfile 私有限制 ACL 会阻止受限进程访问；用已授权工作区内继承 ACL 的独立目录，并校验清理边界。
 - 正式文档已按 quick-start、manual（Editor/Sample/扩展/发布/开发）和 spec（架构/运行时/内容/呈现/Editor）分类；入口 docs/README.md。docs/navigation.json 定义统一导航，scripts/docs/sync_wiki.py 校验并生成完整 Wiki 正文与树形侧栏；正文仅在 docs 编辑。此次主仓库与 Wiki 均按用户要求待发布。见 features/F-20261030-02-documentation-structure/summary.md。
 - 2026-10-30 跨平台 P6a：Sample.Player 统一承载原/新 Sample 主视图、语言资源、截图和公共组合；资源所有者改为 SamplePlayerServices.Assembly。SamplePlayerSession 在 UI 线程异步拥有/释放 scope，取消语言选择并允许会话重建；平台 galpak 流安装到 SHA256 分版缓存，profile 按 projectId 稳定。Windows 两宿主与 WSLg 新宿主启动退出通过，Android 两 ABI 各 116 程序集 Mono AOT/完整 galpak 打包通过；冻结源码 CI 2206 通过/2 个既有 Editor 失败，当前 HEAD Debug Integration 191 通过。独立模板、移动媒体/生命周期/设备及延期平台仍待验收；见跨平台 feature 总结与 CrossPlatform/README.md。

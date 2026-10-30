@@ -47,3 +47,22 @@ dirty 分配从 1k 的 63.24 KiB 增加至 10k 的 625.74 KiB，约每 Entry 64 
 ## 测量限制
 
 这是合成作者文档的稳态测量，操作系统文件缓存未清空；没有真实窗口主线程轨迹、输入延迟、机械盘或完整项目关闭测量。MemoryDiagnoser 是累计托管分配而非峰值；同步方法耗时仅说明其调用线程被占用的时间，不能直接声称用户可见卡顿时长。单机少量迭代不用于 CI 时间阈值。未测的并发、保存/撤销交错、外部重载和关闭排空属于 P4c 正确性验收，不在本基准中冒充已验证。
+
+## P4b：消除 Entry 参数枚举分配
+
+基线提交 `be9867ab`。唯一生产改动为 ProjectContentBaseline.Entry 直接遍历具体参数 Dictionary，继续按原语义比较身份/条件、参数数量、键与 JSON 深相等。无新增状态/缓存、无公共 API 变化；配置与其他外层 Map 保持原实现。
+
+相同 job/夹具，filter 改为 `'*Dirty*'`，artifacts `out/quality-p4b-dirty`，6/6 项成功、退出码 0。完整 [报告](editor-dirty.md) / [CSV](editor-dirty.csv)，日志 `out/project-quality-p4b-benchmark.log`。
+
+| 场景 | 均值前 → 后 (ms) | 每操作分配前 → 后 |
+| --- | --- | --- |
+| 1k / clean | 0.226 → 0.209 | 63.24 KiB → 760 B |
+| 1k / 末 Entry | 0.194 → 0.175 | 63.19 KiB → 704 B |
+| 1k / 末文本字节 | 0.227 → 0.207 | 63.24 KiB → 760 B |
+| 10k / clean | 2.815 → 2.728 | 625.74 KiB → 760 B |
+| 10k / 末 Entry | 1.991 → 1.876 | 625.69 KiB → 704 B |
+| 10k / 末文本字节 | 2.771 → 2.736 | 625.74 KiB → 760 B |
+
+10k 完整比较分配下降约 99.88%，且在两种 Entry 规模下保持相同；仍有外层映射/包装的少量分配，耗时仍随内容大小增长。此次主要确认分配消除，耗时改善较小、部分置信区间重叠，不推导 UI 帧率提升。
+
+回归：既有 500 Entry × 20 次 dirty 读取上限从 2 MB 收紧为 30 KB，旧代码实测 654,080 B、断言失败；修改后 Editor.Shared 515 项（含该断言、直接修改/还原、保存期间编辑、失败恢复等）、Architecture 53 项全部通过。两规模基准自检再次通过；基准构建零警告/错误。日志：`out/project-quality-p4b-before.log`、`out/project-quality-p4b-shared.log`、`out/project-quality-p4b-architecture.log`、`out/project-quality-p4b-build.log`、`out/project-quality-p4b-verify.log`。保留其他现有分析器警告。本切片没有改变或复测恢复性能；P4c 的后台持久化、合并与关闭排空尚未实施。
