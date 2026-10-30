@@ -42,13 +42,16 @@ public partial class GamePageViewModel : PageViewModelBase
     public event Action? NvlClearRequested;
     public event Action? ScreenshotRequested;
     public event Action? ReturnToTitleRequested;
+    public event Action<string>? AudioAnnouncementRequested;
+    public void AnnounceAudio(string name) => AudioAnnouncementRequested?.Invoke(name);
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isInteractionBlocked;
     /// <summary>Host-observable player actions, kept logger-free so the shared view remains reusable.</summary>
     public event Action<string>? InteractionObserved;
 
     [RelayCommand]
     private void Advance()
     {
-        if (IsSkipConfirmationOpen || IsHistoryOpen) return;
+        if (IsInteractionBlocked || IsSkipConfirmationOpen || IsHistoryOpen) return;
         NotifyStoryContinuing();
         if (IsUiHidden)
         {
@@ -71,7 +74,11 @@ public partial class GamePageViewModel : PageViewModelBase
 
     [RelayCommand] private void ToggleNvlMode() => IsNvlMode = !IsNvlMode;
     [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
-    [RelayCommand] private void ReturnToTitle() { CloseHistory(); NotifyStoryContinuing(); ReturnToTitleRequested?.Invoke(); }
+    [RelayCommand] private void ReturnToTitle()
+    {
+        if (IsInteractionBlocked) return;
+        CloseHistory(); NotifyStoryContinuing(); ReturnToTitleRequested?.Invoke();
+    }
     [RelayCommand] private void RequestScreenshot() => ScreenshotRequested?.Invoke();
     [RelayCommand] private void HideUi() => IsUiHidden = true;
     [RelayCommand] private void ReturnToGame() => _navigation.GoBack();
@@ -120,7 +127,7 @@ public partial class GamePageViewModel : PageViewModelBase
     [RelayCommand]
     private void CompleteChoice(int selectedIndex)
     {
-        if (IsHistoryOpen) return;
+        if (IsInteractionBlocked || IsHistoryOpen) return;
         NotifyStoryContinuing();
         InteractionObserved?.Invoke($"choice.selected:{selectedIndex}");
         _choiceWaiter?.TrySetResult(selectedIndex);

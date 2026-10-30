@@ -125,5 +125,9 @@
   "History.Empty": "暂无历史文本。",
   "Settings.ReadTextColor": "已读文本颜色",
   "Settings.EnableReadTextColor": "启用",
-  "Settings.InvalidColor": "请选择有效颜色。"
+  "Settings.InvalidColor": "请选择有效颜色。",
+  "ReturnToTitle.Title": "返回标题？",
+  "ReturnToTitle.Message": "未保存的剧情进度将丢失。",
+  "Window.FitAspectRatio": "适应画面比例",
+  "ReturnToTitle.Confirm": "返回标题"
 }

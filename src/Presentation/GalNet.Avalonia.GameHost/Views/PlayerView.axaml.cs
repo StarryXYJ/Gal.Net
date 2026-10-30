@@ -1,7 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.GameHost.ViewModels;
 
 namespace GalNet.Avalonia.GameHost.Views;
@@ -9,6 +11,9 @@ namespace GalNet.Avalonia.GameHost.Views;
 /// <summary>The shared player surface; the platform owns its window and session lifetime.</summary>
 public partial class PlayerView : UserControl
 {
+    private GameShell? _shell;
+    private GamePageViewModel? _audioGame;
+    private bool _returnToTitle;
     private LanguageSelectionViewModel? _languageSelection;
     private TaskCompletionSource<bool>? _exitConfirmation;
     private IInputElement? _exitPreviousFocus;
@@ -23,23 +28,57 @@ public partial class PlayerView : UserControl
     {
         if (_languageSelection is not null) throw new InvalidOperationException("The player view is already attached.");
         _languageSelection = languageSelection;
+        _shell = shell;
+        shell.ConfirmReturnToTitleAsync = ConfirmReturnToTitleAsync;
         LanguageSelection.DataContext = languageSelection;
         GameCanvas.GameContent = shell;
     }
 
     public void Detach()
     {
-        CompleteExitConfirmation(false);
+        CompleteExitConfirmation(false, restorePlayback: false);
+        AudioToast.CloseAll();
+        if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
+        _audioGame = null;
+        if (_shell is not null) _shell.ConfirmReturnToTitleAsync = null;
+        _shell = null;
         GameCanvas.GameContent = null;
         LanguageSelection.DataContext = null;
         _languageSelection = null;
     }
 
-    public Task<bool> ConfirmExitAsync()
+    internal void BindAudioAnnouncements(GamePageViewModel gameplay)
     {
-        if (_exitConfirmation is not null) return _exitConfirmation.Task;
+        if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
+        _audioGame = gameplay;
+        gameplay.AudioAnnouncementRequested += OnAudioAnnouncement;
+    }
+
+    private void OnAudioAnnouncement(string name)
+    {
+        AudioToast.CloseAll();
+        if (!string.IsNullOrWhiteSpace(name) && _exitConfirmation is null)
+            AudioToast.Show(name, NotificationType.Information,
+                TimeSpan.FromSeconds(2), showIcon: false, showClose: false);
+    }
+
+    public Task<bool> ConfirmExitAsync() => ConfirmAsync(returnToTitle: false);
+    public Task<bool> ConfirmReturnToTitleAsync() => ConfirmAsync(returnToTitle: true);
+
+    private Task<bool> ConfirmAsync(bool returnToTitle)
+    {
+        // A confirmation for one action must never authorize a different action.
+        if (_exitConfirmation is not null)
+            return _returnToTitle == returnToTitle ? _exitConfirmation.Task : Task.FromResult(false);
+        _returnToTitle = returnToTitle;
+        ExitCopy.IsVisible = !returnToTitle;
+        ReturnToTitleCopy.IsVisible = returnToTitle;
+        ConfirmExitButton.IsVisible = !returnToTitle;
+        ConfirmReturnToTitleButton.IsVisible = returnToTitle;
         _exitConfirmation = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _exitPreviousFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
+        _shell?.SetConfirmationOpen(true);
+        AudioToast.CloseAll();
         PlayerContent.IsEnabled = false;
         ExitConfirmation.IsVisible = true;
         CancelExitButton.Focus();
@@ -61,10 +100,11 @@ public partial class PlayerView : UserControl
         CompleteExitConfirmation(false);
     }
 
-    private void CompleteExitConfirmation(bool confirmed)
+    private void CompleteExitConfirmation(bool confirmed, bool restorePlayback = true)
     {
         var completion = _exitConfirmation;
         _exitConfirmation = null;
+        if (completion is not null) _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
         ExitConfirmation.IsVisible = false;
         PlayerContent.IsEnabled = true;
         _exitPreviousFocus?.Focus();

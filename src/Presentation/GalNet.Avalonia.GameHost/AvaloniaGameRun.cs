@@ -28,6 +28,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     private Task _stateUpdate = Task.CompletedTask;
     private Task _settingsUpdate = Task.CompletedTask;
     private bool _disposed;
+    private bool _acceptAudioAnnouncements = true;
     private IDisposable? _runBinding;
     private readonly Func<GameEngine, IDisposable>? _attachRun;
     private DialogueHistoryDispatcher _history = null!;
@@ -58,6 +59,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _presentation.VoiceReplay.Changed += OnVoiceReplayChanged;
         _presentation.VoiceReplay.Failed += OnVoiceReplayFailed;
         _presentation.History.Changed += OnHistoryChanged;
+        _presentation.AudioModule.PlaybackStarted += OnAudioPlaybackStarted;
     }
 
     public static async Task<AvaloniaGameRun> CreateAsync(
@@ -142,8 +144,10 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
 
     public async Task StopAsync()
     {
+        _acceptAudioAnnouncements = false;
         OnStopVoiceReplay();
         var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(() => new(_onUiAsync(() => _gameplay.AnnounceAudio(""))));
         await cleanup.RunAsync(() => new(_settingsUpdate));
         await cleanup.RunAsync(() => new(_run.StopAsync()));
         var binding = _runBinding;
@@ -166,11 +170,13 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _presentation.VoiceReplay.Changed -= OnVoiceReplayChanged;
         _presentation.VoiceReplay.Failed -= OnVoiceReplayFailed;
         _presentation.History.Changed -= OnHistoryChanged;
+        _presentation.AudioModule.PlaybackStarted -= OnAudioPlaybackStarted;
         _gameplay.GetHistoryLines = null;
         _gameplay.PlayVoiceAsync = null;
         await _onUiAsync(_gameplay.ResetDialogueHistory);
         _playerSettings.SettingsChanged -= OnPlayerSettingsChanged;
         var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(() => new(_onUiAsync(() => _gameplay.AnnounceAudio(""))));
         cleanup.Run(() => _gameplay.BindPlayback(null));
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;
@@ -213,6 +219,11 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _ = _onUiAsync(() => { if (!_disposed) _gameplay.CloseHistoryCommand.Execute(null); });
     }
     private void OnVoiceReplayChanged() => _ = _onUiAsync(() => { if (!_disposed) _gameplay.IsVoiceReplaying = _presentation.VoiceReplay.IsPlaying; });
+    private void OnAudioPlaybackStarted(string name) => _ = _onUiAsync(() =>
+    {
+        if (!_disposed && _acceptAudioAnnouncements) _gameplay.AnnounceAudio(name);
+    });
+
     private void OnVoiceReplayFailed(Exception error) => _ = _onUiAsync(() => { if (!_disposed) _gameplay.StatusMessage = error.Message; });
     private void OnHistoryChanged() => _ = _onUiAsync(() =>
     {

@@ -14,6 +14,7 @@
       "condition": "",
       "parameters": {
         "asset": "a1000000000000000000000000000010",
+        "displayName": "\u5FC3",
         "fadeIn": 2,
         "gain": 1,
         "placement": "replace",

@@ -7,6 +7,9 @@ namespace GalNet.Avalonia.GameHost;
 public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDisposable
 {
     private Window? _window;
+    private Size? _windowedSize;
+    private PixelPoint _windowedPosition;
+    private WindowState _windowedState = WindowState.Normal;
     public bool IsAvailable => _window is not null;
     public IReadOnlyList<PlayerDisplayMode> Modes { get; } = Array.AsReadOnly(new[] { PlayerDisplayMode.Window, PlayerDisplayMode.BorderlessFullscreen });
     public IReadOnlyList<PlayerWindowSize> WindowSizes { get; } = Array.AsReadOnly(new[]
@@ -22,6 +25,8 @@ public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDispo
     {
         if (_window is not null) _window.PropertyChanged -= OnWindowChanged;
         _window = window;
+        _windowedSize = null;
+        _windowedState = WindowState.Normal;
         if (window is not null) window.PropertyChanged += OnWindowChanged;
         Changed?.Invoke();
     }
@@ -30,8 +35,22 @@ public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDispo
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (_window is null || !Modes.Contains(mode)) throw new InvalidOperationException("Display mode is unavailable.");
+        if (mode == Mode) return Task.CompletedTask;
+        if (mode == PlayerDisplayMode.BorderlessFullscreen && Mode == PlayerDisplayMode.Window)
+        {
+            _windowedState = _window.WindowState;
+            _windowedSize = _window.ClientSize;
+            _windowedPosition = _window.Position;
+        }
         _window.WindowState = mode == PlayerDisplayMode.Window ? WindowState.Normal : WindowState.FullScreen;
-        if (mode == PlayerDisplayMode.Window) { _window.Width = WindowSize.Width; _window.Height = WindowSize.Height; }
+        if (mode == PlayerDisplayMode.Window)
+        {
+            var size = _windowedSize ?? new Size(WindowSize.Width, WindowSize.Height);
+            _window.Width = size.Width;
+            _window.Height = size.Height;
+            if (_windowedSize is not null) _window.Position = _windowedPosition;
+            if (_windowedState == WindowState.Maximized) _window.WindowState = WindowState.Maximized;
+        }
         Changed?.Invoke();
         return Task.CompletedTask;
     }
@@ -45,6 +64,8 @@ public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDispo
         _window.Width = size.Width;
         _window.Height = size.Height;
         WindowSize = size;
+        _windowedSize = new Size(size.Width, size.Height);
+        _windowedState = WindowState.Normal;
         Changed?.Invoke();
         return Task.CompletedTask;
     }

@@ -28,6 +28,33 @@ public partial class GameShell : UserControl, IDisposable
     private GamePageViewModel? _gameplay;
     private bool _hadActiveRun;
     private bool _returningToTitle;
+    private GamePageViewModel? _modalGame;
+    private bool _resumeAuto;
+    /// <summary>Optional player confirmation policy; embedded previews may keep direct navigation.</summary>
+    public Func<Task<bool>>? ConfirmReturnToTitleAsync { get; set; }
+
+    /// <summary>Blocks player actions and suspends automated playback for a host-owned modal.</summary>
+    public void SetConfirmationOpen(bool open, bool restorePlayback = true)
+    {
+        if (open)
+        {
+            _modalGame = _gameplay;
+            _resumeAuto = _modalGame?.IsAutoMode == true;
+            if (_modalGame is not null)
+            {
+                _modalGame.IsInteractionBlocked = true;
+                _modalGame.CancelPlayback();
+            }
+        }
+        else if (_modalGame is { } game)
+        {
+            _modalGame = null;
+            game.IsInteractionBlocked = false;
+            if (restorePlayback && _resumeAuto && ReferenceEquals(game, _gameplay) && _session.IsPlaying)
+                game.ToggleAutoCommand.Execute(null);
+            _resumeAuto = false;
+        }
+    }
     private bool _disposed;
     private byte[]? _savePreview;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputRouter? _inputRouter;
@@ -85,6 +112,8 @@ public partial class GameShell : UserControl, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        SetConfirmationOpen(false, restorePlayback: false);
+        ConfirmReturnToTitleAsync = null;
         if (_session is ISavePreviewSource previewSource) previewSource.CaptureSavePreview = null;
         _pageBackInput.Dispose();
         _inputRouter?.Dispose();
@@ -303,11 +332,19 @@ public partial class GameShell : UserControl, IDisposable
         _returningToTitle = true;
         try
         {
+            if (ConfirmReturnToTitleAsync is { } confirm && !await confirm()) return;
+            if (_disposed) return;
             await _session.StopAsync();
             if (_viewModel.CurrentViewModel is GamePageViewModel)
                 _navigation.ResetTo<TitlePageViewModel>();
         }
-        finally { _returningToTitle = false; }
+        catch (Exception error) { Log.Logger.Error(error, "Unable to return to title"); }
+        finally
+        {
+            _returningToTitle = false;
+            if (!_disposed && !_session.IsPlaying)
+                OnSessionPropertyChanged(_session, new(nameof(IGameSessionService.IsPlaying)));
+        }
     }
 
     private byte[]? CaptureSavePreview() => PageHost.Content is GamePage page ? TryCaptureScene(page) : _savePreview;

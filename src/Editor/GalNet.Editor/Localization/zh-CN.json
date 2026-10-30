@@ -409,6 +409,7 @@
   "Entry.Parameter.category": "分类",
   "Condition.Placeholder": "仅当此条件成立时执行",
   "Entry.Parameter.assetId": "资源",
+  "Entry.Parameter.displayName": "音频显示名称",
   "Entry.Parameter.autoBlocking": "自动等待完成",
   "Entry.Parameter.batchId": "批次 ID",
   "Entry.Parameter.bladeCount": "百叶数量",

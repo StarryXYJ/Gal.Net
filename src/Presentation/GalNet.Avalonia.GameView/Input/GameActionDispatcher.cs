@@ -13,7 +13,7 @@ public sealed class GameActionDispatcher(
     private bool _busy;
 
     public bool CanReceive => session.IsPlaying && !settings.IsCapturing && !_busy &&
-        activeGame() is { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false };
+        activeGame() is { IsInteractionBlocked: false, IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false };
 
     public async Task DispatchAsync(string action)
     {

@@ -56,6 +56,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
             result.Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
             result.View = result.Services.GetRequiredService<PlayerView>();
             result.View.Attach(result.Services.GetRequiredService<GameShell>(), result.Services.GetRequiredService<LanguageSelectionViewModel>());
+            result.View.BindAudioAnnouncements(result.Services.GetRequiredService<GamePageViewModel>());
             return result;
         }
         catch (Exception error)

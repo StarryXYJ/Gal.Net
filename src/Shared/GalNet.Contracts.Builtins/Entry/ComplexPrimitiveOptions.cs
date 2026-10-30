@@ -75,6 +75,7 @@ public partial class AudioPlayOptions
     public AudioPlayOptions() => TrackId = "";
     [Common, Field(0, Required = true, AllowNull = false, EditorId = ValueEditorIds.Text)] public string TrackId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = "entry.audioasset", ResourceTypeId = "audio")] public string? Asset { get; set; }
+    [Common, Field(9, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? DisplayName { get; set; }
     [Field(2, EditorId = ValueEditorIds.Numeric)] public float Gain { get; set; } = 1;
     [Field(3, AllowNull = true, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(AudioPlacementValueConverter))]
     public AudioPlacement? Placement { get; set; } = AudioPlacement.Enqueue;

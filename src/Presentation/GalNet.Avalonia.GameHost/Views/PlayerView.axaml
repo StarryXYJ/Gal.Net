@@ -3,6 +3,7 @@
              xmlns:controls="using:GalNet.Game.Controls"
              xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
              xmlns:views="using:GalNet.Avalonia.GameHost.Views"
+             xmlns:ursa="https://irihi.tech/ursa"
              x:Class="GalNet.Avalonia.GameHost.Views.PlayerView">
   <Grid x:Name="PlayerRoot" Classes="galnet-player" Background="{DynamicResource GalNet.Brush.Background}">
     <Grid x:Name="PlayerContent">
@@ -13,14 +14,21 @@
       <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
                  Foreground="{DynamicResource GalNet.Brush.TextPrimary}" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
     </Grid>
+    <ursa:WindowToastManager x:Name="AudioToast" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                            Margin="24,24,24,88" MaxItems="1" IsHitTestVisible="False" />
     <Grid x:Name="ExitConfirmation" IsVisible="False" Background="#66000000" KeyboardNavigation.TabNavigation="Cycle">
-      <Border Width="360" Margin="24" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center"
+      <Border MaxWidth="360" Margin="24" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center"
               CornerRadius="6" Background="{DynamicResource GalNet.Brush.Surface}"
               BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1" BoxShadow="0 8 24 0 #26000000">
         <StackPanel Spacing="24">
-          <StackPanel Spacing="8">
+          <StackPanel x:Name="ExitCopy" Spacing="8">
             <TextBlock Text="{loc:Localize Exit.Title}" FontSize="18" FontWeight="SemiBold" />
             <TextBlock Text="{loc:Localize Exit.Message}" FontSize="14" LineHeight="22"
+                       Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" />
+          </StackPanel>
+          <StackPanel x:Name="ReturnToTitleCopy" Spacing="8" IsVisible="False">
+            <TextBlock Text="{loc:Localize ReturnToTitle.Title}" FontSize="18" FontWeight="SemiBold" />
+            <TextBlock Text="{loc:Localize ReturnToTitle.Message}" FontSize="14" LineHeight="22"
                        Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" />
           </StackPanel>
           <Grid ColumnDefinitions="Auto,Auto" ColumnSpacing="8" HorizontalAlignment="Right">
@@ -29,6 +37,9 @@
             <Button x:Name="ConfirmExitButton" Grid.Column="1" Classes="player-primary" Content="{loc:Localize Title.Exit}" Click="OnConfirmExit"
                     FontSize="14" FontWeight="Normal" MinWidth="80" MinHeight="34" Padding="16,6" CornerRadius="4" HorizontalContentAlignment="Center"
                     Background="{DynamicResource GalNet.Brush.Primary}" Foreground="{DynamicResource GalNet.Brush.OnPrimary}" BorderBrush="{DynamicResource GalNet.Brush.Primary}" />
+            <Button x:Name="ConfirmReturnToTitleButton" Grid.Column="1" Classes="player-primary" IsVisible="False"
+                    Content="{loc:Localize ReturnToTitle.Confirm}" Click="OnConfirmExit"
+                    FontSize="14" FontWeight="Normal" MinWidth="80" MinHeight="34" Padding="16,6" CornerRadius="4" HorizontalContentAlignment="Center" />
           </Grid>
         </StackPanel>
       </Border>

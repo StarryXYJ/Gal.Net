@@ -409,6 +409,7 @@
   "Entry.Parameter.category": "Category",
   "Condition.Placeholder": "Run only when this condition is true",
   "Entry.Parameter.assetId": "Asset",
+  "Entry.Parameter.displayName": "Audio display name",
   "Entry.Parameter.autoBlocking": "Auto block",
   "Entry.Parameter.batchId": "Batch ID",
   "Entry.Parameter.bladeCount": "Blade count",

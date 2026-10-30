@@ -12,7 +12,7 @@ public partial class GamePageViewModel
     public GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input { get; set; }
     public Task SetQuickHeldAsync(bool held)
     {
-        if (IsHistoryOpen) return Task.CompletedTask;
+        if (IsInteractionBlocked || IsHistoryOpen) return Task.CompletedTask;
         if (held) NotifyStoryContinuing();
         return RequestModeAsync(held ? PlaybackMode.Quick : PlaybackMode.Manual);
     }
@@ -58,7 +58,7 @@ public partial class GamePageViewModel
     [RelayCommand] private Task ToggleAutoAsync() => ToggleAsync(PlaybackMode.Auto);
     private Task ToggleAsync(PlaybackMode target)
     {
-        if (IsSkipConfirmationOpen || IsHistoryOpen) return Task.CompletedTask;
+        if (IsInteractionBlocked || IsSkipConfirmationOpen || IsHistoryOpen) return Task.CompletedTask;
         NotifyStoryContinuing();
         var selected = _pointerToggle == target ? _pointerWasSelected : PlaybackMode == target;
         _pointerToggle = null;
@@ -93,7 +93,7 @@ public partial class GamePageViewModel
     [RelayCommand]
     private void RequestSkip()
     {
-        if (IsHistoryOpen) return;
+        if (IsInteractionBlocked || IsHistoryOpen) return;
         NotifyStoryContinuing();
         CancelPlayback();
         if (_playback is not null) IsSkipConfirmationOpen = true;

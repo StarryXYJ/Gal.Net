@@ -12,6 +12,11 @@ public sealed class BuiltinAudioModule : PrimitiveModule
 {
     private readonly AudioRuntime _runtime;
     private readonly AudioScope _scope;
+    public event Action<string>? PlaybackStarted
+    {
+        add => _runtime.PlaybackStarted += value;
+        remove => _runtime.PlaybackStarted -= value;
+    }
     public void ApplyMix(AudioMixOptions options) => _runtime.ApplyMix(options);
     public void BeginCatchUp() => _runtime.BeginCatchUp();
     public void EndCatchUp() => _runtime.EndCatchUp();
@@ -84,7 +89,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     }
 
     private static AudioPlayRequest PlayRequest(AudioPlayOptions options, AudioPlacement placement) => new(
-        options.TrackId, options.Asset ?? "", placement, options.Gain, options.FadeIn, options.LoopCount, options.Completion, options.FadeOut);
+        options.TrackId, options.Asset ?? "", placement, options.Gain, options.FadeIn, options.LoopCount, options.Completion, options.FadeOut) { DisplayName = options.DisplayName };
 
     private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
         AudioScope scope, AudioConfiguration tracks, AudioPlayOptions options, AudioPlacement placement) => new(() =>
