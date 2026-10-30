@@ -551,3 +551,9 @@ ARM64 APK：`out/cross-platform-p6e/android-arm64/org.galnet.sample-Signed.apk`�
 Android 初次执行依次暴露并修正三类不应被绕过的问题：不能以单 ABI 覆盖提交的双 ABI locked restore 图；导出工具和 Android 契约必须使用同一 preview 版本与 `ContinuousIntegrationBuild`，以保持含源生成 Contracts.Builtins 的严格字节身份；CLI 导出文件名必须读取其结构化 `packagePath`，不能假定项目目录名。最终 `out/local-ci-preview-20261030/android-arm64-final8/android-publish.json` 通过：SDK 10.0.401、locked restore、三份内容/Android 运行时契约逐字节匹配、完整 galpak、ARM64-only APK、114 个 Mono AOT 程序集、无桌面 SDL、原生 ABI 与 APK/ELF 16 KB 对齐均已验证。APK SHA256 为 `8aff008dd03d47e7d71b7e439c64557ec3dab254c7d6d73810cb9c4daddb27bb`。
 
 此记录仅证明本地 preview 构建和载荷门禁；Windows/Linux GitHub runner 的 PR 矩阵、正式 release tag 及真实设备/桌面验收仍需分别执行。
+
+## 2026-10-30：preview release 只保留构建与产物门禁
+
+`v0.1.0-preview.3` 已从 `dev` 合并至 `master` 后打 annotated tag 并触发 release。远端先成功校验精确 tag 与 `master` 归属；原 release job 之后运行完整 `BuildTest` 而失败，导致构建、封存与上传被跳过。
+
+用户确认 release 只需构建正式版本与验证可发布产物。故删除 release 中的完整测试步骤；常规 CI/PR 仍负责测试，release 保留 tag/版本、NuGet 与应用产物、消费者、ZIP/载荷验证、封存及上传门禁。此项是发布职责收敛，不把失败测试伪装为通过或降低发布产物校验；详见 L-20261030-19。

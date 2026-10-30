@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [Release 构建产物门禁](lessons/L-20261030-19-release-build-only-gate.md)：常规 CI 承担测试；版本 tag release 仅校验精确 tag/master、构建正式版本、验证消费者与 ZIP/载荷、封存上传，不重复跑 `Invoke-CI.ps1 -Stage BuildTest`。
 - [Android 导出契约构建身份](lessons/L-20261030-18-android-export-contract-build-identity.md)：Android preview 的内容导出 Headless 必须与 Android 契约使用同一 Version 和 ContinuousIntegrationBuild；源生成 Contracts.Builtins 即使版本相同也可能字节不同。locked restore 保持提交的双 ABI 图，最终发布才传单 ABI RID。
 - 移动端玩家 UI 方向已延期保存于 [F-20261030-03](../features/F-20261030-03-mobile-player-ui/design.md)：桌面保持原版，仅局部研究对白/底栏跨画布与触屏适配；先确认 Classic 横屏对照稿再实施。本轮 UI 改造已撤回，当前未实现，不得据此继续改代码。
 - [ComboBox 本地化控件选项](lessons/L-20261030-17-combobox-localized-control-items.md)：Control 选项的选中区可能只是 VisualBrush 镜像；popup 关闭释放本地化绑定会清空镜像。使用数据 key + ItemTemplate，回归覆盖真实本地化和关闭后的文字。
