@@ -30,7 +30,7 @@
 | P4c | 编辑器恢复持久化优化 | P4a 测量和生命周期设计；P4b | verified |
 | P5 | 持久化字段比较完整性 | P4 的基线设计稳定 | verified |
 | P6a | GameEngine 职责整理 | 前述行为稳定；确认状态与锁所有者 | verified |
-| P6b | 内容会话协调职责整理 | P6a；单独评估发布/重载边界 | planned |
+| P6b | 内容会话协调职责整理 | P6a；单独评估发布/重载边界 | verified |
 | P7 | 资源错误诊断贯通 | 资源加载职责稳定 | planned |
 | P8 | 持续验证补齐 | 对应平台/测试可在 CI 重复运行 | planned |
 
@@ -110,6 +110,8 @@ P6 拆分：P6a 单独提交 GameEngine 的职责评估与入口缓存提取，P
 
 任务：画清状态、锁和资源所有权；只提取独立策略/任务生命周期，保留一个权威状态入口。每个模块单独完成行为保持重构，不以文件行数为验收指标。
 
+P6b 实现选择：内部 ProjectDiskBaseline 统一拥有会话接受的磁盘字节、settings 检查基线与契约指纹，负责首次读取、受管文件登记、重载采纳、成功发布后的写入/复制/删除更新。作者内容与 dirty 仍由 ProjectContentBaseline 管理；Repository 保留 Graph/Group 事务源校验，受管文件期望仍从保存作者快照产生。会话继续拥有保存/重载/补偿顺序、实时文档身份、历史捕获与发布门、恢复关闭生命周期；不新增公共 API、锁、回调或第二份状态。补偿只更新 settings 校验基线，保留既有外部观察语义。本阶段为行为保持重构，不宣称性能收益；新增公共行为测试先在旧实现验证。
+
 验证：执行/快进/自动播放/调试恢复/停止交错，保存/外部重载/关闭交错及对应架构门禁。
 
 风险：协作者间循环引用、共享状态复制、锁顺序变化。退出条件：职责可说明、依赖更简单、行为测试通过且无无效转发层。
@@ -135,6 +137,8 @@ P6 拆分：P6a 单独提交 GameEngine 的职责评估与入口缓存提取，P
 风险：原生环境波动和 CI 时长。退出条件：发布成功与运行验证结果明确区分，关键后端变化自动获得回归证据。
 
 ## 执行记录
+
+- 2026-10-30 P6b verified：提取内部 ProjectDiskBaseline，统一拥有 settings 检查、契约指纹和外部文件字节的登记/比较/采纳规则；ProjectContentSession 保留发布、重载、补偿、工作文档身份与原有锁/恢复生命周期。作者 dirty 基线、Repository 源校验和受管文件期望来源保持原职责，无公共 API 或锁变化。新增 5 项公共行为测试，重构前外部重载 13/13 通过；重构后 Editor.Shared 613、Architecture 53、界面外部重载/文件操作 20 项全部通过。所有权、取舍与证据见 [p6b-content-session-responsibilities.md](p6b-content-session-responsibilities.md)。P6 当前两个切片完成；下一阶段 P7 资源错误诊断贯通，P7/P8 仍 planned，正式 docs 后续整理。
 
 - 2026-10-30 P6a verified：完成 GameEngine 状态/锁/生命周期梳理；播放协调继续由现有执行门管理。入口缓存从 DebugSession 的三张同键字典收拢为内部 DebugEntranceCache 的单张缓存项字典，统一拥有快照、payload、LRU、预算与统计；回放计数留在定位流程。无公共 API、锁或任务生命周期变化。新增 7 项公共调试行为测试，重构前后 DebugSession 24/24 通过；Runtime 131、Debugging 10、Architecture 53、内置自动播放/指令分发集成 29 项全部通过。设计取舍、证据与限制见 [p6a-engine-responsibilities.md](p6a-engine-responsibilities.md)。下一阶段 P6b：内容会话发布/重载协调职责评估；P6 尚未整体完成，P7/P8 仍 planned。
 

@@ -15,9 +15,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     private GalProject? _project;
     private readonly ProjectContentBaseline _savedContent = new();
     private byte[] BaselineBytes { get => _savedContent.Bytes; set => _savedContent.Set(value); }
-    private byte[] _settingsBaseline = [];
-    private Dictionary<string, byte[]> _externalBaseline = new(ProjectFilePaths.Comparer);
-    private string _contractsFingerprint = "";
+    private ProjectDiskBaseline _diskBaseline = null!;
     private ProjectContentBaseline? _publicationContent;
     private bool _suspended;
     private bool _disposed;
@@ -37,7 +35,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         var saved = JsonSerializer.Deserialize<EditorProjectDocument>(BaselineBytes, JsonOptions)!;
         saved.Files.Add(file.Id, EditorDocumentCloner.Clone(new EditorProjectDocument { Files = new() { [file.Id] = file } }).Files[file.Id]);
         BaselineBytes = Serialize(saved);
-        if (textBytes is not null) _externalBaseline[path] = textBytes.ToArray();
+        if (textBytes is not null) _diskBaseline.Track(path, textBytes);
         Refresh();
         return file;
     }
@@ -56,7 +54,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         _files[file.Id] = file;
         saved.Files[file.Id] = new() { Id = file.Id, Path = path, ManagedContent = true, Data = textBytes.ToArray() };
         BaselineBytes = Serialize(saved);
-        _externalBaseline[path] = textBytes.ToArray();
+        _diskBaseline.Track(path, textBytes);
         Refresh();
         return file;
     }
@@ -119,17 +117,13 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         if (_project is not null) throw new InvalidOperationException("The content session is already open.");
         ProjectFileOperation.CleanupOrphans(project.RootPath);
         _project = project;
-        _externalBaseline = ExternalProjectSnapshotReader.ReadFiles(project.RootPath, []);
-        foreach (var pair in repository.SourceBaseline)
-            if (pair.Value is { } bytes) _externalBaseline[pair.Key] = bytes.ToArray();
-        foreach (var (path, bytes) in _externalBaseline.Where(pair => ExternalProjectSnapshotReader.IsLocalization(pair.Key)))
+        _diskBaseline = new(project.RootPath, repository.SourceBaseline);
+        foreach (var (path, bytes) in _diskBaseline.LocalizationFiles)
         {
             var file = new EditorFileDocument { Path = path, ManagedContent = true, Data = bytes.ToArray() };
             _files.Add(file.Id, file);
         }
-        _contractsFingerprint = ExternalProjectSnapshotReader.ContractsFingerprint(project.RootPath);
         BaselineBytes = Serialize(Capture());
-        _settingsBaseline = File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json"));
         var recoveryStore = new ProjectRecoveryStore(project.RootPath, options ?? new());
         _recovery ??= new(document => recoveryStore.Capture(document));
         _closingRegistration = project.RegisterClosingCallback(async () =>
@@ -198,10 +192,10 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         try
         {
             if (_disposed || _suspended || RepairRequired) return ExternalReloadResult.Unavailable;
-            if (snapshot.ContractsFingerprint != _contractsFingerprint)
+            if (snapshot.ContractsFingerprint != _diskBaseline.ContractsFingerprint)
                 throw new EditorOperationException("project.externalContracts", "Project contracts changed. Reopen the project to load the new contract safely.");
             if (!ExternalProjectSnapshotReader.IsCurrent(_project.RootPath, snapshot, _files.Values)) return ExternalReloadResult.Retry;
-            if (ExternalProjectSnapshotReader.Same(snapshot.Files, _externalBaseline)) return ExternalReloadResult.Unchanged;
+            if (_diskBaseline.Matches(snapshot)) return ExternalReloadResult.Unchanged;
             _project.Configurations.Validate(snapshot.Configuration);
             if (IsDirty && !discardLocalChanges) return ExternalReloadResult.LocalChanges;
             if (discardLocalChanges)
@@ -230,8 +224,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                     _files.Add(file.Id, file);
                 }
             documents.Reload(snapshot.Document);
-            _settingsBaseline = snapshot.Files["settings.json"].ToArray();
-            _externalBaseline = snapshot.Files.ToDictionary(pair => pair.Key, pair => pair.Value.ToArray(), ProjectFilePaths.Comparer);
+            _diskBaseline.AcceptReload(snapshot);
             BaselineBytes = Serialize(Capture());
             LastError = null;
             if (ExternalReloaded is not null)
@@ -244,20 +237,6 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         finally { _saveGate.Release(); Refresh(); }
     }
 
-    private void AcceptPublication(ProjectSavePlan plan)
-    {
-        foreach (var pair in plan.Writes)
-            if (pair.Key == "settings.json" || pair.Key.StartsWith("Graph/", StringComparison.Ordinal) || _externalBaseline.ContainsKey(pair.Key) || ExternalProjectSnapshotReader.IsLocalization(pair.Key))
-                _externalBaseline[pair.Key] = pair.Value.ToArray();
-        foreach (var path in plan.DeletedFiles) _externalBaseline.Remove(path);
-        if (plan.Files is { } files)
-        {
-            foreach (var path in files.Writes.Keys.Concat(files.Copies.Keys).Where(path =>
-                path.StartsWith("Graph/", StringComparison.Ordinal) || path.StartsWith("I18n/", StringComparison.Ordinal) || _files.Values.Any(file => file.ManagedContent && file.Path == path)))
-                _externalBaseline[path] = File.ReadAllBytes(new ProjectRawReader(_project!.RootPath).Resolve(path));
-            foreach (var path in files.Deletes) _externalBaseline.Remove(path);
-        }
-    }
     public EditorProjectDocument CaptureSaved()
     {
         var saved = JsonSerializer.Deserialize<EditorProjectDocument>(BaselineBytes, JsonOptions)
@@ -295,8 +274,6 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             var project = _project ?? throw new InvalidOperationException("No project is open.");
             ProjectSavePlan plan;
             byte[] capturedContent;
-            byte[] settings;
-            var settingsPath = Path.Combine(project.RootPath, "settings.json");
             try
             {
                 var snapshot = Capture();
@@ -304,12 +281,11 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                 capturedContent = Serialize(snapshot);
                 _publicationContent = new();
                 _publicationContent.Set(capturedContent);
-                if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
-                    throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor. Reload before saving.");
+                _diskBaseline.CheckSettings("Project settings changed outside the editor. Reload before saving.");
                 var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
                     snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
                 project.Configurations.Validate(snapshot.Configuration);
-                settings = JsonSerializer.SerializeToUtf8Bytes(snapshot.Configuration, JsonOptions);
+                var settings = JsonSerializer.SerializeToUtf8Bytes(snapshot.Configuration, JsonOptions);
                 var writes = new Dictionary<string, byte[]>(content.Writes)
                 {
                     ["settings.json"] = settings,
@@ -323,13 +299,11 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
             await Task.Run(() =>
             {
                 CheckTrackedFiles();
-                if (!File.ReadAllBytes(settingsPath).AsSpan().SequenceEqual(_settingsBaseline))
-                    throw new EditorOperationException("project.externalSettings", "Project settings changed before publication.");
+                _diskBaseline.CheckSettings("Project settings changed before publication.");
                 repository.ApplySave(project.RootPath, plan, cancellationToken);
             }, cancellationToken);
-            _settingsBaseline = settings;
             BaselineBytes = capturedContent;
-            AcceptPublication(plan);
+            _diskBaseline.AcceptPublication(plan, _files.Values);
             LastError = null;
             Refresh();
         }
@@ -452,7 +426,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                     {
                         var restore = PrepareAuthorPlan(project, saved, checkSettingsBaseline: false);
                         repository.ApplySave(project.RootPath, restore);
-                        _settingsBaseline = restore.Writes["settings.json"];
+                        _diskBaseline.AcceptSettings(restore.Writes["settings.json"]);
                     }
                     catch (Exception compensation)
                     {
@@ -462,8 +436,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
                     throw;
                 }
                 BaselineBytes = Serialize(nextSaved);
-                _settingsBaseline = plan.Writes["settings.json"];
-                AcceptPublication(plan);
+                _diskBaseline.AcceptPublication(plan, _files.Values);
                 LastError = null;
             }
             Action publish = Publish;
@@ -487,8 +460,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     {
         project.Configurations.Validate(snapshot.Configuration);
         if (checkSettingsBaseline) CheckTrackedFiles();
-        if (checkSettingsBaseline && !File.ReadAllBytes(Path.Combine(project.RootPath, "settings.json")).AsSpan().SequenceEqual(_settingsBaseline))
-            throw new EditorOperationException("project.externalSettings", "Project settings changed outside the editor.");
+        if (checkSettingsBaseline) _diskBaseline.CheckSettings("Project settings changed outside the editor.");
         _ = Serialize(snapshot);
         var content = repository.PrepareSave(project.RootPath, snapshot.Graph,
             snapshot.GroupEntries.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<EditorEntryData>)pair.Value));
