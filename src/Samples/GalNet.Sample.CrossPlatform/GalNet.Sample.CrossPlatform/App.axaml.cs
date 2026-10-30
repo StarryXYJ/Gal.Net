@@ -9,6 +9,7 @@ using GalNet.Sample.CrossPlatform.Views;
 using GalNet.Avalonia.GameHost;
 using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Storage.FileSystem;
+using GalNet.Game.Controls.Windowing;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System.Globalization;
@@ -35,6 +36,7 @@ public partial class App : Application, IAsyncDisposable
     private Task? _shutdown;
     private bool _platformActive = true;
     private bool _audioAvailable = true;
+    private DesktopWindowPlacement? _windowPlacement;
 #if GALNET_GAME_DEBUG
     private DebugToolsOverlay? _debugSurface;
     public static DebugInvitation? DebugInvitation { get; set; }
@@ -143,6 +145,15 @@ public partial class App : Application, IAsyncDisposable
                 if (_stopping || _player is not null) return;
                 generation = ++_generation;
                 var paths = await PrepareLaunchAsync(_lifetime.Token);
+                if (_window is not null && _windowPlacement is null)
+                {
+                    var placementPath = Path.Combine(paths.ProfileDirectory, "window-placement.json");
+                    _windowPlacement = new DesktopWindowPlacement(_window, DesktopWindowPlacement.ReadFile(placementPath), placement =>
+                    {
+                        try { DesktopWindowPlacement.WriteFile(placementPath, placement); }
+                        catch (Exception error) { Log.Warning(error, "Could not save desktop window placement"); }
+                    });
+                }
                 Directory.CreateDirectory(Path.Combine(paths.ProfileDirectory, "logs"));
                 if (_logger is null)
                 {

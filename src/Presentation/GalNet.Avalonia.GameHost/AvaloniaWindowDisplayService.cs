@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using GalNet.Game.Controls.Windowing;
 
 namespace GalNet.Avalonia.GameHost;
 
@@ -39,7 +40,7 @@ public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDispo
         if (mode == PlayerDisplayMode.BorderlessFullscreen && Mode == PlayerDisplayMode.Window)
         {
             _windowedState = _window.WindowState;
-            _windowedSize = _window.ClientSize;
+            _windowedSize = DesktopWindowPlacement.GetNormalSize(_window) ?? _window.ClientSize;
             _windowedPosition = _window.Position;
         }
         _window.WindowState = mode == PlayerDisplayMode.Window ? WindowState.Normal : WindowState.FullScreen;
@@ -75,4 +76,12 @@ public sealed class AvaloniaWindowDisplayService : IPlayerDisplayService, IDispo
         if (e.Property == Window.WindowStateProperty) Changed?.Invoke();
     }
     public void Dispose() => Bind(null);
+
+    internal bool RestoreWindowPlacement(PlayerWindowSize fallback)
+    {
+        if (_window is null || !DesktopWindowPlacement.RestoreDisplayPreferences(_window, new Size(fallback.Width, fallback.Height))) return false;
+        WindowSize = new PlayerWindowSize((int)Math.Round(_window.Width), (int)Math.Round(_window.Height));
+        Changed?.Invoke();
+        return true;
+    }
 }

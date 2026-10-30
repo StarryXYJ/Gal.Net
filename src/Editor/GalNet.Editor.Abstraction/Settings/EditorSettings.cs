@@ -10,6 +10,9 @@ namespace GalNet.Editor.Abstraction.Settings;
 /// </summary>
 public sealed class EditorSettings
 {
+    public double? WindowWidth { get; set; }
+    public double? WindowHeight { get; set; }
+    public bool WindowMaximized { get; set; }
 
     /// <summary>编辑器 UI 语言</summary>
     public I18nLocale UiLocale { get; set; } = I18nLocale.ZhCn;

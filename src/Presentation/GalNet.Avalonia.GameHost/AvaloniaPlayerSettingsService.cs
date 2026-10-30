@@ -170,7 +170,8 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
             size = _windowSize.Choices.FirstOrDefault(choice => choice.Id == sizeValue.AsString())?.Value ?? size;
         // Restore remembered window dimensions before entering fullscreen; no preference writes.
         await _display.ApplyModeAsync(PlayerDisplayMode.Window, cancellationToken);
-        await _display.ApplyWindowSizeAsync(size, cancellationToken);
+        if (_display is not AvaloniaWindowDisplayService desktop || !desktop.RestoreWindowPlacement(size))
+            await _display.ApplyWindowSizeAsync(size, cancellationToken);
         await _display.ApplyModeAsync(mode, cancellationToken);
         OnDisplayChanged();
     }

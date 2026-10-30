@@ -3,6 +3,7 @@ using Avalonia.Controls.Notifications;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Services;
 using GalNet.Editor.ViewModels;
+using GalNet.Game.Controls.Windowing;
 using Serilog;
 using Ursa.Controls;
 
@@ -17,9 +18,20 @@ public partial class MainWindow : UrsaWindow
     private bool _closeApproved;
     private bool _closing;
 
-    public MainWindow(MainWindowViewModel viewModel, IEditorViewFactory viewFactory, IProjectService projects)
+    public MainWindow(MainWindowViewModel viewModel, IEditorViewFactory viewFactory, IProjectService projects, IEditorSettingsService settingsService)
     {
         InitializeComponent();
+        var settings = settingsService.GetSettings();
+        _ = new DesktopWindowPlacement(this,
+            settings.WindowWidth is { } width && settings.WindowHeight is { } height
+                ? new WindowPlacement(width, height, settings.WindowMaximized) : null,
+            placement =>
+            {
+                settings.WindowWidth = placement.Width;
+                settings.WindowHeight = placement.Height;
+                settings.WindowMaximized = placement.Maximized;
+                settingsService.SaveSettings();
+            });
         DataContext = viewModel;
         _navigation = viewModel.Navigation;
         _viewFactory = viewFactory;
@@ -74,9 +86,6 @@ public partial class MainWindow : UrsaWindow
 
     private void OnCurrentPageChanged(object? page)
     {
-        if (page is EditorPageViewModel)
-            WindowState = WindowState.Maximized;
-
         if (page == null)
         {
             PageHost.Content = null;
