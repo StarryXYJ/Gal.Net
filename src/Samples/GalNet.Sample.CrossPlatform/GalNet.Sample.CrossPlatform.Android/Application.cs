@@ -2,6 +2,8 @@
 using Android.Runtime;
 using Avalonia;
 using Avalonia.Android;
+using GalNet.Avalonia.Themes;
+using GalNet.Sample.Player;
 
 namespace GalNet.Sample.CrossPlatform.Android
 {
@@ -14,8 +16,17 @@ namespace GalNet.Sample.CrossPlatform.Android
 
         protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
         {
+            var privateRoot = FilesDir!.AbsolutePath;
+            App.PrepareLaunchAsync = async token =>
+            {
+                await using var package = Assets!.Open("game.galpak");
+                var content = await BundledGameInstaller.InstallAsync(package, Path.Combine(privateRoot, "content"), token);
+                var profile = SamplePlayerPaths.GetProfileDirectory(content, Path.Combine(privateRoot, "profiles"));
+                return new PlayerLaunchPaths(content, profile, Path.Combine(profile, "screenshots"));
+            };
             return base.CustomizeAppBuilder(builder)
-            .WithInterFont();
+            .WithInterFont()
+            .With(GameTypography.CreateFontManagerOptions("fonts:Inter#Inter"));
         }
     }
 }

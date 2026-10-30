@@ -20,6 +20,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../GalNet.Sample.Player/GalNet.Sample.Player.csproj" />
     <ProjectReference Include="../../Shared/GalNet.Debugging/GalNet.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true'" />
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
     <ProjectReference Include="../../Shared/GalNet.GameHost/GalNet.GameHost.csproj" />
@@ -27,7 +28,6 @@
     <ProjectReference Include="..\..\Presentation\GalNet.Avalonia.Themes\GalNet.Avalonia.Themes.csproj" />
     <Folder Include="Models\" />
     <AvaloniaResource Include="Assets\**" />
-    <EmbeddedResource Include="Localization\*.json" />
     <Folder Include="ViewModels\" />
     <Compile Update="Views\LanguageSelectionView.axaml.cs">
       <DependentUpon>LanguageSelectionView.axaml</DependentUpon>

@@ -236,7 +236,7 @@ public sealed class SampleLocalizationTests
         {
             BasePath = "Localization",
             UseEmbeddedResources = true,
-            Assembly = typeof(App).Assembly
+            Assembly = typeof(GalNet.Sample.Player.SamplePlayerServices).Assembly
         });
         var culture = new CultureService();
         culture.RegisterProvider(provider);
@@ -321,7 +321,7 @@ public sealed class SampleLocalizationTests
         {
             BasePath = "Localization",
             UseEmbeddedResources = true,
-            Assembly = typeof(App).Assembly
+            Assembly = typeof(GalNet.Sample.Player.SamplePlayerServices).Assembly
         });
 
         var cultureService = new CultureService();

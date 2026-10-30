@@ -5,9 +5,9 @@ using GalNet.Presentation.Abstractions.Execution;
 using GalNet.Project.Contracts;
 using GalNet.Runtime.Logging;
 
-namespace GalNet.Sample.Avalonia.Presentation;
+namespace GalNet.Sample.Player.Presentation;
 
-/// <summary>A single-platform implementation may borrow the concrete GamePage directly.</summary>
+/// <summary>The shared Sample implementation borrows GamePage; its platform supplies the output directory.</summary>
 public sealed class SampleScreenshotModule : PrimitiveModule
 {
     private readonly PrimitiveTaskScope _scope;

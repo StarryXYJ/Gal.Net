@@ -14,7 +14,7 @@
         "type": "Project",
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
+          "GalNet.Core": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },

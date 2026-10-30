@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GalNet.Sample.Avalonia.Views;
+namespace GalNet.Sample.Player.Views;
 
 public partial class LanguageSelectionView : UserControl
 {

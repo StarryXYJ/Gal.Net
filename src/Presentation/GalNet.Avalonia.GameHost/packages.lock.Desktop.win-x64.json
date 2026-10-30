@@ -126,16 +126,16 @@
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.avalonia.controls": {
         "type": "Project",
         "dependencies": {
           "Avalonia": "[12.0.5, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {
@@ -143,13 +143,13 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "CommunityToolkit.Mvvm": "[8.4.1, )",
-          "GalNet.Assets": "[0.1.0-dev.12, )",
-          "GalNet.Avalonia.Controls": "[0.1.0-dev.12, )",
-          "GalNet.Avalonia.Rendering": "[0.1.0-dev.12, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.Media.LibVlc": "[0.1.0-dev.12, )",
-          "GalNet.Presentation.Abstractions": "[0.1.0-dev.12, )",
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Avalonia.Controls": "[1.0.0, )",
+          "GalNet.Avalonia.Rendering": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Media.LibVlc": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
           "LibVLCSharp.Avalonia": "[3.10.0, )",
@@ -162,14 +162,14 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "Avalonia.Skia": "[12.0.5, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.contracts.builtins": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.core": {
@@ -178,16 +178,16 @@
       "galnet.gamehost": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.Presentation.Abstractions": "[0.1.0-dev.12, )",
-          "GalNet.Runtime": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "galnet.input.sdl3": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Presentation.Abstractions": "[0.1.0-dev.12, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "SDL3-CS.Linux": "[3.4.18.1, )",
           "SDL3-CS.MacOS": "[3.4.18.1, )",
           "SDL3-CS.Windows": "[3.4.18.1, )"
@@ -196,60 +196,60 @@
       "galnet.media.audio": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.media.libvlc": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Assets": "[0.1.0-dev.12, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.Presentation.Abstractions": "[0.1.0-dev.12, )",
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "LibVLCSharp": "[3.10.0, )"
         }
       },
       "galnet.media.miniaudio": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.Media.Audio": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Media.Audio": "[1.0.0, )"
         }
       },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.primitives.builtins": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.Presentation.Abstractions": "[0.1.0-dev.12, )",
-          "GalNet.Runtime": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "galnet.runtime": {
         "type": "Project",
         "dependencies": {
           "CoreCLR-NCalc": "[3.1.253, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
+          "GalNet.Core": "[1.0.0, )",
           "Serilog": "[4.2.0, )"
         }
       },
       "galnet.storage.filesystem": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Assets": "[0.1.0-dev.12, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.GameHost": "[0.1.0-dev.12, )",
-          "GalNet.Runtime": "[0.1.0-dev.12, )"
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )"
         }
       },
       "Avalonia": {

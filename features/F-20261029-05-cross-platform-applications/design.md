@@ -165,6 +165,10 @@ SDL 仅负责设备输入，不接管 Avalonia 窗口、渲染和主循环。初
 
 ## 8. 五平台模板
 
+P6 当前实现（2026-10-30）：新增源码共享库 `GalNet.Sample.Player`，把原 Sample 的语言选择、本地化资源、主视图、截图实现和公共注册/执行组合迁入；原 Sample 保留桌面入口与调试扩展，并复用该库。CrossPlatform App 组合 `SamplePlayerSession`，由 UI 线程拥有会话范围、取消初始化并按顺序异步释放；原生窗口行为归宿主，Activity 重挂载移动现有视图，不再打开第二套会话。跨平台重启替换 scope，继续使用项目身份定位的 profile。
+
+Android Asset / iOS Bundle 通过 `BundledGameInstaller` 将非可寻址 galpak 流写到临时文件、计算 SHA256 并交给正式安装器校验，按归档 hash 分版缓存；相同 projectId 的内容更新继续使用相同 profile。Android/iOS 明确排除传递来的桌面 SDL runtime/build 资产，移动输入后端另接。Android Release 使用 MonoVM + RunAOTCompilation，已完成两种 ABI 的实际发布；iOS 只有代码接入，后续验证。当前仓库工程集中复用已完成，独立模板生成和完整移动运行仍待后续，不以这些切片宣称 P6/P7 全部完成。
+
 2026-10-30 用户修订：真实手柄、macOS、iOS 验收后移，共享宿主和 Android 可先推进，不再等待全部 P0/P5 平台证据。NativeAOT 不作为移动模板前提；优先沿用 .NET Android/iOS 支持的 Mono 运行时和 Mono AOT，在对应平台后续验证签名、裁剪、静态原生绑定和媒体回调。Mono AOT 与 NativeAOT 的开关和运行时不同，不能用桌面 PublishAot 自检替代移动发布，也不能靠全局关闭诊断声称兼容。
 
 2026-10-29 执行顺序修订：`src/Samples/GalNet.Sample.CrossPlatform/` 已由用户初始化，包含共享、Desktop、Android、iOS 和 Browser 工程。目前共享 App 为模板页面启动逻辑，尚未接入游戏会话。复用此骨架，不另建同用途项目。Browser 保留，但不纳入本 feature 的支持范围。

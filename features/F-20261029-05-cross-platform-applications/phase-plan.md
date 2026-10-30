@@ -3,7 +3,7 @@
 - 更新：2026-10-30；整体 in-progress。
 - 用户最新修订：手柄、macOS、iOS 验收后移，不作为 Windows/Linux、P6 共享宿主和 Android 的进入门禁；相关未验收项保留。移动允许 Mono AOT，NativeAOT 不作硬前置。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：P6 共享宿主集中接入，先 Desktop/Android；Linux 原生宿主 build-compose、仓库外宿主及两种源码合包的 WSLg 启动退出已总结。P1 原生 Editor 导出和完整媒体验收继续保留，不阻挡可独立实现的共享宿主。
+- 下一段：P6 独立模板生成和 Android 可运行交付，再推进 P7 媒体/生命周期/设备运行；共享玩家集中接入、Windows/WSLg 启动退出和 Android Mono AOT 发布已总结。P1 原生 Editor 导出和完整桌面媒体验收继续保留。
 
 ## 阶段状态与依赖
 
@@ -15,7 +15,7 @@
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
 | P4 | in-progress | macOS 归档/签名延期；Windows/Linux 原生宿主合包和明确协议的仓库外工程已验证，其他定制工程不作通用支持承诺 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
-| P6 | planned | 集中接入 CrossPlatform，先共享宿主/Desktop/Android；不等待延期的平台验收 |
+| P6 | in-progress | 共享玩家/平台内容入口与 Android Mono AOT 发布已总结；独立模板生成、Android 实际会话及完整宿主适配待补 |
 | P7 | planned | 移动媒体、生命周期和真机；依赖 P6，复用 P5 动作层 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
 
@@ -60,12 +60,11 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **目标**：桌面功能稳定后，将 Sample 最终基线集中接入用户已初始化的跨平台工程，从生命周期中提取真实可复用部分，提供可生成和构建的 Desktop/Android/iOS 工程。
 - **前置条件**：复用已验证桌面功能，解决当前共享宿主/Desktop/Android 切片的实际构建依赖；按 2026-10-30 用户决定不等待手柄、macOS、iOS 验收。本阶段前不维护第二份完整 Sample 内容。
 - **涉及模块**：Sample 组合根、Avalonia.GameHost、显示/生命周期/内容路径边界、模板资源和平台工程。
-- **任务**：
-  - 复用 `src/Samples/GalNet.Sample.CrossPlatform/` 已有骨架，集中接入页面、资源、本地化与组合根；优先引用公共库，记录平台差异，避免长期复制相同业务代码。保留 Browser 工程，但不扩大本 feature 的验收平台。
-  - 提取共享会话创建/关闭与主视图组合；桌面 lifetime、窗口关闭确认保留在 Desktop。
-  - 会话重建替代移动端新进程重启，按能力提供显示/退出/返回行为。
-  - 平台提供内容安装入口、可写 profile/cache/log；处理版本变化和媒体租约，不假定 APK 内路径可当普通文件。
-  - 生成具有独立 package/bundle ID 和最小内容的模板；输出工程不依赖源码仓库的隐式 ProjectReference。
+- **剩余任务**：
+  - 生成具有独立 package/bundle ID 和最小内容的模板；当前仓库内工程仍引用 Sample.Player/Contracts，生成结果必须能脱离仓库独立还原和构建。
+  - Android 在设备/模拟器实际验证资产安装、主视图和会话；按能力适配退出/返回/显示，不把 Debug/Mono AOT 编译成功写成可完整游玩。
+  - 衔接 P7 原生媒体和生命周期；开发工具仍由原 Sample 桌面宿主保留，CrossPlatform 的可选桌面开发功能单独核对。
+  - 根据最终分发方式固化 SDK/profile/版本/契约来源及模板操作文档；macOS/iOS 验收继续延期，Browser 不扩展。
 - **测试**：现有桌面正常退出、设置、清空玩家状态和会话重建回归；干净环境生成模板并恢复构建；三类宿主会话初始化与内容加载。
 - **文档**：宿主职责、平台能力与模板创建/构建操作；不把骨架可编译写成五平台完整支持。
 - **风险**：为复用引入过宽抽象、第三方桌面控件阻碍移动；按真实调用拆分，不大规模机械重命名。

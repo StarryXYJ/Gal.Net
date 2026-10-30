@@ -147,16 +147,16 @@
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.avalonia.controls": {
         "type": "Project",
         "dependencies": {
           "Avalonia": "[12.0.5, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.avalonia.rendering": {
@@ -164,14 +164,14 @@
         "dependencies": {
           "Avalonia": "[12.0.5, )",
           "Avalonia.Skia": "[12.0.5, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.contracts.builtins": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.core": {
@@ -180,18 +180,18 @@
       "galnet.media.libvlc": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Assets": "[0.1.0-dev.12, )",
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )",
-          "GalNet.Presentation.Abstractions": "[0.1.0-dev.12, )",
+          "GalNet.Assets": "[1.0.0, )",
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "LibVLCSharp": "[3.10.0, )"
         }
       },
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "Avalonia.Skia": {

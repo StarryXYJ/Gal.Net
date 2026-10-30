@@ -11,14 +11,14 @@
       "galnet.assets": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.contracts.builtins": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Core": "[1.0.0, )"
         }
       },
       "galnet.core": {
@@ -27,8 +27,8 @@
       "galnet.presentation.abstractions": {
         "type": "Project",
         "dependencies": {
-          "GalNet.Contracts.Builtins": "[0.1.0-dev.12, )",
-          "GalNet.Core": "[0.1.0-dev.12, )"
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )"
         }
       }
     },

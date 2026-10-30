@@ -7,6 +7,8 @@
 
 后续范围修订（2026-10-30）：用户已明确手柄、macOS、iOS 验收移到后续，并允许 Mono AOT。上述整体交付结论保留为本次核查的历史结论，不作为当前共享宿主/Desktop/Android 实现的进入门禁；最新依赖见 phase-plan.md。
 
+后续实现核查（P6a）：当前切片为 **pass-with-follow-up**，允许继续独立模板及 Android 完整运行实现。共享代码集中迁入 Sample.Player，原/新桌面宿主实际运行、移动资产流安装/取消与会话清理回归、Android Mono AOT 发布均有证据。全量冻结源码 CI 2,206 通过、2 个已知 Editor 失败，真实当前 HEAD Debug Integration 191 通过。此为实现自审和验收进展，P8 独立审核、设备/完整媒体及延期平台不由此视为完成；最新覆盖及证据见 progress-summary.md。
+
 ## 已完成的子范围
 
 | 领域 | 当前结果 | 验证边界 |

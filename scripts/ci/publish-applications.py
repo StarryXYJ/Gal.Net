@@ -16,6 +16,7 @@ PROJECTS = {
     "Editor": "src/Editor/GalNet.Editor/GalNet.Editor.csproj",
     "CLI": "src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj",
     "Sample": "src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj",
+    "CrossPlatform": "src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj",
 }
 TARGETS = {
     "win-x64": ("galnet_miniaudio.dll", "SDL3.dll", "coreclr.dll", ".exe"),
@@ -103,7 +104,7 @@ def validate_publish(root, role, target):
     for filename in contract_names:
         if not (contracts / filename).is_file():
             raise FileNotFoundError(f"Incomplete contracts in {role}: {filename}")
-    if kind == "Sample":
+    if kind in ("Sample", "CrossPlatform"):
         notices = root / "ThirdParty/SDL3"
         for filename in ("native-runtime.json", "SDL-LICENSE.txt", "SDL3-CS-LICENSE.txt"):
             if not (notices / filename).is_file():
@@ -170,7 +171,7 @@ def main():
             native = install / TARGETS[args.target][0]
         check_binary(native, args.target)
         report["nativeAudio"] = {"path": str(native), "sha256": sha256(native)}
-        roles = [("Editor", None), ("CLI", None)] + [("Sample-" + flavor, flavor) for flavor in dict.fromkeys(args.flavors)]
+        roles = [("Editor", None), ("CLI", None)] + [("Sample-" + flavor, flavor) for flavor in dict.fromkeys(args.flavors)] + [("CrossPlatform", None)]
         for role, flavor in roles:
             kind = role.split("-")[0]
             project = repo / PROJECTS[kind]

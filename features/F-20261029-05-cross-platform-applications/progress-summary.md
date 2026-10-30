@@ -22,7 +22,7 @@
 - 新 Linux compose CLI 候选：`out/linux-compose-cli-dev10/`；旧 dev.9 应用包未重写，原包中的 CLI 不自动获得新能力。
 - `build-compose` 位于当前源码 CLI 构建；未重新封存整套 Editor/CLI 发行包，旧候选不自动获得该入口。
 - 精简验证与清理清单：`out/cross-platform-validation/20261029/`、`out/cross-platform-validation/20261029-compose/`；两次清理约 21.1 GiB、2.9 GiB，保留用户存档、手测安装和最新候选。
-- 以上均为本地候选，不宣称精确 tag 的公开发行。操作见 [发行打包说明](../../docs/manual/release-packaging.md)，媒体边界见 [跨平台后端说明](../../docs/manual/cross-platform-backends.md)。
+- 以上均为本地候选，不宣称精确 tag 的公开发行。操作见 [发行打包说明](../../docs/manual/publishing/engine-release.md)，媒体边界见 [跨平台后端说明](../../docs/manual/extensions/media-and-platform-backends.md)。
 
 ## P0 — SDL3 共存探针（Windows/WSLg 切片）
 
@@ -36,7 +36,7 @@
 
 最终 Windows/WSLg 各 3 次 × 40 项正式后端/定时器检查与 exit 0，另各 1 次缺库降级通过；包括真实焦点切换、热插拔、按住时断连、错误线程、共享租约、保留外部 events 引用与无关事件。完整 Presentation 313/313、相关输入 47/47、架构 53/53、发行合包 33/33 通过。五个本地 NuGet 候选完成实际构建，四类仓库外消费者编译运行，SDL native/清单及两份许可均传递到 Desktop/Avalonia 消费者；源码合包与维护者封装将通知放入 docs/ThirdParty/SDL3。
 
-证据：`out/cross-platform-validation/20261030-sdl3/`；[正式探针入口](probes/sdl3-host/README.md)、[当前输入规范](../../docs/spec/control.md)、[部署说明](../../docs/manual/release-packaging.md)。Player/Developer 普通、Windows R2R 与 Linux Desktop 锁图已更新；本次 NuGet 是验证用本地候选，旧 dev.9 应用包、dev.10 CLI 和用户手测安装未更新。真实手柄、macOS、原生 Linux 桌面、最终应用发行矩阵与移动初始化仍待验收，P5 整体保持 in-progress。
+证据：`out/cross-platform-validation/20261030-sdl3/`；[正式探针入口](probes/sdl3-host/README.md)、[当前输入规范](../../docs/spec/presentation/game-view.md)、[部署说明](../../docs/manual/publishing/engine-release.md)。Player/Developer 普通、Windows R2R 与 Linux Desktop 锁图已更新；本次 NuGet 是验证用本地候选，旧 dev.9 应用包、dev.10 CLI 和用户手测安装未更新。真实手柄、macOS、原生 Linux 桌面、最终应用发行矩阵与移动初始化仍待验收，P5 整体保持 in-progress。
 
 ## P4/P5 — 应用发布矩阵与 Linux SDK 宿主
 
@@ -57,3 +57,15 @@ P1 原生 Editor UI 两种导出、完整 Linux 媒体/Gallery/调试及原生�
 三个归档均核对全部文件清单/hash、入口执行位及三份契约字节。两个 Sample 重新解包到含空格目录，从其他工作目录启动，确认包内 CoreCLR/VLC/SDL 加载、会话就绪及退出确认后 exit 0。Windows/Linux 发布保护测试各 4/4 通过。新增[可复现源码探针](probes/source-compose/README.md)。
 
 证据：`out/cross-platform-validation/20261030-source-compose/`。媒体来自本设备已有 Ubuntu 26.04 开发依赖，逐项复核保留的 SHA256 和版权文件；没有冒充 Ubuntu 24.04 最低基线或经过公开分发审查的新候选，也没有更新旧 dev.9/dev.10。保持跨宿主源码上下文的严格契约边界；完整媒体/原生桌面和统一最终发行另行验收。
+
+本切片提交：`3078ce0b`。
+
+## P6a — 共享玩家集中接入与 Mono AOT 发布
+
+新增 `GalNet.Sample.Player` 源码库，迁入主视图、语言选择、两种 UI 语言资源、截图 primitive 和公共注册/执行组合。原 Sample 保留桌面入口及调试工具；CrossPlatform 共享 App 复用同一库，具有 UI 线程会话范围、启动取消/异步清理、Activity 视图重挂载和 scope 重建入口。平台 galpak 流经正式安装器校验到 SHA256 分版缓存，profile 继续按 projectId 定位；Android/iOS 设置沙盒路径，不直接遍历 APK/bundle。
+
+验证：原 Sample 与 CrossPlatform Windows 自包含宿主 2/2 原生启动、包内 CoreCLR/VLC/SDL、会话、进度落盘及确认退出通过；新 CrossPlatform Linux 宿主经过原生 SDK 发布、严格 build-compose、973 文件 hash 检查和 WSLg 正常启动退出。Android Debug APK 和实际完整 galpak 资产打包通过；Release MonoVM + RunAOTCompilation 在 ARM64/x86_64 各编译 116 个程序集，最终 APK 232 个 AOT 条目，嵌入内容与导出归档逐字节一致，无误入的桌面 SDL 库。未关闭链接/AOT 诊断。
+
+冻结本 feature 源码后的标准 Release CI：构建/locked restore/发布保护通过，2,206 项测试通过，仅保留 P1 已记录的 2 项 Editor 既有失败；其中 Integration 186/186。并行 PAK/Core 两次提交进入真实 HEAD 后另跑 Debug Integration，191/191 通过。应用矩阵增加新 CrossPlatform 桌面宿主及源路径触发，真实 Win/Linux 输出通过相同 SDK 载荷检查；未宣称远端五应用/四 RID 新矩阵已全部执行。
+
+证据：`out/cross-platform-validation/20261030-shared-player/`；最终本地 Android APK：`out/cross-platform-p6-android-final/org.galnet.sample-Signed.apk`。[宿主操作与边界](../../src/Samples/GalNet.Sample.CrossPlatform/README.md)。macOS/iOS/手柄验收继续延期；iOS 只有代码接入。Android 还需原生音视频/Gallery、系统生命周期、返回/触摸/显示及设备运行，模板还需脱离仓库独立生成/构建。P6/P7 未整体完成，旧 dev.9/dev.10 未更新。

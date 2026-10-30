@@ -4,6 +4,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.iOS;
 using Avalonia.Media;
+using GalNet.Avalonia.Themes;
+using GalNet.Sample.Player;
 
 namespace GalNet.Sample.CrossPlatform.iOS;
 
@@ -17,7 +19,16 @@ public partial class AppDelegate : AvaloniaAppDelegate<App>
 {
     protected override AppBuilder CustomizeAppBuilder(AppBuilder builder)
     {
+        var privateRoot = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+        App.PrepareLaunchAsync = async token =>
+        {
+            await using var package = File.OpenRead(Path.Combine(NSBundle.MainBundle.BundlePath, "game.galpak"));
+            var content = await BundledGameInstaller.InstallAsync(package, Path.Combine(privateRoot, "content"), token);
+            var profile = SamplePlayerPaths.GetProfileDirectory(content, Path.Combine(privateRoot, "profiles"));
+            return new PlayerLaunchPaths(content, profile, Path.Combine(profile, "screenshots"));
+        };
         return base.CustomizeAppBuilder(builder)
-            .WithInterFont();
+            .WithInterFont()
+            .With(GameTypography.CreateFontManagerOptions("fonts:Inter#Inter"));
     }
 }

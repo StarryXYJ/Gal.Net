@@ -4,22 +4,34 @@
     <TargetFramework>net10.0-android</TargetFramework>
     <SupportedOSPlatformVersion>23</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
-    <ApplicationId>com.CompanyName.GalNet.Sample.CrossPlatform</ApplicationId>
+    <ApplicationId>org.galnet.sample</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <UseMonoRuntime Condition="'$(UseMonoRuntime)' == ''">true</UseMonoRuntime>
+    <PublishAot Condition="'$(PublishAot)' == ''">false</PublishAot>
   </PropertyGroup>
 
   <ItemGroup>
+    <AndroidAsset Include="$(GalNetGamePackage)" Link="game.galpak" Condition="'$(GalNetGamePackage)' != ''" />
     <AndroidResource Include="Icon.png">
       <Link>Resources\drawable\Icon.png</Link>
     </AndroidResource>
   </ItemGroup>
 
+  <Target Name="ValidateBundledGamePackage" BeforeTargets="PrepareForBuild" Condition="'$(GalNetGamePackage)' != ''">
+    <Error Condition="!Exists('$(GalNetGamePackage)')" Text="GalNetGamePackage must point to an exported complete .galpak." />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Avalonia.Android" />
     <PackageReference Include="Xamarin.AndroidX.Core.SplashScreen" />
+    <!-- Android's RID fallback can select glibc Linux native assets. The current
+         SDL adapter is desktop-only; a mobile adapter must deploy Android binaries. -->
+    <PackageReference Include="SDL3-CS.Windows" ExcludeAssets="all" PrivateAssets="all" />
+    <PackageReference Include="SDL3-CS.Linux" ExcludeAssets="all" PrivateAssets="all" />
+    <PackageReference Include="SDL3-CS.MacOS" ExcludeAssets="all" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

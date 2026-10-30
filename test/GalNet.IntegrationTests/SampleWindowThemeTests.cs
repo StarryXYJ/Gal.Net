@@ -11,6 +11,7 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Views;
+using GalNet.Sample.Player.Views;
 using GeneralTest.Integration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -96,7 +97,7 @@ public sealed class SampleWindowThemeTests
                 Assert.That(((ISolidColorBrush)window.FindResource("CaptionButtonClosePointeroverBackground")!).Color, Is.EqualTo(Color.Parse("#C42B1C")));
                 var selection = window.SelectLanguageAsync("zh-CN", CancellationToken.None);
                 window.UpdateLayout();
-                var languageView = window.FindControl<LanguageSelectionView>("LanguageSelection")!;
+                var languageView = window.Player.FindControl<LanguageSelectionView>("LanguageSelection")!;
                 var picker = languageView.FindControl<ComboBox>("LanguagePicker")!;
                 Assert.That(((ISolidColorBrush)picker.Background!).Color,
                     Is.EqualTo(((ISolidColorBrush)languageView.FindResource("GalNet.Brush.Surface")!).Color));
@@ -107,7 +108,7 @@ public sealed class SampleWindowThemeTests
                     Is.EqualTo(((ISolidColorBrush)picker.Background!).Color));
                 Capture(window, "Sample-LanguagePicker");
                 picker.IsDropDownOpen = false;
-                scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
+                scope.ServiceProvider.GetRequiredService<GalNet.Sample.Player.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
                 Assert.That(await selection, Is.EqualTo("zh-CN"));
                 scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("en-US");
                 scope.ServiceProvider.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
@@ -119,8 +120,8 @@ public sealed class SampleWindowThemeTests
                 Capture(window, "Sample-TitleBeforeExit");
                 var confirmation = window.ConfirmExitAsync();
                 Assert.That(window.ConfirmExitAsync(), Is.SameAs(confirmation));
-                var cancel = window.FindControl<Button>("CancelExitButton")!;
-                var content = window.FindControl<Grid>("PlayerContent")!;
+                var cancel = window.Player.FindControl<Button>("CancelExitButton")!;
+                var content = window.Player.FindControl<Grid>("PlayerContent")!;
                 Assert.That(content.IsEnabled, Is.False);
                 Assert.That(cancel.IsFocused, Is.True);
                 window.UpdateLayout();
@@ -139,7 +140,7 @@ public sealed class SampleWindowThemeTests
                 Assert.That(await confirmation, Is.False);
                 Assert.That(content.IsEnabled, Is.True);
                 confirmation = window.ConfirmExitAsync();
-                window.FindControl<Button>("ConfirmExitButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                window.Player.FindControl<Button>("ConfirmExitButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.That(await confirmation, Is.True);
             }
             finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }

@@ -2,6 +2,26 @@
 
 本文件保留详细历史与失败证据；当前结果见[阶段总结](progress-summary.md)，下一步见[剩余计划](phase-plan.md)。
 
+## 2026-10-30：P6a 共享玩家、内容流与 Android Mono AOT
+
+实现：新增 GalNet.Sample.Player，把原 Sample 的语言选择、本地化、主视图、截图模块及公共组合迁入；原 Sample 只保留桌面/调试组合。CrossPlatform 已用共享会话替换 Greeting 页面，支持 desktop/activity/single-view，Activity 重建重挂载原视图；SamplePlayerSession 按 UI 线程拥有 root/scope，取消待选语言的初始化后异步清理，会话可重建。BundledGameInstaller 从平台资产流校验安装，内容按 ZIP SHA256 分版，profile 按 projectId 保持稳定。Android/iOS 配置资产与私有目录，iOS 未构建。
+
+验证与失败修正：
+
+- 初次共享库/宿主构建有两个普通 using 缺失，补齐后通过；聚焦窗口/语言/截图及会话测试 29 项通过。
+- 新增包流测试初次使用默认中文文化却只提供 en-US 文本，导出按正常严格引用检查失败；修正测试输入文化后通过，不放宽导出规则。
+- 完整 Debug Integration 初次 9 失败，均为测试仍从旧 App 程序集读取已迁移的嵌入式 UI 资源；改为实际资源所有者 SamplePlayerServices.Assembly。产品公共注册也只指向该共享程序集，没有恢复第二份资源。真实当前 HEAD（含并行 PAK/Core 提交）重新构建后 191/191 通过。
+- Android 首次 Debug APK 误收 SDL3-CS.Linux 的 glibc native，产生 XA0141；对桌面 SDL 包顶层显式 ExcludeAssets=all，复建及 APK 清单检查确认已排除。lesson 见 agent knowledge 的 Android native 回退索引。
+- Android Release 选择 MonoVM、PublishAot=false、RunAOTCompilation=true，ARM64/x86_64 各 116 个程序集实际 AOT 成功；最终冻结源码重新发布并嵌入完整 galpak，APK 的 assets/game.galpak 与原始导出一致，232 个 AOT native 条目。没有全局压制链接/AOT 诊断。这是本地签名候选和编译证据，不是设备或生产签名通过。
+- 共享库增加后初次标准 Release locked restore 因 NoGameDebugging 锁图未更新而拒绝；显式维护锁图后正常 locked restore/build 通过。Windows R2R、四个 Desktop RID、两种原 Sample flavor 及新宿主图均已维护；macOS 仅还原未运行。
+- 为避开工作区同时进行的 Assets/Core 和正式文档重组，使用 3078ce0b 源快照叠加本 feature 文件做最终 Release CI、Windows 候选和最终 Mono AOT；源码叠加清单/哈希归档。首次 Windows tar 解压漏掉 3 个中文资源，用 Python tarfile 恢复，不删除这些测试资源。一次验证脚本工作目录未切到冻结根，重新从明确 cwd 构建，未将该次产物当作隔离源码验收。
+- 原/新 Windows 自包含宿主 2/2 原生用例通过：不同工作目录、独立 profile、无 SDK 搜索，窗口、会话、私有 CoreCLR/VLC/SDL、退出确认、exit 0 与 launchCount 持久化均核对。
+- Linux 新宿主 raw publish 后首次 build-compose 因缺 Desktop.pubxml 拒绝；子工程 .gitignore 默认忽略 *.pubxml，已显式纳入源文件。补齐后原生 SDK 严格合包、973 文件 hash/权限检查、WSLg 会话及正常退出通过。Windows/Linux 都没有把旧运行包当作新宿主。
+- 冻结源码标准 Release CI：2,206 通过，2 失败；失败仍是 FoundationViewsHaveNoUnlistedLiteralUserInterfaceText 与 GeneratedCheckboxIsCenteredInTheEditorColumnAtWideAndNarrowWidths，和 P1 历史原因/数值一致。Integration 186/186、架构及其他套件通过；不声明全量 CI 全绿。随后兼容当前已合入 PAK/Core 的真实工作树 Debug Integration 191/191。
+- 应用 CI 矩阵纳入新 CrossPlatform 桌面宿主及共享源码触发，真实 Win/Linux raw 输出执行相同 native/SDL/契约检查；Windows 脚本保护 4/4。未重新执行全部远端矩阵，也未声称 macOS 运行成功。
+
+精简证据：out/cross-platform-validation/20261030-shared-player/，包括 CI/TRX、正常/失败日志、native 模块与输出、SDK profile/来源清单、Mono 选项及 APK/内容 hash。最终 APK 在 out/cross-platform-p6-android-final/；旧 dev.9/dev.10 与用户手测安装未改动。P6 继续进行：独立模板生成、Android 实际会话/媒体/生命周期与完整设备运行后续完成；macOS/iOS/手柄验收按用户决定延期，Browser 不扩展。
+
 ## 2026-10-30：验收后移与 Linux 原生源码合包
 
 用户决定手柄、macOS、iOS 验收移到后续，不阻挡共享宿主/Desktop/Android；移动允许 Mono AOT，不强制 NativeAOT。需求、设计与 P6 前置条件已修订，延期不记为通过。

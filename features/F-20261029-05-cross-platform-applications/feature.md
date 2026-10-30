@@ -5,13 +5,13 @@
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
 - 状态：in-progress
-- 当前进度：P1 原生分发 Editor 的无 SDK 导出烟测待补；P2 Windows 布局/严格合包、P3a Windows 媒体切片已验证。P3b 已在 Ubuntu 24.04.3 / WSLg 验证普通及 Developer Sample 窗口、会话和正常退出，修正默认字体依赖；最新 Windows 本地候选为 0.1.0-dev.9，两种部署完整 DesktopSmoke 及 40 次导出通过。Linux 私有媒体闭包与独立 tar.gz 本地候选已生成，公开再分发许可/源码可用性仍待审查；macOS 当前无验证环境，明确保留未验收。跨平台项目仍未同步，结果与限制见 [执行记录](execution.md)及[交接记录](handoff-20261029.md)。
+- 当前进度：P2 已验证；Windows/Linux 的 compose 与原生宿主 build-compose 已闭环。P6 已集中抽取共享 Sample.Player，原 Sample 与 CrossPlatform 共用页面/本地化/执行组合；Windows 两宿主及 WSLg 新宿主正常启动退出通过，Android Debug 与 Release Mono AOT 发布通过。P6 整体仍在进行，独立模板生成、Android 完整媒体/生命周期/设备运行及 P1 原生 Editor 导出待补。手柄、macOS、iOS 验收按用户决定延期；旧 dev.9/dev.10 未更新，详见阶段总结和执行记录。
 
 ## 用户目标与已确认决策
 
 2026-10-30 用户修订：手柄、macOS、iOS 的验收移到后续，不阻挡当前 Windows/Linux、共享宿主和 Android 的推进。保留这些平台的实现与验收待办，不将延期记为通过。NativeAOT 不是模板的硬前置条件；移动平台可采用受支持的 Mono AOT，以实际发布结果验证。此前 P6 对全部桌面/移动探针的硬依赖相应缩小为当前切片需要的证据。
 
-最新增量：正式 SDL3 与四类外部 NuGet 消费者已验证并总结；新增应用发布矩阵，Windows/Linux 原生 SDK 均完成 Editor/CLI/Player/Developer 四种自包含发布，修正 Linux SDK 名称大小写。macOS 两架构仅还原未运行；继续 Linux build-compose、原生 Editor 导出与移动探针。真实手柄、macOS、移动仍未验收，旧 dev.9 应用包与 dev.10 CLI 未重写。
+最新增量：Linux 原生源码合包及仓库外宿主已验证；CrossPlatform 从欢迎页进入共享玩家组合，Android/iOS 提供平台资产流安装及沙盒目录入口。Android Mono AOT 已实际发布两种 ABI，iOS 代码尚未构建；不把 APK 生成或 WSLg 当作移动/原生 Linux 桌面全流程验收。
 
 Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供额外支持 Android、iOS 的 Avalonia 跨平台模板。普通剧情开发者能够在没有 .NET SDK 或原生编译工具的环境中导出内容，使用预编译运行包完成游戏发行。修改应用源码的开发者可指定工程路径和内容包，通过独立工具构建、合并并打包。
 
@@ -61,23 +61,23 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 以下来自源码和现有文档检查，不等同于跨平台实测结果。
 
-跨平台项目骨架已存在：共享 net10.0 项目，以及 Desktop、net10.0-android、net10.0-ios 与 Browser 工程；App 已有 desktop/activity/single-view lifetime 分支，但尚未接入游戏会话。Browser 的存在不扩大本 feature 的五平台验收范围；保留现有工程，不删除、不承诺浏览器媒体/输入支持。此处只确认源码结构，未执行移动工作负载恢复或运行验证。
+跨平台项目包含共享 net10.0、Desktop、net10.0-android、net10.0-ios 与 Browser 工程。P6 已接入共享会话/主视图及 desktop/activity/single-view lifetime；Activity 重建复用当前会话，重启可替换 scope。Browser 保留但不纳入本 feature 的支持范围；Android 有实际构建/Mono AOT 证据，iOS 当前代码未构建或运行。
 
 | 领域 | 现状与缺口 |
 | --- | --- |
-| 桌面发布 | Publish.ps1、WindowsReadyToRun profiles、包名与验收固定 win-x64；需扩展目标矩阵 |
-| Editor 组合包入口 | 固定 powershell.exe 和 Windows 输出；按已确认决策隐藏 |
+| 桌面发布 | Windows 发布及 Linux 本地候选/源码合包已实现；四 RID 应用矩阵配置已建立，macOS 只还原未运行 |
+| Editor 组合包入口 | 已移除用户入口；仅提供 galpak/内容目录，维护者发布工具继续保留 |
 | 音频 | CMake 已有 Linux/macOS 动态库及移动端接入路径；应用构建自动化与实机证据不足 |
-| 视频/Gallery | 只自动分发 Windows VLC 原生载荷；其他平台依赖部署及移动后端需落实 |
-| 手柄 | 当前为 Windows XInput，其他桌面平台禁用；需统一后端 |
+| 视频/Gallery | Windows 工厂/媒体切片和 Linux 私有本地候选已验证；完整 Linux Gallery/预览/调试及移动部署仍待验收 |
+| 手柄 | SDL3 已替换 XInput，Windows/WSLg 自动化及部署通过；真实设备/macOS/移动验收延期 |
 | macOS | 缺完整 .app 封装、内容定位、原生库加载与签名/公证交付流程 |
-| Linux | 缺明确系统/ABI/桌面依赖基线与正式运行包；WSL2/WSLg 可承担早期验证 |
+| Linux | 已有 24.04 本地候选及 26.04 原生 SDK/合包与 WSLg 运行证据；最终基线、完整媒体/原生桌面及公开分发审查待补 |
 | GUI 与调试 | 缺三平台项目创作、窗口/Dock、文件选择、中文 IME、字体、全屏及外部调试完整验收 |
-| CI | backend-portability 主要覆盖资源、音频解码和 CMake；不能证明 Editor/Sample GUI 或发行可用 |
-| 移动宿主 | 当前 Sample 只创建桌面 lifetime 会话，重启与显示设置依赖桌面进程/Window；缺 Android/iOS 平台工程 |
-| 内容与存储 | 默认安装内容读取展开目录；包内 PAK 流能力不代表整个内容加载已支持应用 bundle/APK |
+| CI | 后端与应用发布矩阵分别覆盖基础能力/真实应用发布；GUI/媒体/设备结果单独记录，配置不等于远端执行成功 |
+| 移动宿主 | CrossPlatform 已组合共享会话/视图、Activity 重挂载及 scope 重建；平台生命周期/返回/显示能力完整适配仍在 P7 |
+| 内容与存储 | 平台 galpak 流经校验安装到按 SHA256 分版的沙盒目录，profile 按 projectId 保持稳定；不把 APK 内路径当普通目录 |
 | 移动生命周期 | 音频后端已有暂停/恢复接口，仍需系统音频会话、焦点、中断、路由、前后台和恢复接入 |
-| 移动发布 | 缺完整 AOT/裁剪、签名、原生库部署、GPU/Shader、触摸布局及真机验收 |
+| 移动发布 | Android Debug/Release Mono AOT 构建通过；原生媒体、生产签名、GPU/Shader、触摸/设备运行及 iOS 发布未验收 |
 
 ## 待办清单
 
@@ -89,12 +89,12 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 - [x] 核对两种内容导出的交付完整性和补丁收集行为，完整 v4 归档包含全部剧情，资源补丁显式独立交付。
 - [ ] 接入 Linux/macOS 原生音频构建和媒体依赖部署。
 - [ ] 打通 Editor、Sample 与分发 CLI 的桌面三平台构建发布。
-- [ ] 建设预编译合包与源码构建合包两种工具模式，统一 sh/ps1 参数语义。
-- [ ] 增加严格契约检查、目标检查、失败清理、权限保留与发行清单。
+- [x] 建设 Windows/Linux 预编译合包与源码构建合包两种模式，统一 sh/ps1 参数语义；macOS 单独延期。
+- [x] Windows/Linux 严格契约、目标、失败清理、权限保留与发行清单。
 - [ ] 接入统一手柄接口与 SDL 后端，完成原生依赖部署及设备验证。
 - [ ] 建设三平台 CI、分发验收与 GUI 验收矩阵。
-- [ ] 提前验证 iOS 最小 Avalonia + 会话 + 音频的 AOT 发布闭包。
-- [ ] 桌面功能稳定后，将 Sample 内容集中接入已初始化的 CrossPlatform 工程，优先复用共享会话/页面，适配移动 lifetime、内容入口与沙盒目录，避免长期复制维护。
+- [ ] iOS 最小 Avalonia + 会话 + 音频的 Mono AOT 发布闭包（按用户决定延期）。
+- [x] 集中抽取 Sample 共享页面/资源/组合并接入 CrossPlatform，提供 lifetime、内容流与沙盒目录入口；完整平台运行另验。
 - [ ] 适配移动显示/触摸/返回键、安全区域、横竖屏和系统生命周期。
 - [ ] 完成移动音频、视频与 Gallery 后端及原生打包。
 - [ ] 提供可生成、可独立构建的五平台模板并完成设备验收。
@@ -130,13 +130,13 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 ## 相关资料与既有工作
 
-- [跨平台后端接入](../../docs/manual/cross-platform-backends.md)
-- [发行流程](../../docs/manual/release-packaging.md)
-- [Sample 定制](../../docs/manual/customize-avalonia-sample.md)
-- [音频混音](../../docs/manual/audio-mixing.md)
-- [内容打包](../../docs/manual/content-packaging.md)
-- [架构](../../docs/spec/architecture.md)
-- [文件格式](../../docs/spec/file-formats.md)
+- [跨平台后端接入](../../docs/manual/extensions/media-and-platform-backends.md)
+- [发行流程](../../docs/manual/publishing/engine-release.md)
+- [Sample 定制](../../docs/manual/extensions/customize-sample.md)
+- [音频混音](../../docs/manual/editor/audio.md)
+- [内容打包](../../docs/manual/editor/content-packaging.md)
+- [架构](../../docs/spec/architecture/modules.md)
+- [文件格式](../../docs/spec/content/file-formats.md)
 - [桌面发行布局](../F-20261029-01-desktop-package-layout/feature.md)
 - [内置文档封装](../F-20261029-02-packed-game-documents/feature.md)
 - [新建项目选择 App](../F-20261029-04-new-project-application/feature.md)：应用选择/调试配置需在三平台适配时核对，避免仅识别 Windows EXE。

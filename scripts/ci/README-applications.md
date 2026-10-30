@@ -1,6 +1,6 @@
 # Desktop application publish matrix
 
-`publish-applications.py` builds the real Editor, CLI, Player and Developer applications with the exact SDK in `global.json`. It uses the separate `Desktop/<rid>` restore graph, locked restore followed by `publish --no-restore`, and the ordinary self-contained profile (no AOT, trimming, single file or R2R).
+`publish-applications.py` builds the real Editor, CLI, Player, Developer and CrossPlatform desktop host with the exact SDK in `global.json`. It uses the separate `Desktop/<rid>` restore graph, locked restore followed by `publish --no-restore`, and the ordinary self-contained profile (no AOT, trimming, single file or R2R). Both Sample host families must carry the pinned SDL native payload and notices. Android/iOS builds remain separate from this desktop matrix.
 
 ```sh
 python scripts/ci/publish-applications.py --target linux-x64 --output out/application-publish

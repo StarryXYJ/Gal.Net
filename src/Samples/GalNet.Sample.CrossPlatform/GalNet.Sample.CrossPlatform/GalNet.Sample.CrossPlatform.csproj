@@ -7,6 +7,7 @@
   </PropertyGroup>
   
   <ItemGroup>
+    <ProjectReference Include="../../GalNet.Sample.Player/GalNet.Sample.Player.csproj" />
     <AvaloniaResource Include="Assets\**" />
   </ItemGroup>
 
@@ -19,5 +20,9 @@
       <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
     </PackageReference>
     <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="Irihi.Ursa.Themes.Semi" />
+    <PackageReference Include="Semi.Avalonia" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+    <PackageReference Include="Serilog.Sinks.File" />
   </ItemGroup>
 </Project>
