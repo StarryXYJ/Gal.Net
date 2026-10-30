@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 import platform
 import re
+import shutil
+import subprocess
 from process_steps import run
 
 
@@ -49,7 +51,7 @@ def msbuild_value(value):
 
 def validate_sample_capabilities(root, role, dependencies):
     flavor = role.partition("-")[2]
-    if flavor not in ("Player", "Developer"):
+    if flavor not in ("Player", "Developer", "Bound"):
         raise ValueError(f"Sample publish requires an explicit Player or Developer flavor: {role}")
     enabled = flavor == "Developer"
     names = {name.split("/")[0] for name in dependencies}
@@ -70,18 +72,20 @@ def validate_sample_capabilities(root, role, dependencies):
         missing = sorted(name for name in required_files if not (root / name).is_file())
         if missing:
             raise FileNotFoundError(f"Developer publish is missing debug assemblies: {missing}")
-    return {"flavor": flavor, "gameDebugging": enabled, "launchArguments": enabled,
+    return {"flavor": flavor, "gameDebugging": enabled, "launchArguments": flavor != "Bound",
             "symbolsIncluded": False}
 
 
-def validate_publish(root, role, target):
+def validate_publish(root, role, target, self_contained=True):
     kind = role.split("-")[0]
     assembly = Path(PROJECTS[kind]).stem
     entry = root / (assembly + TARGETS[target][3])
-    for binary in (entry, root / TARGETS[target][2]):
+    for binary in ((entry, root / TARGETS[target][2]) if self_contained else (entry,)):
         if not binary.is_file():
             raise FileNotFoundError(f"Incomplete {role} publish: {binary}")
         check_binary(binary, target)
+    if not self_contained and (root / TARGETS[target][2]).exists():
+        raise ValueError("Framework-dependent publish unexpectedly contains CoreCLR.")
     for suffix in (".dll", ".deps.json", ".runtimeconfig.json"):
         if not (root / (assembly + suffix)).is_file():
             raise FileNotFoundError(f"Missing application payload: {assembly}{suffix}")
@@ -119,10 +123,15 @@ def main():
     parser.add_argument("--repository", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--dotnet", default="dotnet")
     parser.add_argument("--native-audio", type=Path)
+    parser.add_argument("--package-apphosts", action="store_true", help="Also generate apphosts targeting lib/ for release packaging.")
+    parser.add_argument("--deployment", choices=["SelfContained", "FrameworkDependent"], default="SelfContained")
+    parser.add_argument("--bind-game", action="store_true", help="Export GameTestCase and bind the non-debug player to its project identity.")
     parser.add_argument("--version", default="0.0.0-dev.1")
-    parser.add_argument("--flavors", nargs="+", choices=["Player", "Developer"], default=["Player", "Developer"])
+    parser.add_argument("--flavors", nargs="+", choices=["Player", "Developer", "Bound"], default=["Player", "Developer"])
     parser.add_argument("--update-locks", action="store_true", help="Explicit maintainer action; CI always uses locked restores.")
     args = parser.parse_args()
+    if "Bound" in args.flavors and (not args.bind_game or "Player" not in args.flavors):
+        parser.error("Bound publishing requires --bind-game and the Player flavor for the verified contract export.")
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:-(?:dev|preview)\.\d+)?", args.version):
         parser.error("Use a release or numbered dev/preview version.")
     repo, output = args.repository.resolve(), args.output.resolve()
@@ -136,6 +145,8 @@ def main():
     environment = dict(os.environ, DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1",
                        DOTNET_SKIP_FIRST_TIME_EXPERIENCE="1", AVALONIA_TELEMETRY_OPTOUT="1")
     report = {"passed": False, "target": args.target, "version": args.version,
+              "deployment": args.deployment,
+              "sourceCommit": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=repo, text=True).strip(),
               "rawPublishOnly": True, "runtimeTested": False, "physicalControllerTested": False,
               "privateVideoClosureTested": False, "steps": [], "applications": []}
     try:
@@ -166,25 +177,68 @@ def main():
         roles = [("Editor", None), ("CLI", None)] + [
             ("CrossPlatform-" + flavor, flavor) for flavor in dict.fromkeys(args.flavors)]
         for role, flavor in roles:
+            if flavor == "Bound":
+                if not args.bind_game:
+                    raise ValueError("Bound publishes require --bind-game.")
+                source = output / "game-source/GameTestCase"
+                source.mkdir(parents=True)
+                for name in ("Assets", "Graph", "I18n", "settings.json"):
+                    item = repo / "GameTestCase" / name
+                    if item.is_dir():
+                        shutil.copytree(item, source / name)
+                    elif item.is_file():
+                        shutil.copyfile(item, source / name)
+                (source / "Contracts").mkdir()
+                for name in ("GalNet.Core.dll", "GalNet.Contracts.Builtins.dll", "GalNet.Project.Contracts.dll"):
+                    shutil.copyfile(output / "publish/CrossPlatform-Player" / name, source / "Contracts" / name)
+                cli = [args.dotnet, str(output / "publish/CLI/GalNet.Editor.Headless.dll")]
+                run([*cli, "export", str(source), "--output", str(output / "game-package")],
+                    repo, environment, logs / "export-game.log", report["steps"])
+                exported = json.loads((logs / "export-game.log").read_text(encoding="utf-8-sig"))
+                package = Path(exported["data"]["packagePath"]).resolve()
+                if not package.is_relative_to(output / "game-package") or package.suffix != ".galpak":
+                    raise ValueError("Game export escaped its output directory.")
+                report["gamePackage"] = str(package)
+                run([*cli, "galpak", "install", str(package), "--output", str(output / "content")],
+                    repo, environment, logs / "install-game.log", report["steps"])
+                run([*cli, "game", "inspect", str(output / "content")],
+                    repo, environment, logs / "inspect-game.log", report["steps"])
+                inspection = json.loads((logs / "inspect-game.log").read_text(encoding="utf-8-sig"))
+                if not inspection.get("success"):
+                    raise ValueError("GameTestCase inspection failed.")
+                report["boundProjectId"] = inspection["data"]["projectId"]
+                if not re.fullmatch(r"[A-Za-z0-9_-]+", report["boundProjectId"]):
+                    raise ValueError("Invalid bound project identity.")
+                report["content"] = inspection["data"]
             kind = role.split("-")[0]
             project = repo / PROJECTS[kind]
             properties = ["-p:Configuration=Release", "-p:PublishProfile=Desktop",
                           "-p:RuntimeIdentifier=" + args.target, "-p:GalNetDesktopPublishTarget=" + args.target,
                           "-p:GalNetMiniaudioNativePath=" + msbuild_value(native), "-p:GalNetBuildMiniaudio=false",
                           "-p:Version=" + args.version, "-p:ContinuousIntegrationBuild=true",
+                          "-p:SelfContained=" + str(args.deployment == "SelfContained").lower(),
                           "-p:CopyOutputSymbolsToPublishDirectory=false",
                           "-p:UseSharedCompilation=false",
                           "-p:NuGetAudit=false", "-m:1", "-nr:false"]
             if flavor:
                 enabled = "true" if flavor == "Developer" else "false"
-                properties += ["-p:EnableGameDebugging=" + enabled, "-p:EnableLaunchArguments=" + enabled]
+                properties += ["-p:GalNetPlayerMode=" + flavor]
+                if flavor == "Bound":
+                    properties += ["-p:GalNetBoundProjectId=" + report["boundProjectId"],
+                                   "-p:GalNetGamePackage=" + msbuild_value(report["gamePackage"])]
+            if args.package_apphosts:
+                (output / "apphosts").mkdir(exist_ok=True)
+                properties += ["-p:PackageAppHostDestinationPath=" + msbuild_value(
+                    output / "apphosts" / (role + TARGETS[args.target][3]))]
             restore = [args.dotnet, "restore", str(project), *properties]
             restore += ["--force-evaluate", "-p:RestoreLockedMode=false"] if args.update_locks else ["--locked-mode"]
             run(restore, repo, environment, logs / (role + "-restore.log"), report["steps"])
             destination = output / "publish" / role
             run([args.dotnet, "publish", str(project), "-c", "Release", "--no-restore", "-o", str(destination), *properties],
                 repo, environment, logs / (role + "-publish.log"), report["steps"])
-            report["applications"].append(validate_publish(destination, role, args.target))
+            application = validate_publish(destination, role, args.target, args.deployment == "SelfContained")
+            application["boundProjectId"] = report.get("boundProjectId") if flavor == "Bound" else None
+            report["applications"].append(application)
         for filename in ("GalNet.Core.dll", "GalNet.Contracts.Builtins.dll"):
             hashes = {application["contracts"][filename] for application in report["applications"]}
             if len(hashes) != 1:
@@ -193,6 +247,10 @@ def main():
                                     for application in report["applications"] if application.get("flavor")}
         if len(cross_platform_contracts) != 1:
             raise ValueError("Strict project contract bytes differ between CrossPlatform player/developer publishes.")
+        if args.bind_game and "Bound" in args.flavors:
+            for entry in report["content"]["contractFiles"]:
+                if Path(entry["path"]).name != entry["path"] or sha256(output / "publish/CrossPlatform-Bound" / entry["path"]) != entry["sha256"]:
+                    raise ValueError("Exported content/runtime contract identity differs: " + entry["path"])
         report["passed"] = True
     except Exception as error:
         report["error"] = str(error)

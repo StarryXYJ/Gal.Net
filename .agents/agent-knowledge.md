@@ -1,4 +1,7 @@
 # GalNet Agent Knowledge
+- [macOS CI 路径语义](lessons/L-20261030-21-macos-ci-path-semantics.md)：测试 TMPDIR 使用真实路径，保持 no-links；GetRelativePath 的大小写规则包含 macOS。
+- [apt 镜像下载计划](lessons/L-20261030-22-apt-mirror-download-plan.md)：解析 mirror+file 并保留签名索引 hash/size 验证；图形 loader 是宿主前置条件，不能打包 GPU 驱动。
+- [发行内容的契约来源](lessons/L-20261030-20-sample-release-contract-source.md)：Editor 默认项目契约与 Sample 同名契约不同；内容从目标发布载荷导出并严格核对全部契约。CLI 暂存目录名影响 projectId，须保留真实项目名。
 - [Release 构建产物门禁](lessons/L-20261030-19-release-build-only-gate.md)：常规 CI 承担测试；版本 tag release 仅校验精确 tag/master、构建正式版本、验证消费者与 ZIP/载荷、封存上传，不重复跑 `Invoke-CI.ps1 -Stage BuildTest`。
 - [Android 导出契约构建身份](lessons/L-20261030-18-android-export-contract-build-identity.md)：Android preview 的内容导出 Headless 必须与 Android 契约使用同一 Version 和 ContinuousIntegrationBuild；源生成 Contracts.Builtins 即使版本相同也可能字节不同。locked restore 保持提交的双 ABI 图，最终发布才传单 ABI RID。
 - 移动端玩家 UI 方向已延期保存于 [F-20261030-03](../features/F-20261030-03-mobile-player-ui/design.md)：桌面保持原版，仅局部研究对白/底栏跨画布与触屏适配；先确认 Classic 横屏对照稿再实施。本轮 UI 改造已撤回，当前未实现，不得据此继续改代码。

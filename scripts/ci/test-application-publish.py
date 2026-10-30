@@ -136,6 +136,16 @@ class ApplicationPublishTests(unittest.TestCase):
             for name in debug_assemblies:
                 (root / name).unlink()
 
+    def test_player_and_bound_have_independent_external_launch_policies(self):
+        root = self.root / "launch-policies"
+        root.mkdir()
+        player = publisher.validate_sample_capabilities(root, "CrossPlatform-Player", {})
+        bound = publisher.validate_sample_capabilities(root, "CrossPlatform-Bound", {})
+        self.assertFalse(player["gameDebugging"])
+        self.assertTrue(player["launchArguments"])
+        self.assertFalse(bound["gameDebugging"])
+        self.assertFalse(bound["launchArguments"])
+
     def test_timeout_stops_own_parent_and_child_and_preserves_unrelated_process(self):
         helper = self.root / "parent.py"
         pids = self.root / "pids.json"

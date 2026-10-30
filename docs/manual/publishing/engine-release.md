@@ -110,7 +110,11 @@ python3 scripts/release/test-linux-packaging.py
 pwsh -File scripts/release/Release.ps1 -Tag v1.2.3
 ```
 
-Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，按 tag 串行执行构建、产物验证和发布，已公开版本直接跳过，未完成 draft 要求用原产物与 journal 恢复。checkout 固定为发现时的 tag commit，并校验精确 tag 与 master 归属；release 不重复执行完整 CI 或测试项目，而由打包层独立构建包清单中带正式版本号的 NuGet 库项目，并保留应用各 RID/部署图的 restore/publish、包消费者和 ZIP 验证。常规 CI 负责测试门禁，release 负责可发布产物门禁。build 上传封存目录，publish 下载后上传，不重新编译；ZIP/nupkg artifact 不再重复压缩。`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
+Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，同一 tag 串行，已公开版本直接跳过。checkout 固定为 tag commit，并校验精确 tag 与 master 归属。NuGet 消费者校验、Windows/Linux 桌面发布、Android Mono AOT 发布并行执行；每个桌面主机顺序构建自包含与 FrameworkDependent 两种部署，复用原生音频构建和 Linux 私有媒体闭包。发行不重复跑完整 CI 测试，也不再调用旧 Windows Sample 的应用打包链路。
+
+公开应用矩阵为：Windows/Linux Editor 各两种部署；Windows/Linux CrossPlatform Sample 的 Developer、Player、Bound 三种模式各两种部署；Android 仅 Bound ARM64 Mono AOT APK。另有每个桌面 RID 一份 Sample 契约 ZIP，共 19 个应用/契约附件。跨平台桌面包当前使用普通 IL 自包含/框架依赖发布，不以旧文件名宣称 R2R。Windows 使用 ZIP，Linux 使用保留权限的 tar.gz。NuGet 仍独立构建并通过外部消费者校验。
+
+`cross-platform-release.py` 校验原始载荷、内容/宿主契约身份与归档内容；最终按来源 commit、版本、完整平台/部署矩阵和文件哈希封存 schemaVersion 2 索引，附件缺失或混入其他版本时拒绝发布。publish 下载同一候选的全部平台产物后封存并上传，不重新编译；ZIP/tar.gz/APK/nupkg artifact 不再重复压缩。`workflow_dispatch` 也完成完整矩阵封存，但只上传候选 artifact，不公开发布。
 
 公开上传需要 GitHub 权限和名为 `NUGET_API_KEY` 的 NuGet 发布凭据；可传入 Trusted Publishing 获取的短期 key。当前 workflow 从同名 GitHub secret 读取，首次发布前需配置。在本地也可上传已经验收的精确 tag 索引：
 
@@ -118,7 +122,23 @@ Release workflow 监听 master 与版本 tag push；发现候选后调用 `relea
 pwsh -File scripts/release/Push.ps1 -Index out/release/1.2.3/release-index.json
 ```
 
-Push 先检查索引、全部文件哈希、版本和消费者验收状态；GitHub 目标还在创建 draft 前检查七个发行 ZIP 是否齐全。随后创建 GitHub draft，按依赖顺序上传 NuGet、上传 ZIP，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
+Push 先检查索引、全部文件哈希、版本和消费者验收状态；GitHub 目标在创建 draft 前检查 schemaVersion 2 的 19 个跨平台附件名称与数量。旧本地 Windows schemaVersion 1 索引仍使用七 ZIP 门禁。随后创建 GitHub draft，按依赖顺序上传 NuGet、上传附件，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
+
+### 可复用的玩家编译模式和游戏绑定
+
+`GalNetPlayerMode` 有三种值：`Developer` 开启 `GALNET_GAME_DEBUG` 和 `GALNET_LAUNCH_ARGS`，可加载外部内容；`Player` 只开启 `GALNET_LAUNCH_ARGS`；`Bound` 两者均关闭，只加载包内游戏。不要再把允许加载外部游戏等同于允许调试。调试服务/包引用仍须按模式有条件引入，模式本身不会自动引用调试 UI。
+
+仓库 Sample 从共享 props/targets 使用这些规则，`GalNet.Desktop` NuGet 通过 buildTransitive 向其他项目提供同一编译规则。外部宿主按 `GalNetPlayerMode` 条件编写启动参数与调试入口；共享 `AvaloniaGameSession` 会在加载内容前执行 `GameLaunchPolicy`。默认从入口程序集读取编译元数据，移动平台或共享 UI 程序集可在 `AvaloniaGameHostOptions.LaunchPolicy` 中显式传入 `GameLaunchPolicy.FromAssembly(typeof(YourApp).Assembly)`；若该类型在类库中，还应在该类库设置 `GalNetPlayerAssembly=true`，让编译目标在该程序集写入模式与绑定元数据。宿主不得另开绕过这一策略的游戏加载入口。
+
+Bound 构建需要 `GalNetGamePackage` 和从该包校验后提取的 `GalNetBoundProjectId`。绑定 `projectId`，不绑定每次内容更新都会变化的 buildId；它用于选择正确项目，不是防篡改或 DRM。打包工具必须同时检查游戏契约与目标宿主字节身份。
+
+其他项目可运行 Editor 随附的 `Tools/bind-game.ps1`：
+
+```powershell
+pwsh -File Tools/bind-game.ps1 -Package /path/to/YourGame.galpak -OutputDirectory /path/to/new-binding
+```
+
+工具用同发行版 CLI 完整校验/安装指定游戏包，再读取自己的项目身份，生成 `GameBinding.props` 与已验证的 `pak/`。在项目的 `Directory.Build.props` 中导入生成的 props，或把相同属性传给 `dotnet publish`；将该 `pak/` 部署到应用同级。该配置包含本机包路径，维护者应按自己的项目路径重新生成。正式 Bound Sample 使用 GameTestCase 自身导出包身份，其他项目使用它们自己的包；共享运行时不写死 GameTestCase。
 
 ## 维护者本地应用入口
 

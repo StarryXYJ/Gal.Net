@@ -1,5 +1,6 @@
 <Project>
   <Import Project="../../../Directory.Build.props" />
+  <Import Project="../../../packaging/GalNet.Player.props" />
   <PropertyGroup>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == '' And ('$(Configuration)' == 'Debug' Or '$(Configuration)' == '')">true</EnableGameDebugging>
     <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>

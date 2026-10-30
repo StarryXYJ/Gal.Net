@@ -466,6 +466,7 @@ riderModule.iml
 /out/
 !/scripts/release/
 !/scripts/release/**
+/scripts/release/__pycache__/
 !/src/Editor/GalNet.Editor/Properties/PublishProfiles/WindowsReadyToRun.pubxml
 !/src/Samples/GalNet.Sample.Avalonia/Properties/PublishProfiles/WindowsReadyToRun.pubxml
 !/src/Editor/GalNet.Editor.Headless/Properties/PublishProfiles/WindowsReadyToRun.pubxml

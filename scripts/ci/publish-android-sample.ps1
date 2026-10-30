@@ -61,12 +61,12 @@ function Test-AndroidContentContracts([string]$HeadlessProject, [string]$Content
             $verified += [ordered]@{ path = "$([IO.Path]::GetRelativePath($repoRoot, $candidate).Replace('\', '/'))"; sha256 = $hash; size = (Get-Item -LiteralPath $candidate).Length }
         }
     }
-    return [ordered]@{ content = $ContentRoot; inspectionLog = $inspectionLog; contracts = $verified }
+    return [ordered]@{ content = $ContentRoot; projectId = $inspection.data.projectId; inspectionLog = $inspectionLog; contracts = $verified }
 }
 
 function New-GameTestCaseExportSource([string]$ContractSource) {
     $source = Join-Path $repoRoot 'GameTestCase'
-    $staging = Join-Path $OutputDirectory 'gametestcase-source'
+    $staging = Join-Path $OutputDirectory 'game-source/GameTestCase'
     New-Item -ItemType Directory -Path $staging | Out-Null
     foreach ($name in @('Assets', 'Graph', 'I18n', 'settings.json')) {
         $item = Join-Path $source $name
@@ -144,7 +144,8 @@ try {
     Invoke-AndroidDotNet 'install-gametestcase' @('run', '--project', $headless, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore',
         '--', 'galpak', 'install', $galpak, '--output', $installedContent)
 
-    $publishProperties = @($properties) + @("-p:GalNetGamePackage=$galpak")
+    $binding = Test-AndroidContentContracts $headless $installedContent $android $RuntimeIdentifier
+    $publishProperties = @($properties) + @("-p:GalNetGamePackage=$galpak", '-p:GalNetPlayerMode=Bound', "-p:GalNetBoundProjectId=$($binding.projectId)")
     $publish = Join-Path $OutputDirectory 'publish'
     Invoke-AndroidDotNet 'publish-android' (@('publish', $android, '-c', 'Release', '--no-restore', '-o', $publish) + $publishProperties)
     $contractVerification = Test-AndroidContentContracts $headless $installedContent $android $RuntimeIdentifier
@@ -159,6 +160,7 @@ try {
         preview = $true
         runtimeIdentifier = $RuntimeIdentifier
         gameDebugging = $false
+        boundProjectId = $binding.projectId
         gameTestCaseBundled = $true
         monoAot = $true
         selfContained = $true

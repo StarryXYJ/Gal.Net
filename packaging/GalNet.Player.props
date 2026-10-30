@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup Condition="'$(GalNetPlayerMode)' != ''">
+    <EnableGameDebugging Condition="'$(GalNetPlayerMode)' == 'Developer'">true</EnableGameDebugging>
+    <EnableGameDebugging Condition="'$(GalNetPlayerMode)' != 'Developer'">false</EnableGameDebugging>
+    <EnableLaunchArguments Condition="'$(GalNetPlayerMode)' != 'Bound'">true</EnableLaunchArguments>
+    <EnableLaunchArguments Condition="'$(GalNetPlayerMode)' == 'Bound'">false</EnableLaunchArguments>
+    <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
+  </PropertyGroup>
+</Project>

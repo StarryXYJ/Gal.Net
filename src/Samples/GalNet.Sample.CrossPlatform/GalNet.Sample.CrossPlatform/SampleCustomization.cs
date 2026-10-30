@@ -94,6 +94,7 @@ public static class SampleCustomization
         Func<string, string>? screenshotDirectory = null) => new()
     {
         GameTitle = "GalNet CrossPlatform Sample",
+        LaunchPolicy = GalNet.Storage.FileSystem.GameLaunchPolicy.FromAssembly(typeof(SampleCustomization).Assembly),
         NoGameMessage = "Usage: GalNet.Sample.CrossPlatform.Desktop <game-data-directory> [--profile <directory>]",
         CreateContentCatalogs = CreateContentCatalogs,
         AttachRun = attachRun,

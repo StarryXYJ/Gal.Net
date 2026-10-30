@@ -1,4 +1,5 @@
 <Project>
+  <Import Project="GalNet.Player.targets" />
   <ItemGroup>
     <Content Include="$(MSBuildThisFileDirectory)ThirdParty/SDL3/*"
              Link="ThirdParty/SDL3/%(Filename)%(Extension)"

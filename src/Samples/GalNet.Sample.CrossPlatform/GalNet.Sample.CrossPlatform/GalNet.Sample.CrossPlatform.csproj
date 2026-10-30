@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <LangVersion>latest</LangVersion>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <GalNetPlayerAssembly>true</GalNetPlayerAssembly>
   </PropertyGroup>
   
   <ItemGroup>

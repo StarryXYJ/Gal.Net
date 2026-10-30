@@ -7,7 +7,7 @@ param(
 $Index = (Resolve-Path -LiteralPath $Index).Path
 $root = Split-Path $Index -Parent
 $release = Get-Content -LiteralPath $Index -Raw | ConvertFrom-Json
-if ($release.schemaVersion -ne 1 -or $release.dirty -or !$release.tag -or $release.tag -cne "v$($release.version)") { throw 'Push requires a clean, exact-tag release index.' }
+if ($release.schemaVersion -notin @(1, 2) -or $release.dirty -or !$release.tag -or $release.tag -cne "v$($release.version)") { throw 'Push requires a clean, exact-tag release index.' }
 if ($release.packageValidationSkipped -or ($Destination -contains 'NuGet' -and !$release.packageValidation.passed)) { throw 'NuGet consumer validation is required.' }
 if ($Destination -contains 'NuGet' -and !$env:NUGET_API_KEY) { throw 'NUGET_API_KEY is required (a short-lived Trusted Publishing key is supported).' }
 $remote = (& git -C $repoRoot remote get-url origin).Trim()
@@ -25,7 +25,27 @@ foreach ($file in $release.files) {
 $tagCommit = & git -C $repoRoot rev-parse --verify "$($release.tag)^{commit}" 2>$null
 if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $release.sourceCommit) { throw 'Release tag commit does not match the sealed source commit.' }
 $assets = @($release.files | Where-Object { $_.path.StartsWith('assets/') } | ForEach-Object { $paths[$_.path] })
-if ($Destination -contains 'GitHub' -and $assets.Count -ne 7) { throw 'Expected seven verified R2R/Contracts release ZIPs.' }
+if ($Destination -contains 'GitHub') {
+    if ($release.schemaVersion -eq 1 -and $assets.Count -ne 7) { throw 'Expected seven verified R2R/Contracts release ZIPs.' }
+    if ($release.schemaVersion -eq 2) {
+        $expectedAssets = @(
+            foreach ($rid in @('win-x64', 'linux-x64')) {
+                $extension = if ($rid -eq 'win-x64') { '.zip' } else { '.tar.gz' }
+                foreach ($suffix in @('', '-framework-dependent')) {
+                    foreach ($product in @('Editor', 'CrossPlatform-Sample-Developer', 'CrossPlatform-Sample-Player', 'CrossPlatform-Sample-GameTestCase')) {
+                        "GalNet-$product-$($release.version)-$rid$suffix$extension"
+                    }
+                }
+                "GalNet-CrossPlatform-Sample-Contracts-$($release.version)-$rid.zip"
+            }
+            "GalNet-CrossPlatform-Sample-GameTestCase-$($release.version)-android-arm64.apk"
+        )
+        $actualAssets = @($assets | ForEach-Object { [IO.Path]::GetFileName($_) })
+        if ($actualAssets.Count -ne $expectedAssets.Count -or @(Compare-Object $expectedAssets $actualAssets).Count) {
+            throw 'Expected the complete cross-platform release matrix (19 application/contract assets).'
+        }
+    }
+}
 $indexHash = (Get-FileHash $Index -Algorithm SHA256).Hash
 $statePath = Join-Path $root 'push-state.json'
 $state = @{ indexHash = $indexHash; completed = @() }

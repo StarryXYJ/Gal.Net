@@ -22,7 +22,8 @@ public sealed class FileSystemPathsTests
         Assert.That(FileSystemPaths.IsSameOrChild(Path.Combine(root, "child"), root), Is.True);
         Assert.That(FileSystemPaths.IsSameOrChild(root + "-sibling", root), Is.False);
         Assert.That(FileSystemPaths.IsSameOrChild(Path.GetDirectoryName(root)!, root), Is.False);
-        Assert.That(FileSystemPaths.IsSameOrChild(root.ToUpperInvariant(), root), Is.EqualTo(OperatingSystem.IsWindows()));
+        Assert.That(FileSystemPaths.IsSameOrChild(root.ToUpperInvariant(), root),
+            Is.EqualTo(OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()));
         Assert.That(FileSystemPaths.ResolveRelativeFile(Path.GetPathRoot(root)!, "folder/file"),
             Is.EqualTo(Path.Combine(Path.GetPathRoot(root)!, "folder", "file")));
     }

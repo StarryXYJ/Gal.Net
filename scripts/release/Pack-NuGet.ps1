@@ -89,6 +89,8 @@ foreach ($packageId in $mapping.Keys) {
             Copy-Item -LiteralPath (Join-Path $inputOutput $notice) -Destination $notices
         }
         Copy-Item -LiteralPath (Join-Path $repoRoot 'packaging/GalNet.Desktop.targets') -Destination (Join-Path $payload 'buildTransitive/GalNet.Desktop.targets')
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'packaging/GalNet.Player.props') -Destination (Join-Path $payload 'buildTransitive/GalNet.Desktop.props')
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'packaging/GalNet.Player.targets') -Destination (Join-Path $payload 'buildTransitive/GalNet.Player.targets')
     }
     $document = [xml]'<package><metadata/><files><file src="**/*" target="" /></files></package>'
     $metadata = $document.SelectSingleNode('/package/metadata')
