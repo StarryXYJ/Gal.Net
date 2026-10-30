@@ -22,6 +22,16 @@
 
 运行状态与存档见[运行时状态](../runtime/state-and-save.md)，依赖和释放规则见[生命周期](../architecture/lifecycles.md)。使用与定制分别见 [Sample 手册](../../manual/sample/README.md)和[扩展入口](../../manual/extensions/customize-sample.md)。
 
+## 可选 Avalonia 调试
+
+`GalNet.Avalonia.Debugging` 复用 `Avalonia.GameHost` 与协议层 `GalNet.Debugging`，提供调试命令、快照辅助、500 行有界日志、日志视图/桌面窗口以及外部调试会话适配。普通 GameHost/GameView 不反向引用该模块，也不依赖调试协议。模块不引用 Sample 或项目契约。
+
+组合根调用 `AddGameDebugTools(GameDebugHostOptions)`，提供必需的 `RestartAsync` 和可选的 `OpenLogDirectory`；未提供打开目录能力时隐藏对应入口。项目指令的 replay 策略由宿主传入，内置策略可通过 `CreateBuiltinReplayPolicy()` 扩充。清空玩家状态、资源重载和快照保存借用正常会话及其命令/存档门禁。`AvaloniaGameSession.WithSnapshotAsync<T>` 与 `RefreshSlotsAsync` 是中立的会话扩展入口，不专属调试。
+
+`DebugToolsOverlay` 可包裹现有游戏视图，在同一 TopLevel 内显示菜单、日志和确认；系统返回优先关闭调试确认/日志。释放取消未完成确认、解绑事件并拆下内容；Activity 重建重挂载整个调试容器，保留原玩家视图。`DebugLogView` 仅在视觉树挂载期间订阅日志，异步 UI 更新使用挂载代次隔离。桌面宿主也可自行组合 `DebugMenuView` 与 `DebugLogWindow`。
+
+`AvaloniaExternalDebugSession` 负责连接、断开、运行绑定和异步释放；桌面 `DebugLaunchArguments` 使用实际契约文件验证邀请中的 SHA256。移动端可嵌入调试 UI，但传输与邀请入口仍须由平台实现并单独验收。构建开关在组合根决定是否引用整个模块，不能靠运行时注册为玩家版补回调试能力。
+
 ## 对白历史与重播
 
 默认宿主提供从当前路线新游戏开始的历史；存读档通过宿主会话 API 一并保存/恢复。GamePageViewModel.OpenHistoryCommand 和输入 open.history（默认 WheelUp）打开覆盖层，CloseHistoryCommand 返回。自定义 GamePage 模板可增加 PART_History ContentPresenter，并以 TemplateBinding History 承载共享面板；原有四个必需承载点仍保持兼容。

@@ -1,5 +1,5 @@
 # GalNet Agent Knowledge
-- 2026-10-30 模板结构 P6b/P6c：Sample.Player 已删除；两个 Sample 主项目各自拥有 SampleCustomization、项目文案和契约适配，通用视图/语言/会话所有权及截图机制在 Avalonia.GameHost，内容流安装与稳定 profile 键在 Storage.FileSystem。通用调试与新平台产物复验仍待 P6d/P6e，旧 APK 不代表新结构通过。
+- 2026-10-30 模板结构 P6b–P6d：Sample.Player 已删除；两个 Sample 各自拥有 SampleCustomization、项目文案和契约适配。通用宿主/视图/截图在 Avalonia.GameHost，流安装/profile 键在 Storage.FileSystem；可选 Avalonia.Debugging 统一调试命令/日志/UI/外部会话，普通宿主无反向依赖，玩家版排除调试。28 组锁图与两种集成/呈现/架构回归通过；P6e 新发布及设备复验待补，旧 APK 不代表新结构通过。
 - [删除工程与锁图](lessons/L-20261030-15-prune-project-lock-nodes.md)：移除 ProjectReference 后普通/locked restore 仍可能保留无用 Project 节点；按每个 profile 正确参数 force-evaluate，再 locked 验证，并检查包 hash/框架键。P6c 增加结构化锁图门禁。
 - [UI 来源与语言回退](lessons/L-20261030-14-localization-bootstrap-fallback.md)：合并通用/项目嵌入文案后，AttachGame 保留精确文化来源，由最外层统一回退；提前回退会遮住默认语言的外部翻译。P6c 有英文缺键覆盖的失败/修复回归。
 - [TRX Explicit 执行证据](lessons/L-20261030-12-trx-explicit-test-evidence.md)：NUnit 的 notExecuted 可能为 0 而仍有 Explicit 未运行；保留原始计数并记录 total-executed，设备/GUI/AOT 边界单独报告。

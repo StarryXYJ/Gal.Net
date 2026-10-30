@@ -15,8 +15,8 @@
     <PackageReference Include="Avalonia.Desktop" />
     <PackageReference Include="VideoLAN.LibVLC.Windows" Condition="('$(RuntimeIdentifier)' == '' And $([MSBuild]::IsOSPlatform('Windows'))) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-'))" />
     <PackageReference Include="AvaloniaUI.DiagnosticsSupport" >
-      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
-      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+      <IncludeAssets Condition="'$(EnableGameDebugging)' != 'true'">None</IncludeAssets>
+      <PrivateAssets Condition="'$(EnableGameDebugging)' != 'true'">All</PrivateAssets>
     </PackageReference>
   </ItemGroup>
 

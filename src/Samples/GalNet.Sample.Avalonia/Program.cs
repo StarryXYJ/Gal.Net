@@ -3,7 +3,7 @@ using Avalonia;
 using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Logging;
 #if GALNET_GAME_DEBUG
-using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
 #endif
 using Serilog;
 
@@ -39,7 +39,7 @@ sealed class Program
                     shared: true,
                     outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3} {LogChannel}] {Message:lj}{NewLine}{Exception}")
 #if GALNET_GAME_DEBUG
-                .WriteTo.Sink(SampleDebugLogStore.Shared)
+                .WriteTo.Sink(GameDebugLogStore.Shared)
 #endif
                 .CreateLogger();
 

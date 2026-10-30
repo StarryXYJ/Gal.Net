@@ -1,18 +1,16 @@
-<ursa:UrsaWindow xmlns="https://github.com/avaloniaui"
+<UserControl xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                 xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
+                 xmlns:debug="using:GalNet.Avalonia.Debugging"
                  xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
-                 xmlns:views="using:GalNet.Sample.Avalonia.Views"
-                 xmlns:ursa="https://irihi.tech/ursa"
-                 x:Class="GalNet.Sample.Avalonia.Views.DebugLogWindow"
-                 x:DataType="views:DebugLogWindow"
-                 Width="960" Height="600" MinWidth="600" MinHeight="360"
-                 Title="{loc:Localize DebugLog.Title}"
-                 WindowStartupLocation="CenterOwner">
+                 xmlns:views="using:GalNet.Avalonia.Debugging.Views"
+                 x:Class="GalNet.Avalonia.Debugging.Views.DebugLogView"
+                 x:DataType="views:DebugLogView"
+                 Background="{DynamicResource GalNet.Brush.Background}">
   <Grid RowDefinitions="Auto,*" Margin="12">
     <StackPanel Orientation="Horizontal" Spacing="8">
       <Button Content="{loc:Localize DebugLog.Clear}" Click="OnClearLogsClick" />
-      <Button Content="{loc:Localize DebugLog.OpenDirectory}" Click="OnOpenLogDirectoryClick" />
+      <Button Content="{loc:Localize DebugLog.OpenDirectory}" Command="{Binding Actions.OpenLogDirectoryCommand}" IsVisible="{Binding Actions.CanOpenLogDirectory}" />
+      <Button Content="{loc:Localize DebugLog.Close}" Click="OnCloseLogsClick" />
     </StackPanel>
 
     <ListBox x:Name="LogListBox"
@@ -21,13 +19,12 @@
              Margin="0,8,0,0"
              Background="Transparent">
       <ListBox.ItemTemplate>
-        <DataTemplate x:DataType="debug:SampleDebugLogLine">
+        <DataTemplate x:DataType="debug:GameDebugLogLine">
           <TextBlock Text="{Binding FullText}"
-                     FontFamily="Consolas"
                      FontSize="12"
                      TextWrapping="Wrap" />
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
   </Grid>
-</ursa:UrsaWindow>
+</UserControl>

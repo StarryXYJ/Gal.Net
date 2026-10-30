@@ -1,14 +1,15 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
-namespace GalNet.Sample.Avalonia.Debug;
+namespace GalNet.Avalonia.Debugging;
 
 /// <summary>Command surface for optional sample debug tools; window-specific presentation stays in the host view.</summary>
-internal sealed partial class SampleDebugViewModel(SampleDebugActions actions) : ObservableObject
+public sealed partial class GameDebugViewModel(GameDebugActions actions) : ObservableObject
 {
-    public event Func<SampleDebugPrompt, Task<bool>>? ConfirmationRequested;
-    public event Func<SampleDebugNotification, Task>? NotificationRequested;
+    public event Func<GameDebugPrompt, Task<bool>>? ConfirmationRequested;
+    public event Func<GameDebugNotification, Task>? NotificationRequested;
     public event Action? LogRequested;
+    public bool CanOpenLogDirectory => actions.CanOpenLogDirectory;
 
     [RelayCommand]
     private Task ShowLogAsync()
@@ -33,24 +34,24 @@ internal sealed partial class SampleDebugViewModel(SampleDebugActions actions) :
 
     [RelayCommand]
     private Task SaveProgressOnlyAsync() =>
-        SaveDebugSnapshotAsync(SampleDebugSaveKind.ProgressOnly, "仅进度存档");
+        SaveDebugSnapshotAsync(DebugSaveKind.ProgressOnly, "仅进度存档");
 
     [RelayCommand]
     private Task SaveGalGroupStartAsync() =>
-        SaveDebugSnapshotAsync(SampleDebugSaveKind.GalGroupStart, "galgroup 存档");
+        SaveDebugSnapshotAsync(DebugSaveKind.GalGroupStart, "galgroup 存档");
 
     [RelayCommand]
     private Task OpenLogDirectoryAsync() =>
         RunAsync(actions.OpenLogDirectory, "打开日志目录失败");
 
-    private async Task SaveDebugSnapshotAsync(SampleDebugSaveKind kind, string displayName)
+    private async Task SaveDebugSnapshotAsync(DebugSaveKind kind, string displayName)
     {
         try
         {
             var result = await actions.SaveDebugSnapshotAsync(kind);
             if (result.RequiresOverwriteConfirmation)
             {
-                const string overwriteMessage = "可见的 12 个存档槽均已占用。是否覆盖第 1 槽？";
+                const string overwriteMessage = "所有可见的存档槽均已占用。是否覆盖第 1 槽？";
                 if (!await ConfirmAsync(overwriteMessage, displayName))
                     return;
 
@@ -95,17 +96,17 @@ internal sealed partial class SampleDebugViewModel(SampleDebugActions actions) :
         if (handlers is null)
             return false;
 
-        foreach (Func<SampleDebugPrompt, Task<bool>> handler in handlers.GetInvocationList())
-            if (!await handler(new SampleDebugPrompt(message, title)))
+        foreach (Func<GameDebugPrompt, Task<bool>> handler in handlers.GetInvocationList())
+            if (!await handler(new GameDebugPrompt(message, title)))
                 return false;
 
         return true;
     }
 
     private Task NotifyAsync(string message, string title) =>
-        NotificationRequested?.Invoke(new SampleDebugNotification(message, title)) ?? Task.CompletedTask;
+        NotificationRequested?.Invoke(new GameDebugNotification(message, title)) ?? Task.CompletedTask;
 }
 
-internal sealed record SampleDebugPrompt(string Message, string Title);
+public sealed record GameDebugPrompt(string Message, string Title);
 
-internal sealed record SampleDebugNotification(string Message, string Title);
+public sealed record GameDebugNotification(string Message, string Title);

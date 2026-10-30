@@ -12,6 +12,12 @@ using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
 using System.Globalization;
+#if GALNET_GAME_DEBUG
+using GalNet.Avalonia.Debugging;
+using GalNet.Avalonia.Debugging.Views;
+using GalNet.Debugging;
+using GalNet.Runtime.Engine;
+#endif
 
 namespace GalNet.Sample.CrossPlatform;
 
@@ -29,6 +35,10 @@ public partial class App : Application, IAsyncDisposable
     private Task? _shutdown;
     private bool _platformActive = true;
     private bool _audioAvailable = true;
+#if GALNET_GAME_DEBUG
+    private DebugToolsOverlay? _debugSurface;
+    public static DebugInvitation? DebugInvitation { get; set; }
+#endif
 
     public static Func<CancellationToken, Task<PlayerLaunchPaths>> PrepareLaunchAsync { get; set; } = _ =>
     {
@@ -73,7 +83,11 @@ public partial class App : Application, IAsyncDisposable
     {
         // Activity recreation moves the existing player rather than starting another session.
         if (_mount is not null) _mount.Content = null;
-        var host = new ContentControl { Content = _player?.View };
+        Control? surface = _player?.View;
+#if GALNET_GAME_DEBUG
+        surface = _debugSurface ?? surface;
+#endif
+        var host = new Ursa.Controls.UrsaView { Content = surface };
         TopLevel.SetAutoSafeAreaPadding(host, true);
         _mount = host;
         TopLevel? top = null;
@@ -103,6 +117,9 @@ public partial class App : Application, IAsyncDisposable
     private async void OnPlatformBackRequested(object? sender, RoutedEventArgs args)
     {
         args.Handled = true;
+#if GALNET_GAME_DEBUG
+        if (_debugSurface?.TryHandleBack() == true) return;
+#endif
         try { await HandleBackAsync(); }
         catch (Exception error) { GameLog.Logger.Error(error, "Platform back navigation failed"); }
     }
@@ -122,16 +139,31 @@ public partial class App : Application, IAsyncDisposable
                 Directory.CreateDirectory(Path.Combine(paths.ProfileDirectory, "logs"));
                 if (_logger is null)
                 {
-                    _logger = new LoggerConfiguration().MinimumLevel.Information().WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                    var logging = new LoggerConfiguration();
+#if GALNET_GAME_DEBUG
+                    logging.MinimumLevel.Debug().WriteTo.Sink(GameDebugLogStore.Shared);
+#else
+                    logging.MinimumLevel.Information();
+#endif
+                    _logger = logging.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
                         .WriteTo.File(Path.Combine(paths.ProfileDirectory, "logs/game-.log"), rollingInterval: RollingInterval.Day,
                             retainedFileCountLimit: 14, shared: true, formatProvider: CultureInfo.InvariantCulture).CreateLogger();
                     Log.Logger = _logger;
                 }
-                var options = SampleCustomization.CreateHostOptions(screenshotDirectory: title =>
+                var options = SampleCustomization.CreateHostOptions(
+#if GALNET_GAME_DEBUG
+                    attachRun: AttachDebugRun,
+#endif
+                    screenshotDirectory: title =>
                     paths.ScreenshotDirectory ?? SampleScreenshotOutput.GetHostDirectory(title));
                 _player = await AvaloniaPlayerHost.CreateAsync(options, services =>
                 {
                     SampleCustomization.ConfigureServices(services);
+#if GALNET_GAME_DEBUG
+                    Action? openLogs = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS() ? null : () =>
+                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(paths.ProfileDirectory, "logs")) { UseShellExecute = true });
+                    services.AddGameDebugTools(SampleCustomization.CreateDebugOptions(_ => RestartAsync(), openLogs));
+#endif
                     ConfigurePlatformServices?.Invoke(services);
                 });
                 _player.Services.GetRequiredService<TitlePageViewModel>().CanExit =
@@ -142,12 +174,25 @@ public partial class App : Application, IAsyncDisposable
                     if (_window is not null) _window.Close();
                     else _ = ConfirmPlatformExitAsync();
                 };
-                if (_mount is not null) _mount.Content = _player.View;
+                Control surface = _player.View;
+#if GALNET_GAME_DEBUG
+                _debugSurface = _player.Services.GetRequiredService<DebugToolsOverlay>();
+                _debugSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+                _debugSurface.GameContent = surface;
+                surface = _debugSurface;
+#endif
+                if (_mount is not null) _mount.Content = surface;
                 initialization = _player.InitializeAsync(paths.ContentDirectory, paths.ProfileDirectory);
             }
             finally { _composition.Release(); }
             // Shutdown must be able to cancel onboarding while initialization awaits user input.
-            await initialization;
+            var ready = await initialization;
+            if (_stopping || generation != _generation) return;
+#if GALNET_GAME_DEBUG
+            if (_debugSurface is not null) _debugSurface.ToolsEnabled = ready;
+            if (ready && DebugInvitation is { } invitation && _player is not null)
+                await _player.Services.GetRequiredService<AvaloniaExternalDebugSession>().ConnectAsync(invitation, _lifetime.Token);
+#endif
             await ApplyPlatformStateAsync();
         }
         catch (OperationCanceledException) when (_stopping || generation != _generation) { }
@@ -166,6 +211,12 @@ public partial class App : Application, IAsyncDisposable
         _platformActive = active;
         return ApplyPlatformStateAsync();
     }
+
+#if GALNET_GAME_DEBUG
+    private IDisposable AttachDebugRun(GameEngine engine) =>
+        (_player ?? throw new InvalidOperationException("The player host is not ready.")).Services
+            .GetRequiredService<AvaloniaExternalDebugSession>().Attach(engine);
+#endif
 
     public Task SetAudioAvailableAsync(bool available)
     {
@@ -234,6 +285,9 @@ public partial class App : Application, IAsyncDisposable
                 if (clearPlayerState) await _player.Session.ClearPlayerStateAsync(_lifetime.Token);
                 await _player.DisposeAsync();
                 _player = null;
+#if GALNET_GAME_DEBUG
+                _debugSurface = null;
+#endif
             }
             if (_mount is not null) _mount.Content = null;
             if (_logger is IDisposable disposable) disposable.Dispose();

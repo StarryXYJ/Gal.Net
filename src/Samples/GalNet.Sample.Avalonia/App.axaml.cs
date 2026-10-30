@@ -76,7 +76,7 @@ public partial class App : Application
                     var ready = await session.InitializeAsync(LaunchOptions, mainWindow.SelectLanguageAsync, startupCancellation.Token);
 #if GALNET_GAME_DEBUG
                     if (ready && LaunchOptions.DebugInvitation is { } invitation)
-                        await scopedServices.GetRequiredService<Debug.SampleExternalDebug>().ConnectAsync(invitation, startupCancellation.Token);
+                        await scopedServices.GetRequiredService<global::GalNet.Avalonia.Debugging.AvaloniaExternalDebugSession>().ConnectAsync(invitation, startupCancellation.Token);
 #endif
                     if (!startupCancellation.IsCancellationRequested)
                         mainWindow.CompleteStartup(ready ? null : session.StatusMessage);

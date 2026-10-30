@@ -113,3 +113,13 @@ Windows 自动化实际执行：Presentation 322/322、Integration 195/195、架
 Presentation 实际执行 324/324、Integration 196/196、Architecture 55/55 通过；包括独立页面映射、不同项目标题/语言状态及 en-US/zh-CN 合并文案。14 组发布参数图强制重算后 locked 验证、普通玩家/开发版锁图和 CrossPlatform Desktop 构建通过；原包版本/hash 与框架/RID 键保持。既有媒体/检查点/截图测试通过，没有修改契约格式或 profile 键。
 
 保留并修复 UI 聚合 provider 提前回退遮住外部默认语言译文的问题；额外发现普通 locked restore 可保留无用 Project 节点，增加源锁图 JSON 门禁。失败和最终证据在 `out/cross-platform-p6c/`，详见 execution.md。未重新运行移动/非 Windows 应用；可选调试及最终平台产物复验继续 P6d/P6e，不把本次结构完成当作完整模板生成或五平台支持。
+
+## P6d — 可选通用调试
+
+新增 `GalNet.Avalonia.Debugging`，统一调试命令/快照、500 行日志、可嵌入日志/确认 UI 和外部协议会话适配；只依赖通用 GameHost 与协议库，不依赖 Sample/项目契约。普通宿主没有反向调试依赖。两个 Sample 提供项目 replay 策略和平台重启/打开目录回调；原窗口继续使用独立日志窗口，CrossPlatform 使用不需要额外窗口的容器，移动隐藏打开目录入口。
+
+两个 Sample 统一调试/启动参数编译能力，玩家版保留普通日志并排除调试模块、协议及资源。Activity 重建迁移完整调试容器，释放取消确认并拆下内容，日志异步更新隔离旧挂载。新增无 Sample.Contracts 的通用宿主测试实际连接 TCP，验证 inspect/stop/旧 run 拒绝与断开/重建。
+
+Presentation 实际执行 333/333（包含工作区并行截图任务新增用例），调试版 Integration 197/197、玩家版 192/192、Architecture 56/56；显式原生用例未计入通过。四 RID × 两宿主 × 两 flavor、原 Sample 两种 R2R、两宿主普通图及 Android/iOS/Browser 两种图共 28 组 force-evaluate/locked restore 通过。200 份既有锁文件保留框架/RID 键和保留包的版本/hash；玩家测试图明确移除 DiagnosticsSupport 及两项专用传递依赖。CrossPlatform 开启/关闭调试实际构建与 deps.json 检查通过。
+
+规范、定制说明和 CrossPlatform README 已同步，文档校验通过。证据 `out/cross-platform-p6d/`，失败复现及原始计数见 execution.md。尚未用新结构发布/运行 Windows/Linux/Android；iOS/macOS/手柄、移动外部调试与独立 NuGet/模板交付不因此完成。

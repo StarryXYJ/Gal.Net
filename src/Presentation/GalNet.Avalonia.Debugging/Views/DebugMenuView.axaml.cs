@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace GalNet.Sample.Avalonia.Views;
+namespace GalNet.Avalonia.Debugging.Views;
 
 public partial class DebugMenuView : Menu
 {

@@ -25,6 +25,14 @@ dotnet run --project src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.Cross
 
 默认从应用布局定位 `pak`，profile 按内容 projectId 定位至用户目录；换内容缓存版本或移动安装位置不会重置同一项目的进度。显式 `--profile` 用于开发/验证。正式合包使用 Desktop profile 和目标 RID，并继续遵守严格契约字节规则。
 
+## 可选调试
+
+Debug 默认开启 `EnableGameDebugging`，Release 默认关闭，`EnableLaunchArguments` 默认跟随调试开关。Desktop 玩家版拒绝启动参数；开发版接受内容目录、`--profile` 和外部调试邀请。启用调试必须同时启用参数能力。切换开关须重新 restore；普通玩家图使用 `packages.lock.NoGameDebugging.json`，Desktop 开发图使用 `packages.lock.Desktop.<rid>.Debugging.json`。
+
+可选 `GalNet.Avalonia.Debugging` 提供通用菜单、日志、调试存档及外部会话适配，普通宿主没有反向依赖。`SampleCustomization.CreateDebugOptions` 配置项目 replay 策略；App 提供原进程内的 scope 重建和桌面打开日志目录动作。共享 UI 使用 `DebugToolsOverlay`，移动端无需额外窗口，且隐藏打开目录入口；系统返回先取消确认/关闭日志。Activity 重建迁移整个容器。关闭调试后不包含调试模块、协议和资源，普通日志继续写入 profile。
+
+移动端调试 UI 的自动化验证不代表 Android/iOS 外部连接、邀请传输或设备验收已经完成。独立模板生成仍延期。
+
 ## 移动内容与 Mono AOT
 
 `GalNetGamePackage` 指向完整 v4 galpak：Android 打为 `assets/game.galpak`，iOS 打为 bundle 中的 `game.galpak`。平台打开普通资产流，`BundledGameInstaller` 不要求其可寻址，先在沙盒缓存临时文件，再通过正式安装器验证并安装到归档 SHA256 对应的目录。相同 projectId 的不同内容版本使用相同 profile；取消/损坏输入不覆盖已安装内容。
@@ -35,6 +43,10 @@ Android 需要 SDK 36、NDK r29（本轮 `29.0.14206865`）及 CMake/Ninja。NDK
 $android = 'src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Android/GalNet.Sample.CrossPlatform.Android.csproj'
 dotnet publish $android -c Release -p:UseMonoRuntime=true -p:PublishAot=false -p:RunAOTCompilation=true -p:GalNetBuildMiniaudio=false -p:GalNetAndroidNdkDirectory='C:/Android/sdk/ndk/29.0.14206865' -p:GalNetCMakePath='C:/tools/cmake.exe' -p:GalNetNinjaPath='C:/tools/ninja.exe' -p:GalNetGamePackage='C:/path/game.galpak'
 ```
+
+ARM64 真机发行可给上述命令增加 `-p:RuntimeIdentifier=android-arm64`，避免 APK 同时携带模拟器使用的 x86_64 载荷。Android 工程会把单数 RID 同步到 VLC 包需要的 `RuntimeIdentifiers`；不应靠漏打 VLC、关闭 AOT 或删除游戏内容来缩小体积。包检查脚本支持 `--abi arm64-v8a`，默认仍检查双 ABI；同时报告 APK、解包载荷和每个 ABI 的原生体积。
+
+安卓交互截图由平台注册 `IAutomaticGameScreenshotDestination`，自动命名并写入系统相册的 `Pictures/<游戏名>`，弹窗不显示目录和文件名，预览按当前屏幕约束。Android 10 及以上使用 MediaStore 的 pending/publish 流程，不申请存储权限；Android 6–9 的保存请求包含旧式存储权限处理，拒绝或保存失败时保留错误和重试入口。截图失败会删除本次未完成的 MediaStore 条目。旧系统权限分支和 iOS 相册输出仍需对应设备验收；项目截图 primitive 的沙盒输出策略不受交互截图改动影响。
 
 P7a Release 在 ARM64/x86_64 各完成 115 程序集 Mono AOT，包含真实 GameTestCase 全部内容及两种架构的 miniaudio、LibVLC、C++ 运行库。没有全局压制裁剪/AOT/XA0141 警告。`PublishAot` 与 `RunAOTCompilation` 的 Mono AOT 不同；NativeAOT 不作为前置。Android 的 LibVLC 固定官方 `VideoLAN.LibVLC.Android 3.7.0-beta`（内含 3.0.22-rc1）：此前稳定包 3.6.5 的 native LOAD 只有 4 KB 对齐；当前候选的全部 ELF LOAD 及 APK zipalign 均通过 16 KB 检查。此预发布依赖和设备播放结果继续追踪，不能据此宣布商店发布完成。
 

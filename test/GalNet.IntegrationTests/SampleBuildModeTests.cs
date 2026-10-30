@@ -10,19 +10,35 @@ public sealed class SampleBuildModeTests
         var assembly = typeof(GameLaunchOptions).Assembly;
         var debugTypes = assembly.GetTypes().Where(type => type.Namespace == "GalNet.Sample.Avalonia.Debug").ToArray();
         var references = assembly.GetReferencedAssemblies().Select(reference => reference.Name).ToArray();
+        var crossAssembly = typeof(GalNet.Sample.CrossPlatform.App).Assembly;
+        var crossReferences = crossAssembly.GetReferencedAssemblies().Select(reference => reference.Name).ToArray();
 #if GALNET_GAME_DEBUG
         Assert.That(debugTypes, Is.Not.Empty);
         Assert.That(references, Does.Contain("GalNet.Debugging"));
-        Assert.That(assembly.GetType("GalNet.Sample.Avalonia.Views.DebugMenuView"), Is.Not.Null);
+        Assert.That(references, Does.Contain("GalNet.Avalonia.Debugging"));
+        Assert.That(typeof(GalNet.Avalonia.Debugging.Views.DebugMenuView).Assembly.GetName().Name, Is.EqualTo("GalNet.Avalonia.Debugging"));
         Assert.That(typeof(GameLaunchOptions).GetProperty("DebugInvitation"), Is.Not.Null);
+        Assert.That(crossReferences, Does.Contain("GalNet.Avalonia.Debugging"));
+        Assert.That(typeof(GalNet.Sample.CrossPlatform.App).GetProperty("DebugInvitation"), Is.Not.Null);
 #else
         Assert.That(debugTypes, Is.Empty);
         Assert.That(references, Does.Not.Contain("GalNet.Debugging"));
+        Assert.That(references, Does.Not.Contain("GalNet.Avalonia.Debugging"));
         Assert.That(references, Does.Not.Contain("AvaloniaUI.DiagnosticsSupport"));
         Assert.That(assembly.GetType("GalNet.Sample.Avalonia.Views.DebugMenuView"), Is.Null);
         Assert.That(assembly.GetType("GalNet.Sample.Avalonia.Views.DebugLogWindow"), Is.Null);
         Assert.That(typeof(GameLaunchOptions).GetProperty("DebugInvitation"), Is.Null);
+        Assert.That(crossReferences, Does.Not.Contain("GalNet.Avalonia.Debugging"));
+        Assert.That(typeof(GalNet.Sample.CrossPlatform.App).GetProperty("DebugInvitation"), Is.Null);
 #endif
+        foreach (var project in new[] { assembly, crossAssembly })
+            foreach (var resource in project.GetManifestResourceNames().Where(name => name.EndsWith(".json", StringComparison.Ordinal)))
+            {
+                using var stream = project.GetManifestResourceStream(resource)!;
+                using var json = System.Text.Json.JsonDocument.Parse(stream);
+                Assert.That(json.RootElement.EnumerateObject().Select(property => property.Name)
+                    .Where(name => name.StartsWith("Debug.", StringComparison.Ordinal) || name.StartsWith("DebugLog.", StringComparison.Ordinal)), Is.Empty);
+            }
     }
 
 #if GALNET_LAUNCH_ARGS

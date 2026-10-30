@@ -66,7 +66,7 @@ flowchart TB
 ```text
 src/
   Shared/          Core、Contracts.Builtins、Runtime、Assets、Presentation.Abstractions、Primitives.Builtins、GameHost、Diagnostics
-  Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes、Avalonia.GameHost
+  Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes、Avalonia.GameHost、Avalonia.Debugging（可选）
   Infrastructure/  Storage.FileSystem、Media.Audio、Media.Miniaudio、Media.LibVlc、Input.Sdl3
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
   Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless、Sample.CrossPlatform
@@ -101,6 +101,7 @@ Integration 测试只承载必须联合多个外层实现的场景；单一生�
 - 不让 Core、Runtime 或 Editor.Shared 反向引用具体 Avalonia 实现。
 - `GalNet.Architecture.Tests/ProjectDependencyTests` 检查内层与共享项目、测试项目的直接依赖 allowlist，禁止测试项目互相引用，并要求 `GalNet.Storage.Abstractions` 项目及引用保持不存在；依赖边界变化必须同步更新本页和受影响模块规范。
 - 通用玩家的 GameHost/GameView/Storage 生产依赖图不得包含 Sample（包括 Sample.Contracts）或循环引用；项目主题、契约和启动路径由各宿主的 `SampleCustomization` 配置。两个 Sample 不互相引用，均直接消费通用库和项目契约。
+- 可选 `GalNet.Avalonia.Debugging` 向下依赖 `Avalonia.GameHost` 和 `GalNet.Debugging`，承载通用调试命令、快照、日志/UI 与外部会话适配；普通 GameHost/GameView 不反向引用调试模块。项目 replay 策略和平台重启/打开目录动作由宿主提供；玩家版通过条件工程引用排除调试实现与资源。
 - 内容、保存、玩家变量、变量桥接和进度协议由 Runtime 拥有；资源访问协议由 Core.Assets 拥有；Editor 设置和退出协议由 Editor.Abstraction 拥有。
 - `ISaveService` 只提供异步、可取消的 I/O API，保存请求统一使用 `SaveRequest` 携带 snapshot 与可选展示 metadata。
 - Provider 不管理解码对象或引用计数；页面/媒体实现不理解目录与 PAK 布局。

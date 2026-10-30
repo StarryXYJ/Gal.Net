@@ -1,0 +1,13 @@
+<Project>
+  <Import Project="../../../Directory.Build.props" />
+  <PropertyGroup>
+    <EnableGameDebugging Condition="'$(EnableGameDebugging)' == '' And ('$(Configuration)' == 'Debug' Or '$(Configuration)' == '')">true</EnableGameDebugging>
+    <EnableGameDebugging Condition="'$(EnableGameDebugging)' == ''">false</EnableGameDebugging>
+    <EnableLaunchArguments Condition="'$(EnableLaunchArguments)' == ''">$(EnableGameDebugging)</EnableLaunchArguments>
+    <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' != 'true' And '$(PublishProfile)' != 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.NoGameDebugging.json</NuGetLockFilePath>
+    <NuGetLockFilePath Condition="'$(EnableGameDebugging)' == 'true' And '$(PublishProfile)' == 'Desktop'">$(MSBuildProjectDirectory)/packages.lock.Desktop.$(GalNetDesktopPublishTarget).Debugging.json</NuGetLockFilePath>
+    <CopyOutputSymbolsToPublishDirectory Condition="'$(EnableGameDebugging)' != 'true'">false</CopyOutputSymbolsToPublishDirectory>
+  </PropertyGroup>
+</Project>

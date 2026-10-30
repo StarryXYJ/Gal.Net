@@ -20,7 +20,7 @@ internal sealed partial class SampleGameSessionService(
     {
 #if GALNET_GAME_DEBUG
         return SampleCustomization.CreateHostOptions(App.LaunchOptions.DebugInvitation is null ? null :
-            engine => services.GetRequiredService<GalNet.Sample.Avalonia.Debug.SampleExternalDebug>().Attach(engine));
+            engine => services.GetRequiredService<GalNet.Avalonia.Debugging.AvaloniaExternalDebugSession>().Attach(engine));
 #else
         return SampleCustomization.CreateHostOptions();
 #endif

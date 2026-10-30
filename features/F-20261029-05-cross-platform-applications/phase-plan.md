@@ -2,9 +2,9 @@
 
 - 更新：2026-10-30；整体 in-progress。
 - 用户最新修订：独立模板延后，先把 Sample 做到可验收；macOS/手柄验收延后。Android/iOS 先实现功能再验收，本机缺 Mac 不阻挡其他实现。移动允许 Mono AOT，NativeAOT 不作硬前置。
-- 结构修订：删除 `GalNet.Sample.Player` 项目，通用机制按职责回到库层；两个 Sample 独立配置，允许少量声明/接线重复；调试能力可选复用。设计见 [§8.1](design.md#81-2026-10-30-修订模板拥有配置通用层拥有机制)。P6b/P6c 已验证并归入阶段总结，P6d/P6e 仍为 planned。
+- 结构修订：删除 `GalNet.Sample.Player` 项目，通用机制按职责回到库层；两个 Sample 独立配置，允许少量声明/接线重复；调试能力可选复用。设计见 [§8.1](design.md#81-2026-10-30-修订模板拥有配置通用层拥有机制)。P6b–P6d 已验证并归入阶段总结，P6e 待新产物复验。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：按 P6d → P6e 完成通用调试及新产物复验，再继续 P7 剩余设备验收。两个主项目独立配置和 Player 工程删除已完成；独立模板生成仍延期，iOS/macOS 环境不阻挡当前结构调整。
+- 下一段：P6e 新产物复验，再继续 P7 剩余设备验收。通用调试、两个主项目独立配置和 Player 工程删除已完成；独立模板生成仍延期，iOS/macOS 环境不阻挡当前结构调整。
 
 ## 阶段状态与依赖
 
@@ -16,7 +16,7 @@
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
 | P4 | in-progress | macOS 归档/签名延期；Windows/Linux 原生宿主合包和明确协议的仓库外工程已验证，其他定制工程不作通用支持承诺 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
-| P6 | in-progress | P6b/P6c 通用机制和独立配置已验证，Player 已删除；P6d/P6e 调试与新产物回归；独立模板生成延期 |
+| P6 | in-progress | P6b–P6d 通用机制、独立配置和可选调试已验证，Player 已删除；P6e 新产物回归；独立模板生成延期 |
 | P7 | in-progress | Android 存读档/Gallery/进程恢复及剩余设备矩阵，iOS 编译链接/设备与签名待验 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
 
@@ -62,7 +62,7 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **前置条件**：以 P6a/P7a–P7c 的已验证行为为基线，不等待手柄、macOS、iOS 验收；历史共享 Player 是待迁移实现，不是最终结构要求。
 - **涉及模块**：两个 Sample 组合根、Avalonia.GameHost/GameView/Controls/Themes、Storage.FileSystem、可选调试模块、契约执行适配、构建/测试入口。
 - **剩余任务**：
-  - P6b 通用机制、P6c 两宿主独立配置/删除 Player 已归入总结；继续下面 P6d/P6e，不新建同职责的 Player 替代工程。
+  - P6b 通用机制、P6c 两宿主独立配置/删除 Player、P6d 可选调试已归入总结；继续下面 P6e，不新建同职责的 Player 替代工程。
   - **延后**：独立模板生成/脱离仓库构建，待 Sample 本身可验收后再整理。
   - Android 真机资产安装、语言页与基础剧情会话已归入 P7b 总结；继续验证完整会话、退出/返回/显示，不把基础 smoke 写成可完整游玩。
   - 衔接 P7 原生媒体和生命周期；开发工具抽出通用能力，由两宿主显式选择接入，平台不适用的操作不显示。
@@ -76,14 +76,7 @@ P6b（verified）：通用宿主/视图、流式安装、profile 身份及截图
 
 P6c（verified）：两个主项目独立的 SampleCustomization、项目文案/契约适配和 Player 工程删除已完成；源锁图及实际 deps.json 无旧 Player，详见阶段总结和 execution.md 的 P6c。
 
-### P6d — 可选调试能力解耦并接入两个宿主（planned）
-
-- **目标/前置**：依赖 P6b/P6c；把通用调试从原桌面 Sample 中抽出，保留宿主对平台操作和启用策略的控制。
-- **涉及模块**：原 Sample 的 Debug/调试菜单与日志 UI、通用宿主、Presentation 下可选调试模块、GalNet.Debugging、两个 Sample 构建开关。
-- **任务**：提取调试 VM、日志缓存/显示、快照和外部调试会话适配；保留协议/engine 实现在 GalNet.Debugging。用窄接口/回调替换 `App.LaunchOptions`、Sample 会话类型、MainWindow、进程重启和打开目录依赖；项目指令 replay 策略由 Sample 提供。两个 Desktop 宿主均可显式接入，移动仅接入适用的会话操作/可嵌入 UI，不把桌面窗口硬带入移动。沿用 EnableGameDebugging/EnableLaunchArguments 和独立锁图的能力规则，玩家构建完全排除调试。
-- **测试**：日志、清空状态与确认、资源重载/重启、快照覆盖、外部连接/断开/停止/会话重建回归；两宿主 Developer/Player 构建与依赖/资源检查。关闭调试时保留正常日志，拒绝从运行期注册开关给玩家版重新启用调试；缺少平台能力时入口行为明确。
-- **文档/风险**：记录模块启用、宿主动作与平台能力；可选调试项目的名称在实现时确定，不要求新增项目数量本身。移动外部调试传输、邀请和安全策略没有设备证据就继续未验。
-- **退出条件**：通用调试不引用 Sample 类型/项目契约，两 Desktop 宿主可使用，玩家产物无调试实现/资源/协议依赖；移动适用范围有明确结果，不以桌面结果代替移动支持。
+P6d（verified）：可选 `GalNet.Avalonia.Debugging` 已接入两个宿主，玩家版排除调试引用/资源；嵌入 UI、真实协议适配、scope 释放和 Activity 容器重挂载有自动化证据。28 组还原矩阵通过，完整结果见阶段总结与 execution.md。最终 native 发布/设备结果仍由 P6e 验证，移动远程调试与独立 NuGet/模板交付不在本切片证据内。
 
 ### P6e — 迁移后发布、设备回归与文档收敛（planned）
 

@@ -3,6 +3,7 @@ using GalNet.Assets;
 using GalNet.Storage.FileSystem;
 #if GALNET_GAME_DEBUG
 using GalNet.Debugging;
+using GalNet.Avalonia.Debugging;
 #endif
 
 namespace GalNet.Sample.Avalonia;
@@ -69,21 +70,7 @@ internal sealed record GameLaunchOptions(string? GameDirectory, string? ProfileD
         profileDirectory ??= GetDefaultProfileDirectory(gameDirectory);
 
 #if GALNET_GAME_DEBUG
-        DebugInvitation? invitation = null;
-        if (debug.Count > 0)
-        {
-            if (!debug.TryGetValue("--debug-port", out var portText) || !int.TryParse(portText, out var port) || port is <= 0 or > 65535 ||
-                !debug.TryGetValue("--debug-token", out var token) || !debug.TryGetValue("--debug-session", out var session) || !debug.TryGetValue("--debug-project", out var project))
-                throw new ArgumentException("Debug launch requires a content directory, port, token, session and project identity.");
-            string? fingerprint = null;
-            if (debug.TryGetValue("--debug-contract", out var expected))
-            {
-                fingerprint = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
-                if (!string.Equals(expected, fingerprint, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidDataException($"The App contract differs from the Editor project. Expected SHA256: {expected}; actual SHA256: {fingerprint}. Deploy the App's matching Contracts and reopen the Editor project before debugging.");
-            }
-            invitation = new(port, token, session, new(project, DebugContentIdentity.Compute(gameDirectory), fingerprint));
-        }
+        var invitation = DebugLaunchArguments.Parse(debug, gameDirectory, typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location);
         return new GameLaunchOptions(gameDirectory, profileDirectory) { DebugInvitation = invitation };
 #else
         return new GameLaunchOptions(gameDirectory, profileDirectory);

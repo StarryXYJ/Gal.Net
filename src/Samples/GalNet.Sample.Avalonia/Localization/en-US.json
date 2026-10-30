@@ -1,15 +1,4 @@
 {
   "App.Title": "GalNet Avalonia Sample Player",
-  "About.Description": "This default player shell is fully replaceable by a game client without changing its runtime or game data.",
-  "Debug.Menu": "Debug",
-  "Debug.ClearPlayerState": "Clear game data...",
-  "Debug.ReloadGameResources": "Reload game resources and restart",
-  "Debug.Save": "Save",
-  "Debug.SaveProgressOnly": "Save progress only",
-  "Debug.SaveGalgroup": "Save galgroup",
-  "Debug.ShowLog": "Log panel (L)",
-  "Debug.OpenLogDirectory": "Open log directory",
-  "DebugLog.Title": "Debug log",
-  "DebugLog.Clear": "Clear log",
-  "DebugLog.OpenDirectory": "Open log directory"
+  "About.Description": "This default player shell is fully replaceable by a game client without changing its runtime or game data."
 }

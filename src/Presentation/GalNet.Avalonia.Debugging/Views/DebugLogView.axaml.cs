@@ -4,37 +4,46 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
-using GalNet.Sample.Avalonia.Debug;
-using Ursa.Controls;
 
-namespace GalNet.Sample.Avalonia.Views;
+namespace GalNet.Avalonia.Debugging.Views;
 
-public partial class DebugLogWindow : Ursa.Controls.UrsaWindow
+public partial class DebugLogView : UserControl
 {
-    private readonly SampleDebugLogStore _logStore;
-    private readonly SampleDebugLogDirectory _logDirectory;
+    private readonly GameDebugLogStore _logStore;
     private ScrollViewer? _scrollViewer;
     private bool _followTail = true;
 
-    public ObservableCollection<SampleDebugLogLine> Lines { get; } = [];
+    private bool _attached;
+    private int _generation;
+    public ObservableCollection<GameDebugLogLine> Lines { get; } = [];
+    public GameDebugViewModel Actions { get; }
+    public event Action? CloseRequested;
 
-    public DebugLogWindow(SampleDebugLogStore logStore, SampleDebugLogDirectory logDirectory)
+    public DebugLogView(GameDebugLogStore logStore, GameDebugViewModel actions)
     {
         _logStore = logStore;
-        _logDirectory = logDirectory;
+        Actions = actions;
         InitializeComponent();
         DataContext = this;
-        foreach (var line in _logStore.GetSnapshot())
-            Lines.Add(line);
-
-        _logStore.LineAdded += OnLineAdded;
-        _logStore.Cleared += OnLogsCleared;
-        LogListBox.AttachedToVisualTree += OnLogListAttached;
-        Closed += OnClosed;
+        AttachedToVisualTree += OnLogListAttached;
+        DetachedFromVisualTree += OnDetached;
     }
 
     private void OnLogListAttached(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        _attached = true;
+        var generation = ++_generation;
+        Lines.Clear();
+        foreach (var line in _logStore.GetSnapshot()) Lines.Add(line);
+        _logStore.LineAdded += OnLineAdded;
+        _logStore.Cleared += OnLogsCleared;
+        Dispatcher.UIThread.Post(() => { if (generation == _generation) AttachScrollViewer(); }, DispatcherPriority.Background);
+    }
+
+    private void AttachScrollViewer()
+    {
+        if (!_attached) return;
+        if (_scrollViewer is not null) _scrollViewer.ScrollChanged -= OnScrollChanged;
         _scrollViewer = LogListBox.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
         if (_scrollViewer is not null)
         {
@@ -44,15 +53,24 @@ public partial class DebugLogWindow : Ursa.Controls.UrsaWindow
         }
     }
 
-    private void OnLineAdded(SampleDebugLogLine line) =>
+    private void OnLineAdded(GameDebugLogLine line)
+    {
+        var generation = _generation;
         Dispatcher.UIThread.Post(() =>
         {
+            if (!_attached || generation != _generation) return;
             Lines.Add(line);
+            while (Lines.Count > GameDebugLogStore.Capacity) Lines.RemoveAt(0);
             if (_followTail)
                 Dispatcher.UIThread.Post(ScrollToEnd, DispatcherPriority.Background);
         });
+    }
 
-    private void OnLogsCleared() => Dispatcher.UIThread.Post(Lines.Clear);
+    private void OnLogsCleared()
+    {
+        var generation = _generation;
+        Dispatcher.UIThread.Post(() => { if (_attached && generation == _generation) Lines.Clear(); });
+    }
 
     private bool IsAtBottom()
     {
@@ -70,17 +88,7 @@ public partial class DebugLogWindow : Ursa.Controls.UrsaWindow
 
     private void OnClearLogsClick(object? sender, RoutedEventArgs e) => _logStore.Clear();
 
-    private async void OnOpenLogDirectoryClick(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            _logDirectory.Open();
-        }
-        catch (Exception exception)
-        {
-            await MessageBox.ShowAsync(this, exception.Message, "打开日志目录失败", button: MessageBoxButton.OK);
-        }
-    }
+    private void OnCloseLogsClick(object? sender, RoutedEventArgs e) => CloseRequested?.Invoke();
 
     private void OnScrollChanged(object? sender, ScrollChangedEventArgs e)
     {
@@ -90,11 +98,14 @@ public partial class DebugLogWindow : Ursa.Controls.UrsaWindow
             _followTail = IsAtBottom();
     }
 
-    private void OnClosed(object? sender, EventArgs e)
+    private void OnDetached(object? sender, VisualTreeAttachmentEventArgs e)
     {
+        _attached = false;
+        ++_generation;
         _logStore.LineAdded -= OnLineAdded;
         _logStore.Cleared -= OnLogsCleared;
         if (_scrollViewer is not null)
             _scrollViewer.ScrollChanged -= OnScrollChanged;
+        _scrollViewer = null;
     }
 }

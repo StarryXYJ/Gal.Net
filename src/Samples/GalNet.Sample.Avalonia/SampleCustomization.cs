@@ -24,6 +24,7 @@ using GalNet.Sample.Avalonia.Views;
 using Microsoft.Extensions.DependencyInjection;
 #if GALNET_GAME_DEBUG
 using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
 #endif
 
 namespace GalNet.Sample.Avalonia;
@@ -53,17 +54,21 @@ internal static class SampleCustomization
             .AddScoped<IAvaloniaPlayerSettings>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
             .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<IAvaloniaPlayerSettings>());
         services.AddScoped<SampleGameSessionService>()
+            .AddScoped<AvaloniaGameSession>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddScoped<IGameSessionService>(provider => provider.GetRequiredService<SampleGameSessionService>())
             .AddTransient<MainWindow>();
 #if GALNET_GAME_DEBUG
-        if (enableDebug) services.AddSampleDebug();
-        if (enableDebug) services.AddScoped<SampleExternalDebug>();
+        if (enableDebug) SampleDebugConfiguration.Configure(services);
 #endif
     }
 
     internal static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
     internal static AvaloniaPlayerLocalization CreateLocalizationService() =>
+#if GALNET_GAME_DEBUG
+        AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(GameDebugViewModel).Assembly, typeof(SampleCustomization).Assembly]);
+#else
         AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(SampleCustomization).Assembly]);
+#endif
 
     internal static string GetProfileDirectory(string content, string? profileRoot = null) =>
         GalNet.Storage.FileSystem.GameProfilePaths.GetProfileDirectory(content,

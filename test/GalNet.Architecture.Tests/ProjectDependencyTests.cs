@@ -19,6 +19,7 @@ public class ProjectDependencyTests
             ["GalNet.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Core", "GalNet.Runtime", "GalNet.Presentation.Abstractions"],
             ["GalNet.Runtime"] = ["GalNet.Core"],
             ["GalNet.Debugging"] = ["GalNet.Runtime"],
+            ["GalNet.Avalonia.Debugging"] = ["GalNet.Avalonia.GameHost", "GalNet.Debugging"],
             ["GalNet.Primitives.Builtins"] = ["GalNet.Core", "GalNet.Contracts.Builtins", "GalNet.Presentation.Abstractions", "GalNet.Runtime"],
             ["GalNet.Media.Audio"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
             ["GalNet.Input.Sdl3"] = ["GalNet.Presentation.Abstractions"],
@@ -100,6 +101,7 @@ public class ProjectDependencyTests
             ["GalNet.Presentation.Tests"] =
             ["GalNet.Contracts.Builtins", "GalNet.Media.Miniaudio",
                 "GalNet.Avalonia.GameHost",
+                "GalNet.Avalonia.Debugging",
                 "GalNet.Media.LibVlc",
                 "GalNet.SchemaGenerator",
                 "GalNet.Assets",
@@ -279,6 +281,7 @@ public class ProjectDependencyTests
         Visit("GalNet.Avalonia.GameHost");
         Visit("GalNet.Avalonia.GameView");
         Visit("GalNet.Storage.FileSystem");
+        Visit("GalNet.Avalonia.Debugging");
     }
 
     [Test]

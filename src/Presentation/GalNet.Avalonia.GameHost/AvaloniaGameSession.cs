@@ -401,7 +401,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             cancellationToken);
     }
 
-    protected async Task RefreshSlotsAsync(CancellationToken cancellationToken)
+    public async Task RefreshSlotsAsync(CancellationToken cancellationToken = default)
     {
         if (_saveSession is null) return;
         var slots = await _saveSession.ListSlotsAsync(cancellationToken);
@@ -462,7 +462,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     }
 
     /// <summary>Runs a project-specific save action under the same command gate as normal saves and run replacement.</summary>
-    protected Task<T> WithSnapshotAsync<T>(Func<GameSnapshot, PlayerSession, CancellationToken, Task<T>> action,
+    public Task<T> WithSnapshotAsync<T>(Func<GameSnapshot, PlayerSession, CancellationToken, Task<T>> action,
         CancellationToken cancellationToken = default) =>
         _session.WithSnapshotAsync((snapshot, token) => action(snapshot,
             _saveSession ?? throw new InvalidOperationException("The player session is not initialized."), token), cancellationToken);

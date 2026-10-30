@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="../../../Directory.Build.targets" />
+  <Target Name="ValidateCrossPlatformLaunchCapabilities" BeforeTargets="CoreCompile">
+    <Error Condition="'$(EnableGameDebugging)' == 'true' And '$(EnableLaunchArguments)' != 'true'" Text="Game debugging requires EnableLaunchArguments=true." />
+  </Target>
+  <Target Name="ExcludeCrossPlatformPlayerSymbols" AfterTargets="ComputeFilesToPublish" Condition="'$(CopyOutputSymbolsToPublishDirectory)' == 'false'">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)" Condition="'%(ResolvedFileToPublish.Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+</Project>

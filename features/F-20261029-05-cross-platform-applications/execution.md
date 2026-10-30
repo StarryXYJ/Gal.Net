@@ -467,3 +467,26 @@ Player 工程、生产源码及项目/解决方案/CI 路径已删除；模板�
 普通过程失败也保留日志：ReadTextColor 测试迁移后遗漏 culture 本地变量导致编译失败；补回其 CultureService 引用后通过。缺键测试先按裸 key 断言，而库实际返回 #key#，修正预期而未改产品逻辑。架构测试重复插入检查块/using 导致编译失败，去重后复测；同时移除 P6b 中重复的已有 allowlist 条目。一次 PowerShell 单元素开关被展开成字符，使用显式参数重跑通过。
 
 证据根 `out/cross-platform-p6c/`：`integration.log`、`presentation-verified.log`、`architecture-final.log`、`results/`、`cross-desktop-build.log`、`fallback-before-fix.log`、`force-evaluate-probe.log`、`force-final-*`、`locked-final-*`。Android/iOS 平台源码改用自身 SampleCustomization，未重新发布/设备运行；Browser 不新增功能，只移除过时引用。通用调试仍留 P6d，最终新产物/设备验证留 P6e，不能据此宣布全平台验收。
+
+## 2026-10-30：P6d 可选调试与双宿主接入（verified）
+
+把原 Sample 的调试日志/菜单/VM/快照及外部会话适配抽至 `GalNet.Avalonia.Debugging`。协议与 Engine 仍在 Shared.Debugging；普通 GameHost/GameView 不引用可选层。GameDebugActions 借用中立 WithSnapshotAsync/RefreshSlotsAsync，沿用正常保存和会话门禁。项目 replay（含 screenshot 忽略）由两个 Sample 各自配置，重启和打开目录动作由宿主回调。原 Sample 保留桌面 shell，CrossPlatform 使用 DebugToolsOverlay；移动不显示打开目录，不创建额外日志窗口。
+
+CrossPlatform 增加调试/参数条件工程引用和独立锁图，默认 Debug 开启、Release 关闭。两主项目调试文案均不再内嵌，按通用 UI→可选调试→项目顺序合并；玩家版无调试模块/协议依赖或资源，普通日志继续工作。菜单确认在容器释放时取消，清除内容和事件；日志只在挂载期间订阅，并阻止旧代次排队回调重复污染重挂载列表。
+
+新 Activity 回归先失败：CreateHostView 只重挂 PlayerView，实际 Content 不是预期 DebugToolsOverlay。修复后重挂完整容器，原 mount 清空且原玩家仍在视觉树。初始化结束后增加 generation/停止检查，避免旧 scope 后续连接邀请。证据 `activity-before.log` 和修复后的完整两种集成结果。
+
+| 检查 | 原始结果 |
+| --- | --- |
+| Presentation 最终释放回归 | total=339、executed/passed=333、failed=0，6 个显式场景未执行；其中包含并行截图任务新增用例 |
+| Integration 调试版 | total=206、executed/passed=197、failed=0，9 个显式 native 场景未执行 |
+| Integration 玩家版 | total=198、executed/passed=192、failed=0，6 个显式 native 场景未执行 |
+| Architecture | 56/56；可选层无 Sample 引用、普通层无反向依赖 |
+| CrossPlatform Desktop 两种调试开关 | 实际 Debug build 成功，两个 deps.json 的可选模块有无符合开关；保留编译分析警告，不宣称零警告 |
+| 锁图 | 16 Desktop + 2 R2R + 4 普通桌面 + 6 Android/iOS/Browser，共 28 组 force-evaluate 后 locked 通过 |
+| 既有包身份 | 200 份锁图框架/RID 键及保留包 resolved/contentHash 一致；玩家测试图有意移除 DiagnosticsSupport、Logging.Abstractions、RecyclableMemoryStream |
+| 文档 | sync_wiki.py check 通过；未发布外部 Wiki |
+
+依赖身份检查首次错误地把预期删除的三项诊断依赖判为失败；核对实际旧/新锁图后记录精确移除白名单，未忽略版本或 hash 变更。全部 restore 原始日志和 `lock-matrix.json`、`lock-package-identities.json` 保留。最终证据在 `out/cross-platform-p6d/`：`presentation-disposal.log`、`integration-activity-final.log`、`integration-player-final.log`、`architecture-final.log`、`results/`、`cross-build-*` 和 `force-*`/`locked-*`。
+
+没有以本切片自动化替代 P6e 新平台发布/运行。Android USB 当前在线；NDK 缓存此前被删除，正在工作区用官方 sdkmanager 准备正常构建工具链，不能继续依赖 P7b/P7c 的临时 native 复用 targets。独立 NuGet/模板交付、移动远程调试、iOS/macOS/真实手柄仍未验收。工作区并行截图/配色改动保持独立，不随本阶段提交。

@@ -2,17 +2,17 @@ using System.Globalization;
 using Serilog.Core;
 using Serilog.Events;
 
-namespace GalNet.Sample.Avalonia.Debug;
+namespace GalNet.Avalonia.Debugging;
 
 /// <summary>Bounded in-memory Serilog sink used by the optional sample debug UI.</summary>
-public sealed class SampleDebugLogStore : ILogEventSink
+public sealed class GameDebugLogStore : ILogEventSink
 {
-    private const int Capacity = 500;
+    public const int Capacity = 500;
     private readonly object _gate = new();
-    private readonly List<SampleDebugLogLine> _lines = [];
+    private readonly List<GameDebugLogLine> _lines = [];
     private bool _enabled;
 
-    public static SampleDebugLogStore Shared { get; } = new();
+    public static GameDebugLogStore Shared { get; } = new();
 
     public bool IsEnabled
     {
@@ -23,7 +23,7 @@ public sealed class SampleDebugLogStore : ILogEventSink
         }
     }
 
-    public event Action<SampleDebugLogLine>? LineAdded;
+    public event Action<GameDebugLogLine>? LineAdded;
     public event Action? Cleared;
 
     public void Enable()
@@ -32,7 +32,7 @@ public sealed class SampleDebugLogStore : ILogEventSink
             _enabled = true;
     }
 
-    public IReadOnlyList<SampleDebugLogLine> GetSnapshot()
+    public IReadOnlyList<GameDebugLogLine> GetSnapshot()
     {
         lock (_gate)
             return _lines.ToArray();
@@ -48,13 +48,13 @@ public sealed class SampleDebugLogStore : ILogEventSink
 
     public void Emit(LogEvent logEvent)
     {
-        SampleDebugLogLine? line = null;
+        GameDebugLogLine? line = null;
         lock (_gate)
         {
             if (!_enabled)
                 return;
 
-            line = new SampleDebugLogLine(
+            line = new GameDebugLogLine(
                 logEvent.Timestamp,
                 logEvent.Level,
                 logEvent.RenderMessage(CultureInfo.InvariantCulture),
@@ -74,7 +74,7 @@ public sealed class SampleDebugLogStore : ILogEventSink
             : string.Empty;
 }
 
-public sealed record SampleDebugLogLine(
+public sealed record GameDebugLogLine(
     DateTimeOffset Timestamp,
     LogEventLevel Level,
     string Message,

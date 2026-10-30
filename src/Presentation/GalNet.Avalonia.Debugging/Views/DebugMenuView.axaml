@@ -1,9 +1,9 @@
 <Menu xmlns="https://github.com/avaloniaui"
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-      xmlns:debug="using:GalNet.Sample.Avalonia.Debug"
+      xmlns:debug="using:GalNet.Avalonia.Debugging"
       xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
-      x:Class="GalNet.Sample.Avalonia.Views.DebugMenuView"
-      x:DataType="debug:SampleDebugViewModel">
+      x:Class="GalNet.Avalonia.Debugging.Views.DebugMenuView"
+      x:DataType="debug:GameDebugViewModel">
   <MenuItem Header="{loc:Localize Debug.Menu}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
     <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" />
     <MenuItem Header="{loc:Localize Debug.ReloadGameResources}" Command="{Binding ReloadGameResourcesCommand}" />
@@ -14,6 +14,6 @@
     </MenuItem>
     <Separator />
     <MenuItem Header="{loc:Localize Debug.ShowLog}" Command="{Binding ShowLogCommand}" />
-    <MenuItem Header="{loc:Localize Debug.OpenLogDirectory}" Command="{Binding OpenLogDirectoryCommand}" />
+    <MenuItem Header="{loc:Localize Debug.OpenLogDirectory}" Command="{Binding OpenLogDirectoryCommand}" IsVisible="{Binding CanOpenLogDirectory}" />
   </MenuItem>
 </Menu>

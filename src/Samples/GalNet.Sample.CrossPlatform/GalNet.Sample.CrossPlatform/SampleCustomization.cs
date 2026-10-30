@@ -21,6 +21,10 @@ using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Presentation.Abstractions.Application;
 using Microsoft.Extensions.DependencyInjection;
+#if GALNET_GAME_DEBUG
+using GalNet.Avalonia.Debugging;
+using GalNet.Runtime.Engine;
+#endif
 
 namespace GalNet.Sample.CrossPlatform;
 
@@ -61,7 +65,20 @@ public static class SampleCustomization
     public static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
 
     public static AvaloniaPlayerLocalization CreateLocalizationService() =>
+#if GALNET_GAME_DEBUG
+        AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(GameDebugViewModel).Assembly, typeof(SampleCustomization).Assembly]);
+#else
         AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(SampleCustomization).Assembly]);
+#endif
+
+#if GALNET_GAME_DEBUG
+    public static GameDebugHostOptions CreateDebugOptions(Func<CancellationToken, Task> restartAsync, Action? openLogDirectory = null)
+    {
+        var instructions = GameDebugHostOptions.CreateBuiltinReplayPolicy();
+        instructions[ScreenshotSchema.TypeId] = DebugReplayBehavior.Ignore;
+        return new() { RestartAsync = restartAsync, OpenLogDirectory = openLogDirectory, Instructions = instructions };
+    }
+#endif
 
     public static string GetProfileDirectory(string content, string? profileRoot = null) =>
         GalNet.Storage.FileSystem.GameProfilePaths.GetProfileDirectory(content,

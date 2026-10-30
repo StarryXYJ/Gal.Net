@@ -30,6 +30,7 @@
     <Project Path="src/Infrastructure/GalNet.Storage.FileSystem/GalNet.Storage.FileSystem.csproj" />
   </Folder>
   <Folder Name="/src/Presentation/">
+    <Project Path="src/Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Controls/GalNet.Avalonia.Controls.csproj" />
     <Project Path="src/Presentation/GalNet.Avalonia.Rendering/GalNet.Avalonia.Rendering.csproj" />

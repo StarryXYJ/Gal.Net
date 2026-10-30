@@ -3,12 +3,12 @@ using GalNet.Core.Runtime;
 using GalNet.Core.Variable;
 using GalVariable = GalNet.Core.Variable.Variable;
 
-namespace GalNet.Sample.Avalonia.Debug;
+namespace GalNet.Avalonia.Debugging;
 
 /// <summary>Creates reduced debug snapshots without mutating the live engine snapshot.</summary>
-internal static class SampleDebugSnapshotFactory
+public static class DebugSnapshotFactory
 {
-    public static GameSnapshot Create(GameSnapshot source, SampleDebugSaveKind kind)
+    public static GameSnapshot Create(GameSnapshot source, DebugSaveKind kind)
     {
         ArgumentNullException.ThrowIfNull(source);
         return new GameSnapshot
@@ -17,7 +17,7 @@ internal static class SampleDebugSnapshotFactory
             ContentBuildId = source.ContentBuildId,
             StoryPackages = source.StoryPackages.ToArray(),
             NodeId = source.NodeId,
-            EntryIndex = kind == SampleDebugSaveKind.GalGroupStart ? 0 : source.EntryIndex,
+            EntryIndex = kind == DebugSaveKind.GalGroupStart ? 0 : source.EntryIndex,
             Variables = source.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value)),
             States = source.States.ToDictionary(pair => pair.Key, pair =>
                 new StateSection(pair.Value.Version, System.Text.Json.JsonSerializer.SerializeToElement(Array.Empty<object>())))

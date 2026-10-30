@@ -29,7 +29,7 @@ public sealed class SharedPlayerHostTests
         var sink = new AssetHostLogCapture();
         var configuration = new Serilog.LoggerConfiguration().WriteTo.Sink(sink);
 #if GALNET_GAME_DEBUG
-        var store = new GalNet.Sample.Avalonia.Debug.SampleDebugLogStore();
+        var store = new GalNet.Avalonia.Debugging.GameDebugLogStore();
         store.Enable();
         configuration.WriteTo.Sink(store);
 #endif

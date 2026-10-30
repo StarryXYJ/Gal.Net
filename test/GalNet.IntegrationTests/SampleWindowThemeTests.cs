@@ -11,6 +11,9 @@ using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Sample.Avalonia;
 using GalNet.Sample.Avalonia.Views;
+#if GALNET_GAME_DEBUG
+using GalNet.Avalonia.Debugging.Views;
+#endif
 using GalNet.Avalonia.GameHost.Views;
 using GeneralTest.Integration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,7 +41,7 @@ public sealed class SampleWindowThemeTests
             Application.Current!.Styles.Add(semi);
             var menu = new DebugMenuView
             {
-                DataContext = scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.Debug.SampleDebugViewModel>()
+                DataContext = scope.ServiceProvider.GetRequiredService<GalNet.Avalonia.Debugging.GameDebugViewModel>()
             };
             var window = new Window { Width = 640, Height = 400, Content = menu };
             window.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());

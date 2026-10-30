@@ -15,7 +15,7 @@ using GalNet.GameHost.Content;
 using GalNet.Runtime.Runtime;
 using GalNet.Sample.Avalonia;
 #if GALNET_GAME_DEBUG
-using GalNet.Sample.Avalonia.Debug;
+using GalNet.Avalonia.Debugging;
 #endif
 using GalNet.Sample.Avalonia.Presentation;
 using GalNet.Avalonia.GameHost.Presentation;
@@ -51,12 +51,12 @@ public sealed class SampleCustomizationTests
                 var game = first.ServiceProvider.GetRequiredService<SampleGameSessionService>();
                 Assert.That(first.ServiceProvider.GetRequiredService<IGameSessionService>(), Is.SameAs(game));
 #if GALNET_GAME_DEBUG
-                Assert.That(first.ServiceProvider.GetService<SampleDebugViewModel>() is not null, Is.EqualTo(enableDebug));
+                Assert.That(first.ServiceProvider.GetService<GameDebugViewModel>() is not null, Is.EqualTo(enableDebug));
 #endif
                 var window = first.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.Views.MainWindow>();
                 window.CompleteStartup();
 #if GALNET_GAME_DEBUG
-                Assert.That(((GalNet.Sample.Avalonia.Views.DebugMenuView)window.LeftContent!).IsVisible, Is.EqualTo(enableDebug));
+                Assert.That(((GalNet.Avalonia.Debugging.Views.DebugMenuView)window.LeftContent!).IsVisible, Is.EqualTo(enableDebug));
 #else
                 Assert.That(window.LeftContent, Is.Null);
 #endif

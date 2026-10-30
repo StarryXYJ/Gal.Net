@@ -39,8 +39,13 @@ public sealed class AvaloniaPlayerHostTests
     [TearDown]
     public void Cleanup() => Directory.Delete(_root, true);
 
-    private static AvaloniaGameHostOptions Options() => new()
+    internal static AvaloniaGameHostOptions Options(int saveSlots = 60,
+        AvaloniaGamePresentationOptions? presentation = null,
+        Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null) => new()
     {
+        SelectProjectOptions = _ => new() { SaveSlotCount = saveSlots },
+        Presentation = presentation ?? new(),
+        AttachRun = attachRun,
         CreateContentCatalogs = () =>
         {
             var resources = BuiltinResourceTypes.CreateCatalog();
@@ -49,7 +54,7 @@ public sealed class AvaloniaPlayerHostTests
         ConfigureExecution = (_, _, _, _) => { }
     };
 
-    private static void Configure(IServiceCollection services, string label)
+    internal static void Configure(IServiceCollection services, string label)
     {
         var theme = new ClassicTheme(GamePalette.Mono);
         services.AddAvaloniaGameViewPages(theme)

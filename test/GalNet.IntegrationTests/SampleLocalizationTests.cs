@@ -263,7 +263,11 @@ public sealed class SampleLocalizationTests
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
         localization.CultureService.SetCulture("zh-CN");
+#if GALNET_GAME_DEBUG
         Assert.That(localization["Debug.Menu"], Is.EqualTo("调试"));
+#else
+        Assert.That(localization["Debug.Menu"], Is.EqualTo("#Debug.Menu#"));
+#endif
     }
 
     [Test]
@@ -318,7 +322,7 @@ public sealed class SampleLocalizationTests
         Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet Avalonia Sample Player"));
 
         cultureService.SetCulture("zh-CN");
-        Assert.That(cultureService["Debug.Menu"], Is.EqualTo("调试"));
+        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet Avalonia 示例播放器"));
 
         provider.LoadJsonString("{\"App.Title\":\"External title\"}", "en-US");
         cultureService.SetCulture("en-US");
