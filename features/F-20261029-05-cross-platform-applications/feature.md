@@ -9,6 +9,8 @@
 
 ## 用户目标与已确认决策
 
+2026-10-30 用户修订：手柄、macOS、iOS 的验收移到后续，不阻挡当前 Windows/Linux、共享宿主和 Android 的推进。保留这些平台的实现与验收待办，不将延期记为通过。NativeAOT 不是模板的硬前置条件；移动平台可采用受支持的 Mono AOT，以实际发布结果验证。此前 P6 对全部桌面/移动探针的硬依赖相应缩小为当前切片需要的证据。
+
 最新增量：正式 SDL3 与四类外部 NuGet 消费者已验证并总结；新增应用发布矩阵，Windows/Linux 原生 SDK 均完成 Editor/CLI/Player/Developer 四种自包含发布，修正 Linux SDK 名称大小写。macOS 两架构仅还原未运行；继续 Linux build-compose、原生 Editor 导出与移动探针。真实手柄、macOS、移动仍未验收，旧 dev.9 应用包与 dev.10 CLI 未重写。
 
 Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供额外支持 Android、iOS 的 Avalonia 跨平台模板。普通剧情开发者能够在没有 .NET SDK 或原生编译工具的环境中导出内容，使用预编译运行包完成游戏发行。修改应用源码的开发者可指定工程路径和内容包，通过独立工具构建、合并并打包。

@@ -2,6 +2,23 @@
 
 本文件保留详细历史与失败证据；当前结果见[阶段总结](progress-summary.md)，下一步见[剩余计划](phase-plan.md)。
 
+## 2026-10-30：验收后移与 Linux 原生源码合包
+
+用户决定手柄、macOS、iOS 验收移到后续，不阻挡共享宿主/Desktop/Android；移动允许 Mono AOT，不强制 NativeAOT。需求、设计与 P6 前置条件已修订，延期不记为通过。
+
+当前设备回到 Ubuntu 26.04.1 / WSLg。下载官方 SDK 10.0.401 并核对发布元数据 SHA512，隔离到 `/tmp/galnet-build-compose-Q4qkZh/sdk`；源码为 `774b35f7` 的 git archive，无 Windows bin/obj 和本轮源码补丁，来源 hash 记录到 provenance.json。初次 SDK 启动缺 ICU，改用工作区既有的 ICU 动态库恢复正常，没有安装系统软件或启用 invariant globalization。
+
+- 原生 SDK 发布 Editor、CLI、Sample Developer 全部通过，继续使用 Desktop/linux-x64 已提交锁图。
+- 从本轮实际 Sample 发布捕获三份契约，SDK 搜索隔离下创建作者项目并导出 galpak/目录；两个输入分别在原生 SDK 下完成 build-compose（SDK/locked restore/publish 三步 exit 0）。
+- 仓库外独立 CustomHost.csproj 只引用存储和契约工程，不引用 Sample 可执行程序。显式准备首次锁图后，实际 locked build-compose 成功；解包的宿主在无 SDK 搜索环境正常启动，读取的 projectId/buildId 与包清单一致。
+- 三个归档全部文件集合、大小/hash、入口执行位、三份契约字节核对通过。新增 probes/source-compose 下的源码与原生窗口探针，保留每步日志与结构化结果。
+- 两个 Sample 解包到含空格目录，从其他工作目录且不继承开发 LD_LIBRARY_PATH 的环境启动，包内 CoreCLR/VLC/SDL 加载、会话初始化与确认退出后 exit 0。首次窗口识别未匹配，stdout 显示会话已就绪；探针补充重挂载窗口枚举和 UTF-8 `_NET_WM_NAME`，两个产物均通过。首次失败保留在 gui-archive，成功为 gui-archive-v2 / gui-directory-v2。
+- 发布保护测试 Windows/Linux 各 4/4 通过；现有非空输出保护、错误 SDK/native 和自有进程树超时/无关进程保留均覆盖。
+
+证据归档：`out/cross-platform-validation/20261030-source-compose/`，含 compose.json、linux-publish.json、SDK/源码来源、构建日志、三包清单、正常/失败 GUI 结果与模块路径。本轮媒体从本设备既有 Ubuntu 26.04 依赖重建私有布局，逐包复核保留 SHA256/版权，provenance 明确只是本地开发探针，不是新的 Ubuntu 24.04 基线或通过公开再分发审查的候选。旧 dev.9/dev.10 未修改，完整媒体、原生 Linux 桌面、P1 原生 Editor 导出和最终统一发行仍待验收。当前 Linux 隔离 SDK/源码/产物暂供紧接的共享宿主阶段复用。
+
+契约来源规则已补到正式发行手册：同一实际应用构建的闭包用于内容导出，源码合包使用匹配的源码/配置/版本；换宿主/源码上下文重新核对并按需重新导出，不以版本号相同放宽 hash。
+
 ## 2026-10-29：P0 内容/环境检查与 P1 导出改造
 
 ### 实现

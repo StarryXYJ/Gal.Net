@@ -37,6 +37,10 @@ Windows 11 x64 / .NET 10 自包含、Ubuntu 24.04.3 x64 / WSLg 均验证 SDL 3.4
 
 固定 SDL3-CS 原生包 3.4.18.1 / SDL 3.4.18，采用自有 LibraryImport C ABI。Windows 11 x64 与 Ubuntu 24.04.3 / WSLg x64 均完成正式 GameHost 的 3 次 × 40 项虚拟输入、焦点、所有权与退出检查，另各一次缺少私有 native 的正常降级。正式结果使用 NuGet 完整 native，并非 P0 的输入专用 Linux 编译；package native/清单/许可传递到外部 Desktop/Avalonia 消费者已验证。macOS assets 仅存在于包/来源清单，未运行；当前仍无实际手柄验收。详细证据见 execution.md。
 
+## 当前设备的 Linux 原生宿主增量
+
+2026-10-30 当前设备复验：Ubuntu 26.04.1 / WSLg，不沿用另一设备 24.04.3 的最低系统结论。工作区官方 SDK 10.0.401 SHA512 校验后在 ext4 临时目录隔离解压，以无 bin/obj 源码快照完成原生 Editor/CLI/Developer 发布、两种内容的 build-compose 和仓库外独立宿主。三包 hash/权限/契约检查、两种 Sample 的原生窗口/会话/退出通过；Linux 发布保护测试 4/4。媒体为复核旧 SHA256 的本地开发依赖，不是新的 24.04 发行候选；见执行记录及 source-compose 探针。
+
 ## 内容闭包实施结果
 
 原 GamePackageExporter.ExportAsync 仅把 prepared.Base 写入 galpak，把 prepared.Stories 发布到归档旁的 StoryPatches/<buildId>。所以单独移动归档会漏掉剧情。ExportDirectoryAsync 已写入本体和全部剧情，两个交付物原先不等价。

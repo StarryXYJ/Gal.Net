@@ -1,8 +1,9 @@
 # 剩余实现计划
 
 - 更新：2026-10-30；整体 in-progress。
+- 用户最新修订：手柄、macOS、iOS 验收后移，不作为 Windows/Linux、P6 共享宿主和 Android 的进入门禁；相关未验收项保留。移动允许 Mono AOT，NativeAOT 不作硬前置。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：Linux 宿主 build-compose 与 P1 原生 Editor 导出验收，继续完整媒体及移动风险探针；应用矩阵配置、Windows/Linux 原生 SDK 发布已总结。
+- 下一段：P6 共享宿主集中接入，先 Desktop/Android；Linux 原生宿主 build-compose、仓库外宿主及两种源码合包的 WSLg 启动退出已总结。P1 原生 Editor 导出和完整媒体验收继续保留，不阻挡可独立实现的共享宿主。
 
 ## 阶段状态与依赖
 
@@ -12,13 +13,13 @@
 | P1 | in-progress | 原生分发 Editor UI 的两种无 SDK 内容导出验收；实现和自动化已总结 |
 | P2 | verified | Windows 布局/严格合包已总结，无待办 |
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
-| P4 | in-progress | Linux 宿主 build-compose/定制工程矩阵、macOS 归档与签名；原生 Linux SDK 普通发布与 Windows 宿主合包已总结 |
+| P4 | in-progress | macOS 归档/签名延期；Windows/Linux 原生宿主合包和明确协议的仓库外工程已验证，其他定制工程不作通用支持承诺 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
-| P6 | planned | 桌面稳定后集中接入 CrossPlatform；依赖 P1–P5 及移动探针结论 |
+| P6 | planned | 集中接入 CrossPlatform，先共享宿主/Desktop/Android；不等待延期的平台验收 |
 | P7 | planned | 移动媒体、生命周期和真机；依赖 P6，复用 P5 动作层 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
 
-单平台成功不使整阶段 verified。macOS/iOS 缺环境时保留未验收，继续独立的 Windows/Linux 工作；P6 做不可逆移动依赖选择前须取得相应探针证据。P6 前不维护第二份完整 Sample，不扩大到 Browser 验收。
+单平台成功不使整阶段 verified。macOS/iOS 与手柄验收延期，继续 Windows/Linux 和共享宿主/Android；影响当前切片依赖选择的风险用对应构建/探针解决，延期平台风险保留。P6 集中接入后不维护第二份完整 Sample，不扩大到 Browser 验收。
 
 ## P0/P1 — 剩余探针与原生导出验收
 
@@ -38,8 +39,7 @@
 
 Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消清理及真实 Sample 启动退出已归入[阶段总结](progress-summary.md)。
 
-- 补 Linux 宿主原生 SDK 的源码 build-compose 闭环和定制工程兼容矩阵；四种普通发布已总结。只声明满足显式 apphost、契约与布局协议的工程，不推断任意 csproj 均可用。
-- 明确跨宿主/源码上下文的契约工件来源与字节一致性；当前矩阵检查的是各宿主内部四种发布，不将源码快照与工作树的不同 DLL hash 自动当成可互换，保持严格内容门禁。
+- Linux 原生宿主 SDK、两种内容输入和仓库外独立 csproj 的闭环已总结。当前契约来源规则是使用实际应用构建的完整契约闭包导出内容，并以相同源码/配置/版本重建；不宣称任意宿主/源码上下文的重编译工件可互换，不降低严格门禁。
 - 补 macOS 归档及合法 bundle 内部链接；构建模式在最终修改后签名，合包保持既有签名，显式记录签名/公证状态。
 - 验证两种模式重新解包运行、缺 SDK、错误输入/失败清理/原输入保护、权限与链接恢复及 bundle 签名；无凭据仅生成候选。
 - 退出条件：声明矩阵内两种模式可复现，归档恢复后布局和功能正确；同步工具与定制宿主文档，不将未公证产物标为已公证。
@@ -58,7 +58,7 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 ## P6 — 集中同步 Sample 与跨平台宿主接入
 
 - **目标**：桌面功能稳定后，将 Sample 最终基线集中接入用户已初始化的跨平台工程，从生命周期中提取真实可复用部分，提供可生成和构建的 Desktop/Android/iOS 工程。
-- **前置条件**：P1–P5 桌面功能与交付稳定，P0 iOS/Android 探针解决影响模块/依赖选择的风险；本阶段前不维护第二份完整 Sample 内容。
+- **前置条件**：复用已验证桌面功能，解决当前共享宿主/Desktop/Android 切片的实际构建依赖；按 2026-10-30 用户决定不等待手柄、macOS、iOS 验收。本阶段前不维护第二份完整 Sample 内容。
 - **涉及模块**：Sample 组合根、Avalonia.GameHost、显示/生命周期/内容路径边界、模板资源和平台工程。
 - **任务**：
   - 复用 `src/Samples/GalNet.Sample.CrossPlatform/` 已有骨架，集中接入页面、资源、本地化与组合根；优先引用公共库，记录平台差异，避免长期复制相同业务代码。保留 Browser 工程，但不扩大本 feature 的验收平台。
@@ -69,7 +69,7 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **测试**：现有桌面正常退出、设置、清空玩家状态和会话重建回归；干净环境生成模板并恢复构建；三类宿主会话初始化与内容加载。
 - **文档**：宿主职责、平台能力与模板创建/构建操作；不把骨架可编译写成五平台完整支持。
 - **风险**：为复用引入过宽抽象、第三方桌面控件阻碍移动；按真实调用拆分，不大规模机械重命名。
-- **退出条件**：已有跨平台工程完成一次集中接入，公共行为无第二套重复实现；五平台目标工程均有构建证据，移动主视图与会话能启动，桌面行为回归通过；完整移动运行在 P7 验证。
+- **退出条件**：当前切片集中接入共享宿主、Desktop/Android，公共行为无第二套重复实现，目标工程构建、会话和桌面回归有证据；macOS/iOS 构建运行单独保留未验收。完整移动运行在 P7 验证，移动采用 Mono AOT 允许独立于 NativeAOT 验收。
 
 ## P7 — 移动端完整运行与设备验证
 
