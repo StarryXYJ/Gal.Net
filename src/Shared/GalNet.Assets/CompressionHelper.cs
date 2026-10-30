@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.IO.Compression;
 using GalNet.Core.Assets;
 using IOCompressionMode = System.IO.Compression.CompressionMode;
@@ -61,6 +62,78 @@ public static class CompressionHelper
         using var decompressor = CreateDecompressor(input, mode);
         using var output = new MemoryStream();
         await decompressor.CopyToAsync(output, ct);
+        return output.ToArray();
+    }
+
+    /// <summary>Decompresses exactly the declared length, leaving the source open.</summary>
+    public static byte[] Decompress(Stream source, Core.Assets.CompressionMode mode, int expectedLength, CancellationToken ct = default)
+    {
+        ValidateInput(source, mode, expectedLength, ct);
+        using var decompressor = mode == Core.Assets.CompressionMode.None ? null : CreateDecompressor(source, mode);
+        var input = decompressor ?? source;
+        using var output = new MemoryStream();
+        var buffer = ArrayPool<byte>.Shared.Rent(64 * 1024);
+        try
+        {
+            int count;
+            do
+            {
+                ct.ThrowIfCancellationRequested();
+                count = input.Read(buffer, 0, ReadSize(output.Length, expectedLength, buffer.Length));
+                Append(output, buffer.AsSpan(0, count), expectedLength, ct);
+            } while (count != 0);
+            return Finish(output, expectedLength);
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer); }
+    }
+
+    /// <summary>Asynchronously decompresses exactly the declared length, leaving the source open.</summary>
+    public static async Task<byte[]> DecompressAsync(Stream source, Core.Assets.CompressionMode mode, int expectedLength, CancellationToken ct = default)
+    {
+        ValidateInput(source, mode, expectedLength, ct);
+        using var decompressor = mode == Core.Assets.CompressionMode.None ? null : CreateDecompressor(source, mode);
+        var input = decompressor ?? source;
+        using var output = new MemoryStream();
+        var buffer = ArrayPool<byte>.Shared.Rent(64 * 1024);
+        try
+        {
+            int count;
+            do
+            {
+                ct.ThrowIfCancellationRequested();
+                count = await input.ReadAsync(buffer.AsMemory(0, ReadSize(output.Length, expectedLength, buffer.Length)), ct).ConfigureAwait(false);
+                Append(output, buffer.AsSpan(0, count), expectedLength, ct);
+            } while (count != 0);
+            return Finish(output, expectedLength);
+        }
+        finally { ArrayPool<byte>.Shared.Return(buffer); }
+    }
+
+    private static void ValidateInput(Stream source, Core.Assets.CompressionMode mode, int expectedLength, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentOutOfRangeException.ThrowIfNegative(expectedLength);
+        if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode));
+        ct.ThrowIfCancellationRequested();
+    }
+
+    // Read at most one extra byte to detect overflow without expanding the output buffer.
+    private static int ReadSize(long written, int expectedLength, int bufferLength) =>
+        (int)Math.Min(bufferLength, expectedLength - written + 1);
+
+    private static void Append(MemoryStream output, ReadOnlySpan<byte> data, int expectedLength, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        var length = output.Length + data.Length;
+        if (length > expectedLength) throw new InvalidDataException("Decompressed data exceeds its declared length.");
+        if (length > output.Capacity)
+            output.Capacity = (int)Math.Min(expectedLength, Math.Max(length, (long)output.Capacity * 2));
+        output.Write(data);
+    }
+
+    private static byte[] Finish(MemoryStream output, int expectedLength)
+    {
+        if (output.Length != expectedLength) throw new InvalidDataException("Decompressed data is shorter than its declared length.");
         return output.ToArray();
     }
 

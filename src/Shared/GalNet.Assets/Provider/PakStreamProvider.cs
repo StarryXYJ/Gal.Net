@@ -42,7 +42,7 @@ public sealed class PakStreamProvider : IAssetProvider
         using var data = new MemoryStream();
         await stream.CopyToAsync(data, ct).ConfigureAwait(false);
         ct.ThrowIfCancellationRequested();
-        return Archive.Deserialize(archiveName, data.ToArray(), _resourceTypes);
+        return Archive.Deserialize(archiveName, data.ToArray(), _resourceTypes, ct);
     }
 
     private Stream Open(string archiveName)

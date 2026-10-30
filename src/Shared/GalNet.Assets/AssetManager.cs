@@ -87,7 +87,7 @@ public sealed class AssetManager : IAssetManager
                 {
                     ct.ThrowIfCancellationRequested();
                     if (files.ContainsKey(id)) continue;
-                    var file = archive.GetAsset(id);
+                    var file = archive.GetAsset(id, ct);
                     if (file is not null && (typeId is null || string.Equals(file.TypeId, typeId.Trim(), StringComparison.OrdinalIgnoreCase)))
                         files[id] = file;
                 }
@@ -285,7 +285,7 @@ public sealed class AssetManager : IAssetManager
             {
                 if (!provider.Exists("assets")) continue;
                 archive = await provider.OpenArchiveAsync("assets", ct);
-                var gameFile = findById ? archive.GetAsset(key) : archive.GetAssetByPath(key);
+                var gameFile = findById ? archive.GetAsset(key, ct) : archive.GetAssetByPath(key, ct);
                 if (gameFile is not null) return gameFile;
             }
             catch (OperationCanceledException)

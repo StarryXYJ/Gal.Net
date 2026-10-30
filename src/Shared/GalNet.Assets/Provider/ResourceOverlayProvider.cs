@@ -99,7 +99,7 @@ public sealed class ResourceOverlayProvider : IAssetProvider
         public async Task<byte[]> ReadAllBytesAsync(CancellationToken ct = default)
         {
             using var archive = await source.Provider.OpenArchiveAsync("assets", ct);
-            return await (archive.GetAsset(source.Index.Id) ?? throw new InvalidDataException("Prepared resource disappeared.")).ReadAllBytesAsync(ct);
+            return await (archive.GetAsset(source.Index.Id, ct) ?? throw new InvalidDataException("Prepared resource disappeared.")).ReadAllBytesAsync(ct);
         }
     }
 }

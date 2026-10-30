@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [流测试替身重载](lessons/L-20261030-04-stream-test-double-overloads.md)：当前 MemoryStream 派生类型的 Span 读取可回调数组重载；观察/取消替身用组合避免递归。项目质量计划 P2 已验证有界解压与取消传递，Assets/Core/Architecture 共 394 项通过；P3 待建 BenchmarkDotNet 基线，正式文档仍由用户后续整理。
 - [共享加载的待交付引用](lessons/L-20261030-03-pending-asset-delivery.md)：资源回收需同时等待句柄引用与 PendingWaiters 归零；用可控调度覆盖首个句柄释放早于第二个请求领取。项目质量计划见 features/F-20261030-01-project-quality/phase-plan.md；P1 已验证，正式文档由用户后续整理。
 - 2026-10-30 跨平台推进：用户将手柄/macOS/iOS 验收后移，允许移动 Mono AOT，不以 NativeAOT 或延期平台阻挡共享宿主/Desktop/Android。当前 Ubuntu 26.04.1/WSLg 以核验 SDK 10.0.401、干净源码快照完成 Linux 原生 build-compose（galpak/目录及仓库外独立宿主）；三包 hash/权限/契约、两种 Sample 原生会话与确认退出、Windows/Linux 保护测试各 4 项通过。媒体仅本机开发探针，24.04 基线/完整媒体仍待验收；证据见跨平台 feature 执行记录及 probes/source-compose。
 - [SDK 名称大小写](lessons/L-20261030-02-sdk-name-case.md)：Microsoft.NET.Sdk 使用标准大小写；Windows cross-publish 不能代替 Linux 原生 SDK。隔离 SDK/无 bin/obj 源快照揭示并修复 Editor 的 MSB4236。

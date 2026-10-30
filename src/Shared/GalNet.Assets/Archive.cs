@@ -41,21 +41,30 @@ public sealed class Archive : IPakArchive
         entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, entry.OriginalLength, entry.Hash)).ToArray();
     public bool Contains(string assetId) => _entries.ContainsKey(assetId.Trim());
 
-    public IGameFile? GetAsset(string assetId)
+    public IGameFile? GetAsset(string assetId) => GetAsset(assetId, CancellationToken.None);
+
+    public IGameFile? GetAsset(string assetId, CancellationToken ct)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        ct.ThrowIfCancellationRequested();
         if (!_entries.TryGetValue(assetId.Trim(), out var entry)) return null;
-        var raw = _dataSection.AsSpan((int)entry.Offset, (int)entry.StoredLength).ToArray();
-        var data = entry.Compression == CompressionMode.None ? raw : CompressionHelper.Decompress(raw, entry.Compression);
+        using var source = new MemoryStream(_dataSection, (int)entry.Offset, (int)entry.StoredLength, writable: false);
+        var data = CompressionHelper.Decompress(source, entry.Compression, (int)entry.OriginalLength, ct);
         if (data.LongLength != entry.OriginalLength || CryptoHelper.HashSHA256(data) != entry.Hash)
             throw new InvalidDataException($"PAK resource '{assetId}' failed size/hash verification.");
+        ct.ThrowIfCancellationRequested();
         var file = new GameFile(entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, data, entry.Hash);
         ValidateCompiledDependencies(file);
         return file;
     }
 
-    public IGameFile? GetAssetByPath(string path) =>
-        _pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id) ? GetAsset(id) : null;
+    public IGameFile? GetAssetByPath(string path) => GetAssetByPath(path, CancellationToken.None);
+
+    public IGameFile? GetAssetByPath(string path, CancellationToken ct)
+    {
+        ct.ThrowIfCancellationRequested();
+        return _pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id) ? GetAsset(id, ct) : null;
+    }
 
     public void Dispose()
     {
@@ -64,8 +73,12 @@ public sealed class Archive : IPakArchive
         _pathToId.Clear();
     }
 
-    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes)
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes) =>
+        Deserialize(name, pakData, resourceTypes, CancellationToken.None);
+
+    public static Archive Deserialize(string name, byte[] pakData, IResourceTypeCatalog resourceTypes, CancellationToken ct)
     {
+        ct.ThrowIfCancellationRequested();
         try
         {
             using var stream = new MemoryStream(pakData, writable: false);
@@ -85,6 +98,7 @@ public sealed class Archive : IPakArchive
             var paths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             for (var i = 0; i < count; i++)
             {
+                ct.ThrowIfCancellationRequested();
                 var id = ReadString(reader);
                 var path = ReadString(reader);
                 var type = ReadString(reader);
@@ -112,7 +126,7 @@ public sealed class Archive : IPakArchive
             ValidateTargets(descriptor, entries.Keys);
             var archive = new Archive(name, data, entries, paths, descriptor);
             foreach (var id in entries.Where(pair => pair.Value.Metadata.TypeId == ImageVariantsCodec.ResourceType).Select(pair => pair.Key))
-                archive.GetAsset(id);
+                archive.GetAsset(id, ct);
             return archive;
         }
         catch (Exception exception) when (exception is EndOfStreamException or JsonException or DecoderFallbackException or ArgumentException or OverflowException)

@@ -262,6 +262,19 @@ public sealed class AssetPipelineTests
         Assert.That(firstHandle.Value.DisposeCount, Is.EqualTo(1));
     }
 
+    [Test]
+    public void Legacy_archive_implementations_keep_working_with_cancellation_overloads()
+    {
+        var file = new GameFile("audio", "a.ogg", "audio", new AssetMeta { Id = "audio", Path = "a.ogg", TypeId = "audio" }, []);
+        using IArchive archive = new InlineArchive([file]);
+        Assert.That(archive.GetAsset(file.Id, CancellationToken.None), Is.SameAs(file));
+        Assert.That(archive.GetAssetByPath(file.Path, CancellationToken.None), Is.SameAs(file));
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+        Assert.Throws<OperationCanceledException>(() => archive.GetAsset(file.Id, cancellation.Token));
+        Assert.Throws<OperationCanceledException>(() => archive.GetAssetByPath(file.Path, cancellation.Token));
+    }
+
     private sealed record Decoded(string Value);
 
     private sealed class DisposableAsset : IDisposable

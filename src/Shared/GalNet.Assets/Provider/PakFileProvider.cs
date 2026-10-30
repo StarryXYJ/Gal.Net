@@ -66,7 +66,7 @@ public sealed class PakFileProvider : IAssetProvider
 
         var data = await File.ReadAllBytesAsync(path, ct);
         Verify(data);
-        return Archive.Deserialize(archiveName, data, _resourceTypes);
+        return Archive.Deserialize(archiveName, data, _resourceTypes, ct);
     }
 
     private bool TryGetPakPath(string archiveName, out string path)

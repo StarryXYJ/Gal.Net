@@ -19,7 +19,7 @@
 | 阶段 | 目标 | 前置条件 | 状态 |
 | --- | --- | --- | --- |
 | P1 | 资源并发获取与释放正确性 | 已复现等待者尚未取得句柄时资源提前释放 | verified |
-| P2 | PAK 解压输出边界 | P1；核对同步/异步解压使用方 | planned |
+| P2 | PAK 解压输出边界 | P1；核对同步/异步解压使用方 | verified |
 | P3 | PAK 读取与导出性能 | P2；取得可重复的资源基准 | planned |
 | P4 | 编辑器恢复快照与 dirty 成本 | 大项目测量；确认编辑线程与保存锁契约 | planned |
 | P5 | 持久化字段比较完整性 | P4 的基线设计稳定 | planned |
@@ -49,6 +49,7 @@
 
 风险：既有公共 API 与无长度调用方行为。退出条件：边界测试和现有格式回归通过，记录内存边界及无法承诺的限制。
 
+实现决定（2026-10-30）：现有无长度 byte[] 解压入口保持兼容；新增接收 Stream 和精确预期长度的同步/异步入口，分块读取并检查长度，缓冲按实际输出增长且不超过预期长度，不按不可信声明预分配整块内存。Archive 直接借用数据区流并保留 SHA-256 校验。IArchive 增加带取消参数的默认实现重载，保留原成员，Archive 覆写后由资源管理器/覆盖 provider 传递取消；已有第三方实现可继续使用默认重载。PAK 格式不变。声明长度并非进程总内存预算，旧无长度 API 不获得长度上限。后续 P3 可使用 BenchmarkDotNet；P2 以确定性边界测试验收，不以耗时阈值代替正确性。
 
 ## P3：PAK 访问与导出
 
@@ -116,3 +117,8 @@
 - 2026-10-30 P1 verified：复用 CacheEntry.Owner.PendingWaiters，并由 DetachUnusedAssetLocked 统一取消/句柄释放后的移除条件；未新增公共 API、状态计数或缓存策略。四个确定性调度用例覆盖 ID/路径、提前释放、最后等待者取消及 manager 销毁，旧实现 3 失败/1 通过，修复后 Assets 全量 107 项、架构门禁 53 项通过；限定改动 diff whitespace 检查通过。原有测试分析器警告保留，本次改动文件没有新增报告。测试命令使用 Release、--no-restore、-m:1、-nr:false、-p:UseSharedCompilation=false。
   - 本地证据：`out/project-quality-p1-before.log`、`out/project-quality-p1-assets.log`、`out/project-quality-p1-architecture.log`（out 为忽略目录）；可复现用例已进入 `test/GalNet.Assets.Tests/AssetPipelineTests.cs`。
   - 本阶段结束时下一阶段为 P2；未运行全量 UI/原生平台测试，未宣称性能收益。
+- 2026-10-30 P2 verified：新增 Stream + expectedLength 同步/异步解压入口，复用缓冲大小、追加和完成校验。按实际输出增长容量并限制到声明长度，最多读取一个额外解压字节识别越界；异常/取消均归还池缓冲且不关闭调用方的源流。Archive 直接借用原数据区读取，仍校验 SHA-256，PAK 格式不变。保留旧 CLR 方法签名；IArchive 默认取消重载兼容旧实现，AssetManager、资源覆盖及包 provider 传递取消。
+  - 验证：新增 85 项解压边界组合、8 项实际 PAK 长度篡改、1 项 PAK 取消与 1 项旧接口实现回归；Assets 202、Core 139、Architecture 53 项全部通过。定向 diff whitespace 检查通过。证据：`out/project-quality-p2-assets-final.log`、`out/project-quality-p2-core.log`、`out/project-quality-p2-architecture.log`。
+  - 首轮测试因测试替身派生 MemoryStream 的读取重载递归导致栈溢出中止；修正为组合后通过。失败与修正证据保留，经验见 `.agents/lessons/L-20261030-04-stream-test-double-overloads.md`。
+  - 边界：输出累积缓冲受单条目声明长度限制，输入包、解码器内部缓冲和最终返回数组不计入此预算；真实大型条目仍可能消耗大量内存。旧无长度解压 API 保持原行为；旧 IArchive 实现的默认取消重载只能在调用前检查，需实现重载才能在内部工作期间响应。未执行旧二进制 consumer 动态装载或原生 UI 验收，不宣称这些已验证。
+  - 下一阶段：P3，先使用 BenchmarkDotNet 建立资源读取/导出基线再选择优化；P3–P8 尚未实现。正式文档同步继续由用户后续处理。
