@@ -58,7 +58,7 @@ jobs:
       - name: Publish and validate real application payloads
         shell: pwsh
         run: |
-          python scripts/ci/publish-applications.py --target '${{ matrix.rid }}' --output out/application-portability
+          python scripts/ci/publish-applications.py --target '${{ matrix.rid }}' --output out/application-portability --bind-game --flavors Developer Player Bound
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload publish reports and step logs
         if: always()
@@ -140,6 +140,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: application-publish-android-arm64
+          compression-level: 0
           path: |
             out/application-portability-android/android-publish.json
             out/application-portability-android/android-package-verification.json

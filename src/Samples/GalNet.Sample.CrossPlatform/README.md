@@ -41,6 +41,8 @@ Debug 默认开启 `EnableGameDebugging`，Release 默认关闭，`EnableLaunchA
 
 ## 移动内容与 Mono AOT
 
+正式发行使用共享编译模式 `GalNetPlayerMode=Developer/Player/Bound`：Developer 可调试并加载外部内容；Player 不可调试但可加载外部内容；Bound 不可调试，也不接受外部路径参数。Bound 从已验证的 `GalNetGamePackage` 提取 `GalNetBoundProjectId` 编译进宿主，并由共享会话在加载内容前校验；不绑定 buildId，因此同一项目可更新内容。其他项目可使用 Editor 的 `Tools/bind-game.ps1` 从自己的包生成绑定配置，详见[发行手册](../../../docs/manual/publishing/engine-release.md)。
+
 `GalNetGamePackage` 指向完整 v4 galpak：Android 打为 `assets/game.galpak`，iOS 打为 bundle 中的 `game.galpak`。平台打开普通资产流，`BundledGameInstaller` 不要求其可寻址，先在沙盒缓存临时文件，再通过正式安装器验证并安装到归档 SHA256 对应的目录。相同 projectId 的不同内容版本使用相同 profile；取消/损坏输入不覆盖已安装内容。
 
 Android 需要 SDK 36、NDK r29（本轮 `29.0.14206865`）及 CMake/Ninja。NDK 和工具路径可显式传入；不再使用禁用移动音频的框架探针作为完整候选。仓库公共 net10.0 依赖仍传入 `GalNetBuildMiniaudio=false`，由 Android 宿主的 `AndroidNativeAudio.targets` 为目标 ABI 构建并打包真正的 `.so`：

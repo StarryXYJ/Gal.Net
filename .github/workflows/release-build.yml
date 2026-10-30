@@ -22,11 +22,11 @@ permissions:
   contents: read
 
 jobs:
-  build:
-    runs-on: windows-latest
-    timeout-minutes: 90
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
-      ready: ${{ steps.ready.outputs.ready }}
+      build: ${{ steps.state.outputs.published != 'true' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -49,27 +49,36 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
         run: ./scripts/ci/Get-ReleaseState.ps1 -Tag $env:RELEASE_TAG -GitHubOutput $env:GITHUB_OUTPUT
+  build:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 45
+    outputs:
+      ready: ${{ steps.ready.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
       - uses: actions/setup-dotnet@v5
-        if: steps.state.outputs.published != 'true'
         with:
           global-json-file: global.json
           cache: true
           cache-dependency-path: |
             global.json
             **/packages.lock*.json
-      - name: Build and validate the release files
-        if: steps.state.outputs.published != 'true'
+      - name: Build and validate NuGet consumers
         shell: pwsh
         env:
           RELEASE_TAG: ${{ inputs.tag }}
           CANDIDATE_VERSION: ${{ inputs.version }}
         run: |
-          $arguments = @{ SampleMode = 'R2R' }
+          $arguments = @{ Target = 'NuGet' }
           if ($env:RELEASE_TAG) { $arguments.Tag = $env:RELEASE_TAG }
           else { $arguments.Version = $env:CANDIDATE_VERSION }
           ./scripts/release/Release.ps1 @arguments
       - name: Upload sealed release files
-        if: steps.state.outputs.published != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: release-files-${{ inputs.version }}
@@ -79,11 +88,10 @@ jobs:
           if-no-files-found: error
       - name: Mark the sealed candidate ready
         id: ready
-        if: steps.state.outputs.published != 'true'
         shell: pwsh
         run: '"ready=true" >> $env:GITHUB_OUTPUT'
       - name: Upload validation evidence
-        if: always() && steps.state.outputs.published != 'true'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: release-evidence-${{ inputs.version }}
@@ -94,9 +102,140 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
 
+  desktop:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2025
+            rid: win-x64
+          - os: ubuntu-24.04
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock*.json'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare private Ubuntu media libraries
+        if: matrix.rid == 'linux-x64'
+        run: python scripts/release/prepare-linux-media.py --work-directory out/media-work --output-directory out/media
+      - name: Publish and package both deployments of all three player modes
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_RID: ${{ matrix.rid }}
+        run: |
+          foreach ($deployment in @('SelfContained', 'FrameworkDependent')) {
+            $raw = "out/raw/$deployment"
+            $arguments = @('--target', $env:RELEASE_RID, '--version', $env:RELEASE_VERSION,
+              '--output', $raw, '--deployment', $deployment, '--package-apphosts', '--bind-game',
+              '--flavors', 'Developer', 'Player', 'Bound')
+            if ($deployment -eq 'FrameworkDependent') {
+              $nativeName = if ($IsWindows) { 'galnet_miniaudio.dll' } else { 'libgalnet_miniaudio.so' }
+              $arguments += @('--native-audio', "out/raw/SelfContained/native/install/$nativeName")
+            }
+            python scripts/ci/publish-applications.py @arguments
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $packageArguments = @('desktop', '--raw', $raw, '--output', "out/bundles/$env:RELEASE_RID-$deployment")
+            if (!$IsWindows) { $packageArguments += @('--media', 'out/media') }
+            python scripts/release/cross-platform-release.py @packageArguments
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-platform-${{ inputs.version }}-${{ matrix.rid }}
+          path: |
+            out/bundles/*/assets/*
+            out/bundles/*/bundle.json
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-desktop-evidence-${{ inputs.version }}-${{ matrix.rid }}
+          path: |
+            out/raw/*/application-publish.json
+            out/raw/*/logs/
+            out/media/media-manifest.json
+            out/media-work/apt-update.log
+          retention-days: 7
+          if-no-files-found: warn
+
+  android:
+    needs: gate
+    if: needs.gate.outputs.build == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: '**/packages.lock*.json'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Android workload and native toolchain
+        shell: bash
+        run: |
+          dotnet workload install android --skip-manifest-update
+          yes | sdkmanager --licenses
+          sdkmanager "ndk;29.0.14206865" "cmake;3.22.1"
+          echo "GALNET_ANDROID_NDK=$ANDROID_HOME/ndk/29.0.14206865" >> "$GITHUB_ENV"
+          echo "$ANDROID_HOME/cmake/3.22.1/bin" >> "$GITHUB_PATH"
+      - name: Publish bound non-debug Mono AOT APK
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+        run: |
+          ./scripts/ci/publish-android-sample.ps1 -Version $env:RELEASE_VERSION `
+            -OutputDirectory out/android -AndroidNdkDirectory $env:GALNET_ANDROID_NDK
+          python scripts/release/cross-platform-release.py android --raw out/android `
+            --output out/bundles/android-arm64-MonoAOT --version $env:RELEASE_VERSION --commit $env:RELEASE_COMMIT
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-platform-${{ inputs.version }}-android-arm64
+          path: |
+            out/bundles/*/assets/*
+            out/bundles/*/bundle.json
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-android-evidence-${{ inputs.version }}
+          path: |
+            out/android/android-publish.json
+            out/android/android-package-verification.json
+            out/android/logs/
+          retention-days: 7
+          if-no-files-found: warn
+
   publish:
-    needs: build
-    if: inputs.tag != '' && needs.build.outputs.ready == 'true'
+    needs: [build, desktop, android]
+    if: needs.build.outputs.ready == 'true'
     runs-on: windows-latest
     timeout-minutes: 20
     permissions:
@@ -109,11 +248,37 @@ jobs:
       - uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - uses: actions/download-artifact@v4
         with:
           name: release-files-${{ inputs.version }}
           path: out/release/${{ inputs.version }}
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-platform-${{ inputs.version }}-*
+          merge-multiple: true
+          path: out/platforms
+      - name: Seal complete platform matrix
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_COMMIT: ${{ inputs.commit }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          python scripts/release/cross-platform-release.py seal --root "out/release/$env:RELEASE_VERSION" `
+            --inputs out/platforms --version $env:RELEASE_VERSION --commit $env:RELEASE_COMMIT --tag "$env:RELEASE_TAG"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-sealed-${{ inputs.version }}
+          path: out/release/${{ inputs.version }}/
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
       - name: Upload verified files without rebuilding
+        if: inputs.tag != ''
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

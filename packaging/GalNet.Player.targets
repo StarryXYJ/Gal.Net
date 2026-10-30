@@ -1,0 +1,28 @@
+<Project>
+  <!-- Re-evaluate after the consumer's project body as well as during early NuGet props import. -->
+  <PropertyGroup Condition="'$(GalNetPlayerMode)' != '' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe' Or '$(GalNetPlayerAssembly)' == 'true')">
+    <EnableGameDebugging Condition="'$(GalNetPlayerMode)' == 'Developer'">true</EnableGameDebugging>
+    <EnableGameDebugging Condition="'$(GalNetPlayerMode)' != 'Developer'">false</EnableGameDebugging>
+    <EnableLaunchArguments Condition="'$(GalNetPlayerMode)' != 'Bound'">true</EnableLaunchArguments>
+    <EnableLaunchArguments Condition="'$(GalNetPlayerMode)' == 'Bound'">false</EnableLaunchArguments>
+    <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>
+    <DefineConstants Condition="'$(EnableLaunchArguments)' == 'true'">$(DefineConstants);GALNET_LAUNCH_ARGS</DefineConstants>
+  </PropertyGroup>
+  <Target Name="ValidateGalNetPlayerMode" BeforeTargets="PrepareForBuild;GetAssemblyAttributes"
+          Condition="'$(GalNetPlayerMode)' != '' And ('$(OutputType)' == 'Exe' Or '$(OutputType)' == 'WinExe' Or '$(GalNetPlayerAssembly)' == 'true')">
+    <Error Condition="'$(GalNetPlayerMode)' != 'Developer' And '$(GalNetPlayerMode)' != 'Player' And '$(GalNetPlayerMode)' != 'Bound'"
+           Text="GalNetPlayerMode must be Developer, Player or Bound." />
+    <Error Condition="'$(GalNetPlayerMode)' == 'Bound' And ('$(GalNetBoundProjectId)' == '' Or !Exists('$(GalNetGamePackage)'))"
+           Text="Bound mode requires a verified GalNetGamePackage and its GalNetBoundProjectId. Install/inspect your own package to obtain the project identity." />
+    <Error Condition="'$(GalNetPlayerMode)' != 'Bound' And '$(GalNetBoundProjectId)' != ''"
+           Text="Only Bound mode accepts GalNetBoundProjectId." />
+    <Error Condition="('$(GalNetPlayerMode)' == 'Developer' And '$(EnableGameDebugging)' != 'true') Or ('$(GalNetPlayerMode)' != 'Developer' And '$(EnableGameDebugging)' != 'false')"
+           Text="EnableGameDebugging conflicts with GalNetPlayerMode." />
+    <Error Condition="('$(GalNetPlayerMode)' == 'Bound' And '$(EnableLaunchArguments)' != 'false') Or ('$(GalNetPlayerMode)' != 'Bound' And '$(EnableLaunchArguments)' != 'true')"
+           Text="EnableLaunchArguments conflicts with GalNetPlayerMode." />
+    <ItemGroup>
+      <AssemblyMetadata Include="GalNetPlayerMode" Value="$(GalNetPlayerMode)" />
+      <AssemblyMetadata Include="GalNetBoundProjectId" Value="$(GalNetBoundProjectId)" Condition="'$(GalNetPlayerMode)' == 'Bound'" />
+    </ItemGroup>
+  </Target>
+</Project>

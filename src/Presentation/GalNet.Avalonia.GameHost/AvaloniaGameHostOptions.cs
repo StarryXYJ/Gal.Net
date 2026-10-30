@@ -13,6 +13,8 @@ namespace GalNet.Avalonia.GameHost;
 /// <summary>Project policies supplied to the default Avalonia player composition.</summary>
 public sealed class AvaloniaGameHostOptions
 {
+    public GalNet.Storage.FileSystem.GameLaunchPolicy LaunchPolicy { get; init; } =
+        GalNet.Storage.FileSystem.GameLaunchPolicy.FromAssembly(System.Reflection.Assembly.GetEntryAssembly() ?? typeof(AvaloniaGameHostOptions).Assembly);
     public GameContentLoadOptions Content { get; init; } = new();
     public Func<ProjectConfiguration, AvaloniaProjectOptions> SelectProjectOptions { get; init; } = _ => new();
     public AvaloniaGamePresentationOptions Presentation { get; init; } = new();

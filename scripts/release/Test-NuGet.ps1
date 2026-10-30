@@ -57,9 +57,10 @@ try {
     foreach ($packageId in @('GalNet.Contracts', 'GalNet.Engine', 'GalNet.Desktop', 'GalNet.Avalonia', 'GalNet.Avalonia.Debugging')) {
         $consumer = Join-Path $consumerRoot $packageId
         New-Item -ItemType Directory -Path $consumer | Out-Null
+        $playerModeProperty = if ($packageId -in @('GalNet.Desktop', 'GalNet.Avalonia', 'GalNet.Avalonia.Debugging')) { '<GalNetPlayerMode>Player</GalNetPlayerMode>' } else { '' }
         @"
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable>$playerModeProperty</PropertyGroup>
   <ItemGroup>
     <PackageReference Include="$packageId" Version="[$Version]" />
     <PackageReference Include="GalNet.SchemaGenerator" Version="[$Version]" PrivateAssets="all" />
@@ -68,6 +69,7 @@ try {
 "@ | Set-Content (Join-Path $consumer 'Consumer.csproj') -Encoding utf8
         @'
 using GalNet.Core.Parameters;
+using System.Reflection;
 Console.WriteLine(ConsumerOptions.Schema is not null ? "PACKAGE_CONSUMER_OK" : throw new Exception("Generator missing"));
 foreach (var library in Directory.EnumerateFiles(AppContext.BaseDirectory, "GalNet*.dll"))
 {
@@ -75,6 +77,17 @@ foreach (var library in Directory.EnumerateFiles(AppContext.BaseDirectory, "GalN
     _ = System.Runtime.Loader.AssemblyLoadContext.Default.LoadFromAssemblyPath(library).GetExportedTypes();
 }
 var native = Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "native", "galnet_miniaudio.dll");
+if (File.Exists(Path.Combine(AppContext.BaseDirectory, "GalNet.Storage.FileSystem.dll")))
+{
+    var metadata = System.Reflection.Assembly.GetExecutingAssembly().GetCustomAttributes<System.Reflection.AssemblyMetadataAttribute>();
+    if (!metadata.Any(attribute => attribute.Key == "GalNetPlayerMode" && attribute.Value == "Player")) throw new Exception("Player buildTransitive metadata missing");
+#if GALNET_GAME_DEBUG
+    throw new Exception("Player unexpectedly enabled debugging");
+#endif
+#if !GALNET_LAUNCH_ARGS
+    throw new Exception("Player external launch support missing");
+#endif
+}
 if (File.Exists(native))
 {
     var handle = System.Runtime.InteropServices.NativeLibrary.Load(native);

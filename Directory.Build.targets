@@ -1,4 +1,5 @@
 <Project>
+  <Import Project="packaging/GalNet.Player.targets" />
   <!-- Contracts use strict binary identity, including referenced metadata and
        PDB checksums. Keep this compile-time closure stable across Git commits. -->
   <PropertyGroup Condition="'$(AssemblyName)' == 'GalNet.Project.Contracts' Or '$(MSBuildProjectName)' == 'GalNet.Core' Or '$(MSBuildProjectName)' == 'GalNet.Contracts.Builtins'">

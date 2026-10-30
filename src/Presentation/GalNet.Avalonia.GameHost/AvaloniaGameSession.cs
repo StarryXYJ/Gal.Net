@@ -83,6 +83,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private async Task<bool> InitializeGameResourcesAsync(string? gameDirectory, string? profileDirectory,
         Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken)
     {
+        _options.LaunchPolicy.ValidateContent(gameDirectory);
         if (string.IsNullOrWhiteSpace(gameDirectory))
         {
             StatusMessage = _options.NoGameMessage;
