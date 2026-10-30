@@ -37,6 +37,7 @@ def main():
     parser.add_argument("apk", type=Path)
     parser.add_argument("content", type=Path)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--abi", action="append", choices=("arm64-v8a", "x86_64"))
     args = parser.parse_args()
     report = {"apk": str(args.apk), "apkSha256": digest(args.apk.read_bytes()), "deviceTested": False, "native": {}}
     with zipfile.ZipFile(args.apk) as package:
@@ -45,7 +46,20 @@ def main():
         if embedded != args.content.read_bytes():
             raise ValueError("Embedded game package differs from the verified export")
         report["contentSha256"] = digest(embedded)
-        for abi, machine in (("arm64-v8a", 183), ("x86_64", 62)):
+        expected_abis = set(args.abi or ("arm64-v8a", "x86_64"))
+        actual_abis = {name.split("/")[1] for name in names if name.startswith("lib/") and name.endswith(".so")}
+        if actual_abis != expected_abis:
+            raise ValueError(f"Expected ABIs {sorted(expected_abis)}, found {sorted(actual_abis)}")
+        report["size"] = {
+            "apkBytes": args.apk.stat().st_size,
+            "uncompressedBytes": sum(info.file_size for info in package.infolist()),
+            "nativeBytesByAbi": {
+                abi: sum(info.file_size for info in package.infolist() if info.filename.startswith(f"lib/{abi}/"))
+                for abi in sorted(expected_abis)
+            },
+        }
+        for abi in sorted(expected_abis):
+            machine = {"arm64-v8a": 183, "x86_64": 62}[abi]
             libs = [name for name in names if name.startswith(f"lib/{abi}/") and name.endswith(".so")]
             for required in ("libgalnet_miniaudio.so", "libvlc.so", "libc++_shared.so"):
                 if f"lib/{abi}/{required}" not in libs:

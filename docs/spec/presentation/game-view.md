@@ -66,6 +66,10 @@ GamePageViewModel 的自定义 View 必须继承 GamePage；DI 中的 GamePage �
 
 主题把 ScreenshotDialogViewModel 映射到 ScreenshotDialog 派生 View。XAML 加载后调用受保护的 InitializeDialog，布局必须提供 Preview(Image)、DirectoryBox/TextBox、FileNameBox/TextBox、IncludeUiBox(CheckBox)、BrowseButton/CancelButton/SaveButton(Button)、ErrorBlock(TextBlock)。缺失控件明确报错。基类管理选择目录、预览更新、保存、取消和 Bitmap 释放；服务通过 DI 创建独立实例，并加载当前主题样式。宿主可在 configureViews 中覆盖截图 View，构造参数可注入宿主服务。
 
+默认截图服务需要同一 TopLevel 内的 Ursa `OverlayDialogHost`；普通窗口或移动单视图可用 `UrsaView` 提供宿主。调用按请求 Owner 的 TopLevel 身份选择弹层，不从其他玩家窗口借用宿主。
+
+宿主可注册 `IAutomaticGameScreenshotDestination`，接收游戏名、自动生成的 PNG 名称、完整 PNG 字节与取消令牌。存在此服务时，`ScreenshotDialogViewModel.CanChooseDestination=false`，内置主题隐藏目录和文件名表单，保存只调用平台输出，不访问桌面图片目录。失败保留弹窗供重试；没有该服务时继续提供桌面路径选择。自动输出模式限制弹窗宽度和预览高度，并随 TopLevel 尺寸变化重新约束布局。自定义截图布局应按 `CanChooseDestination` 隐藏相关表单，并使预览行采用 Auto 尺寸。
+
 `GameScreenshotRequest.CapturePreviewPngAsync` 是可选的预览回调，未提供时复用原 `CapturePngAsync`；正式保存始终调用后者。GameShell 的预览按原比例限制到 720×405，不放大；“包含对话框和操作栏”两种状态在当前弹窗内分别缓存，失败可重试。正式导出保持原逻辑分辨率，PNG 编码在后台完成。`SceneLayerHost.CaptureControl` 和有尺寸上限的 `CapturePng` 同时限制场景中间纹理与 CPU 效果处理像素，图层位置和原生图片尺寸仍使用原逻辑坐标；剧情截图入口的无参捕获保持原行为。
 
 ### Gallery 页面

@@ -9,6 +9,8 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <AndroidPackageFormat>apk</AndroidPackageFormat>
     <AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+    <!-- The fixed VLC package selects native libraries from the plural property. -->
+    <RuntimeIdentifiers Condition="'$(RuntimeIdentifiers)' == '' And '$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</RuntimeIdentifiers>
     <UseMonoRuntime Condition="'$(UseMonoRuntime)' == ''">true</UseMonoRuntime>
     <PublishAot Condition="'$(PublishAot)' == ''">false</PublishAot>
     <GalNetBuildMiniaudio>false</GalNetBuildMiniaudio>

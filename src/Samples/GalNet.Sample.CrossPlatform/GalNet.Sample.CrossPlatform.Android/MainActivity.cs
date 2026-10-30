@@ -15,7 +15,7 @@ namespace GalNet.Sample.CrossPlatform.Android;
     Icon = "@drawable/icon",
     MainLauncher = true,
     ConfigurationChanges = ConfigChanges.Orientation | ConfigChanges.ScreenSize | ConfigChanges.UiMode)]
-public class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioFocusChangeListener
+public partial class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioFocusChangeListener
 {
     private AudioManager? _audio;
     private AudioFocusRequestClass? _focus;
@@ -25,6 +25,7 @@ public class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioFocusChan
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         base.OnCreate(savedInstanceState);
+        _current = new(this);
         _audio = (AudioManager?)GetSystemService(AudioService);
         if (Player is { } player) player.ExitRequested = () => MoveTaskToBack(true);
         _noisy = new NoisyReceiver(() => Observe(() => Player?.InterruptAsync()));
@@ -89,6 +90,8 @@ public class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioFocusChan
 
     protected override void OnDestroy()
     {
+        if (_current is { } reference && reference.TryGetTarget(out var current) && ReferenceEquals(current, this)) _current = null;
+        _screenshotPermission?.TrySetCanceled();
         if (_noisy is not null) { UnregisterReceiver(_noisy); _noisy.Dispose(); _noisy = null; }
         AbandonFocus();
         // Finishing an Activity does not terminate the Android application process.

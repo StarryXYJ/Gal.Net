@@ -23,6 +23,7 @@ public sealed class ScreenshotDialogViewModel : IDialogContext
 
     public string DirectoryPath { get; set; }
     public string FileName { get; set; }
+    public bool CanChooseDestination { get; init; } = true;
     public bool IncludeUi { get; set; }
     public string? Error { get; private set; }
     public event EventHandler<object?>? RequestClose;

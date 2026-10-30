@@ -6,6 +6,7 @@ using GalNet.Avalonia.Themes;
 using GalNet.Storage.FileSystem;
 using GalNet.Media.LibVlc;
 using Microsoft.Extensions.DependencyInjection;
+using GalNet.Avalonia.GameView.Services;
 
 namespace GalNet.Sample.CrossPlatform.Android
 {
@@ -21,7 +22,11 @@ namespace GalNet.Sample.CrossPlatform.Android
             // Android may expose its private storage through a system-owned alias.
             // Use the physical sandbox root before applying the content link checks.
             var privateRoot = FilesDir!.CanonicalPath;
-            App.ConfigurePlatformServices = services => services.AddSingleton(new LibVlcFactory(new() { UseSystemLibraries = true }));
+            App.ConfigurePlatformServices = services =>
+            {
+                services.AddSingleton(new LibVlcFactory(new() { UseSystemLibraries = true }));
+                services.AddSingleton<IAutomaticGameScreenshotDestination>(new AndroidScreenshotDestination(this));
+            };
             App.PrepareLaunchAsync = async token =>
             {
                 await using var package = Assets!.Open("game.galpak");

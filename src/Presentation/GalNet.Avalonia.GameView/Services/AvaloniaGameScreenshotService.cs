@@ -8,7 +8,8 @@ using Ursa.Controls;
 namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>Default Ursa overlay prompt with preview, destination and UI inclusion.</summary>
-public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageViewRegistry views, IServiceProvider services) : IGameScreenshotService
+public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageViewRegistry views, IServiceProvider services,
+    IAutomaticGameScreenshotDestination? automaticDestination = null) : IGameScreenshotService
 {
     public async Task CaptureAsync(GameScreenshotRequest request, CancellationToken cancellationToken = default)
     {
@@ -17,7 +18,7 @@ public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageV
         var directory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
             SanitizeFileName(request.GameTitle));
-        var fileName = $"Screenshot-{DateTime.Now:yyyyMMdd-HHmmss}.png";
+        var fileName = $"Screenshot-{DateTime.Now:yyyyMMdd-HHmmssfff}-{Guid.NewGuid():N}.png";
         var viewModel = new ScreenshotDialogViewModel(
             directory,
             fileName,
@@ -32,22 +33,31 @@ public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageV
                     if (!targetFileName.EndsWith(".png", StringComparison.OrdinalIgnoreCase))
                         targetFileName += ".png";
 
-                    Directory.CreateDirectory(targetDirectory);
                     var bytes = await request.CapturePngAsync(includeUi);
-                    var path = Path.Combine(targetDirectory, SanitizeFileName(targetFileName));
-                    await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+                    if (automaticDestination is not null)
+                        await automaticDestination.SaveAsync(request.GameTitle, fileName, bytes, cancellationToken);
+                    else
+                    {
+                        Directory.CreateDirectory(targetDirectory);
+                        var path = Path.Combine(targetDirectory, SanitizeFileName(targetFileName));
+                        await File.WriteAllBytesAsync(path, bytes, cancellationToken);
+                    }
                     return null;
                 }
                 catch (Exception exception)
                 {
                     return $"{ScreenshotDialogViewModel.Text("Screenshot.SaveFailed", "Could not save screenshot.")} {exception.Message}";
                 }
-            });
+            })
+        {
+            CanChooseDestination = automaticDestination is null
+        };
 
         using var dialog = (ScreenshotDialog)ActivatorUtilities.CreateInstance(services,
             views.GetViewType(typeof(ScreenshotDialogViewModel)));
         dialog.Styles.Add(theme.CreateStyles());
-        await OverlayDialog.ShowCustomAsync<bool>(dialog, viewModel, null, null, cancellationToken);
+        await OverlayDialog.ShowCustomAsync<bool>(dialog, viewModel, null,
+            new OverlayDialogOptions { TopLevelHashCode = request.Owner.GetHashCode() }, cancellationToken);
     }
 
     private static string SanitizeFileName(string value)

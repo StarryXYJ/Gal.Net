@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data;
 using Avalonia.Layout;
-using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Game.Controls.Forms;
@@ -21,8 +20,7 @@ internal static class ReadTextColorEditor
         var button = new Button { Name = "ReadTextColorPicker", Content = swatch };
         button.Bind(ToolTip.TipProperty, new Binding("Value") { Source = localization.GetString("Settings.ReadTextColor") });
         var picker = new ColorView { IsAlphaEnabled = false, IsAlphaVisible = false };
-        picker.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.GameHost/"))
-        { Source = new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml") });
+        picker.Styles.Add(new ReadTextColorPickerStyles());
         var apply = new Button();
         apply.Bind(ContentControl.ContentProperty, new Binding("Value") { Source = localization.GetString("Common.Confirm") });
         var cancel = new Button();
