@@ -94,6 +94,48 @@ class ApplicationPublishTests(unittest.TestCase):
         self.assertEqual(len(report["steps"]), 1)
         self.assertFalse((output / "publish").exists())
 
+    def test_sample_payload_rejects_debug_dependencies_and_stray_symbols(self):
+        root = self.root / "player"
+        root.mkdir()
+        for kind in ("Sample", "CrossPlatform"):
+            role = kind + "-Player"
+            self.assertFalse(publisher.validate_sample_capabilities(root, role, {})["gameDebugging"])
+            for name in ("GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport"):
+                with self.subTest(role=role, dependency=name), self.assertRaisesRegex(ValueError, "debug dependencies"):
+                    publisher.validate_sample_capabilities(root, role, {name + "/1.0.0": {}})
+            for name in ("GalNet.Avalonia.Debugging.dll", "GalNet.Debugging.dll",
+                         "AvaloniaUI.DiagnosticsSupport.Avalonia.dll", "referenced/native.pdb"):
+                stray = root / name
+                stray.parent.mkdir(parents=True, exist_ok=True)
+                stray.write_bytes(b"unexpected debug payload")
+                with self.subTest(role=role, file=name), self.assertRaisesRegex(ValueError, "debug files or symbols"):
+                    publisher.validate_sample_capabilities(root, role, {})
+                stray.unlink()
+
+    def test_developer_payload_requires_complete_debug_dependencies_but_not_symbols(self):
+        root = self.root / "developer"
+        root.mkdir()
+        dependencies = {name + "/1.0.0": {} for name in (
+            "GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport")}
+        debug_assemblies = ("GalNet.Avalonia.Debugging.dll", "GalNet.Debugging.dll",
+                            "AvaloniaUI.DiagnosticsSupport.Avalonia.dll")
+        for kind in ("Sample", "CrossPlatform"):
+            role = kind + "-Developer"
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "missing debug dependencies"):
+                publisher.validate_sample_capabilities(root, role, {})
+            with self.subTest(role=role), self.assertRaisesRegex(FileNotFoundError, "debug assemblies"):
+                publisher.validate_sample_capabilities(root, role, dependencies)
+            for name in debug_assemblies:
+                (root / name).write_bytes(b"debug assembly")
+            self.assertFalse(publisher.validate_sample_capabilities(root, role, dependencies)["symbolsIncluded"])
+            symbols = root / (Path(publisher.PROJECTS[kind]).stem + ".pdb")
+            symbols.write_bytes(b"unexpected symbols")
+            with self.subTest(role=role), self.assertRaisesRegex(ValueError, "debug files or symbols"):
+                publisher.validate_sample_capabilities(root, role, dependencies)
+            symbols.unlink()
+            for name in debug_assemblies:
+                (root / name).unlink()
+
     def test_timeout_stops_own_parent_and_child_and_preserves_unrelated_process(self):
         helper = self.root / "parent.py"
         pids = self.root / "pids.json"

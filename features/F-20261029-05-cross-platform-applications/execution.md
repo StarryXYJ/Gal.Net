@@ -490,3 +490,56 @@ CrossPlatform 增加调试/参数条件工程引用和独立锁图，默认 Debu
 依赖身份检查首次错误地把预期删除的三项诊断依赖判为失败；核对实际旧/新锁图后记录精确移除白名单，未忽略版本或 hash 变更。全部 restore 原始日志和 `lock-matrix.json`、`lock-package-identities.json` 保留。最终证据在 `out/cross-platform-p6d/`：`presentation-disposal.log`、`integration-activity-final.log`、`integration-player-final.log`、`architecture-final.log`、`results/`、`cross-build-*` 和 `force-*`/`locked-*`。
 
 没有以本切片自动化替代 P6e 新平台发布/运行。Android USB 当前在线；NDK 缓存此前被删除，正在工作区用官方 sdkmanager 准备正常构建工具链，不能继续依赖 P7b/P7c 的临时 native 复用 targets。独立 NuGet/模板交付、移动远程调试、iOS/macOS/真实手柄仍未验收。工作区并行截图/配色改动保持独立，不随本阶段提交。
+
+P6d 提交：`faa9070e`。
+
+## 2026-10-30：P6e 新发布产物检查点（in-progress）
+
+`publish-applications.py` 的 CrossPlatform 角色扩为 Player/Developer，默认共六应用。两宿主均显式传入调试/参数属性；玩家输出拒绝调试协议/实现/DiagnosticsSupport 依赖，开发输出要求完整调试依赖及实际 DLL。两种发行 flavor 都排除 PDB：外部调试走协议而非源码级单步。Core/Builtins 在六应用间比较，Project.Contracts 在四份 Sample 产物间逐字节比较。
+
+Windows 使用 SDK 10.0.401、四核/单 MSBuild worker、独立 Desktop 锁图、普通自包含发布，六角色全部完成且校验通过。初版门禁完整脚本测试 7/7 通过；随后补充实际 DiagnosticsSupport DLL 名称及缺 DLL 拒绝，再以不启动程序的两项篡改测试通过，并用加强后的验证器只读复查六份真实产物。此前 SDK 报告仍为 runtimeTested=false，额外最终检查同样明确不代表运行。
+
+在 `out/cross-platform-p6e/P6e-validation-<随机身份>` 作者副本内替换为四 Sample 共享的实际三份契约，使用新 CLI 完整导出并分别安装到四份输出的 `pak`；原 GameTestCase/用户 profile 不变。导出项目身份专供 Windows 探针，不应拿它覆盖手机已有项目身份。外部调试显式测试现在识别原始 SDK 输出和发行布局两种契约目录；此测试修改尚未重新编译/执行。
+
+Linux 从 `faa9070e` 的无 bin/obj 源码归档和本次发布脚本副本建立 `/tmp/galnet-p6e-7C5iI2/source`，gcc 从实际源码生成新的 miniaudio。首轮保护测试失败：SDK 因系统缺 ICU 而在 --version 阶段终止，错误 native 用例因此未取得 sdkVersion；该轮 7 项中 1 个 error、1 个 Windows-only skip，不算通过。已有本地媒体目录包含 ICU78；已准备在 SDK 构建进程指定该目录的 LD_LIBRARY_PATH，尚未执行修复后的重跑。Linux 应用发布和 GUI 均未完成，不改用 invariant globalization 掩盖依赖。
+
+Android USB 在线；官方 sdkmanager 把 NDK 29.0.14206865 安装到 `out/toolchains/android/ndk/29.0.14206865`，source.properties 与 android.toolchain.cmake 存在。新结构的正常源码 Mono AOT 构建、匹配 Android 契约内容及真机回归仍未开始，不复用旧临时 native targets。并行 Android UI 任务随后提交 `69a88546`；其截图/配色与单 ABI 设备证据属于独立 follow-up，下一次平台快照应纳入已提交修复。Windows 构建使用当时工作区，不能把该产物宣称为无其他改动的 faa9070e 冻结源码。
+
+自动审批服务对 Windows 四宿主 GUI 探针和 Linux 续跑均返回 `You’ve hit your usage limit`，并明确动作未执行、不是不安全判定。没有以其他工具绕开审批；停止外部/原生执行后只做沙盒内的源文件语法、篡改 fixture 和产物只读检查。P6e 代码/记录保持未提交，等待审批服务恢复后完成平台退出条件。
+
+证据：`out/cross-platform-p6e/windows-sdk/application-publish.json`、`windows-final-payload-check.json`、`publisher-tests.log`、`publisher-capabilities-final.log`、`windows-content.json`、`windows-export.log`、四份 `windows-install-*.log`；Linux 原生构建/首轮失败日志、源码归档及 `linux-root.txt` 同目录保留。Windows GUI 探针新增于 [probes/sample-hosts](probes/sample-hosts/README.md)，目前只有语法检查，无运行通过报告。独立模板/macOS/iOS/真实手柄继续延期。
+
+## 2026-10-30：P6e1 权限恢复后的发布、桌面原生与 Android 正常源码候选（verified）
+
+用户恢复执行权限后继续此前未执行动作。Windows 四个实际 Player/Developer 原生进程全部从非应用工作目录启动：确认包内 CoreCLR、SDL、VLC 路径、会话就绪、启动次数落盘；通过自有 HWND 的退出确认退出码均为 0。两个 Developer 使用实际发布 apphost，分别显式执行 3 条 TCP 外部调试用例，覆盖标题连接、start/变量修改/seek/step/stop/重建、旧 run 拒绝以及边查询边正常退出；两份 TRX 均 total/executed/passed=3，failed=0。原始 SDK 和发行布局的契约路径均由测试入口明确识别，没有用零执行显式场景作证据。
+
+Linux 使用 `/tmp/galnet-build-compose-Q4qkZh/sdk` 的已核验 10.0.401，给 SDK 进程配置已有本机媒体中的 ICU78 目录后，保护测试实际执行 6 项通过、1 项 Windows-only skip；六应用 locked restore/publish/载荷检查通过。新源码原生音频由 gcc 编出。四份实际 Sample 分别安装由同一 Linux 产物契约导出的内容，在 Ubuntu 26.04.1/WSLg 启动、会话、进度落盘、退出确认及 exit 0 全通过。Player 不传参数，用独立 XDG_DATA_HOME 测默认 profile；Developer 用独立显式 profile。进程实际加载 SDK 输出的 CoreCLR/SDL 与本机媒体 VLC，未声称新的公开私有闭包、Ubuntu 24.04 最低基线或原生 Linux 桌面。
+
+Android 在无 bin/obj 的 `69a88546` 源码归档中，经 SDK 10.0.401 和官方 NDK 29.0.14206865、CMake/Ninja 正常构建两 ABI 音频；未使用 P7b/P7c 临时 native targets。归档 SHA256 `d9443dc4d85fae2039e5733350f4dd4bc8ad33d9d241cc32f06bd2e2ad7b60a5`。首轮用原 Windows CLI 导出被 Core 严格字节检查拒绝；在相同快照/配置/版本正常构建 CLI 后，逐项核对 Core/Builtins 与 Android 实际三份契约相符，再成功导出 `GameTestCase-current.galpak`，SHA256 `b55113b68100ec0fbe85ee52c8a13be933f24b2203d8d85d392218b588dfe8ad`。未替换运行库或降低校验。
+
+最终通用 APK 两 ABI 各 114 个实际 Mono AOT 程序集，所有 native 架构、ELF LOAD 和官方 zipalign 16 KB 检查通过。第一次覆盖安装被签名不匹配拒绝，旧包/数据不变；实际新证书 9b82c724…，既有手机候选和本机旧开发密钥证书 d2c39063…。显式传入既有签名参数后实际证书一致，见 L-20261030-16。一次按 ABI 拆分开关的输出仍只有双 ABI 文件，未把文件名或大小视作单 ABI 证据；改用单数 android-arm64 RID，在快照中 force-evaluate 再 locked restore/正常发布，确认实际只含 ARM64、114 个 AOT、完整内容及 native/对齐均通过。
+
+| 当前结果 | 证据 |
+| --- | --- |
+| Windows 六应用 raw publish | `windows-sdk/application-publish.json`、加强后的只读 `windows-final-payload-check.json` |
+| Windows 4/4 原生启动/确认退出/落盘 | `windows-native/verification.json`、各进程 modules/stdout/stderr；Player 默认 profile 为独立测试身份 |
+| Windows 外部调试 3+3 | `native-debug.json`、`results/native-debug-{Sample,CrossPlatform}.trx` |
+| 发布保护 | Windows 最终 7/7；Linux 6 passed + 1 skip；`publisher-tests-final.log`、`linux-publisher-tests.log` |
+| Linux 六应用及 4/4 WSLg 原生 | `linux-application-publish.json`、`linux-native.json`；实际根 `/tmp/galnet-p6e-iv2N8V` |
+| Android 双 ABI 正常源码 | `android-build.json`、`android-publish.log`、`android-package-verification.json`；114×2 Mono AOT，通用 APK hash b6452b3b… |
+| Android ARM64 设备候选 | `android-arm64-publish.log`、`android-arm64-package-verification.json`、`android-arm64-signer.log`、`android-arm64-zipalign.log` |
+| Android 覆盖安装与冷标题 | `android-arm64-install.log` Success，`android-device-smoke.json`、`android-cold.png`；没有 uninstall/clear |
+
+ARM64 APK：`out/cross-platform-p6e/android-arm64/org.galnet.sample-Signed.apk`，78,191,374 字节，SHA256 `8ad2dc4ff83965faa32b6648348f31abee85b0daba7af1d7d9a29334120b4eb4`，音频库 SHA256 `7af68003ce4822e1f764b75790137ad60ee7a3aa5b237c47379431c72897468b`。本次是全新 NDK 源码产物，不沿用旧诊断 native。候选保留现有数据安装成功；冷标题显示新内容 SHA 对应目录、保留语言偏好、无退出按钮。窗口 InsetsSource 报告状态栏/导航栏 visible=false；竖屏的等比画布留白不被写成横屏全高通过。
+
+后续捕获前台检查先发现已切离本包，未截取其他应用；之后发现 Dozing/安全锁屏，不能写成 Sample 黑屏。诊断为 Keyguard showing=true/secure=true/trusted=false，ADB 无法解除。已通知用户手动解锁；临时旋转锁恢复 free。本次新候选的横屏、2×Back、1×Home、剧情音视频和触摸复验尚待 P6e2，不复用旧 P7c 或 UI follow-up 结果代替。本阶段不标整个 P6e/P7 完成。
+
+源边界：Linux/Android 及外部调试测试构建基于归档 69a88546，Windows raw publish 使用当时工作区（包含并行 UI 修复）；四组契约在各自上下文内严格匹配，不宣称 Windows/Linux/Android 契约可跨上下文交换。后续 `bad0bc73` 的 GameTestCase 作者化与 `2c7a520e` 等窗口外观改动不在该冻结候选中，也不被这批结果自动覆盖；并行未提交的剧情、窗口和 README 改动保留。当前规范/支持页、发布脚本说明与探针说明已同步，文档和脚本语法检查通过；未更新公开发行版本或外部 Wiki。
+
+## 2026-10-30：P6e2 用户确认与当前范围收尾（verified）
+
+用户解锁后，实际完成横屏标题、2×Back/1×Home 后 launcher 重进，均为 PID 16404；截图显示标题和无退出菜单，没有复现空白页。新游戏的课堂背景/立绘、对白和表情切换、触摸推进均有新候选截图，真实 AudioTrack 日志有 48 kHz 双声道非零采样数据。临时旋转锁在探针 finally 和收尾中恢复 free。
+
+自动视频推进探针最后因前台已回桌面而未完成，保护逻辑没有截取桌面，也没有据此记视频通过。随后用户明确“我都测试过了，可以收尾了”，因此本轮音视频等剩余基础功能按用户人工验收通过收尾，不继续操作手机或补造自动证据。该确认限定本轮 Sample 功能，不推导生产签名、iOS、macOS、真实手柄或完整 P7 专项已通过。
+
+新增证据：`android-device-smoke.json` 中的 landscape/back-1/home/back-2/playback-frame-1/playback-frame-2/touch-advance，相关 PNG/window 文件、`android-playback-runtime.log` 及 `android-device-acceptance.json`。P6b–P6e 当前 Sample 切片已归入 summary.md；剩余计划只保留延期/专项任务。独立审核未新增，review.md 的本次增量是实现自审与验收记录。

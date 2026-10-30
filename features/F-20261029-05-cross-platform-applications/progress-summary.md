@@ -123,3 +123,11 @@ Presentation 实际执行 324/324、Integration 196/196、Architecture 55/55 通
 Presentation 实际执行 333/333（包含工作区并行截图任务新增用例），调试版 Integration 197/197、玩家版 192/192、Architecture 56/56；显式原生用例未计入通过。四 RID × 两宿主 × 两 flavor、原 Sample 两种 R2R、两宿主普通图及 Android/iOS/Browser 两种图共 28 组 force-evaluate/locked restore 通过。200 份既有锁文件保留框架/RID 键和保留包的版本/hash；玩家测试图明确移除 DiagnosticsSupport 及两项专用传递依赖。CrossPlatform 开启/关闭调试实际构建与 deps.json 检查通过。
 
 规范、定制说明和 CrossPlatform README 已同步，文档校验通过。证据 `out/cross-platform-p6d/`，失败复现及原始计数见 execution.md。尚未用新结构发布/运行 Windows/Linux/Android；iOS/macOS/手柄、移动外部调试与独立 NuGet/模板交付不因此完成。
+
+## P6e — 新产物回归与当前 Sample 范围收尾（verified）
+
+发布矩阵已扩为六应用，两种 Sample 宿主各有 Player/Developer；调试载荷与全 flavor PDB 排除门禁、严格共享/项目契约比较已实现。Windows 六份新自包含产物、两轮载荷核对及匹配完整内容导出/安装通过；完整发布保护测试 7/7，新补充的两项载荷篡改测试通过。官方 Android NDK 已恢复到工作区。
+
+权限恢复后，Windows/Linux 六应用发布与四份 Sample 原生启动/落盘/确认退出均通过，Linux 为 Ubuntu 26.04.1 / WSLg 与已有本机媒体；两个 Windows Developer 各 3 条外部调试流程通过。Linux SDK 以现有 ICU 目录恢复正常运行，没有切换 invariant globalization。Android 正常 NDK 源码构建和双 ABI 各 114 程序集 Mono AOT/完整内容/16 KB 检查通过；同源 CLI/实际契约重新导出，不放宽跨构建上下文的字节检查。
+
+最终 ARM64 候选 78,191,374 字节，SHA256 `8ad2dc4ff83965faa32b6648348f31abee85b0daba7af1d7d9a29334120b4eb4`；显式复用手机旧包对应的开发密钥，保留数据更新成功。冷启动、横屏无退出按钮/全高等比画布、2×Back 与 1×Home 同 PID 重进、立绘/对白变化和触摸推进已有自动证据。用户随后明确“我都测试过了，可以收尾了”，本轮剩余视频、实际声音等按人工确认通过，未将自动视频截取失败算作自动通过；旋转已恢复 free。P6e1/P6e2 当前范围收尾，独立模板、完整 P7 专项及延期平台不因此完成。面向开发者的实现、证据和后续边界见 [summary.md](summary.md)。

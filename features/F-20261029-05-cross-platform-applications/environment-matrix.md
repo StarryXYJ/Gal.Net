@@ -43,6 +43,8 @@ Windows 11 x64 / .NET 10 自包含、Ubuntu 24.04.3 x64 / WSLg 均验证 SDL 3.4
 
 ## 内容闭包实施结果
 
+当前 Sample 收尾增量（2026-10-30）：SDK 10.0.401；Windows 与 Ubuntu 26.04.1/WSLg 六角色发布、各四份 Sample 原生启动/落盘/退出通过；Linux 使用已有本机媒体/ICU，不代表最低发行基线。Android 官方 NDK 29.0.14206865 与 CMake/Ninja 正常源码构建双 ABI，各 114 Mono AOT；REDMI K80 Pro / Android 16 / ARM64 保留数据更新、启动/重进/立绘/触摸有自动记录，其余本轮基础功能由用户确认通过。模板、macOS/iOS/真实手柄及专项发布仍按计划追踪，精确候选与边界见 summary.md。
+
 原 GamePackageExporter.ExportAsync 仅把 prepared.Base 写入 galpak，把 prepared.Stories 发布到归档旁的 StoryPatches/<buildId>。所以单独移动归档会漏掉剧情。ExportDirectoryAsync 已写入本体和全部剧情，两个交付物原先不等价。
 
 用户明确不考虑向后兼容后，采用唯一的新标准：

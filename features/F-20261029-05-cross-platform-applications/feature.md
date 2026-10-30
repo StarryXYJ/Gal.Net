@@ -4,9 +4,9 @@
 
 - Feature：F-20261029-05-cross-platform-applications
 - 创建日期：2026-10-29
-- 状态：in-progress
-- 最新结构决定（2026-10-30，P6b/P6c 已验证）：已删除独立 `GalNet.Sample.Player` 项目；通用能力按职责归入现有层，两个 Sample 各有 `SampleCustomization`、项目资源和平台接线，允许少量配置重复。可选调试能力解耦与最终新产物复验仍待 P6d/P6e；见 design.md §8.1。
-- 当前进度：P2 已验证；Windows/Linux 的 compose 与原生宿主 build-compose 已闭环。P6a 已抽取共享 Sample.Player 并接入 CrossPlatform；P7a–P7c 已完成移动媒体/检查点接线、Android Release Mono AOT、ARM64 真机基础音视频/触摸、沉浸显示及后台重进切片。当前先按 P6b–P6e 重新整理模板源结构；独立模板生成、完整移动验收及 P1 原生 Editor 导出仍待补。手柄、macOS、iOS 验收按用户决定延期；旧 dev.9/dev.10 未更新，详见阶段总结和执行记录。
+- 状态：in-progress（当前 Sample 切片已验收收尾；延期/专项范围见剩余计划）
+- 最新结构决定（2026-10-30，P6b–P6e 已验证）：独立 `GalNet.Sample.Player` 已删除；通用机制归库层，两个 Sample 各自定制，可选调试已解耦。Windows/Linux 新产物回归和 Android 当前功能验收完成；见 [收尾总结](summary.md)与 design.md §8.1。
+- 当前进度：P2 已验证；Windows/Linux compose 与原生宿主 build-compose 已闭环。P6b–P6e 完成结构迁移、可选调试、六角色发布及当前设备回归，用户确认 Android 本轮测试通过并要求收尾。独立模板、完整移动专项及 P1 原生 Editor 导出继续追踪；手柄、macOS、iOS 验收延期，旧公开候选未更新。
 
 ## 用户目标与已确认决策
 
@@ -102,7 +102,7 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 - [ ] 建设三平台 CI、分发验收与 GUI 验收矩阵。
 - [ ] iOS 最小 Avalonia + 会话 + 音频的 Mono AOT 发布闭包（按用户决定延期）。
 - [x] 集中抽取 Sample 共享页面/资源/组合并接入 CrossPlatform，提供 lifetime、内容流与沙盒目录入口；完整平台运行另验。
-- [ ] 按模板边界拆除 `GalNet.Sample.Player`：通用机制归入已有层、两个 Sample 独立配置、调试能力可选复用，迁移并重新验证项目依赖、资源与发布矩阵。
+- [x] 按模板边界拆除 `GalNet.Sample.Player`：通用机制归入已有层、两个 Sample 独立配置、调试能力可选复用，迁移并验证当前平台依赖、资源与发布矩阵；延期平台保留未验。
 - [ ] 适配移动显示/触摸/返回键、安全区域、横竖屏和系统生命周期。
 - [ ] 完成移动音频、视频与 Gallery 后端及原生打包。
 - [ ] 提供可生成、可独立构建的五平台模板并完成设备验收。
@@ -157,4 +157,4 @@ Editor 和现有 Avalonia Sample 支持 Windows、Linux、macOS；后续提供�
 
 用户明确将独立模板延后，先使 Sample 可验收；Windows/Linux 继续已有证据的功能回归，macOS 与手柄验收延期。Android/iOS 先补功能，再做具备工具链与设备条件的平台验收；允许 Mono AOT。当前 Windows 环境缺 iOS 构建能力不阻挡其他实现，也不应记为 iOS 已支持。
 
-后续结构决定：用户接受取消独立 Player 工程、通用机制回到库层、两个主项目独立定制且允许少量配置重复。用户随后明确“开始吧”，已实施并验证 P6b–P6d；Player 工程、生产引用和源锁图节点已删除，两主项目独立配置，可选通用调试已迁入 Presentation。最终新发布产物复验继续 P6e；独立模板和延期平台仍未完成。
+后续结构决定：用户接受取消独立 Player 工程、通用机制回到库层、两个主项目独立定制且允许少量配置重复。P6b–P6e 当前 Sample 范围已完成：两个配置入口、可选调试及新产物回归通过，用户确认 Android 已测试并要求收尾。独立模板和延期/专项平台仍未完成。

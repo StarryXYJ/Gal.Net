@@ -2,9 +2,9 @@
 
 - 更新：2026-10-30；整体 in-progress。
 - 用户最新修订：独立模板延后，先把 Sample 做到可验收；macOS/手柄验收延后。Android/iOS 先实现功能再验收，本机缺 Mac 不阻挡其他实现。移动允许 Mono AOT，NativeAOT 不作硬前置。
-- 结构修订：删除 `GalNet.Sample.Player` 项目，通用机制按职责回到库层；两个 Sample 独立配置，允许少量声明/接线重复；调试能力可选复用。设计见 [§8.1](design.md#81-2026-10-30-修订模板拥有配置通用层拥有机制)。P6b–P6d 已验证并归入阶段总结，P6e 待新产物复验。
+- 结构修订：删除 `GalNet.Sample.Player` 项目，通用机制按职责回到库层；两个 Sample 独立配置，允许少量声明/接线重复；调试能力可选复用。P6b–P6e 当前 Sample 范围已验证并收尾，见[本轮总结](summary.md)；设计见 [§8.1](design.md#81-2026-10-30-修订模板拥有配置通用层拥有机制)。
 - 依据：[需求](feature.md)、[设计](design.md)。已完成部分归并为[阶段总结](progress-summary.md)，详细证据保留在[执行记录](execution.md)及[环境矩阵](environment-matrix.md)。
-- 下一段：P6e 新产物复验，再继续 P7 剩余设备验收。通用调试、两个主项目独立配置和 Player 工程删除已完成；独立模板生成仍延期，iOS/macOS 环境不阻挡当前结构调整。
+- 下一段：用户已确认 Android 本轮功能测试通过并要求收尾；不再重复本轮基础设备测试。后续仅推进明确选择的模板、平台或专项验收。
 
 ## 阶段状态与依赖
 
@@ -16,7 +16,7 @@
 | P3 | in-progress | 完整 Linux 流程、原生桌面、公开分发审查与 macOS；已验证的 Windows/WSLg 切片已总结 |
 | P4 | in-progress | macOS 归档/签名延期；Windows/Linux 原生宿主合包和明确协议的仓库外工程已验证，其他定制工程不作通用支持承诺 |
 | P5 | in-progress | 应用发布矩阵、真实设备及完整桌面验收；正式 SDL 适配/部署的 Windows/WSLg 自动化已总结 |
-| P6 | in-progress | P6b–P6d 通用机制、独立配置和可选调试已验证，Player 已删除；P6e 新产物回归；独立模板生成延期 |
+| P6 | in-progress | P6b–P6e 当前 Sample 切片 verified 并收尾；独立模板生成/仓库外交付延期 |
 | P7 | in-progress | Android 存读档/Gallery/进程恢复及剩余设备矩阵，iOS 编译链接/设备与签名待验 |
 | P8 | planned | 独立审核、支持矩阵和收尾；依赖各目标平台必要验收 |
 
@@ -56,36 +56,13 @@ Windows 宿主的 Windows/Linux `build-compose`、严格封装、失败/取消�
 - **风险**：SDL 事件循环冲突及设备布局差异；设备不可用仅保留未验收，不用模拟快照代替实机通过。
 - **退出条件**：标准手柄三平台验证，P1–P4 的正式桌面产物及 GUI 核心流程有证据；WSL 结果与真实 Linux 桌面分别记录。
 
-## P6 — Sample 模板结构与跨平台宿主
+## P6 — 延期的独立模板与仓库外交付
 
-- **目标**：删除独立 Player 工程，让两个 Sample 成为可直接定制的模板源；通用机制和可选调试由适当的库层提供，项目配置与平台策略归宿主。
-- **前置条件**：以 P6a/P7a–P7c 的已验证行为为基线，不等待手柄、macOS、iOS 验收；历史共享 Player 是待迁移实现，不是最终结构要求。
-- **涉及模块**：两个 Sample 组合根、Avalonia.GameHost/GameView/Controls/Themes、Storage.FileSystem、可选调试模块、契约执行适配、构建/测试入口。
-- **剩余任务**：
-  - P6b 通用机制、P6c 两宿主独立配置/删除 Player、P6d 可选调试已归入总结；继续下面 P6e，不新建同职责的 Player 替代工程。
-  - **延后**：独立模板生成/脱离仓库构建，待 Sample 本身可验收后再整理。
-  - Android 真机资产安装、语言页与基础剧情会话已归入 P7b 总结；继续验证完整会话、退出/返回/显示，不把基础 smoke 写成可完整游玩。
-  - 衔接 P7 原生媒体和生命周期；开发工具抽出通用能力，由两宿主显式选择接入，平台不适用的操作不显示。
-  - 根据最终分发方式固化 SDK/profile/版本/契约来源及模板操作文档；macOS/iOS 验收继续延期，Browser 不扩展。
-- **测试**：按各子阶段覆盖独立定制、启动/语言/会话重建、正常退出、检查点、调试开关、发布载荷和真实宿主。
-- **文档**：实现后同步定制入口、依赖图、资源归属和平台能力；模板生成规则在真正实施时再补。
-- **风险**：只重命名 Player、把项目契约或静态默认值移进框架、调试依赖污染玩家版、机械迁移制造依赖环、已有 profile/资源定位退化。
-- **退出条件**：P6b–P6e 的当前平台切片通过；无 Player 生产引用，两个主项目可独立配置，公共机制不复制；完整模板生成和延期平台继续保留待办，不升级为五平台完成。
+P6b–P6e 当前 Sample 切片均 verified，结果已归入[阶段总结](progress-summary.md)与[收尾总结](summary.md)。P6e2 的新候选重进/立绘/触摸有自动记录，视频和实际声音等由用户确认通过；不继续把已验收的基础功能列作待办。
 
-P6b（verified）：通用宿主/视图、流式安装、profile 身份及截图写入已归库层；结果见[阶段总结](progress-summary.md)和 execution.md 的 P6b。其临时 Sample 委托在 P6c 删除。
-
-P6c（verified）：两个主项目独立的 SampleCustomization、项目文案/契约适配和 Player 工程删除已完成；源锁图及实际 deps.json 无旧 Player，详见阶段总结和 execution.md 的 P6c。
-
-P6d（verified）：可选 `GalNet.Avalonia.Debugging` 已接入两个宿主，玩家版排除调试引用/资源；嵌入 UI、真实协议适配、scope 释放和 Activity 容器重挂载有自动化证据。28 组还原矩阵通过，完整结果见阶段总结与 execution.md。最终 native 发布/设备结果仍由 P6e 验证，移动远程调试与独立 NuGet/模板交付不在本切片证据内。
-
-### P6e — 迁移后发布、设备回归与文档收敛（planned）
-
-- **目标/前置**：依赖 P6b–P6d；用新结构的实际产物重验已有行为，收敛模板源职责。
-- **涉及模块**：两宿主/平台工程、架构/呈现/集成/调试测试、应用发布脚本/CI、spec/manual 与 feature 记录。
-- **任务**：清理迁移临时委托和未使用骨架，核对全部工程/资源/锁图/发布触发；完成当前平台的匹配构建与打包，保证不依赖旧 bin/obj 或临时 targets 才能构建。按实现事实同步架构模块图、game-host、定制/参数编辑器/本地化文档及 CrossPlatform README；历史记录保留，不把计划写成当前 spec。
-- **测试**：架构门禁及受影响 GameHost/Storage/Presentation/Integration/Debugging 测试；Windows 两宿主的启动/语言/设置/退出/重建和可选调试，Linux 原生构建及可用环境运行；Android 双 ABI Mono AOT/内容/native/16 KB 检查及 ARM64 真机复验启动、剧情音视频、无退出按钮、系统栏收起和 Back/Home 重进。新增通用接口用无 Sample.Contracts 引用的测试宿主验证。iOS/macOS/真实手柄延期结果单独记录。
-- **文档/风险**：重新导出的内容使用新产物的匹配契约，保留已有手机 profile；旧 P7b/P7c APK 只作基线。不能用新结构通过构建替代独立模板生成或 P7 全流程验收。
-- **退出条件**：实际实现与文档一致，关键现有行为有新产物证据，失败及延期项透明；当前切片 verified 后提交并把完成步骤归入 progress-summary，独立模板/P7 剩余事项继续追踪。
+- **延期任务**：生成可独立使用的模板，整理应用身份/图标/平台内容声明和所需包版本；在仓库外按固定 SDK/profile/契约来源构建及发布。
+- **边界**：保持两个主项目各自配置，不恢复共享 Player 替代工程；可选调试真正可排除；模板的独立 NuGet/交付验证不由源码工程引用或本次 Sample 通过自动推出。
+- **平台**：macOS/iOS/真实手柄验收继续延期；Browser 不扩展。完整移动专项矩阵进入 P7，公开分发条件和独立审核进入 P8。
 
 ## P7 — 移动端完整运行与设备验证
 

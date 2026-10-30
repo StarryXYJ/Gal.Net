@@ -1,6 +1,7 @@
 """Start one composed Developer Sample on X11/WSLg and confirm its own exit dialog."""
 import argparse
 import ctypes as c
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -29,7 +30,15 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--application", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--raw-publish", action="store_true")
+    parser.add_argument("--entry")
+    parser.add_argument("--media-directory", type=Path)
+    parser.add_argument("--player-project-id", help="Run a Player without arguments using isolated XDG data.")
     args = parser.parse_args()
+    if args.raw_publish and (not args.entry or not args.media_directory):
+        parser.error("Raw publishing requires --entry and --media-directory.")
+    if args.player_project_id and not args.raw_publish:
+        parser.error("The isolated Player probe requires --raw-publish.")
     root, output = args.application.resolve(), args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
     if any(output.iterdir()):
@@ -100,9 +109,11 @@ def main():
     report = {"passed": False, "application": str(root), "nativeDesktopTested": not Path("/dev/dxg").exists()}
     process = None
     try:
-        layout = json.loads((root / "docs/application-layout.json").read_text())
-        profile = output / "profile"
-        profile.mkdir()
+        layout = {"entryPoint": args.entry} if args.raw_publish else json.loads((root / "docs/application-layout.json").read_text())
+        data = output / "data"
+        profile = data / "GalNet" / hashlib.sha256(("project:" + args.player_project_id).encode()).hexdigest() \
+            if args.player_project_id else output / "profile"
+        profile.mkdir(parents=True)
         values = {}
         for name, value, kind in (("player.galnet.startup.launchCount", 1, 1), ("player.galnet.settings.locale", "en-US", 3)):
             values[name] = dict(Uid=uuid.uuid4().hex, Name=name, Type=kind, Value=value)
@@ -110,8 +121,17 @@ def main():
         environment = dict(os.environ, PATH="/usr/bin:/bin", DOTNET_ROOT=str(output / "no-sdk"), DOTNET_MULTILEVEL_LOOKUP="0")
         for key in ("DOTNET_ROOT_X64", "DOTNET_HOST_PATH", "LD_LIBRARY_PATH", "VLC_PLUGIN_PATH"):
             environment.pop(key, None)
+        if args.raw_publish:
+            media = args.media_directory.resolve()
+            environment.update(LD_LIBRARY_PATH=str(media), VLC_PLUGIN_PATH=str(media / "plugins"))
+            report.update(rawPublish=True, mediaDirectory=str(media), minimumOsTested=False)
+        if args.player_project_id:
+            environment["XDG_DATA_HOME"] = str(data)
+        if Path("/dev/dxg").exists():
+            environment.setdefault("GALLIUM_DRIVER", "d3d12")
+        arguments = [] if args.player_project_id else ["--profile", str(profile)]
         with (output / "stdout.log").open("w") as stdout, (output / "stderr.log").open("w") as stderr:
-            process = subprocess.Popen([str(root / layout["entryPoint"]), "--profile", str(profile)],
+            process = subprocess.Popen([str(root / layout["entryPoint"]), *arguments],
                                        cwd=output, env=environment, stdout=stdout, stderr=stderr)
             deadline = time.monotonic() + 45
             windows, ready = [], False
@@ -129,7 +149,9 @@ def main():
                 raise RuntimeError(f"Sample did not create its window/session; exit={process.poll()}.")
             maps = Path(f"/proc/{process.pid}/maps").read_text()
             (output / "modules.txt").write_text(maps)
-            for library in (root / "lib/libcoreclr.so", root / "lib/native/libvlc.so.5", root / "lib/libSDL3.so.0"):
+            libraries = (root / "libcoreclr.so", args.media_directory.resolve() / "libvlc.so.5", root / "libSDL3.so.0") \
+                if args.raw_publish else (root / "lib/libcoreclr.so", root / "lib/native/libvlc.so.5", root / "lib/libSDL3.so.0")
+            for library in libraries:
                 if str(library) not in maps:
                     raise RuntimeError(f"Expected private runtime was not loaded: {library}")
             event = Event()
@@ -152,6 +174,8 @@ def main():
             report["exitCode"] = process.wait(timeout=15)
             if process.returncode != 0:
                 raise RuntimeError("Sample did not exit normally.")
+            if json.loads((profile / "player-variables.json").read_text())["player.galnet.startup.launchCount"]["Value"] != 2:
+                raise RuntimeError("Player launch count was not persisted.")
             report.update(passed=True, windowTitle=windows[0][1], sessionReady=True, sdkDiscoverable=False)
     except Exception as error:
         report["error"] = str(error)

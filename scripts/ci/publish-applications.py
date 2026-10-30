@@ -50,6 +50,33 @@ def msbuild_value(value):
     return "".join(f"%{ord(char):02X}" if char in "%$@();?*'," else char for char in str(value))
 
 
+def validate_sample_capabilities(root, role, dependencies):
+    flavor = role.partition("-")[2]
+    if flavor not in ("Player", "Developer"):
+        raise ValueError(f"Sample publish requires an explicit Player or Developer flavor: {role}")
+    enabled = flavor == "Developer"
+    names = {name.split("/")[0] for name in dependencies}
+    required = {"GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport"}
+    present = required & names
+    if enabled and present != required:
+        raise ValueError(f"Developer publish is missing debug dependencies: {sorted(required - present)}")
+    if not enabled and present:
+        raise ValueError(f"Player publish contains debug dependencies: {sorted(present)}")
+    required_files = {"GalNet.Avalonia.Debugging.dll", "GalNet.Debugging.dll",
+                      "AvaloniaUI.DiagnosticsSupport.Avalonia.dll"}
+    debug_files = [path for path in root.rglob("*.dll") if path.name in required_files]
+    symbols = list(root.rglob("*.pdb"))
+    if (not enabled and debug_files) or symbols:
+        raise ValueError(f"Sample publish contains debug files or symbols: {debug_files + symbols}")
+    assembly = Path(PROJECTS[role.split("-")[0]]).stem
+    if enabled:
+        missing = sorted(name for name in required_files if not (root / name).is_file())
+        if missing:
+            raise FileNotFoundError(f"Developer publish is missing debug assemblies: {missing}")
+    return {"flavor": flavor, "gameDebugging": enabled, "launchArguments": enabled,
+            "symbolsIncluded": False}
+
+
 def validate_publish(root, role, target):
     kind = role.split("-")[0]
     assembly = Path(PROJECTS[kind]).stem
@@ -62,6 +89,7 @@ def validate_publish(root, role, target):
         if not (root / (assembly + suffix)).is_file():
             raise FileNotFoundError(f"Missing application payload: {assembly}{suffix}")
     dependencies = json.loads((root / (assembly + ".deps.json")).read_text())["libraries"]
+    capabilities = validate_sample_capabilities(root, role, dependencies) if kind in ("Sample", "CrossPlatform") else {}
     if any(name.startswith("GalNet.Media.Miniaudio/") for name in dependencies):
         check_binary(root / TARGETS[target][0], target)
     contracts = root / "DefaultContracts" if kind == "Editor" else root
@@ -81,7 +109,7 @@ def validate_publish(root, role, target):
         inventory = json.loads((notices / "native-runtime.json").read_text())
         if sha256(native) != inventory["assets"][target]["sha256"]:
             raise ValueError("SDL differs from the pinned native inventory.")
-    return {"role": role, "root": str(root), "entry": entry.name,
+    return {"role": role, "root": str(root), "entry": entry.name, **capabilities,
             "contracts": {filename: sha256(contracts / filename) for filename in contract_names},
             "files": [{"path": path.relative_to(root).as_posix(), "size": path.stat().st_size, "sha256": sha256(path)}
                       for path in sorted(root.rglob("*")) if path.is_file()]}
@@ -138,7 +166,9 @@ def main():
             native = install / TARGETS[args.target][0]
         check_binary(native, args.target)
         report["nativeAudio"] = {"path": str(native), "sha256": sha256(native)}
-        roles = [("Editor", None), ("CLI", None)] + [("Sample-" + flavor, flavor) for flavor in dict.fromkeys(args.flavors)] + [("CrossPlatform", None)]
+        roles = [("Editor", None), ("CLI", None)] + [
+            (kind + "-" + flavor, flavor)
+            for kind in ("Sample", "CrossPlatform") for flavor in dict.fromkeys(args.flavors)]
         for role, flavor in roles:
             kind = role.split("-")[0]
             project = repo / PROJECTS[kind]
@@ -146,7 +176,8 @@ def main():
                           "-p:RuntimeIdentifier=" + args.target, "-p:GalNetDesktopPublishTarget=" + args.target,
                           "-p:GalNetMiniaudioNativePath=" + msbuild_value(native), "-p:GalNetBuildMiniaudio=false",
                           "-p:Version=" + args.version, "-p:ContinuousIntegrationBuild=true",
-                          "-p:CopyOutputSymbolsToPublishDirectory=false", "-p:UseSharedCompilation=false",
+                          "-p:CopyOutputSymbolsToPublishDirectory=false",
+                          "-p:UseSharedCompilation=false",
                           "-p:NuGetAudit=false", "-m:1", "-nr:false"]
             if flavor:
                 enabled = "true" if flavor == "Developer" else "false"
@@ -162,6 +193,10 @@ def main():
             hashes = {application["contracts"][filename] for application in report["applications"]}
             if len(hashes) != 1:
                 raise ValueError("Strict shared contract bytes differ between application publishes: " + filename)
+        sample_contracts = {application["contracts"]["GalNet.Project.Contracts.dll"]
+                            for application in report["applications"] if application.get("flavor")}
+        if len(sample_contracts) != 1:
+            raise ValueError("Strict project contract bytes differ between Sample host/flavor publishes.")
         report["passed"] = True
     except Exception as error:
         report["error"] = str(error)

@@ -9,6 +9,8 @@
 
 后续实现核查（P6a）：当前切片为 **pass-with-follow-up**，允许继续独立模板及 Android 完整运行实现。共享代码集中迁入 Sample.Player，原/新桌面宿主实际运行、移动资产流安装/取消与会话清理回归、Android Mono AOT 发布均有证据。全量冻结源码 CI 2,206 通过、2 个已知 Editor 失败，真实当前 HEAD Debug Integration 191 通过。此为实现自审和验收进展，P8 独立审核、设备/完整媒体及延期平台不由此视为完成；最新覆盖及证据见 progress-summary.md。
 
+最新切片收尾（P6b–P6e）：**当前 Sample 范围通过并收尾**。Player 已删除，两个宿主独立配置，可选调试和玩家依赖隔离通过；Windows/WSLg 新产物、Android 正常源码 Mono AOT 与基础自动运行有证据，用户确认本轮 Android 功能已测试并要求收尾。自动视频截图未完成的部分按人工确认记录，未伪造自动结果。此为实现自审/验收记录，未新增 P8 独立审核。下文核查结果保留为历史，当前实现与未完成范围以 [summary.md](summary.md) 和剩余计划为准。
+
 ## 已完成的子范围
 
 | 领域 | 当前结果 | 验证边界 |

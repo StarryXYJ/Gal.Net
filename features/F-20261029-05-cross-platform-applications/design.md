@@ -194,7 +194,7 @@ Android 处理音频焦点、返回键、路由及前后台；iOS 处理 AVAudio
 
 ### 8.1 2026-10-30 修订：模板拥有配置，通用层拥有机制
 
-**已确认目标，P6b–P6d 通用机制、独立配置及可选调试迁移已验证。** 用户考虑未来项目模板，不希望保留额外的 `GalNet.Sample.Player` 工程；两个 Sample 可以有相似配置代码，真正通用的功能（包括调试能力）应在适当的库层复用。Player 工程现已删除，调试位于可选 `GalNet.Avalonia.Debugging`；模板生成仍延期，最终产物复验继续 P6e。实际落地能力与验证见 execution.md，未完成部分继续保留待办。
+**已确认目标，P6b–P6e 当前 Sample 迁移及产物复验已完成。** 用户考虑未来项目模板，不希望保留额外的 `GalNet.Sample.Player` 工程；两个 Sample 可以有相似配置代码，真正通用的功能（包括调试能力）应在适当的库层复用。Player 工程已删除，调试位于可选 `GalNet.Avalonia.Debugging`；用户确认 Android 本轮测试通过并要求收尾，模板生成与延期/专项范围继续保留。最终结果见 summary.md，详细证据见 execution.md。
 
 #### 当前问题与取舍
 

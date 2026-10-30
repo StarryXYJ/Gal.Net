@@ -1,5 +1,6 @@
 # GalNet Agent Knowledge
-- 2026-10-30 模板结构 P6b–P6d：Sample.Player 已删除；两个 Sample 各自拥有 SampleCustomization、项目文案和契约适配。通用宿主/视图/截图在 Avalonia.GameHost，流安装/profile 键在 Storage.FileSystem；可选 Avalonia.Debugging 统一调试命令/日志/UI/外部会话，普通宿主无反向依赖，玩家版排除调试。28 组锁图与两种集成/呈现/架构回归通过；P6e 新发布及设备复验待补，旧 APK 不代表新结构通过。
+- [Android 更新签名](lessons/L-20261030-16-android-update-signature.md)：不同构建上下文不能假定同一开发密钥；覆盖安装前核对实际 APK 证书，显式使用旧密钥保留 profile，不用卸载绕过签名不匹配。
+- 2026-10-30 模板结构 P6b–P6e 当前 Sample 范围已收尾：Player 删除，两个 Sample 独立定制，可选 Avalonia.Debugging 可排除；28 锁图/呈现/两种集成/架构通过。Win/Linux 六角色发布、两宿主×两 flavor 原生会话/落盘/退出通过（Linux 26.04.1/WSLg/本机媒体），Windows Developer 各 3 条真实调试通过。69a88546 快照正常 NDK 双 ABI 各 114 Mono AOT；ARM64 保留数据更新，启动/重进/立绘/触摸有自动证据，其余本轮功能由用户确认通过。独立模板、P7 专项及延期平台继续追踪，见 feature summary。
 - [删除工程与锁图](lessons/L-20261030-15-prune-project-lock-nodes.md)：移除 ProjectReference 后普通/locked restore 仍可能保留无用 Project 节点；按每个 profile 正确参数 force-evaluate，再 locked 验证，并检查包 hash/框架键。P6c 增加结构化锁图门禁。
 - [UI 来源与语言回退](lessons/L-20261030-14-localization-bootstrap-fallback.md)：合并通用/项目嵌入文案后，AttachGame 保留精确文化来源，由最外层统一回退；提前回退会遮住默认语言的外部翻译。P6c 有英文缺键覆盖的失败/修复回归。
 - [TRX Explicit 执行证据](lessons/L-20261030-12-trx-explicit-test-evidence.md)：NUnit 的 notExecuted 可能为 0 而仍有 Explicit 未运行；保留原始计数并记录 total-executed，设备/GUI/AOT 边界单独报告。
