@@ -1,4 +1,34 @@
-# Compiled-content runtime and presentation smoke test
+# Editor-maintained runtime and presentation smoke test
+
+## Open and maintain in Editor
+
+`GameTestCase` is an editable project shared by Editor, the Headless CLI, and the
+Sample players. From the repository root, deploy the matching Sample contract:
+
+```powershell
+./scripts/contracts/build-project-contracts.ps1 -ContractsProject ./src/Samples/GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj -ProjectDirectory ./GameTestCase
+dotnet run --project ./src/Editor/GalNet.Editor.Headless -- validate ./GameTestCase
+dotnet run --project ./src/Editor/GalNet.Editor
+```
+
+In Editor, open the `GameTestCase` directory, not `Output/`. The graph starts at
+an explicit Entry connected to Classroom (`intro`); both routes converge on
+Ending. Initial node positions are stored in `Graph/graph.json`.
+
+Edit the existing Graph and Raw Groups, resources, characters, and localization
+through Editor and use Save All before building. Raw Groups remain the sole
+story source. Preserve Group/Entry IDs, localization keys, and resource `.meta`
+IDs when maintaining the fixture; importing a duplicate resource creates a new
+ID. Editor saves may reformat author JSON.
+
+`Contracts/`, `Output/`, and `.galnet/` are local generated state. Rebuild and
+deploy contracts after changing their source, then reopen the project. Keep the
+Sample contract rather than replacing it with Editor's default contract.
+
+For game testing, build the Debug Sample and select its executable in Editor's
+project launch settings. Editor builds to `Output/Debug` and uses a separate
+`.galnet/debug-profile`; see [external debugging](../docs/manual/editor/preview-and-debugging.md).
+The Sample launch scripts below continue to build and run the same author files.
 
 Both routes now finish with the default visual library showcase in `Graph/groups/ending.rawgalgroup`: bloom, vignette, grading, Z-based rack focus, character motion, synchronized shake, animated radial/directional speed lines, impact, wipe, blur and image-mask transitions. The editable default shaders live in `Assets/Effects/Default/`; see [the visual authoring manual](../docs/manual/editor/default-visuals.md).
 
