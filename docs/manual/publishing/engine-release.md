@@ -110,7 +110,7 @@ python3 scripts/release/test-linux-packaging.py
 pwsh -File scripts/release/Release.ps1 -Tag v1.2.3
 ```
 
-Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，按 tag 串行执行完整构建和发布，已公开版本直接跳过，未完成 draft 要求用原产物与 journal 恢复。checkout 固定为发现时的 tag commit，并校验精确 tag 与 master 归属；随后跑完整 CI，再由打包层独立构建包清单中带正式版本号的 NuGet 库项目，不重复构建测试项目。普通测试输出可能被后续构建覆盖，不能直接当作正式版本产物。应用不同 RID/部署图仍分别 restore/publish，包消费者和 ZIP 验证保留。build 上传封存目录，publish 下载后上传，不重新编译；ZIP/nupkg artifact 不再重复压缩。`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
+Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，按 tag 串行执行构建、产物验证和发布，已公开版本直接跳过，未完成 draft 要求用原产物与 journal 恢复。checkout 固定为发现时的 tag commit，并校验精确 tag 与 master 归属；release 不重复执行完整 CI 或测试项目，而由打包层独立构建包清单中带正式版本号的 NuGet 库项目，并保留应用各 RID/部署图的 restore/publish、包消费者和 ZIP 验证。常规 CI 负责测试门禁，release 负责可发布产物门禁。build 上传封存目录，publish 下载后上传，不重新编译；ZIP/nupkg artifact 不再重复压缩。`workflow_dispatch` 只生成候选文件，不公开上传，也不要求候选分支已合并。
 
 公开上传需要 GitHub 权限和名为 `NUGET_API_KEY` 的 NuGet 发布凭据；可传入 Trusted Publishing 获取的短期 key。当前 workflow 从同名 GitHub secret 读取，首次发布前需配置。在本地也可上传已经验收的精确 tag 索引：
 

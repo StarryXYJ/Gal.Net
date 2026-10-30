@@ -57,10 +57,6 @@ jobs:
           cache-dependency-path: |
             global.json
             **/packages.lock*.json
-      - name: Run full tests for the release source
-        if: steps.state.outputs.published != 'true'
-        shell: pwsh
-        run: ./scripts/ci/Invoke-CI.ps1 -Stage BuildTest -OutputRoot out/ci/release
       - name: Build and validate the release files
         if: steps.state.outputs.published != 'true'
         shell: pwsh
@@ -92,7 +88,6 @@ jobs:
         with:
           name: release-evidence-${{ inputs.version }}
           path: |
-            out/ci/release
             out/release/.work/**/logs
             out/release/.work/**/package-validation.json
           include-hidden-files: true
