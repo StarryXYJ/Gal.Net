@@ -8,9 +8,18 @@ import uuid
 spec = importlib.util.spec_from_file_location("release", Path(__file__).with_name("cross-platform-release.py"))
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+media_spec = importlib.util.spec_from_file_location("media", Path(__file__).with_name("prepare-linux-media.py"))
+media = importlib.util.module_from_spec(media_spec)
+media_spec.loader.exec_module(media)
 
 
 class ReleaseMatrixTests(unittest.TestCase):
+    def test_apt_plan_accepts_direct_and_mirror_transport_uris(self):
+        rows = media.download_plan("Reading package lists...\n"
+            "'http://archive.ubuntu.com/ubuntu/pool/a.deb' a_1_amd64.deb 123 MD5Sum:abc\n"
+            "'mirror+file:/etc/apt/mirrors/ubuntu.list/pool/b.deb' b_2_amd64.deb 456 MD5Sum:def\n")
+        self.assertEqual([row[1] for row in rows], ["a_1_amd64.deb", "b_2_amd64.deb"])
+
     def setUp(self):
         self.work = release.REPO / "out" / (".release-matrix-" + uuid.uuid4().hex)
         self.root, self.inputs = self.work / "release", self.work / "inputs"

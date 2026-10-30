@@ -28,6 +28,17 @@ def sha256(path):
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 
+def download_plan(text):
+    items = []
+    for line in text.splitlines():
+        if not line.lstrip().startswith("'"):
+            continue
+        fields = shlex.split(line)
+        if len(fields) == 4 and fields[1].endswith(".deb") and fields[2].isdigit():
+            items.append(fields)
+    return items
+
+
 def prepare(work, output, refresh):
     if platform.system() != "Linux" or platform.machine() != "x86_64":
         raise RuntimeError("Run on Ubuntu 24.04 x86_64, including WSL; this is not a cross-distribution resolver.")
@@ -47,9 +58,9 @@ def prepare(work, output, refresh):
     plan = run(["apt-get", *apt, "--no-install-recommends", "--print-uris", "--assume-yes", "--download-only",
                 "install", "libvlc5", "vlc-plugin-base", "vlc-plugin-video-output"])
     (work / "plan.txt").write_text(plan)
-    items = [shlex.split(line) for line in plan.splitlines() if line.startswith(("'https://", "'http://"))]
+    items = download_plan(plan)
     if not items:
-        raise RuntimeError("apt did not produce a complete download plan.")
+        raise RuntimeError("apt did not produce a complete download plan:\n" + plan[-4000:])
     selections = []
     for _, filename, _, _ in items:
         name, version, _ = urllib.parse.unquote(filename.removesuffix(".deb")).rsplit("_", 2)
@@ -69,7 +80,11 @@ def prepare(work, output, refresh):
             temporary = destination.with_suffix(".download")
             # Mirrors occasionally time out; the signed-index SHA256 remains
             # authoritative when fetching the same archive from Ubuntu directly.
-            urls = [url, "https://archive.ubuntu.com/ubuntu/" + package["Filename"], url]
+            canonical = "https://archive.ubuntu.com/ubuntu/" + package["Filename"]
+            # GitHub images can use apt's mirror+file transport. urllib cannot
+            # resolve that pseudo-URI; download the signed-index path directly.
+            primary = url if urllib.parse.urlsplit(url).scheme in ("http", "https") else canonical
+            urls = [primary, canonical, primary]
             for attempt, download_url in enumerate(urls):
                 try:
                     with urllib.request.urlopen(download_url, timeout=30) as response, temporary.open("wb") as stream:

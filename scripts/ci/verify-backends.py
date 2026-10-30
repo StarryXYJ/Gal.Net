@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import platform
 import subprocess
+import tempfile
 import xml.etree.ElementTree as ET
 
 from process_steps import run
@@ -46,6 +47,10 @@ def verify(repo, output, native=None, dotnet="dotnet", restore=True):
     results.mkdir()
     environment = dict(os.environ, DOTNET_CLI_TELEMETRY_OPTOUT="1", DOTNET_NOLOGO="1",
                        AVALONIA_TELEMETRY_OPTOUT="1")
+    if platform.system() == "Darwin":
+        # macOS exposes /var as a system symlink. Tests must use the real temp
+        # directory without weakening the product's no-directory-links policy.
+        environment["TMPDIR"] = str(Path(tempfile.gettempdir()).resolve())
     report = {"schemaVersion": 1, "passed": False, "host": platform.platform(),
               "configuration": "Release", "restore": "locked" if restore else "not_run",
               "steps": [], "checks": [{"name": name, "status": "not_run"} for name in (*SUITES, "Headless")],

@@ -170,6 +170,7 @@ jobs:
             out/raw/*/logs/
             out/media/media-manifest.json
             out/media-work/apt-update.log
+            out/media-work/plan.txt
           retention-days: 7
           if-no-files-found: warn
 
