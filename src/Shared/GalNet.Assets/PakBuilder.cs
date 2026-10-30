@@ -27,7 +27,8 @@ public static class PakBuilder
     public static void BuildToFile(string pakPath, IReadOnlyList<IGameFile> files,
         IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli, PakDescriptor? descriptor = null)
     {
-        var data = Build(Path.GetFileNameWithoutExtension(pakPath), files, resourceTypes, compression, descriptor);
-        File.WriteAllBytes(pakPath, data);
+        var prepared = Archive.PrepareSerialization(files, resourceTypes, compression, descriptor);
+        using var output = new FileStream(pakPath, FileMode.Create, FileAccess.Write, FileShare.Read);
+        prepared.WriteTo(output);
     }
 }

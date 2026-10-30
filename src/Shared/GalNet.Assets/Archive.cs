@@ -148,7 +148,11 @@ public sealed class Archive : IPakArchive
     }
 
     public static byte[] Serialize(string name, IReadOnlyList<IGameFile> files,
-        IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli, PakDescriptor? descriptor = null)
+        IResourceTypeCatalog resourceTypes, CompressionMode compression = CompressionMode.Brotli, PakDescriptor? descriptor = null) =>
+        PrepareSerialization(files, resourceTypes, compression, descriptor).ToArray();
+
+    internal static PreparedArchive PrepareSerialization(IReadOnlyList<IGameFile> files,
+        IResourceTypeCatalog resourceTypes, CompressionMode compression, PakDescriptor? descriptor)
     {
         ArgumentNullException.ThrowIfNull(files);
         if (!Enum.IsDefined(compression)) throw new ArgumentOutOfRangeException(nameof(compression));
@@ -200,9 +204,27 @@ public sealed class Archive : IPakArchive
             writer.Write(Utf8.GetBytes(entry.Hash));
             offset += stored.Length;
         }
-        foreach (var (_, stored) in entries) writer.Write(stored);
         writer.Flush();
-        return stream.ToArray();
+        return new PreparedArchive(stream.ToArray(), entries.Select(item => item.Data).ToArray(), offset);
+    }
+
+    // Payload preparation finishes before the caller opens its destination. This keeps
+    // validation/read failures from truncating an existing file and shares one wire writer.
+    internal sealed class PreparedArchive(byte[] header, byte[][] blocks, long payloadLength)
+    {
+        public byte[] ToArray()
+        {
+            var bytes = new byte[checked((int)(header.LongLength + payloadLength))];
+            using var output = new MemoryStream(bytes, writable: true);
+            WriteTo(output);
+            return bytes;
+        }
+
+        public void WriteTo(Stream destination)
+        {
+            destination.Write(header);
+            foreach (var block in blocks) destination.Write(block);
+        }
     }
 
     private static void ValidateCompiledDependencies(GameFile file)
