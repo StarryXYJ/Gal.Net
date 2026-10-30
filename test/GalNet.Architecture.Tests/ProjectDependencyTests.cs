@@ -125,7 +125,7 @@ public class ProjectDependencyTests
                 "GalNet.Primitives.Builtins",
                 "GalNet.Contracts.Builtins",
                 "GalNet.Runtime",
-                "GalNet.Sample.Avalonia",
+                "GalNet.Sample.CrossPlatform.Desktop",
                 "GalNet.Sample.CrossPlatform",
                 "GalNet.Storage.FileSystem"
             ]
@@ -243,13 +243,11 @@ public class ProjectDependencyTests
     }
 
     [Test]
-    public void SampleCompositionRootsDoNotDependOnOneAnotherOrOnTheRemovedPlayerProject()
+    public void CrossPlatformCompositionDoesNotDependOnRetiredSampleProjects()
     {
-        var desktop = ReadProjectReferences(FindProjectFile("GalNet.Sample.Avalonia"));
         var cross = ReadProjectReferences(FindProjectFile("GalNet.Sample.CrossPlatform"));
-        Assert.That(desktop, Does.Not.Contain("GalNet.Sample.CrossPlatform"));
         Assert.That(cross, Does.Not.Contain("GalNet.Sample.Avalonia"));
-        Assert.That(desktop.Concat(cross), Does.Not.Contain("GalNet.Sample.Player"));
+        Assert.That(cross, Does.Not.Contain("GalNet.Sample.Player"));
         Assert.That(File.Exists(Path.Combine(RepositoryRoot, "src/Samples/GalNet.Sample.Player/GalNet.Sample.Player.csproj")), Is.False);
         var source = Path.Combine(RepositoryRoot, "src");
         var staleLocks = Directory.EnumerateFiles(source, "packages.lock*.json", SearchOption.AllDirectories)
@@ -259,7 +257,8 @@ public class ProjectDependencyTests
                 using var json = JsonDocument.Parse(File.ReadAllText(path));
                 return json.RootElement.GetProperty("dependencies").EnumerateObject()
                     .Any(graph => graph.Value.EnumerateObject()
-                        .Any(package => package.Name.Equals("galnet.sample.player", StringComparison.OrdinalIgnoreCase)));
+                        .Any(package => (package.Name.Equals("galnet.sample.player", StringComparison.OrdinalIgnoreCase) ||
+                         package.Name.Equals("galnet.sample.avalonia", StringComparison.OrdinalIgnoreCase))));
             }).Select(path => Path.GetRelativePath(RepositoryRoot, path)).ToArray();
         Assert.That(staleLocks, Is.Empty, "Removed projects must also be pruned from committed lockfiles.");
     }

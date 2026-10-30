@@ -15,7 +15,7 @@ using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.Media.LibVlc;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia;
+using GalNet.Sample.CrossPlatform;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GalNet.IntegrationTests;
@@ -130,10 +130,13 @@ public sealed class SampleExtensibilityTests
     private static ServiceCollection Services()
     {
         var services = new ServiceCollection();
+        services.AddScoped(_ => SampleCustomization.CreateHostOptions())
+            .AddScoped<AvaloniaGameSession>()
+            .AddScoped<GalNet.Presentation.Abstractions.Application.IGameSessionService>(provider => provider.GetRequiredService<AvaloniaGameSession>());
         services.AddScoped<TitlePageViewModel, ProjectTitle>();
         services.AddScoped<SettingsPageViewModel, ProjectSettingsPage>();
         services.AddScoped<ProjectNotebook>();
-        SampleCustomization.ConfigureServices(services, false, views =>
+        SampleCustomization.ConfigureServices(services, views =>
         {
             views.Register<ProjectTitle, UserControl>();
             views.Register<ProjectNotebook, UserControl>();

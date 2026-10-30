@@ -7,7 +7,7 @@ using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia;
+using GalNet.Sample.CrossPlatform;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;

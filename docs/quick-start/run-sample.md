@@ -5,7 +5,7 @@
 ## 从源码运行桌面示例
 
 ```powershell
-pwsh -NoProfile -File scripts/samples/run-avalonia-sample.ps1
+pwsh -NoProfile -File scripts/samples/run-cross-platform-sample.ps1
 ```
 
 脚本构建并部署示例契约到 `GameTestCase/Contracts/`，通过 Headless CLI 编译内容到 `GameTestCase/Output/`，然后以 Debug 配置启动桌面 Sample。玩家数据写入 `GameTestCase/.galnet/`。进入窗口后完成首次语言选择，在标题页开始游戏。

@@ -11,7 +11,6 @@ using GalNet.Core.I18n;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Shared.Services;
 using GalNet.GameHost.Content;
-using GalNet.Sample.Avalonia;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -77,12 +76,12 @@ public sealed class PackedDocumentTests
         Assert.That(resolver.Resolve("line"), Is.EqualTo("父语言"));
         Assert.That(resolver.Resolve("fallback"), Is.EqualTo("Default"));
         var moved = Path.Combine(_root, "moved");
-        var originalProfile = GameLaunchOptions.GetDefaultProfileDirectory(Installed);
+        var originalProfile = GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(Installed);
         Directory.Move(Installed, moved);
-        Assert.That(GameLaunchOptions.GetDefaultProfileDirectory(moved), Is.EqualTo(originalProfile));
+        Assert.That(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(moved), Is.EqualTo(originalProfile));
         await Export();
         Assert.That(File.ReadAllBytes(Path.Combine(Installed, "game.pak")), Is.EqualTo(File.ReadAllBytes(Path.Combine(moved, "game.pak"))));
-        Assert.That(GameLaunchOptions.GetDefaultProfileDirectory(Installed), Is.EqualTo(GameLaunchOptions.GetDefaultProfileDirectory(moved)));
+        Assert.That(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(Installed), Is.EqualTo(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(moved)));
     }
 
     [Test]
@@ -154,7 +153,7 @@ public sealed class PackedDocumentTests
         bytes[^1] ^= 1;
         File.WriteAllBytes(path, bytes);
         Put(Installed, "settings.json", "{}");
-        Assert.DoesNotThrow(() => GameLaunchOptions.GetDefaultProfileDirectory(Installed));
+        Assert.DoesNotThrow(() => GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(Installed));
         Assert.ThrowsAsync<InvalidDataException>(async () => await Load());
     }
 

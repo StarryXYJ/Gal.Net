@@ -14,7 +14,7 @@ New-Item -ItemType Directory -Path $OutputDirectory | Out-Null
 $script:logRoot = Join-Path $OutputDirectory 'logs'
 New-Item -ItemType Directory -Path $logRoot | Out-Null
 $projects = [ordered]@{
-    Sample = 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
+    Sample = 'src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj'
     Editor = 'src/Editor/GalNet.Editor/GalNet.Editor.csproj'
     CLI = 'src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj'
 }

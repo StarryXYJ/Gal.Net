@@ -14,7 +14,7 @@ $defaultProject = Join-Path $repositoryRoot 'GameTestCase'
 $Project = if ($Project) { [System.IO.Path]::GetFullPath($Project) } else { $defaultProject }
 $gameDirectory = if ($BuildOutput) { [System.IO.Path]::GetFullPath($BuildOutput) } else { Join-Path $Project 'Output' }
 $profileDirectory = if ($Profile) { [System.IO.Path]::GetFullPath($Profile) } else { Join-Path $Project '.galnet' }
-$sampleProject = Join-Path $repositoryRoot 'src\Samples\GalNet.Sample.Avalonia\GalNet.Sample.Avalonia.csproj'
+$sampleProject = Join-Path $repositoryRoot 'src\Samples\GalNet.Sample.CrossPlatform\GalNet.Sample.CrossPlatform.Desktop\GalNet.Sample.CrossPlatform.Desktop.csproj'
 $editorProject = Join-Path $repositoryRoot 'src\Editor\GalNet.Editor.Headless\GalNet.Editor.Headless.csproj'
 
 if (-not $SkipBuild)
@@ -29,6 +29,6 @@ if (-not $SkipBuild)
 }
 $sampleArguments = @($gameDirectory, '--profile', $profileDirectory)
 
-Write-Host "Launching Avalonia sample: $gameDirectory" -ForegroundColor Cyan
+Write-Host "Launching CrossPlatform sample: $gameDirectory" -ForegroundColor Cyan
 & dotnet run --project $sampleProject -- @sampleArguments
 exit $LASTEXITCODE

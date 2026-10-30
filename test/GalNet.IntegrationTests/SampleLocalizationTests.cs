@@ -8,8 +8,7 @@ using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia;
-using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.CrossPlatform;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -261,7 +260,7 @@ public sealed class SampleLocalizationTests
         using var title = new LocalizedString(localization.CultureService, "App.Title");
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
-        Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
+        Assert.That(title.Value, Is.EqualTo("GalNet CrossPlatform Sample Player"));
         localization.CultureService.SetCulture("zh-CN");
 #if GALNET_GAME_DEBUG
         Assert.That(localization["Debug.Menu"], Is.EqualTo("调试"));
@@ -301,7 +300,7 @@ public sealed class SampleLocalizationTests
         localization.AttachGame(content, [new("en-US", "custom", """{"line":"custom"}""")]);
         Assert.That(localization.Resolve("line"), Is.EqualTo("custom"));
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
-        Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
+        Assert.That(title.Value, Is.EqualTo("GalNet CrossPlatform Sample Player"));
     }
 
     [Test]
@@ -319,10 +318,10 @@ public sealed class SampleLocalizationTests
         cultureService.RegisterProvider(provider);
 
         cultureService.SetCulture("en-US");
-        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet Avalonia Sample Player"));
+        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet CrossPlatform Sample Player"));
 
         cultureService.SetCulture("zh-CN");
-        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet Avalonia 示例播放器"));
+        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet 跨平台示例播放器"));
 
         provider.LoadJsonString("{\"App.Title\":\"External title\"}", "en-US");
         cultureService.SetCulture("en-US");

@@ -69,43 +69,32 @@ public sealed class CrossPlatformWindowChromeTests
     }
 
 #if GALNET_GAME_DEBUG
-    [TestCase(false, false)]
-    [TestCase(false, true)]
-    [TestCase(true, false)]
-    [TestCase(true, true)]
-    public async Task BothDesktopSamplesKeepDiagnosticsInTheUrsaTitleBarBeforeGameStartup(bool crossPlatform, bool darkHost)
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task DesktopSampleKeepsDiagnosticsInTheUrsaTitleBarBeforeGameStartup(bool darkHost)
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
-            var services = new ServiceCollection();
-            GalNet.Sample.Avalonia.SampleCustomization.ConfigureServices(services);
-            await using var provider = services.BuildServiceProvider();
-            await using var scope = provider.CreateAsyncScope();
-            PlayerTextExtension.Resolve = scope.ServiceProvider.GetRequiredService<IPlayerLocalization>().GetString;
+            await using var host = await AvaloniaPlayerHost.CreateAsync(
+                GalNet.Sample.CrossPlatform.SampleCustomization.CreateHostOptions(), services =>
+                {
+                    GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services);
+                    services.AddGameDebugTools(new() { RestartAsync = _ => Task.CompletedTask }, new());
+                });
+            PlayerTextExtension.Resolve = host.Services.GetRequiredService<IPlayerLocalization>().GetString;
             var semi = new Semi.Avalonia.SemiTheme();
             var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
             Application.Current!.Styles.Add(semi);
             Application.Current.Styles.Add(ursa);
-            UrsaWindow window;
-            if (crossPlatform)
-            {
-                var desktop = new GalNet.Sample.CrossPlatform.Views.MainWindow();
-                desktop.AttachDebugServices(scope.ServiceProvider);
-                window = desktop;
-            }
-            else
-            {
-                var desktop = scope.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.Views.MainWindow>();
-                desktop.CompleteStartup("Game directory was not found.");
-                window = desktop;
-            }
+            var window = new GalNet.Sample.CrossPlatform.Views.MainWindow();
+            window.AttachDebugServices(host.Services);
             window.RequestedThemeVariant = darkHost ? ThemeVariant.Dark : ThemeVariant.Light;
             try
             {
                 window.Show();
                 window.UpdateLayout();
-                var model = scope.ServiceProvider.GetRequiredService<GameDebugViewModel>();
+                var model = host.Services.GetRequiredService<GameDebugViewModel>();
                 var menu = (DebugMenuView)window.LeftContent!;
                 Assert.That(menu.IsVisible && menu.IsEnabled, Is.True, "Startup errors must not hide diagnostic logs.");
                 Assert.That(model.IsGameReady, Is.False);
@@ -132,7 +121,7 @@ public sealed class CrossPlatformWindowChromeTests
                     Assert.That(desktop.LeftContent, Is.Null);
                     model.ShowLogCommand.Execute(null);
                     Assert.That(desktop.OwnedWindows.OfType<DebugLogWindow>(), Is.Empty);
-                    desktop.AttachDebugServices(scope.ServiceProvider);
+                    desktop.AttachDebugServices(host.Services);
                     model.ShowLogCommand.Execute(null);
                     Assert.That(desktop.OwnedWindows.OfType<DebugLogWindow>().ToArray(), Has.Length.EqualTo(1));
                 }

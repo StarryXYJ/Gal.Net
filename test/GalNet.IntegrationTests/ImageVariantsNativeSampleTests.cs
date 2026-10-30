@@ -10,7 +10,7 @@ using GalNet.Debugging;
 using GalNet.Editor.Shared.Services;
 using GalNet.GameHost;
 using GalNet.Runtime.Engine;
-using GalNet.Sample.Avalonia.Presentation;
+using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -85,7 +85,7 @@ public sealed class ImageVariantsNativeSampleTests
             var invitation = listener.Invitation;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             var accept = listener.AcceptAsync(timeout.Token);
-            var assembly = typeof(GalNet.Sample.Avalonia.App).Assembly.Location;
+            var assembly = Path.Combine(AppContext.BaseDirectory, "GalNet.Sample.CrossPlatform.Desktop.dll");
             var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet")
             {
                 UseShellExecute = false,

@@ -15,9 +15,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$assemblyName = if ($Target -eq 'Editor') { 'GalNet.Editor' } else { 'GalNet.Sample.Avalonia' }
+if ($Target -eq 'Sample' -and (!$Executable -or !$SkipBuild)) { throw 'CrossPlatform startup instrumentation is not configured. Sample requires -SkipBuild and an explicitly instrumented -Executable.' }
+$assemblyName = if ($Target -eq 'Editor') { 'GalNet.Editor' } else { 'GalNet.Sample.CrossPlatform.Desktop' }
 $group = if ($Target -eq 'Editor') { 'Editor' } else { 'Samples' }
-$projectDirectory = Join-Path $repositoryRoot "src/$group/$assemblyName"
+$projectDirectory = if ($Target -eq 'Editor') { Join-Path $repositoryRoot "src/$group/$assemblyName" } else { Join-Path $repositoryRoot "src/Samples/GalNet.Sample.CrossPlatform/$assemblyName" }
 if (-not $OutputDirectory) {
     $OutputDirectory = Join-Path $repositoryRoot ('out/benchmarks/' + $Target + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 }

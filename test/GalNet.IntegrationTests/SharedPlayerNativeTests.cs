@@ -7,10 +7,9 @@ namespace GalNet.IntegrationTests;
 
 public sealed class SharedPlayerNativeTests
 {
-    [TestCase("legacy", "GalNet.Sample.Avalonia.exe")]
     [TestCase("cross", "GalNet.Sample.CrossPlatform.Desktop.exe")]
-    [Explicit("Starts the source-published original and CrossPlatform players. Set GALNET_SHARED_PLAYER_NATIVE_ROOT.")]
-    public async Task SharedSurfaceStartsBothNativeDesktopHostsAndConfirmsNormalExit(string role, string entry)
+    [Explicit("Starts the source-published CrossPlatform player. Set GALNET_SHARED_PLAYER_NATIVE_ROOT.")]
+    public async Task SharedSurfaceStartsCrossPlatformDesktopHostAndConfirmsNormalExit(string role, string entry)
     {
         if (!OperatingSystem.IsWindows()) Assert.Ignore("This probe validates Windows native hosts.");
         var selected = Environment.GetEnvironmentVariable("GALNET_SHARED_PLAYER_NATIVE_ROOT");

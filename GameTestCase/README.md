@@ -143,7 +143,7 @@ The Sample launch scripts build and deploy Sample.Contracts before compiling thi
 fixture, including on a fresh checkout:
 
 ```powershell
-./scripts/samples/run-avalonia-sample.ps1
+./scripts/samples/run-cross-platform-sample.ps1
 ./scripts/samples/run-headless-sample.ps1
 ```
 
@@ -153,7 +153,7 @@ CLI use, deploy the contracts as shown above before running:
 ```text
 dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
-dotnet run --project src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj -- artifacts/sample-build
+dotnet run --project src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj -- artifacts/sample-build
 ```
 
 Video smoke: advance the first dialogue to reach blocking playback. Each left click seeks to the next point after the current position; the oversized final point ends playback. The following non-blocking playback uses rotation, scale and opacity below the portrait, then stops on dialogue advance. Headless has no video presenter and completes these entries immediately.

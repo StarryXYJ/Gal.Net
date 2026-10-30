@@ -1,11 +1,12 @@
 # 测量 CPU 启动
 
+> Editor 启动采样继续可用。CrossPlatform 尚未接入启动埋点；Sample 采样仅接受 `-SkipBuild -Executable <已埋点程序>`，旧 Sample 数据保留为历史参考。
+
 需要 Windows、.NET 10 SDK 和 PowerShell 7。脚本先以 Benchmark=true 构建，再启动独立进程；构建不计入 Startup.Total。默认 Release、1 次预热、5 次测量。输出包含 Chrome Trace JSON、stdout/stderr、逐阶段 CSV、中位数/P95 摘要和运行环境/源码元数据。
 
 ```powershell
 pwsh -File scripts/performance/benchmark-startup.ps1 -Target Editor -Iterations 10
 pwsh -File scripts/performance/benchmark-startup.ps1 -Target Editor -Configuration Debug -Iterations 10
-pwsh -File scripts/performance/benchmark-startup.ps1 -Target Sample -GameDirectory GameTestCase/Output -Profile Temp/benchmark-profile -Iterations 10
 ```
 
 Sample 的游戏内容需要预先构建，Profile 应是已完成语言选择的测试档案（可复制已有 profile 到临时目录），避免弹窗等待。每次 Sample 启动仍会执行正常启动逻辑，包括更新该档案的启动次数。脚本不会替你构建游戏内容或修改语言选择逻辑。不要将个人正式档案用于 benchmark。
@@ -14,7 +15,7 @@ Sample 的游戏内容需要预先构建，Profile 应是已完成语言选择�
 
 `-OutputDirectory` 指定结果目录；默认 `out/benchmarks/<target>-<timestamp>`。`-TimeoutSeconds` 默认 60。`-SkipBuild` 仅用于已经使用相同配置和 Benchmark=true 构建的输出，普通程序不会导出 trace。脚本串行运行，仅对自己创建的超时进程执行 Kill，不会结束已有 Editor 或游戏。超时、非零退出、缺失 Ready、事件溢出均中止并保留已生成数据。构建耗时仅代表本次实际构建（可能增量），不等同于 clean build 基线。
 
-Sample 的基准脚本构建时显式开启 `EnableLaunchArguments=true`，用于传入隔离的内容目录和 profile，不需要开启游戏调试。手动构建/发布用于 `-SkipBuild` 或采样分析的 Sample 时，也须传入 `-p:EnableLaunchArguments=true`；默认玩家构建只加载应用同级 `pak/`。
+自备埋点 Sample 构建时需显式开启 `EnableLaunchArguments=true`，用于传入隔离的内容目录和 profile，不需要开启游戏调试。手动构建/发布用于 `-SkipBuild` 或采样分析的 Sample 时，也须传入 `-p:EnableLaunchArguments=true`；默认玩家构建只加载应用同级 `pak/`。
 
 在 Perfetto 或 Chrome Trace 查看器中手工打开任一 run JSON；CSV 可直接对比不同结果目录。元数据中的源码状态可能包含未提交文件，测量期间避免同时修改代码、编译或运行其他高负载任务。
 

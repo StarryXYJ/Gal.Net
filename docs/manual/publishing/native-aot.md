@@ -5,7 +5,7 @@
 Editor 仅发布 R2R。桌面 Sample NativeAOT 尚未通过严格链接和运行验收；`-SampleMode Aot/Both` 会明确失败，不回退为 R2R。可复现试编译：
 
 ```powershell
-pwsh -File scripts/release/Test-DesktopAot.ps1
+# 旧 Sample 的专属 AOT 探针已退役；当前 CrossPlatform 尚未完成桌面 NativeAOT 验收。
 ```
 
 该诊断构建隔离 RID/AOT 恢复图，不改日常锁文件，最终 ILC/ILLink 警告按错误处理。目前已发现 JSON、反射绑定、主题资源、DI 与第三方裁剪问题。Headless 的 AOT 自检仍见 [NativeAOT 手册](native-aot.md)，不能据此宣称桌面玩家已支持。
@@ -77,7 +77,7 @@ dotnet test test/GalNet.Presentation.Tests/GalNet.Presentation.Tests.csproj -c R
   --filter FullyQualifiedName~SampleAotPreparationTests
 ```
 
-上述筛选测试不代替普通完整回归；普通测试使用默认反射设置。桌面最终链接仍通过 `scripts/release/Test-DesktopAot.ps1` 严格检查，不压制 ILLink/ILC 警告；本轮实现及具体剩余阻塞见 [Sample AOT 准备记录](../../../features/F-20261027-04-tagged-release/sample-aot-preparation-20261028.md)。iOS 还需选择对应 .NET/Avalonia 发布路线，并在 Mac/Xcode 和真机上验证。
+上述筛选测试不代替普通完整回归；普通测试使用默认反射设置。桌面 NativeAOT 仍需针对 CrossPlatform 建立并通过严格最终链接验证，不压制 ILLink/ILC 警告；本轮实现及具体剩余阻塞见 [Sample AOT 准备记录](../../../features/F-20261027-04-tagged-release/sample-aot-preparation-20261028.md)。iOS 还需选择对应 .NET/Avalonia 发布路线，并在 Mac/Xcode 和真机上验证。
 
 本地已验证 Windows x64 NativeAOT 的 Headless 引擎闭包；CI 配置覆盖 Windows/Linux。测试工程本身是否支持 NativeAOT 取决于 test runner，普通 `dotnet test` 不等于运行了 NativeAOT。
 

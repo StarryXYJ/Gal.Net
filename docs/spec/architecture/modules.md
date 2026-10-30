@@ -69,7 +69,7 @@ src/
   Presentation/    Avalonia.Controls、Avalonia.Rendering、Avalonia.GameView、Avalonia.Themes、Avalonia.GameHost、Avalonia.Debugging（可选）
   Infrastructure/  Storage.FileSystem、Media.Audio、Media.Miniaudio、Media.LibVlc、Input.Sdl3
   Editor/          Editor.Abstraction、Editor.Shared、Editor、Editor.Headless
-  Samples/         Sample.Contracts、Sample.Avalonia、Sample.Headless、Sample.CrossPlatform
+  Samples/         Sample.Contracts、Sample.Headless、Sample.CrossPlatform
 ```
 
 物理分组用于表达查找和所有权，不改变程序集名称、根命名空间或依赖方向。新增生产项目应放入与其职责一致的分组，并同步 `GalNet.slnx`；测试项目统一位于 `test/<Assembly>.Tests`。

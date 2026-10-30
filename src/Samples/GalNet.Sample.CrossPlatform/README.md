@@ -1,6 +1,6 @@
 # GalNet cross-platform sample
 
-当前 CrossPlatform 已接入游戏会话，不再是欢迎页骨架。原 `GalNet.Sample.Avalonia` 保留桌面启动和开发工具；两个主项目各自通过 `SampleCustomization` 选择主题/页面、项目文案、契约、执行模块与目录策略，彼此没有工程引用。
+当前 CrossPlatform 已接入游戏会话，不再是欢迎页骨架。本项目是后续正式维护的图形 Sample，通过共享主项目的 `SampleCustomization` 选择主题/页面、项目文案、契约、执行模块与目录策略。旧 Avalonia 桌面 Sample 已从仓库移除，本机副本保留在 Git 忽略的 `local-only/src/Samples/GalNet.Sample.Avalonia/`，不再同步或维护。
 
 通用主视图/语言选择和会话所有权来自 `GalNet.Avalonia.GameHost`，内容流安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`；通用截图 dispatch/捕获/写入与 Sample entry 注册分开。两个项目可保留相似配置，通用机制只有一个实现来源。
 
@@ -17,7 +17,7 @@ SDK 固定 `10.0.401`，Avalonia `12.0.5`；子解决方案导入根目录的中
 
 ## 桌面开发
 
-桌面 CrossPlatform 与 `GalNet.Sample.Avalonia` 统一使用 `UrsaWindow`。Ursa 绘制标题栏装饰，提供最小化、最大化/还原、关闭按钮及系统拖动区域；CrossPlatform 的按钮/标题栏颜色与玩家调色板一致。Headless 不生成原生窗口装饰，桌面交互需在实际窗口验证。
+桌面 CrossPlatform 使用 `UrsaWindow`。Ursa 绘制标题栏装饰，提供最小化、最大化/还原、关闭按钮及系统拖动区域；CrossPlatform 的按钮/标题栏颜色与玩家调色板一致。Headless 不生成原生窗口装饰，桌面交互需在实际窗口验证。
 
 如项目要改用 Avalonia 原生窗口装饰，只需在本项目将 `MainWindow.axaml` 根元素和 code-behind 基类从 `UrsaWindow` 改回 `Window`，并移除 Ursa caption 资源；共享宿主和其他 Sample 不受影响。
 

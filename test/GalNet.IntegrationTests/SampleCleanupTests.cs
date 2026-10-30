@@ -9,8 +9,7 @@ using GalNet.GameHost.Gallery;
 using GalNet.Media.LibVlc;
 using GalNet.Runtime.Persistence;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia;
-using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.CrossPlatform;
 using GalNet.Storage.FileSystem;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -68,15 +67,15 @@ public sealed class SampleCleanupTests
                 Directory.CreateDirectory(Path.Combine(directory, "Graph"));
                 await File.WriteAllTextAsync(Path.Combine(directory, "Graph", "graph.json"), """{"version":2,"name":"cleanup","rootNodeId":"","nodes":[],"edges":[],"playerVariables":[],"saveVariables":[]}""");
                 var services = new ServiceCollection();
-                SampleCustomization.ConfigureServices(services, false);
+                SampleCustomization.ConfigureServices(services);
                 await using var root = services.BuildServiceProvider();
                 var settings = root.GetRequiredService<AvaloniaPlayerSettingsService>();
                 var gameplay = root.GetRequiredService<GamePageViewModel>();
-                var session = new SampleGameSessionService(gameplay, new GamePage(), settings,
+                var session = new AvaloniaGameSession(SampleCustomization.CreateHostOptions(), gameplay, new GamePage(), settings,
                     root.GetRequiredService<AvaloniaPlayerLocalization>(), root.GetRequiredService<IPlayerStartup>(),
-                    root.GetRequiredService<LibVlcRuntime>(), root);
+                    root.GetRequiredService<LibVlcRuntime>());
                 var profile = Path.Combine(directory, "profile");
-                Assert.That(await session.InitializeAsync(new GameLaunchOptions(directory, profile), (_, _) => Task.FromResult<string?>("en-US")), Is.True);
+                Assert.That(await session.InitializeAsync(directory, profile, (_, _) => Task.FromResult<string?>("en-US")), Is.True);
                 var variablesPath = Path.Combine(profile, "player-variables.json");
                 File.Delete(variablesPath);
                 Directory.CreateDirectory(variablesPath);

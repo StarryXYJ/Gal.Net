@@ -1,8 +1,8 @@
-# 定制 Avalonia Sample
+# 定制跨平台 Sample
 
-`GalNet.Sample.Avalonia` 是桌面组合根示例，保留启动参数、项目选择和可选调试策略；CrossPlatform 的共享主项目负责其 Desktop/Android/iOS 组合。两个主项目各有 `SampleCustomization`，直接消费通用库和项目契约，不互相引用。
+`GalNet.Sample.CrossPlatform` 是正式维护的示例，共享主项目通过 `SampleCustomization` 选择主题、页面、文案、契约和执行模块，Desktop/Android/iOS 项目提供平台入口。旧 Avalonia 桌面示例已退出版本控制，本机副本位于 Git 忽略的 `local-only/`，不再维护。
 
-在所选主项目的 `SampleCustomization` 中调整主题/配色、页面映射、字段编辑器、HostOptions、catalog 和执行模块；少量相似配置允许分别维护。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期，不复制通用资源释放或检查点机制。
+在共享主项目的 `SampleCustomization` 中调整主题/配色、页面映射、字段编辑器、HostOptions、catalog 和执行模块。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期，不复制通用资源释放或检查点机制。
 
 直接接入通用宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，在 `configure` 中注册页面/主题、本地化、设置与启动服务。可以注册 `PlayerView` 工厂，在该实例的 Resources/Styles 应用自己的主题和文案资源；通用视图不会自动引用 Sample 资源或选择固定配色。窗口宿主也可以直接创建该视图并复用已有会话。
 
@@ -12,15 +12,15 @@
 
 ## 调试构建与玩家发行
 
-两个 Sample 通过 MSBuild 属性 `EnableGameDebugging` 控制游戏调试能力，启用时定义 `GALNET_GAME_DEBUG`。Debug 配置默认开启，Release 默认关闭；也可以显式构建带调试能力的优化版本：
+CrossPlatform Sample 通过 MSBuild 属性 `EnableGameDebugging` 控制游戏调试能力，启用时定义 `GALNET_GAME_DEBUG`。Debug 配置默认开启，Release 默认关闭；也可以显式构建带调试能力的优化版本：
 
 ```powershell
-dotnet build src/Samples/GalNet.Sample.Avalonia -c Release -p:EnableGameDebugging=true
+dotnet build src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop -c Release -p:EnableGameDebugging=true
 ```
 
 关闭时不编译调试服务、存档辅助工具、日志窗口和菜单，不引用 `GalNet.Avalonia.Debugging` 或 `GalNet.Debugging`，也不接入 Avalonia Developer Tools；普通文件日志继续保留。独立的 `EnableLaunchArguments` 定义 `GALNET_LAUNCH_ARGS`，默认跟随 `EnableGameDebugging`：桌面玩家版不编译内容路径、`--profile` 与调试参数解析，传入参数明确报错；开发版允许覆盖内容路径/profile。也可以在关闭游戏调试时显式开启普通参数；开启游戏调试则必须开启参数能力。
 
-通用调试位于可选 `GalNet.Avalonia.Debugging`。通过 `AddGameDebugTools` 注册，宿主在 `GameDebugHostOptions` 中提供重建/重启回调和可选的打开日志目录动作；项目特有 replay 策略也留在项目配置。两个 Sample 的桌面窗口统一使用项目内的 `UrsaWindow`，调试菜单挂在 `LeftContent`，日志使用独立 Ursa 窗口；不要用整行内容菜单覆盖标题栏拖动区和窗口按钮。开发版启动前或内容加载失败后仍保留日志入口，游戏就绪后才启用清空数据和调试存档。CrossPlatform 在重建 scope 前解绑旧调试菜单、事件及日志窗口。
+通用调试位于可选 `GalNet.Avalonia.Debugging`。通过 `AddGameDebugTools` 注册，宿主在 `GameDebugHostOptions` 中提供重建/重启回调和可选的打开日志目录动作；项目特有 replay 策略也留在项目配置。Sample 的桌面窗口统一使用项目内的 `UrsaWindow`，调试菜单挂在 `LeftContent`，日志使用独立 Ursa 窗口；不要用整行内容菜单覆盖标题栏拖动区和窗口按钮。开发版启动前或内容加载失败后仍保留日志入口，游戏就绪后才启用清空数据和调试存档。CrossPlatform 在重建 scope 前解绑旧调试菜单、事件及日志窗口。
 
 自定义宿主在初始化完成后设置 `GameDebugViewModel.IsGameReady`，以控制清空数据和存档菜单的可用状态；日志和资源重载入口不依赖该状态。
 
@@ -39,7 +39,7 @@ dotnet build src/Samples/GalNet.Sample.Avalonia -c Release -p:EnableGameDebuggin
 ## 推荐改造顺序
 
 1. **建立项目契约。** 复制或引用 `GalNet.Sample.Contracts`，在 `ProjectSchemas.Modules` 中列出项目允许的 `IEntryModule`。构建后用 `scripts/contracts/build-project-contracts.ps1` 部署到内容项目的 `Contracts/`。CLI/Editor 与玩家必须消费同一契约集合。
-2. **配置运行组合。** 在所选主项目的 `SampleCustomization` 中配置 catalog、执行模块、资源/玩家存储、音频 host 和项目启动策略。把项目专属 primitive 注册在组合入口，不为一条业务能力修改通用 Session 或关闭链。
+2. **配置运行组合。** 在共享主项目的 `SampleCustomization` 中配置 catalog、执行模块、资源/玩家存储、音频 host 和项目启动策略。把项目专属 primitive 注册在组合入口，不为一条业务能力修改通用 Session 或关闭链。
 3. **定制外观。** 通过 `AddAvaloniaGameViewPages` 选择 `ClassicTheme`、`MinimalTheme` 或 `PaperTheme`，也可在 `configureViews` 覆盖单个页面。运行期主题切换不受支持。
 4. **扩展项目功能。** schema/DTO 与 composite 放在契约项目；执行模块放在 Avalonia 或项目执行程序集。参数 DTO 用 `GenerateFieldSchema`/字段特性生成 descriptor，平台控件仅在页面/设置工厂中处理。
 

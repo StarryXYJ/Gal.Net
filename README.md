@@ -44,10 +44,10 @@ pwsh -NoProfile -File scripts/ci/Invoke-CI.ps1 -Stage BuildTest
 
 ```powershell
 .\scripts\samples\run-headless-sample.ps1
-.\scripts\samples\run-avalonia-sample.ps1
+.\scripts\samples\run-cross-platform-sample.ps1
 ```
 
-Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两个脚本都支持通过 `-Project`、`-BuildOutput` 和 `-SkipBuild` 指定已有内容。
+Headless 示例在终端中交互；CrossPlatform 示例的 Desktop 入口会启动桌面窗口。两个脚本都支持通过 `-Project`、`-BuildOutput` 和 `-SkipBuild` 指定已有内容。
 
 构建仓库自带的 `GameTestCase` 时，脚本会先构建并部署 Sample.Contracts，再编译剧情；`-SkipBuild` 跳过这两步。通过 `-Project` 指向其他内容项目时，需先按 [Sample.Contracts 说明](src/Samples/GalNet.Sample.Contracts/README.md) 部署与玩家匹配的项目契约。
 
@@ -65,3 +65,5 @@ Headless 示例在终端中交互；Avalonia 示例会启动桌面窗口。两�
 较大的功能、架构调整和跨阶段重构使用 `features/F-YYYYMMDD-NN-short-slug/` 记录需求、设计、实施计划和验证总结。当前可用的模块事实同步到 `docs/spec/`，使用与扩展步骤归 `docs/manual/`；feature 目录保留过程与历史，不替代规范。正式文档只在 docs 维护，Wiki 的完整正文与分类导航由[同步工具](docs/manual/development/documentation.md)生成。
 
 GalNet 采用 [MIT License](LICENSE) 发布，允许用于商业和非商业项目。
+
+图形 Sample 后续统一维护 `src/Samples/GalNet.Sample.CrossPlatform/`；旧桌面 Sample 仅在本机 `local-only/` 保留，该目录不参与 Git 同步。
