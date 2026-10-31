@@ -47,7 +47,7 @@ public partial class PlayerView : UserControl
         _languageSelection = null;
     }
 
-    internal void BindAudioAnnouncements(GamePresentationState gameplay)
+    public void BindAudioAnnouncements(GamePresentationState gameplay)
     {
         if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
         _audioGame = gameplay;

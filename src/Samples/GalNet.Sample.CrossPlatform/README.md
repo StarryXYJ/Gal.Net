@@ -2,6 +2,8 @@
 
 当前 CrossPlatform 已接入游戏会话，不再是欢迎页骨架。本项目是后续正式维护的图形 Sample，通过共享主项目的 `SampleCustomization` 选择主题/页面、项目文案、契约、执行模块与目录策略。旧 Avalonia 桌面 Sample 已从仓库移除，本机副本保留在 Git 忽略的 `local-only/src/Samples/GalNet.Sample.Avalonia/`，不再同步或维护。
 
+主项目的 `Views/TitlePage.axaml`、`LoadingPage.axaml`、`GamePage.axaml` 与对应 `ViewModels/` 是当前可直接修改的模板入口。标题按钮与游戏工具栏在项目 XAML 展开；游戏 VM 组合内置 `GamePresentationState`，不复制播放逻辑。`PlayerApplication` 提供应用启动/返回策略，`SampleCustomization` 集中注册页面和回调。其余页面及主题抽象仍按 F-20261031-02 后续阶段迁移，当前尚未完成整套 UI 收敛。
+
 通用主视图/语言选择和会话所有权来自 `GalNet.Avalonia.GameHost`，内容流安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`；通用截图 dispatch/捕获/写入与 Sample entry 注册分开。两个项目可保留相似配置，通用机制只有一个实现来源。
 
 | 工程 | 职责与当前验证 |

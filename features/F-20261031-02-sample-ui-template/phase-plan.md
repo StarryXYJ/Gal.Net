@@ -55,7 +55,7 @@
 
 ## P3：在 Sample 接通标题—加载—游戏的可定制切片
 
-状态：planned。前置：P2。
+状态：verified。前置：P2。项目标题/加载/游戏页与组合 VM 已接通；宿主/加载/调试启动不选择固定页面。Presentation 364 passed / 0 failed / 6 未执行，集成 90 passed / 1 既有 Editor dirty 失败，模板/调试定向 6 passed，架构 56 passed，原生场景/确认退出 1 passed。详见 [execution.md](execution.md)。
 
 **目标**：证明项目页面、可编辑 VM 与内置机制可以直接组合，解决最核心开发体验。
 

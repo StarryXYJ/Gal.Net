@@ -2,6 +2,8 @@
 
 `GalNet.Sample.CrossPlatform` 是正式维护的示例，共享主项目通过 `SampleCustomization` 选择主题、页面、文案、契约和执行模块，Desktop/Android/iOS 项目提供平台入口。旧 Avalonia 桌面示例已退出版本控制，本机副本位于 Git 忽略的 `local-only/`，不再维护。
 
+标题、加载和游戏页已直接放在主项目的 `Views/` 和 `ViewModels/`。改标题菜单编辑 `Views/TitlePage.axaml`；改开始/继续前的业务编辑 `ViewModels/TitlePageViewModel.cs`；改游戏工具栏和承载布局编辑 `Views/GamePage.axaml`，项目命令在对应 VM，播放命令通过 `State` 绑定内置呈现状态。无需派生默认页面 VM、注册服务别名或编写新主题。`SampleCustomization` 集中注册这些页面与加载/返回回调；其余页面及通用启动布局仍沿用当前内置实现。
+
 在共享主项目的 `SampleCustomization` 中调整主题/配色、页面映射、字段编辑器、HostOptions、catalog 和执行模块。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期，不复制通用资源释放或检查点机制。
 
 直接接入通用宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，在 `configure` 中注册页面/主题、本地化、设置与启动服务。可以注册 `PlayerView` 工厂，在该实例的 Resources/Styles 应用自己的主题和文案资源；通用视图不会自动引用 Sample 资源或选择固定配色。窗口宿主也可以直接创建该视图并复用已有会话。
@@ -40,7 +42,7 @@ dotnet build src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform
 
 1. **建立项目契约。** 复制或引用 `GalNet.Sample.Contracts`，在 `ProjectSchemas.Modules` 中列出项目允许的 `IEntryModule`。构建后用 `scripts/contracts/build-project-contracts.ps1` 部署到内容项目的 `Contracts/`。CLI/Editor 与玩家必须消费同一契约集合。
 2. **配置运行组合。** 在共享主项目的 `SampleCustomization` 中配置 catalog、执行模块、资源/玩家存储、音频 host 和项目启动策略。把项目专属 primitive 注册在组合入口，不为一条业务能力修改通用 Session 或关闭链。
-3. **定制外观。** 通过 `AddAvaloniaGameViewPages` 选择 `ClassicTheme`、`MinimalTheme` 或 `PaperTheme`，也可在 `configureViews` 覆盖单个页面。运行期主题切换不受支持。
+3. **定制外观。** 默认以 Classic 视觉为基础，优先直接编辑项目内页面、按钮和局部样式，通过 `PlayerPalette` 调整配色。尚在内置层的页面可通过 `configureViews` 替换。当前不支持运行期整页布局切换。
 4. **扩展项目功能。** schema/DTO 与 composite 放在契约项目；执行模块放在 Avalonia 或项目执行程序集。参数 DTO 用 `GenerateFieldSchema`/字段特性生成 descriptor，平台控件仅在页面/设置工厂中处理。
 
 ## 上线前检查

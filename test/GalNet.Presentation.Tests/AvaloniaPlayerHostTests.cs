@@ -42,17 +42,17 @@ public sealed class AvaloniaPlayerHostTests
     internal static AvaloniaGameHostOptions Options(int saveSlots = 60,
         AvaloniaGamePresentationOptions? presentation = null,
         Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null) => new()
-    {
-        SelectProjectOptions = _ => new() { SaveSlotCount = saveSlots },
-        Presentation = presentation ?? new(),
-        AttachRun = attachRun,
-        CreateContentCatalogs = () =>
         {
-            var resources = BuiltinResourceTypes.CreateCatalog();
-            return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
-        },
-        ConfigureExecution = (_, _, _, _) => { }
-    };
+            SelectProjectOptions = _ => new() { SaveSlotCount = saveSlots },
+            Presentation = presentation ?? new(),
+            AttachRun = attachRun,
+            CreateContentCatalogs = () =>
+            {
+                var resources = BuiltinResourceTypes.CreateCatalog();
+                return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
+            },
+            ConfigureExecution = (_, _, _, _) => { }
+        };
 
     internal static void Configure(IServiceCollection services, string label)
     {
@@ -84,6 +84,47 @@ public sealed class AvaloniaPlayerHostTests
     private static Task Ui(Func<Task> action) =>
         HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly)
             .Dispatch(async () => { await action(); return true; }, TestContext.CurrentContext.CancellationToken);
+
+    [Test]
+    public Task HostCanUseApplicationUiWithoutResolvingDefaultPagesOrPlayerView() => Ui(async () =>
+    {
+        var application = new ApplicationProbe();
+        await using (var host = await AvaloniaPlayerHost.CreateAsync(Options(), services =>
+        {
+            Configure(services, "Custom UI");
+            services.AddScoped<IPlayerApplication>(_ => application);
+            services.AddScoped<TitlePageViewModel>(_ => throw new AssertionException("The host must not resolve a title page."));
+            services.AddScoped<GameShell>(_ => throw new AssertionException("The host must not choose an application shell."));
+            services.AddScoped<PlayerView>(_ => throw new AssertionException("The host must not choose a player view."));
+        }))
+        {
+            Assert.That(host.View, Is.SameAs(application.View));
+            Assert.That(application.Titles, Is.EqualTo(1));
+            Assert.That(await host.InitializeAsync(Path.Combine(_root, "content"), Path.Combine(_root, "custom-profile")), Is.True);
+            Assert.That(application.Completed, Is.True);
+            await host.SuspendAsync();
+            Assert.That(application.Titles, Is.EqualTo(2));
+            Assert.That(await host.HandleBackAsync(), Is.True);
+            Assert.That(await host.ConfirmExitAsync(), Is.True);
+        }
+        Assert.That(application.Detached, Is.True);
+    });
+
+    private sealed class ApplicationProbe : IPlayerApplication
+    {
+        public Control View { get; } = new Border();
+        public int Titles { get; private set; }
+        public bool Completed { get; private set; }
+        public bool Detached { get; private set; }
+        public void Attach() { }
+        public void Detach() => Detached = true;
+        public void ShowTitle() => Titles++;
+        public Task StartNewGameAsync() => Task.CompletedTask;
+        public Task<bool> HandleBackAsync() => Task.FromResult(true);
+        public Task<bool> ConfirmExitAsync() => Task.FromResult(true);
+        public Task<string?> SelectLanguageAsync(string preferred, CancellationToken cancellationToken) => Task.FromResult<string?>(preferred);
+        public void CompleteStartup(string? errorMessage) { Assert.That(errorMessage, Is.Null); Completed = true; }
+    }
 
     [Test]
     public void ProjectResourceFallbackDoesNotHideExternalDefaultCultureOverrides()
@@ -218,7 +259,9 @@ public sealed class AvaloniaPlayerHostTests
         var previous = PlayerTextExtension.Resolve;
         var owned = new OwnedService();
         InvalidOperationException? failure = null;
-        try { await AvaloniaPlayerHost.CreateAsync(Options(), services =>
+        try
+        {
+            await AvaloniaPlayerHost.CreateAsync(Options(), services =>
         {
             Configure(services, "Fail");
             services.AddSingleton(_ => owned);
@@ -227,7 +270,8 @@ public sealed class AvaloniaPlayerHostTests
                 provider.GetRequiredService<OwnedService>();
                 throw new InvalidOperationException("Composition failed.");
             });
-        }); }
+        });
+        }
         catch (InvalidOperationException error) { failure = error; }
         Assert.That(failure, Is.Not.Null);
         Assert.That(owned.Disposals, Is.EqualTo(1));

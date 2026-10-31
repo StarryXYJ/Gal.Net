@@ -1,5 +1,4 @@
 using Avalonia.Threading;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Debugging;
 using GalNet.Runtime.Engine;
 using GalNet.Avalonia.GameHost;
@@ -22,7 +21,7 @@ public sealed class AvaloniaExternalDebugSession : IAsyncDisposable
         {
             token.ThrowIfCancellationRequested();
             await Dispatcher.UIThread.InvokeAsync(async () =>
-                await services.GetRequiredService<TitlePageViewModel>().StartNewGameCommand.ExecuteAsync(null));
+                await services.GetRequiredService<IPlayerApplication>().StartNewGameAsync());
         });
     }
     public Task ConnectAsync(DebugInvitation invitation, CancellationToken token) => _host.ConnectAsync(invitation, token);

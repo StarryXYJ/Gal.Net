@@ -1,10 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using GalNet.Avalonia.GameView.Navigation;
-using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.Application;
 using GalNet.Avalonia.GameHost.ViewModels;
@@ -22,6 +18,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
     private readonly CancellationTokenSource _startup = new();
     private Task<bool>? _initialization;
     private Task? _disposal;
+    private IPlayerApplication? _application;
     private Func<string, object>? _previousResolver;
     private Func<string, object>? _resolver;
 
@@ -34,6 +31,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
             .AddScoped<IGameSessionService>(services => services.GetRequiredService<AvaloniaGameSession>());
         registrations.TryAddScoped<LanguageSelectionViewModel>();
         registrations.TryAddScoped<PlayerView>();
+        registrations.TryAddScoped<IPlayerApplication, DefaultPlayerApplication>();
         configure(registrations);
         _root = registrations.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         _scope = _root.CreateAsyncScope();
@@ -54,17 +52,17 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
             result._resolver = localization.GetString;
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = result._resolver;
             result.Session = result.Services.GetRequiredService<AvaloniaGameSession>();
-            result.Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
-            result.View = result.Services.GetRequiredService<PlayerView>();
-            result.View.Attach(result.Services.GetRequiredService<GameShell>(), result.Services.GetRequiredService<LanguageSelectionViewModel>());
-            result.View.BindAudioAnnouncements(result.Services.GetRequiredService<GamePresentationState>());
+            result._application = result.Services.GetRequiredService<IPlayerApplication>();
+            result.View = result._application.View;
+            result._application.Attach();
+            result._application.ShowTitle();
             return result;
         }
         catch (Exception error)
         {
             var cleanup = new ResourceCleanup();
             cleanup.Run(result.RestoreResolver);
-            if (result.View is not null) cleanup.Run(result.View.Detach);
+            if (result._application is not null) cleanup.Run(result._application.Detach);
             await cleanup.RunAsync(() => result._scope.DisposeAsync());
             await cleanup.RunAsync(() => result._root.DisposeAsync());
             cleanup.Run(result._startup.Dispose);
@@ -74,7 +72,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
     }
 
     public IServiceProvider Services => _scope.ServiceProvider;
-    public PlayerView View { get; private set; } = null!;
+    public Control View { get; private set; } = null!;
     public AvaloniaGameSession Session { get; private set; } = null!;
     public IAvaloniaPlayerSettings Settings { get; private set; } = null!;
 
@@ -86,23 +84,22 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
         cleanup.Run(() => Services.GetRequiredService<GalleryMediaService>().StopPlayback());
         await cleanup.RunAsync(() => new(Session.SuspendAsync()));
         if (Session.IsReady)
-            cleanup.Run(() => Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None));
+            cleanup.Run(_application!.ShowTitle);
         cleanup.ThrowIfFailed();
     }
 
     public async Task<bool> HandleBackAsync()
     {
         Dispatcher.UIThread.VerifyAccess();
-        if (View.CancelExitConfirmation()) return false;
-        var navigation = Services.GetRequiredService<IGameNavigationService>();
-        if (navigation.CurrentViewModel is BackNavigablePageViewModel page && navigation.CanGoBack)
-            page.BackCommand.Execute(null);
-        else if (navigation.CurrentViewModel is GamePageViewModel gameplay)
-            gameplay.OpenSettingsCommand.Execute(null);
-        else if (!Services.GetRequiredService<TitlePageViewModel>().CanExit)
-            return true;
-        else return await View.ConfirmExitAsync();
-        return false;
+        ObjectDisposedException.ThrowIf(_disposal is not null, this);
+        return await _application!.HandleBackAsync();
+    }
+
+    public Task<bool> ConfirmExitAsync()
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        ObjectDisposedException.ThrowIf(_disposal is not null, this);
+        return _application!.ConfirmExitAsync();
     }
 
     public void BindWindow(Window? window)
@@ -121,8 +118,8 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
 
     private async Task<bool> InitializeCoreAsync(string? contentDirectory, string? profileDirectory)
     {
-        var ready = await Session.InitializeAsync(contentDirectory, profileDirectory, View.SelectLanguageAsync, _startup.Token);
-        if (!_startup.IsCancellationRequested) View.CompleteStartup(ready ? null : Session.StatusMessage);
+        var ready = await Session.InitializeAsync(contentDirectory, profileDirectory, _application!.SelectLanguageAsync, _startup.Token);
+        if (!_startup.IsCancellationRequested) _application!.CompleteStartup(ready ? null : Session.StatusMessage);
         return ready;
     }
 
@@ -147,7 +144,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
         }
         await cleanup.RunAsync(() => new(Session.StopAsync()));
         cleanup.Run(() => Settings.BindWindow(null));
-        cleanup.Run(View.Detach);
+        cleanup.Run(_application!.Detach);
         cleanup.Run(RestoreResolver);
         await cleanup.RunAsync(() => _scope.DisposeAsync());
         await cleanup.RunAsync(() => _root.DisposeAsync());

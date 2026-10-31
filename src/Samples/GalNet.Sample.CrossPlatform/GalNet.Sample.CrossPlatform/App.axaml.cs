@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Avalonia.Interactivity;
-using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Sample.CrossPlatform.ViewModels;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.CrossPlatform.Views;
 using GalNet.Avalonia.GameHost;
@@ -68,7 +68,7 @@ public partial class App : Application, IAsyncDisposable
                 args.Cancel = true;
                 if (closing) return;
                 closing = true;
-                if (_player is not null && !await _player.View.ConfirmExitAsync()) { closing = false; return; }
+                if (_player is not null && !await _player.ConfirmExitAsync()) { closing = false; return; }
                 try { await ShutdownAsync(); }
                 catch (Exception error) { Console.Error.WriteLine(error); }
                 finally { allowed = true; window.Close(); }
@@ -283,7 +283,7 @@ public partial class App : Application, IAsyncDisposable
     {
         try
         {
-            if (_stopping || _player is null || !await _player.View.ConfirmExitAsync()) return;
+            if (_stopping || _player is null || !await _player.ConfirmExitAsync()) return;
             await ShutdownAsync();
             ExitRequested?.Invoke();
         }

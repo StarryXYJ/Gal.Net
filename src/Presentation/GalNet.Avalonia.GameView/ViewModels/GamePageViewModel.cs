@@ -5,8 +5,9 @@ using GalNet.Avalonia.GameView.Presentation;
 namespace GalNet.Avalonia.GameView.ViewModels;
 
 /// <summary>Temporary default-page adapter; application routes move to Sample in P3/P4.</summary>
-public partial class GamePageViewModel(IGameNavigationService navigation) : GamePresentationState
+public partial class GamePageViewModel(IGameNavigationService navigation) : GamePresentationState, IGameplayPage
 {
+    public GamePresentationState State => this;
     private readonly IGameNavigationService _navigation = navigation;
     [RelayCommand]
     private Task OpenSaveSlotsAsync(CancellationToken cancellationToken) =>

@@ -23,7 +23,7 @@ internal static class NativeSampleWindow
             var title = new StringBuilder(512);
             GetWindowText(window, title, title.Capacity);
             TestContext.Out.WriteLine($"Process {owner} window {window}: '{title}'.");
-            if (title.ToString().StartsWith("GalNet CrossPlatform", StringComparison.Ordinal)) windows.Add(window);
+            if (title.ToString().Equals("GalNet Avalonia CrossPlatform Player", StringComparison.Ordinal)) windows.Add(window);
             return true;
         }, 0), Is.True);
         Assert.That(windows, Has.Count.EqualTo(1), "Expected the Sample's visible titled window in its own process.");

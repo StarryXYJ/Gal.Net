@@ -1,3 +1,4 @@
+using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
 using Avalonia.Controls;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Navigation;

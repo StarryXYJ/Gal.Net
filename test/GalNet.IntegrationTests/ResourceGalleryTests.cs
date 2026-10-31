@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Globalization;
 using Avalonia.Headless;
 using System.Text.Json;
@@ -69,8 +70,11 @@ public sealed class ResourceGalleryTests
     [TestCase(401)]
     public async Task SceneReplayStopsAtGroupBoundaryAndCannotPersistUnlockOrReadProgress(int id)
     {
-        var gallery = GalleryCatalog.Create(new() { Types = [new() { TypeId = "scene", ResourceTypeId = "group" }],
-            Items = [new() { Id = 100, TypeId = "scene", ResourceId = "target" }, new() { Id = 999, TypeId = "scene", ResourceId = "other" }] });
+        var gallery = GalleryCatalog.Create(new()
+        {
+            Types = [new() { TypeId = "scene", ResourceTypeId = "group" }],
+            Items = [new() { Id = 100, TypeId = "scene", ResourceId = "target" }, new() { Id = 999, TypeId = "scene", ResourceId = "other" }]
+        });
         var store = new Store(); using var player = await PlayerVariableService.CreateAsync(store);
         player.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(gallery));
         var progress = new Progress();
@@ -99,8 +103,10 @@ public sealed class ResourceGalleryTests
         GalNet.GameHost.PlayerSession? player = null;
         var options = new GalNet.Avalonia.GameHost.AvaloniaGameHostOptions
         {
-            LaunchPolicy = original.LaunchPolicy, Content = original.Content,
-            SelectProjectOptions = original.SelectProjectOptions, CreateContentCatalogs = original.CreateContentCatalogs,
+            LaunchPolicy = original.LaunchPolicy,
+            Content = original.Content,
+            SelectProjectOptions = original.SelectProjectOptions,
+            CreateContentCatalogs = original.CreateContentCatalogs,
             ConfigureExecution = original.ConfigureExecution,
             AttachPlayer = context =>
             {
@@ -117,7 +123,7 @@ public sealed class ResourceGalleryTests
         var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPlayerPageViewModel>(host.Services);
         navigation.ResetTo<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPageViewModel>(GalNet.Avalonia.GameView.Navigation.NavigationTransition.None);
         navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPlayerPageViewModel>(GalNet.Avalonia.GameView.Navigation.NavigationTransition.None);
-        host.View.CompleteStartup();
+        host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CompleteStartup();
         var window = new global::Avalonia.Controls.Window { Width = 1000, Height = 600, Content = host.View }; window.Show();
         try
         {

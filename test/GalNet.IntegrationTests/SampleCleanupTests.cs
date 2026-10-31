@@ -1,3 +1,4 @@
+using GamePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
@@ -70,7 +71,7 @@ public sealed class SampleCleanupTests
                 SampleCustomization.ConfigureServices(services);
                 await using var root = services.BuildServiceProvider();
                 var settings = root.GetRequiredService<AvaloniaPlayerSettingsService>();
-                var gameplay = root.GetRequiredService<GamePageViewModel>();
+                var gameplay = root.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
                 var session = new AvaloniaGameSession(SampleCustomization.CreateHostOptions(), gameplay, new GamePage(), settings,
                     root.GetRequiredService<AvaloniaPlayerLocalization>(), root.GetRequiredService<IPlayerStartup>(),
                     root.GetRequiredService<LibVlcRuntime>());

@@ -2,20 +2,18 @@
 
 ## 替换服务与页面行为
 
-`AddAvaloniaGameViewPages` 通过 `TryAddScoped` 提供默认服务，项目可以在调用前注册替代实现，或在调用后显式覆盖。标题、设置、游戏页面和 Shell 的默认 VM 可派生；标题命令的处理方法可以重载。注册派生 VM 的别名和实际 View：
+Sample 的标题、加载和游戏页及其 VM 直接位于应用项目，日常定制直接修改对应 XAML 和 VM。新增页面只需项目 VM、View、集中注册及导航调用，不需要派生默认标题 VM 或注册别名。例如在 Sample 的组合入口注册：
 
 ```csharp
-services.AddScoped<TitlePageViewModel, MyTitleViewModel>();
 services.AddScoped<MyNotebookViewModel>();
-services.AddAvaloniaGameViewPages(theme,
+SampleCustomization.ConfigureServices(services,
     configureViews: views =>
     {
-        views.Register<MyTitleViewModel, MyTitleView>();
         views.Register<MyNotebookViewModel, MyNotebookView>();
     });
 ```
 
-`MyTitleViewModel` 派生 `TitlePageViewModel`，自己的按钮命令可调用 `IGameNavigationService.Navigate<MyNotebookViewModel>()`；返回使用现有导航历史。工厂按实际 VM 类型选择 View，因此派生类型也需要映射。更大幅度的定制可以替换 `IGameNavigationService`、`IPageViewFactory`，或由自己的窗口构造 Shell。页面的 XAML 和业务服务不需要字段生成器。
+在项目的标题 VM 增加命令，调用 `IGameNavigationService.Navigate<MyNotebookViewModel>()`，然后在 `Views/TitlePage.axaml` 增加绑定该命令的按钮；返回使用现有导航历史。`MyNotebookViewModel` 继承通用 `PageViewModelBase` 即可。其余内置页面的默认服务仍可在组合入口替换；项目页面使用自己的实际类型映射。更大幅度的定制可以替换导航/页面工厂，或通过 `IPlayerApplication` 提供自己的根表面。页面的 XAML 和业务服务不需要字段生成器。
 
 ## 页面与主题边界
 

@@ -70,7 +70,14 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.TryAddScoped<IGameNavigationService, GameNavigationService>();
         services.TryAddScoped<IPlayerSettingsService, DefaultPlayerSettingsService>();
         services.TryAddScoped<GalleryNavigationService>();
-        services.TryAddScoped<GameLaunchFlow>();
+        services.TryAddScoped(provider =>
+        {
+            var navigation = provider.GetRequiredService<IGameNavigationService>();
+            return new GameLaunchFlow(
+                token => navigation.ResetToAsync<LoadingPageViewModel>(cancellationToken: token),
+                token => navigation.ResetToAsync<GamePageViewModel>(cancellationToken: token),
+                token => navigation.ResetToAsync<TitlePageViewModel>(cancellationToken: token));
+        });
         services.TryAddScoped<IPageViewFactory, PageViewFactory>();
         services.TryAddScoped<IGameScreenshotService, AvaloniaGameScreenshotService>();
         services.TryAddScoped<GalleryMediaService>();
@@ -87,7 +94,20 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.TryAddScoped<MissingGalleryPageViewModel>();
         services.TryAddScoped<AboutPageViewModel>();
         services.TryAddScoped<LoadingPageViewModel>();
-        services.TryAddScoped<GameShell>();
+        services.TryAddScoped(provider => ActivatorUtilities.CreateInstance<GameShell>(provider,
+            new Action(() => provider.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>()),
+            new Func<string, Task>(action =>
+            {
+                if (provider.GetRequiredService<IGameNavigationService>().CurrentViewModel is not GamePageViewModel game)
+                    return Task.CompletedTask;
+                switch (action)
+                {
+                    case "open.save": return game.OpenSaveSlotsCommand.ExecuteAsync(null);
+                    case "open.load": return game.OpenLoadSlotsCommand.ExecuteAsync(null);
+                    case "open.settings": game.OpenSettingsCommand.Execute(null); break;
+                }
+                return Task.CompletedTask;
+            })));
 
         if (gamePageType == typeof(GamePage)) services.TryAddScoped<GamePage>();
         else services.TryAddScoped<GamePage>(provider => (GamePage)provider.GetRequiredService(gamePageType));

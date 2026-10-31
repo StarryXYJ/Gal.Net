@@ -157,12 +157,12 @@ public sealed class SharedPlayerHostTests
     {
         await using var host = await OpenHost(CrossSample.CreateHostOptions());
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
-        host.Services.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>().CanExit = false;
+        host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel>().CanExit = false;
         Assert.That(await host.HandleBackAsync().WaitAsync(TimeSpan.FromSeconds(5)), Is.True);
-        Assert.That(host.View.CancelExitConfirmation(), Is.False);
+        Assert.That(host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CancelExitConfirmation(), Is.False);
         navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
         Assert.That(await host.HandleBackAsync(), Is.False);
-        Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>());
+        Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel>());
         Assert.That(await host.HandleBackAsync(), Is.True);
     });
 
@@ -173,7 +173,7 @@ public sealed class SharedPlayerHostTests
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
         Assert.That(await host.HandleBackAsync(), Is.False);
-        Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>());
+        Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel>());
         var prompt = host.HandleBackAsync();
         Assert.That(prompt.IsCompleted, Is.False);
         Assert.That(await host.HandleBackAsync(), Is.False);
@@ -218,7 +218,9 @@ public sealed class SharedPlayerHostTests
             var previous = PlayerTextExtension.Resolve;
             var marker = new AsyncMarker();
             InvalidOperationException? failure = null;
-            try { await OpenHost(CrossSample.CreateHostOptions(), services =>
+            try
+            {
+                await OpenHost(CrossSample.CreateHostOptions(), services =>
             {
                 services.AddSingleton(_ => marker);
                 services.AddScoped<IGameNavigationService>(provider =>
@@ -226,7 +228,8 @@ public sealed class SharedPlayerHostTests
                     provider.GetRequiredService<AsyncMarker>();
                     throw new InvalidOperationException("composition failed");
                 });
-            }); }
+            });
+            }
             catch (InvalidOperationException error) { failure = error; }
             Assert.That(failure, Is.Not.Null);
             Assert.That(marker.Disposals, Is.EqualTo(1));

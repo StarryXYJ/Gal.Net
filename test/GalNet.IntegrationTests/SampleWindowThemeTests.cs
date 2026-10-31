@@ -1,3 +1,4 @@
+using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -89,7 +90,7 @@ public sealed class SampleWindowThemeTests
             Application.Current.Styles.Add(ursa);
             await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(),
                 registrations => SampleCustomization.ConfigureServices(registrations));
-            var player = host.View;
+            var player = (PlayerView)host.View;
             var window = new MainWindow { Content = player };
             window.Show();
             try

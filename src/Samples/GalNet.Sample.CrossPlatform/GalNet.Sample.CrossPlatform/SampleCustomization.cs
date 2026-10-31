@@ -49,18 +49,47 @@ public static class SampleCustomization
 
     public static void ConfigureServices(IServiceCollection services, Action<IPageViewRegistryBuilder>? configureViews = null)
     {
-        services.AddAvaloniaGameViewPages(theme: PlayerTheme, configureViews: configureViews)
+        ConfigurePages(services);
+        services.AddAvaloniaGameViewPages(theme: PlayerTheme, configureViews: views =>
+            {
+                views.Register<ViewModels.TitlePageViewModel, Views.TitlePage>();
+                views.Register<ViewModels.LoadingPageViewModel, Views.LoadingPage>();
+                views.Register<ViewModels.GamePageViewModel, Views.GamePage>();
+                configureViews?.Invoke(views);
+            })
             .AddSingleton(_ => CreateLocalizationService())
             .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<AvaloniaPlayerLocalization>())
             .AddSingleton<GalNet.Core.Services.ITextResolver>(provider => provider.GetRequiredService<IPlayerLocalization>())
             .AddSingleton<LibVlcRuntime>()
             .AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
-                provider.GetRequiredService<GamePageViewModel>(), editors: CreateFieldEditors()))
+                provider.GetRequiredService<GamePresentationState>(), editors: CreateFieldEditors()))
             .AddScoped<IPlayerStartup, AvaloniaPlayerStartup>()
             .AddScoped<LanguageSelectionViewModel>()
             .AddScoped(_ => CreateView())
             .AddScoped<IAvaloniaPlayerSettings>(provider => provider.GetRequiredService<AvaloniaPlayerSettingsService>())
             .AddScoped<IPlayerSettingsService>(provider => provider.GetRequiredService<IAvaloniaPlayerSettings>());
+    }
+
+    private static void ConfigurePages(IServiceCollection services)
+    {
+        services.AddScoped<GamePresentationState>();
+        services.AddScoped<ViewModels.TitlePageViewModel>();
+        services.AddScoped<ViewModels.LoadingPageViewModel>();
+        services.AddScoped<ViewModels.GamePageViewModel>();
+        services.AddScoped<Views.GamePage>();
+        services.AddScoped<GamePage>(provider => provider.GetRequiredService<Views.GamePage>());
+        services.AddScoped<IPlayerApplication, PlayerApplication>();
+        services.AddScoped(provider =>
+        {
+            var navigation = provider.GetRequiredService<IGameNavigationService>();
+            return new GameLaunchFlow(
+                token => navigation.ResetToAsync<ViewModels.LoadingPageViewModel>(cancellationToken: token),
+                token => navigation.ResetToAsync<ViewModels.GamePageViewModel>(cancellationToken: token),
+                token => navigation.ResetToAsync<ViewModels.TitlePageViewModel>(cancellationToken: token));
+        });
+        services.AddScoped(provider => ActivatorUtilities.CreateInstance<GameShell>(provider,
+            new Action(() => provider.GetRequiredService<IGameNavigationService>().ResetTo<ViewModels.TitlePageViewModel>()),
+            new Func<string, Task>(action => provider.GetRequiredService<ViewModels.GamePageViewModel>().HandleInputActionAsync(action))));
     }
 
     public static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
@@ -93,31 +122,31 @@ public static class SampleCustomization
 
     public static AvaloniaGameHostOptions CreateHostOptions(Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null,
         Func<string, string>? screenshotDirectory = null) => new()
-    {
-        GameTitle = "GalNet CrossPlatform Sample",
-        LaunchPolicy = GalNet.Storage.FileSystem.GameLaunchPolicy.FromAssembly(typeof(SampleCustomization).Assembly),
-        NoGameMessage = "Usage: GalNet.Sample.CrossPlatform.Desktop <game-data-directory> [--profile <directory>]",
-        CreateContentCatalogs = CreateContentCatalogs,
-        AttachRun = attachRun,
-        Content = new GameContentLoadOptions
         {
-            Configurations = ProjectSchemas.Configurations,
-            SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
-        },
-        SelectProjectOptions = configuration =>
-        {
-            var options = configuration.ReadDefaultOptions();
-            return new()
+            GameTitle = "GalNet CrossPlatform Sample",
+            LaunchPolicy = GalNet.Storage.FileSystem.GameLaunchPolicy.FromAssembly(typeof(SampleCustomization).Assembly),
+            NoGameMessage = "Usage: GalNet.Sample.CrossPlatform.Desktop <game-data-directory> [--profile <directory>]",
+            CreateContentCatalogs = CreateContentCatalogs,
+            AttachRun = attachRun,
+            Content = new GameContentLoadOptions
             {
-                SaveSlotCount = options.SaveSlotCount,
-                DefaultCulture = options.TargetLocale.Code,
-                Audio = new(options.AudioTracks, options.AudioBuses)
-            };
-        },
-        ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
-            presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
-            presentation.Video, presentation.AudioModule, presentation.ImageVariants, screenshotDirectory)
-    };
+                Configurations = ProjectSchemas.Configurations,
+                SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
+            },
+            SelectProjectOptions = configuration =>
+            {
+                var options = configuration.ReadDefaultOptions();
+                return new()
+                {
+                    SaveSlotCount = options.SaveSlotCount,
+                    DefaultCulture = options.TargetLocale.Code,
+                    Audio = new(options.AudioTracks, options.AudioBuses)
+                };
+            },
+            ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,
+                presentation.Presenters, page, content, presentation.Effects, presentation.Audio,
+                presentation.Video, presentation.AudioModule, presentation.ImageVariants, screenshotDirectory)
+        };
 
     public static void ConfigureExecution(
         GameRegistration registration, AvaloniaGamePresenters presenters, GamePage page,

@@ -6,6 +6,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameView.Composition;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -25,10 +26,12 @@ public partial class GameShell : UserControl, IDisposable
     private readonly IGameNavigationService _navigation;
     private readonly GameNavigationTransitionCoordinator _transitions;
     private readonly SemaphoreSlim _transitionGate = new(1, 1);
-    private GamePageViewModel? _gameplay;
+    private GamePresentationState? _gameplay;
+    private readonly Action _showTitle;
+    private readonly Func<string, Task> _applicationAction;
     private bool _hadActiveRun;
     private bool _returningToTitle;
-    private GamePageViewModel? _modalGame;
+    private GamePresentationState? _modalGame;
     private bool _resumeAuto;
     /// <summary>Optional player confirmation policy; embedded previews may keep direct navigation.</summary>
     public Func<Task<bool>>? ConfirmReturnToTitleAsync { get; set; }
@@ -70,8 +73,12 @@ public partial class GameShell : UserControl, IDisposable
         IGameNavigationService navigation,
         GameNavigationTransitionCoordinator transitions,
         IGameLayoutTheme theme,
-        IPlayerSettingsService settings)
+        IPlayerSettingsService settings,
+        Action showTitle,
+        Func<string, Task> applicationAction)
     {
+        _showTitle = showTitle;
+        _applicationAction = applicationAction;
         _viewModel = viewModel;
         _views = views;
         _screenshots = screenshots;
@@ -90,29 +97,16 @@ public partial class GameShell : UserControl, IDisposable
             () => _inputSettings?.IsCapturing == true);
         if (settings.Input is { } input)
         {
-            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack, HandleApplicationActionAsync);
-            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
+            _inputRouter = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel), session, GoBack, _applicationAction);
+            _touchInput = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel) is { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
         }
     }
 
-    // Application navigation stays outside the device-independent playback dispatcher.
-    private Task HandleApplicationActionAsync(string action)
-    {
-        if (_viewModel.CurrentViewModel is not GamePageViewModel game) return Task.CompletedTask;
-        return action switch
-        {
-            "open.save" => game.OpenSaveSlotsCommand.ExecuteAsync(null),
-            "open.load" => game.OpenLoadSlotsCommand.ExecuteAsync(null),
-            "open.settings" => OpenSettings(),
-            _ => Task.CompletedTask
-        };
-
-        Task OpenSettings() { game.OpenSettingsCommand.Execute(null); return Task.CompletedTask; }
-    }
+    private static GamePresentationState? GetGameplay(PageViewModelBase? page) => (page as IGameplayPage)?.State;
 
     private void GoBack()
     {
-        if (_viewModel.CurrentViewModel is GamePageViewModel { IsHistoryOpen: true } game)
+        if (GetGameplay(_viewModel.CurrentViewModel) is { IsHistoryOpen: true } game)
         {
             game.CloseHistoryCommand.Execute(null);
             return;
@@ -160,8 +154,8 @@ public partial class GameShell : UserControl, IDisposable
         {
             // Do not rewrite history if a new run has already started or the host navigated
             // away while the old run was stopping.
-            if (!_session.IsPlaying && _viewModel.CurrentViewModel is GamePageViewModel)
-                _navigation.ResetTo<TitlePageViewModel>();
+            if (!_session.IsPlaying && GetGameplay(_viewModel.CurrentViewModel) is not null)
+                _showTitle();
         });
     }
 
@@ -307,7 +301,8 @@ public partial class GameShell : UserControl, IDisposable
         if (viewModel is SettingsPageViewModel) _inputSettings?.SelectedDevice = null;
         _inputRouter?.ResetInput();
         _touchInput?.Reset();
-        if (!ReferenceEquals(_gameplay, viewModel))
+        var gameplay = GetGameplay(viewModel);
+        if (!ReferenceEquals(_gameplay, gameplay))
         {
             if (_gameplay is not null)
             {
@@ -316,7 +311,7 @@ public partial class GameShell : UserControl, IDisposable
                 _gameplay.ScreenshotRequested -= OnScreenshotRequested;
                 _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
             }
-            _gameplay = viewModel as GamePageViewModel;
+            _gameplay = gameplay;
             SkipPrompt.DataContext = _gameplay;
             if (_gameplay is not null)
             {
@@ -350,8 +345,8 @@ public partial class GameShell : UserControl, IDisposable
             if (ConfirmReturnToTitleAsync is { } confirm && !await confirm()) return;
             if (_disposed) return;
             await _session.StopAsync();
-            if (_viewModel.CurrentViewModel is GamePageViewModel)
-                _navigation.ResetTo<TitlePageViewModel>();
+            if (GetGameplay(_viewModel.CurrentViewModel) is not null)
+                _showTitle();
         }
         catch (Exception error) { Log.Logger.Error(error, "Unable to return to title"); }
         finally

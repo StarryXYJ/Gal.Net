@@ -1,3 +1,5 @@
+using GamePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel;
+using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia;
@@ -33,24 +35,24 @@ public sealed class PlayerInteractionTests
             services => SampleCustomization.ConfigureServices(services));
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         navigation.ResetTo<GamePageViewModel>(NavigationTransition.None);
-        host.View.CompleteStartup();
+        host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CompleteStartup();
         var window = new Window { Content = host.View };
         window.Show();
         try
         {
-            var game = host.Services.GetRequiredService<GamePageViewModel>();
+            var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
             game.ReturnToTitleCommand.Execute(null);
-            var confirmation = host.View.ConfirmReturnToTitleAsync();
+            var confirmation = host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().ConfirmReturnToTitleAsync();
             Assert.That(host.View.FindControl<Grid>("PlayerContent")!.IsEnabled, Is.False);
             Assert.That(game.IsInteractionBlocked, Is.True);
-            Assert.That(navigation.CurrentViewModel, Is.SameAs(game));
+            Assert.That(navigation.CurrentViewModel, Is.SameAs(host.Services.GetRequiredService<GamePageViewModel>()));
             Capture(window, "return-to-title");
-            Assert.That(host.View.ConfirmReturnToTitleAsync(), Is.SameAs(confirmation));
-            Assert.That(await host.View.ConfirmExitAsync(), Is.False);
+            Assert.That(host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().ConfirmReturnToTitleAsync(), Is.SameAs(confirmation));
+            Assert.That(await host.ConfirmExitAsync(), Is.False);
             host.View.FindControl<Button>("CancelExitButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.That(await confirmation, Is.False);
             Assert.That(game.IsInteractionBlocked, Is.False);
-            Assert.That(navigation.CurrentViewModel, Is.SameAs(game));
+            Assert.That(navigation.CurrentViewModel, Is.SameAs(host.Services.GetRequiredService<GamePageViewModel>()));
             await Task.Yield();
             game.ReturnToTitleCommand.Execute(null);
             host.View.FindControl<Button>("ConfirmReturnToTitleButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -70,20 +72,20 @@ public sealed class PlayerInteractionTests
             services.AddSingleton<IGameSessionService>(new PlayingSession());
         });
         host.Services.GetRequiredService<IGameNavigationService>().ResetTo<GamePageViewModel>(NavigationTransition.None);
-        var game = host.Services.GetRequiredService<GamePageViewModel>();
+        var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
         var controller = new PlaybackController();
         game.BindPlayback(controller);
         if (automatic) await game.ToggleAutoCommand.ExecuteAsync(null);
         else await game.SetQuickHeldAsync(true);
         var advanced = 0;
         game.AdvanceRequested += () => advanced++;
-        var pending = host.View.ConfirmReturnToTitleAsync();
+        var pending = host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().ConfirmReturnToTitleAsync();
         Assert.That(controller.PlaybackMode, Is.EqualTo(PlaybackMode.Manual));
         game.AdvanceCommand.Execute(null);
         await game.ToggleQuickCommand.ExecuteAsync(null);
         Assert.That(advanced, Is.Zero);
         Assert.That(controller.PlaybackMode, Is.EqualTo(PlaybackMode.Manual));
-        host.View.CancelExitConfirmation();
+        host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CancelExitConfirmation();
         Assert.That(await pending, Is.False);
         Assert.That(controller.PlaybackMode, Is.EqualTo(automatic ? PlaybackMode.Auto : PlaybackMode.Manual));
     });
@@ -172,7 +174,7 @@ public sealed class PlayerInteractionTests
         window.Show();
         try
         {
-            var game = host.Services.GetRequiredService<GamePageViewModel>();
+            var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
             var manager = host.View.FindControl<WindowToastManager>("AudioToast")!;
             game.AnnounceAudio("Track one");
             await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);

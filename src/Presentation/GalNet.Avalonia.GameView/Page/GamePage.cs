@@ -19,6 +19,24 @@ public class GamePage : TemplatedControl
 {
     protected override Type StyleKeyOverride => typeof(GamePage);
 
+    public static readonly StyledProperty<GamePresentationState?> PresentationProperty =
+        AvaloniaProperty.Register<GamePage, GamePresentationState?>(nameof(Presentation));
+
+    /// <summary>The runtime state is independent of the application's page DataContext.</summary>
+    public GamePresentationState? Presentation
+    {
+        get => GetValue(PresentationProperty);
+        set => SetValue(PresentationProperty, value);
+    }
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+        // Temporary support for the default pages until their P4/P5 migration.
+        if (DataContext is GamePresentationState state) Presentation = state;
+    }
+
+
     public static readonly DirectProperty<GamePage, Control> SceneProperty =
         AvaloniaProperty.RegisterDirect<GamePage, Control>(nameof(Scene), page => page.Scene);
     public static readonly DirectProperty<GamePage, DialoguePresenter> DialogueProperty =
@@ -48,26 +66,30 @@ public class GamePage : TemplatedControl
     public GamePage()
     {
         Scene = new Grid { ClipToBounds = true, Children = { SceneHost } };
-        BindContent(SceneHost, SceneLayerHost.ItemsSourceProperty, page => ((GamePresentationState)page.DataContext!).Layers);
-        BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, page => ((GamePresentationState)page.DataContext!).TextureEffects);
-        BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, page => ((GamePresentationState)page.DataContext!).SceneRenderables);
-        BindContent(Dialogue, IsVisibleProperty, page => ((GamePresentationState)page.DataContext!).IsDialogueOverlayVisible);
-        BindContent(Dialogue, ReadTextStyle.ForegroundProperty, page => ((GamePresentationState)page.DataContext!).ReadTextBrush);
-        BindContent(Nvl, ReadTextStyle.ForegroundProperty, page => ((GamePresentationState)page.DataContext!).ReadTextBrush);
-        BindContent(History, ReadTextStyle.ForegroundProperty, page => ((GamePresentationState)page.DataContext!).ReadTextBrush);
-        BindContent(Dialogue, DialoguePresenter.CanReplayVoiceProperty, page => ((GamePresentationState)page.DataContext!).CanReplayDialogue);
-        BindContent(Dialogue, DialoguePresenter.ReplayVoiceCommandProperty, page => ((GamePresentationState)page.DataContext!).ReplayDialogueCommand);
-        BindContent(Dialogue, DialoguePresenter.ReplayIconProperty, page => ((GamePresentationState)page.DataContext!).ReplayIcon);
+        BindContent(Dialogue, DataContextProperty, page => page.Presentation);
+        BindContent(Nvl, DataContextProperty, page => page.Presentation);
+        BindContent(Choice, DataContextProperty, page => page.Presentation);
+        BindContent(History, DataContextProperty, page => page.Presentation);
+        BindContent(SceneHost, SceneLayerHost.ItemsSourceProperty, page => page.Presentation!.Layers);
+        BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, page => page.Presentation!.TextureEffects);
+        BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, page => page.Presentation!.SceneRenderables);
+        BindContent(Dialogue, IsVisibleProperty, page => page.Presentation!.IsDialogueOverlayVisible);
+        BindContent(Dialogue, ReadTextStyle.ForegroundProperty, page => page.Presentation!.ReadTextBrush);
+        BindContent(Nvl, ReadTextStyle.ForegroundProperty, page => page.Presentation!.ReadTextBrush);
+        BindContent(History, ReadTextStyle.ForegroundProperty, page => page.Presentation!.ReadTextBrush);
+        BindContent(Dialogue, DialoguePresenter.CanReplayVoiceProperty, page => page.Presentation!.CanReplayDialogue);
+        BindContent(Dialogue, DialoguePresenter.ReplayVoiceCommandProperty, page => page.Presentation!.ReplayDialogueCommand);
+        BindContent(Dialogue, DialoguePresenter.ReplayIconProperty, page => page.Presentation!.ReplayIcon);
         if (MarkupExtensions.PlayerTextExtension.CreateBinding("History.ReplayVoice", "Replay voice") is ReflectionBinding replayLabel)
             Dialogue.Bind(DialoguePresenter.ReplayLabelProperty, replayLabel);
-        BindContent(Nvl, IsVisibleProperty, page => ((GamePresentationState)page.DataContext!).IsNvlOverlayVisible);
-        BindContent(Choice, IsVisibleProperty, page => ((GamePresentationState)page.DataContext!).IsChoiceOverlayVisible);
-        BindContent(Choice, ItemsControl.ItemsSourceProperty, page => ((GamePresentationState)page.DataContext!).Choices);
-        BindContent(Choice, ChoiceList.SelectionCommandProperty, page => ((GamePresentationState)page.DataContext!).CompleteChoiceCommand);
+        BindContent(Nvl, IsVisibleProperty, page => page.Presentation!.IsNvlOverlayVisible);
+        BindContent(Choice, IsVisibleProperty, page => page.Presentation!.IsChoiceOverlayVisible);
+        BindContent(Choice, ItemsControl.ItemsSourceProperty, page => page.Presentation!.Choices);
+        BindContent(Choice, ChoiceList.SelectionCommandProperty, page => page.Presentation!.CompleteChoiceCommand);
         AddHandler(PointerPressedEvent, OnPagePointerPressed, RoutingStrategies.Tunnel);
         AddHandler(KeyDownEvent, (_, args) =>
         {
-            if (DataContext is not GamePresentationState game) return;
+            if (Presentation is not { } game) return;
             game.ClearPlaybackPointer();
             if (game.IsHistoryOpen && args.Key == Key.Escape) { game.CloseHistoryCommand.Execute(null); args.Handled = true; }
         }, RoutingStrategies.Tunnel);
@@ -110,7 +132,7 @@ public class GamePage : TemplatedControl
 
     private void OnPagePointerPressed(object? sender, PointerPressedEventArgs eventArgs)
     {
-        if (DataContext is not GamePresentationState viewModel ||
+        if (Presentation is not { } viewModel ||
             eventArgs.Pointer.Type == PointerType.Touch && viewModel.Input is not null ||
             eventArgs.Handled ||
             !eventArgs.GetCurrentPoint(this).Properties.IsLeftButtonPressed)

@@ -77,7 +77,7 @@ public sealed class SampleExtensibilityTests
                     Assert.That(context.ProfileDirectory, Is.EqualTo(Path.Combine(directory, "profile")));
                     return new Release(() => releases++);
                 }
-            }, services.GetRequiredService<GamePageViewModel>(), services.GetRequiredService<GalNet.Avalonia.GameView.Page.GamePage>(),
+            }, services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>(), services.GetRequiredService<GalNet.Avalonia.GameView.Page.GamePage>(),
                 settings, services.GetRequiredService<IPlayerLocalization>(), new SkipStartup(), services.GetRequiredService<LibVlcRuntime>());
             try
             {
