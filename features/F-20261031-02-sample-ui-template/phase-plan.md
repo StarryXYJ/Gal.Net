@@ -101,7 +101,7 @@
 
 ## P5：主题职责收敛与旧入口清理
 
-状态：planned。前置：P4。
+状态：verified。前置：P4。整套主题、旧页面及过渡适配已删除，配色库独立，Sample 持有应用样式。呈现 219 passed、集成 334 passed / 1 既有失败、架构 56 passed、原生/媒体 6 passed；14 组平台模式及默认/R2R locked 还原通过，见 [execution.md](execution.md)。
 
 **目标**：只保留一套默认应用页面，主题和内置库不含应用页面策略。
 

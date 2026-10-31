@@ -5,7 +5,7 @@ using Avalonia.Input;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.Themes;
-using GalNet.Avalonia.Themes.Common;
+using GalNet.Avalonia.GameView.Controls;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
 
@@ -168,7 +168,7 @@ public sealed class SettingSchemaFormTests
     private static Window Mount(SettingsCategories view)
     {
         var root = new Border { Classes = { "galnet-player" }, Child = view };
-        root.Styles.Add(new ClassicTheme().CreateStyles());
+        root.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
         var window = new Window { Width = 900, Height = 600, Content = root };
         window.Show();
         window.UpdateLayout();

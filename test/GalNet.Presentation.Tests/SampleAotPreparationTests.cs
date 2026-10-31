@@ -83,16 +83,16 @@ public sealed class SampleAotPreparationTests
     }
 
     [Test]
-    public async Task GameSurfaceBindingsFollowDataContextReplacementAndOverlayChanges()
+    public async Task GameSurfaceBindingsFollowPresentationReplacementAndOverlayChanges()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly);
         await session.Dispatch<bool>(() =>
         {
             using var services = new ServiceCollection().BuildServiceProvider();
             var navigation = new GameNavigationService(services, new GameNavigationTransitionCoordinator());
-            var first = new GamePageViewModel(navigation) { IsDialogueVisible = true, IsChoiceVisible = true };
-            var second = new GamePageViewModel(navigation) { IsNvlMode = true };
-            var page = new GamePage { DataContext = first };
+            var first = new GalNet.Avalonia.GameView.Presentation.GamePresentationState() { IsDialogueVisible = true, IsChoiceVisible = true };
+            var second = new GalNet.Avalonia.GameView.Presentation.GamePresentationState() { IsNvlMode = true };
+            var page = new GamePage { Presentation = first };
             var window = new Window { Content = page };
             window.Show();
             try
@@ -107,7 +107,7 @@ public sealed class SampleAotPreparationTests
                 Assert.That(page.Dialogue.IsVisible, Is.False);
                 Assert.That(page.Choice.IsVisible, Is.False);
 
-                page.DataContext = second;
+                page.Presentation = second;
                 Assert.That(page.SceneHost.ItemsSource, Is.SameAs(second.Layers));
                 Assert.That(page.SceneHost.EffectsSource, Is.SameAs(second.TextureEffects));
                 Assert.That(page.SceneHost.RenderablesSource, Is.SameAs(second.SceneRenderables));

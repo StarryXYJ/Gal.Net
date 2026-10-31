@@ -24,7 +24,7 @@ SampleCustomization.ConfigureServices(services,
 
 音量与静音共用一行：在音量 SettingItem 上设置 `InlineToggle` 指向同分类的 BoolSetting，并仍将两项放在 `Items` 中，以保留应用、恢复与持久化队列。界面通过 `DisplayItems` 合并显示；修改外观无需改变原设置 ID。
 
-`SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，修改配色时保持 `PlayerTheme` 使用同一调色板。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。
+`SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，项目 `CreateStyles()` 默认使用该配色。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。
 
 退出确认的布局在 `Views/PlayerView.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由内置 `PlayerSurface` 维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
 
@@ -32,5 +32,5 @@ SampleCustomization.ConfigureServices(services,
 
 - `GamePage` 是稳定的游戏页面宿主；其模板必须保留 `PART_Scene`、`PART_Dialogue`、`PART_Nvl` 和 `PART_Choice` 四个 ContentPresenter。
 - 对话与 NVL 的内部部件分别需要 `PART_Typewriter`、`PART_Lines` 和 `PART_ScrollViewer`。不要在剧情播放中重建这些部件。
-- Sample 页面及业务命令在项目源码中；通过组合内置呈现、存档行和 Gallery 状态复用机制，不复制 presenter、媒体或游戏会话逻辑。旧主题资源仍待 P5 清理。
+- Sample 页面及业务命令在项目源码中；通过组合内置呈现、存档行和 Gallery 状态复用机制，不复制 presenter、媒体或游戏会话逻辑。应用布局与尺寸在项目 Styles/ 和 Views/ 中维护。
 - Palette 使用完整的语义资源字典。宿主若覆写资源，以玩家根的资源为准；不要跨多个根复用同一 `Styles` 实例。

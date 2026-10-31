@@ -1,7 +1,7 @@
 {
   "version": 2,
   "dependencies": {
-    "net10.0-ios26.5": {
+    "net10.0-ios27.0": {
       "Avalonia.iOS": {
         "type": "Direct",
         "requested": "[12.0.5, )",
@@ -218,10 +218,7 @@
       "galnet.avalonia.themes": {
         "type": "Project",
         "dependencies": {
-          "Avalonia.Themes.Fluent": "[12.0.5, )",
-          "GalNet.Avalonia.Controls": "[1.0.0, )",
-          "GalNet.Avalonia.GameView": "[1.0.0, )",
-          "GalNet.Contracts.Builtins": "[1.0.0, )"
+          "Avalonia.Themes.Fluent": "[12.0.5, )"
         }
       },
       "galnet.contracts.builtins": {
@@ -494,7 +491,7 @@
         }
       }
     },
-    "net10.0-ios26.5/iossimulator-x64": {
+    "net10.0-ios27.0/iossimulator-x64": {
       "SDL3-CS.Linux": {
         "type": "Direct",
         "requested": "[3.4.18.1, )",

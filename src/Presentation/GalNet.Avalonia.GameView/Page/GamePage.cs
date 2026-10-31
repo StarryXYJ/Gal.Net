@@ -29,12 +29,7 @@ public class GamePage : TemplatedControl
         set => SetValue(PresentationProperty, value);
     }
 
-    protected override void OnDataContextChanged(EventArgs e)
-    {
-        base.OnDataContextChanged(e);
-        // Temporary support for the default pages until their P4/P5 migration.
-        if (DataContext is GamePresentationState state) Presentation = state;
-    }
+
 
 
     public static readonly DirectProperty<GamePage, Control> SceneProperty =

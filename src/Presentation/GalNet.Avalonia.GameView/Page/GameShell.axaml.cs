@@ -72,7 +72,6 @@ public partial class GameShell : UserControl, IDisposable
         IGameSessionService session,
         IGameNavigationService navigation,
         GameNavigationTransitionCoordinator transitions,
-        IGameLayoutTheme theme,
         IPlayerSettingsService settings,
         Action showTitle,
         Func<string, Task> applicationAction)
@@ -88,7 +87,6 @@ public partial class GameShell : UserControl, IDisposable
         _transitions = transitions;
         _inputSettings = settings.Input;
         InitializeComponent();
-        Styles.Add(theme.CreateStyles());
         DataContext = viewModel;
         session.PropertyChanged += OnSessionPropertyChanged;
         _transitions.Attach(ShowPageAsync);

@@ -9,7 +9,7 @@ using GalNet.Rendering.Scene;
 namespace GalNet.Avalonia.GameView.Presentation;
 
 /// <summary>Scope-owned game presentation and interaction state, independent of application page routes.</summary>
-public partial class GamePresentationState : PageViewModelBase
+public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentModel.ObservableObject
 {
     private TaskCompletionSource? _advanceWaiter;
     private TaskCompletionSource<int>? _choiceWaiter;

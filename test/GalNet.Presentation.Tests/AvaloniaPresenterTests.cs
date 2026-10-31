@@ -43,7 +43,7 @@ public sealed class AvaloniaPresenterTests
     [Test]
     public void LayerPresenterDispatchesACompleteLayerState()
     {
-        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         var dispatcher = new ImmediateDispatcher();
         var presenter = new AvaloniaLayerPresenter(state, new NoTextureLayerFactory(), dispatcher);
 
@@ -73,7 +73,7 @@ public sealed class AvaloniaPresenterTests
     [Test]
     public async Task AnimationPresenterAppliesACompletedReplaceAnimation()
     {
-        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         state.SetLayer("hero", new SceneLayerItem { HandleId = "hero", Opacity = .2f });
         var presenter = new AvaloniaAnimationPresenter(state, new ImmediateDispatcher());
 
@@ -99,7 +99,7 @@ public sealed class AvaloniaPresenterTests
     [Test]
     public async Task Stopping_looping_shake_removes_only_its_offset_and_allows_reuse()
     {
-        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         state.SetLayer("hero", new SceneLayerItem { HandleId = "hero", X = 37 });
         using var presenter = new AvaloniaAnimationPresenter(state, new ImmediateDispatcher());
         var timeline = new TimelineDefinition
@@ -126,7 +126,7 @@ public sealed class AvaloniaPresenterTests
     [Test]
     public async Task DrainedParticleRemovalIsPostedUntilAfterTheRenderPass()
     {
-        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         var dispatcher = new QueuedDispatcher();
         using var presenter = new AvaloniaParticlePresenter(state, new NullTextureLayerFactory(), dispatcher);
         var request = new ParticleEmitterRequest("ending-particles", new ParticleEmitterDefinition("spark"), 0);

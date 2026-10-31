@@ -302,7 +302,7 @@ public sealed class ScreenshotEntryTests
     {
         var page = new GamePage();
         var root = new Border { Child = page, Classes = { "galnet-player" } };
-        root.Styles.Add(new ClassicTheme().CreateStyles());
+        root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
         var window = new Window { Width = 640, Height = 360, Content = root };
         window.Show();
         window.UpdateLayout();

@@ -102,7 +102,7 @@ public sealed class SampleLocalizationTests
             var badBool = new GalNet.Core.Variable.Variable { Name = "player.galnet.settings.quickReadOnly" };
             badBool.SetValue("false");
             variables.NotifyVariableChanged(GalNet.Core.Variable.VariableScope.Player, badBool.Name, badBool);
-            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
             var runtime = new GameSettings { QuickReadOnly = false, QuickAdvanceIntervalMilliseconds = 3000 };
             await settings.AttachAsync(variables, runtime, GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
             Assert.That(runtime.QuickReadOnly, Is.True);
@@ -142,7 +142,7 @@ public sealed class SampleLocalizationTests
             {
                 using var localization = CreateLocalization();
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
-                using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+                using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
                 var configuration = new GalNet.Contracts.Builtins.Audio.AudioConfiguration(
                     [new() { Id = "rain/near", BusId = "ambience" }, new() { Id = "wind", BusId = "ambience" }],
                     [new() { Id = "ambience", Name = "Environment" }]);
@@ -175,7 +175,7 @@ public sealed class SampleLocalizationTests
         {
             using var localization = CreateLocalization();
             using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
-            using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!)))
+            using (var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState()))
             {
                 var other = new GalNet.Core.Variable.Variable { Name = "player.other" };
                 other.SetValue("preserved");
@@ -197,7 +197,7 @@ public sealed class SampleLocalizationTests
             }
             using var restoredLocalization = CreateLocalization();
             using var restoredVariables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
-            using var restoredSettings = new AvaloniaPlayerSettingsService(restoredLocalization, new GamePageViewModel(null!));
+            using var restoredSettings = new AvaloniaPlayerSettingsService(restoredLocalization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
             var restoredRuntime = new GameSettings();
             await restoredSettings.AttachAsync(restoredVariables, restoredRuntime, GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
             Assert.Multiple(() =>
@@ -237,7 +237,7 @@ public sealed class SampleLocalizationTests
         try
         {
             using var localization = CreateLocalization();
-            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
             localization.AttachGame(new GalNet.GameHost.Content.GameContent
             {
                 Graph = new(),
@@ -288,7 +288,7 @@ public sealed class SampleLocalizationTests
             }
         };
         localization.AttachGame(content);
-        using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+        using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
         Assert.That(title.Value, Is.EqualTo("Translated UI"));
         Assert.That(localization.Resolve("line"), Is.EqualTo("external"));
         Assert.That(localization.Resolve("unique"), Is.EqualTo("kept"));

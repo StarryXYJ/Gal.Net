@@ -28,7 +28,7 @@ public sealed class DesktopWindowPlacementTests
             using var localization = new AvaloniaPlayerLocalization(new CultureService());
             using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             using var display = new AvaloniaWindowDisplayService();
-            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!), display);
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState(), display);
             settings.BindWindow(window);
             await settings.AttachAsync(variables, new GameSettings());
             var mode = settings.Categories.Single(category => category.Id == "graphics").Items.OfType<ChoiceSetting<PlayerDisplayMode>>().Single();

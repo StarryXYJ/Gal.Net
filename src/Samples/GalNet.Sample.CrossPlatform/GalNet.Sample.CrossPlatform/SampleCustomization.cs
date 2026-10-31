@@ -32,7 +32,24 @@ namespace GalNet.Sample.CrossPlatform;
 public static class SampleCustomization
 {
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
-    public static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(PlayerPalette);
+    public static global::Avalonia.Styling.IStyle CreateStyles(GamePalette? palette = null)
+    {
+        palette ??= PlayerPalette;
+        var fluent = new global::Avalonia.Themes.Fluent.FluentTheme();
+        fluent.Palettes[global::Avalonia.Styling.ThemeVariant.Light] = palette.CreateFluentPalette();
+        fluent.Palettes[global::Avalonia.Styling.ThemeVariant.Dark] = palette.CreateFluentPalette();
+        var origin = new Uri("avares://GalNet.Sample.CrossPlatform/");
+        var styles = new global::Avalonia.Styling.Styles
+        {
+            fluent,
+            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Controls.axaml") },
+            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Player.axaml") }
+        };
+        styles.Resources["GalNet.Theme.FontFamily"] = GameTypography.UiFontFamily;
+        styles.Resources.MergedDictionaries.Add(palette.CreateResources());
+        styles.Resources.MergedDictionaries.Add(new global::Avalonia.Markup.Xaml.Styling.ResourceInclude(origin) { Source = new Uri(origin, "Styles/Dimensions.axaml") });
+        return styles;
+    }
 
     public static GalNet.Sample.CrossPlatform.Views.PlayerView CreateView()
     {
@@ -44,13 +61,12 @@ public static class SampleCustomization
     public static void ConfigureView(GalNet.Sample.CrossPlatform.Views.PlayerView view)
     {
         view.Resources.MergedDictionaries.Add(PlayerPalette.CreateResources());
-        view.Styles.Add(PlayerTheme.CreateStyles());
+        view.Styles.Add(CreateStyles());
     }
 
     public static void ConfigureServices(IServiceCollection services, Action<IPageViewRegistryBuilder>? configureViews = null)
     {
         ConfigurePages(services);
-        services.AddSingleton(PlayerTheme);
         services.AddAvaloniaGameView(views =>
             {
                 views.Register<ViewModels.TitlePageViewModel, Views.TitlePage>();
@@ -103,7 +119,13 @@ public static class SampleCustomization
             return new GalleryScenePlayback(provider.GetRequiredService<IGameSessionService>(), surface);
         });
         services.AddScoped<Views.GamePage>();
-        services.AddScoped<GamePage>(provider => provider.GetRequiredService<Views.GamePage>());
+        services.AddScoped<GamePage>(provider =>
+        {
+            var model = provider.GetRequiredService<ViewModels.GamePageViewModel>();
+            var page = (GamePage)provider.GetRequiredService<IPageViewFactory>().Create(model);
+            page.Presentation = model.State;
+            return page;
+        });
         services.AddScoped<IPlayerApplication, PlayerApplication>();
         services.AddScoped(provider =>
         {
@@ -113,9 +135,14 @@ public static class SampleCustomization
                 token => navigation.ResetToAsync<ViewModels.GamePageViewModel>(cancellationToken: token),
                 token => navigation.ResetToAsync<ViewModels.TitlePageViewModel>(cancellationToken: token));
         });
-        services.AddScoped(provider => ActivatorUtilities.CreateInstance<GameShell>(provider,
-            new Action(() => provider.GetRequiredService<IGameNavigationService>().ResetTo<ViewModels.TitlePageViewModel>()),
-            new Func<string, Task>(action => provider.GetRequiredService<ViewModels.GamePageViewModel>().HandleInputActionAsync(action))));
+        services.AddScoped(provider =>
+        {
+            var shell = ActivatorUtilities.CreateInstance<GameShell>(provider,
+                new Action(() => provider.GetRequiredService<IGameNavigationService>().ResetTo<ViewModels.TitlePageViewModel>()),
+                new Func<string, Task>(action => provider.GetRequiredService<ViewModels.GamePageViewModel>().HandleInputActionAsync(action)));
+            shell.Styles.Add(CreateStyles());
+            return shell;
+        });
     }
 
     public static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();

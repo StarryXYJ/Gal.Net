@@ -4,7 +4,7 @@
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:sharedvm="using:GalNet.Avalonia.GameView.ViewModels"
              xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
-             xmlns:common="using:GalNet.Avalonia.Themes.Common"
+             xmlns:common="using:GalNet.Avalonia.GameView.Controls"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              x:Class="GalNet.Sample.CrossPlatform.Views.SettingsPage"
              x:DataType="vm:SettingsPageViewModel">

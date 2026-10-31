@@ -12,12 +12,12 @@ public sealed class GamePresentationStateTests
     public void DefaultPageAndRuntimeShareOneStatePerScope()
     {
         var services = new ServiceCollection();
-        services.AddAvaloniaGameViewPages(new ClassicTheme());
+        services.AddScoped<GamePresentationState>();
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         using var first = provider.CreateScope();
         using var second = provider.CreateScope();
         var state = first.ServiceProvider.GetRequiredService<GamePresentationState>();
-        Assert.That(first.ServiceProvider.GetRequiredService<GamePageViewModel>(), Is.SameAs(state));
+        Assert.That(state.GetType().BaseType, Is.EqualTo(typeof(CommunityToolkit.Mvvm.ComponentModel.ObservableObject)));
         Assert.That(second.ServiceProvider.GetRequiredService<GamePresentationState>(), Is.Not.SameAs(state));
     }
 

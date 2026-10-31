@@ -8,7 +8,7 @@ using Ursa.Controls;
 namespace GalNet.Avalonia.GameView.Services;
 
 /// <summary>Default Ursa overlay prompt with preview, destination and UI inclusion.</summary>
-public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageViewRegistry views, IServiceProvider services,
+public sealed class AvaloniaGameScreenshotService(IPageViewRegistry views, IServiceProvider services,
     IAutomaticGameScreenshotDestination? automaticDestination = null) : IGameScreenshotService
 {
     public async Task CaptureAsync(GameScreenshotRequest request, CancellationToken cancellationToken = default)
@@ -55,7 +55,6 @@ public sealed class AvaloniaGameScreenshotService(IGameLayoutTheme theme, IPageV
 
         using var dialog = (ScreenshotDialog)ActivatorUtilities.CreateInstance(services,
             views.GetViewType(typeof(ScreenshotDialogViewModel)));
-        dialog.Styles.Add(theme.CreateStyles());
         await OverlayDialog.ShowCustomAsync<bool>(dialog, viewModel, null,
             new OverlayDialogOptions { TopLevelHashCode = request.Owner.GetHashCode() }, cancellationToken);
     }

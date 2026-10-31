@@ -29,7 +29,7 @@ public sealed class VideoNativeSmokeTests
         Assert.That(duration, Is.GreaterThan(0));
         TestContext.Out.WriteLine($"Video duration: {duration} seconds.");
         using var assets = new AssetManager([new LocalFileProvider(assetsRoot, BuiltinResourceTypes.CreateCatalog())]);
-        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher(), mediaFactory: factory);
         using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(20));
         var request = new VideoRenderRequest("native-smoke", new LayerRenderRequest("video", "a1000000000000000000000000000011",
@@ -76,7 +76,7 @@ public sealed class VideoNativeSmokeTests
         var factory = CreateFactory(nativePath);
         using var realAssets = new AssetManager([new LocalFileProvider(Environment.GetEnvironmentVariable("GALNET_VIDEO_ASSETS")!, BuiltinResourceTypes.CreateCatalog())]);
         var assets = new DelayedAssets(realAssets);
-        var state = new GamePageViewModel(new NoOpGameNavigationService());
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         await using var presenter = new AvaloniaVideoPresenter(assets, state, new ImmediateDispatcher(), mediaFactory: factory);
         var request = new VideoRenderRequest("pending-video", new LayerRenderRequest("video", "a1000000000000000000000000000011",
             new LayerTransform(), 0, LayerDisplayMode.Uniform, 1), []);

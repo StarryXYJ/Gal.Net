@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供 GameShell、GamePage、截图对话框行为基类及共享 ViewModel/服务；Sample 的普通页面布局及应用 VM 位于其单个应用项目，通过组合期注册表完成 ViewModel 到 View 的映射；旧主题页面和旧组合入口暂供迁移中的消费者使用，待 P5 清理。
+`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供 GameShell、GamePage、截图对话框行为基类及共享 ViewModel/服务；Sample 的普通页面布局及应用 VM 位于其单个应用项目，通过组合期注册表完成 ViewModel 到 View 的映射。
 
 页面宿主不读取游戏文件，也不持有项目目录。宿主负责提供游戏内容、资源、存档、玩家变量、进度和媒体实现；编辑器预览与官方 CrossPlatform Sample 在各自的组合根中装配这些服务。
 
@@ -18,11 +18,11 @@
 
 `IGameNavigationService` 只管理一个游戏 Scope 内的页面状态和回退历史。`IPageViewRegistry` 在组合期建立不可变的 ViewModel→View 映射，`IPageViewFactory` 从同一 Scope 解析页面并设置 `DataContext`。页面导航参数通过 `IActivatablePageViewModel<TArgs>` 传递，不注册到 DI。
 
-`Presentation.GamePresentationState` 持有场景集合、对白/NVL/选项等待、播放模式、历史重播及交互阻塞等运行呈现状态。GamePage、presenter、设备输入、会话/运行适配和设置消费该对象，不通过具体页面 VM 操作这些机制。当前默认 `GamePageViewModel` 是短期页面适配，保留存读档、设置和返回路由，并继承同一呈现状态；默认 DI 将两种服务类型解析为同一个 Scoped 实例，不复制状态。场景鉴赏 replay 仍使用独立呈现实例。此过渡结构随 F-20261031-02 后续页面迁移收敛，不代表主题/页面归属迁移已经完成。
+`Presentation.GamePresentationState` 继承 ObservableObject，持有场景集合、对白/NVL/选项等待、播放模式、历史重播及交互阻塞等运行状态，不是可导航页面。GamePage、presenter、输入、会话和设置直接消费该对象；Sample 游戏 VM 通过 IGameplayPage.State 组合同一个 scoped 状态。场景鉴赏使用独立状态和 run。
 
 `GameActionDispatcher` 与 `PlayerInputRouter` 接收活动 `GamePresentationState`。设备无关的播放动作直接使用该状态；打开保存、读取、设置页及首空槽保存失败后的页面回退由应用动作回调处理，输入层不选择具体页面 VM。
 
-Sample 的游戏页面 VM 已通过 `IGameplayPage.State` 组合该状态，GameShell 通过此能力取得当前运行交互对象。`GamePage.Presentation` 独立于页面 DataContext，内部场景/对白/NVL/选项/历史绑定该状态，项目工具栏可以绑定自己 VM 的命令。旧页面 DataContext 直接为呈现状态的路径暂保留兼容，随页面迁移删除。
+Sample 的游戏页面 VM 已通过 `IGameplayPage.State` 组合该状态，GameShell 通过此能力取得当前运行交互对象。`GamePage.Presentation` 独立于页面 DataContext，内部场景/对白/NVL/选项/历史绑定该状态，项目工具栏可以绑定自己 VM 的命令。页面 DataContext 只负责项目命令和页面状态；设置 DataContext 不会替换 Presentation。
 
 GameShell 的返回标题和应用输入动作由组合入口提供回调；GameLaunchFlow 接收加载、游戏、失败三个呈现回调，不选择具体页面类型。加载呈现完成且准备完成后才开始播放；加载失败时取消并等待准备任务清理后执行失败呈现，避免 UI 回退先于资源释放。
 
@@ -30,7 +30,7 @@ GameShell 的返回标题和应用输入动作由组合入口提供回调；Game
 
 存档页组合 `SaveSlotCollection`，内置对象订阅槽位更新并释放预览，项目 VM 决定保存后返回及读档流程。Gallery 页面组合 `GalleryThumbnailCollection`、`GalleryImageState`、`GalleryAudioState`、`GalleryVideoState` 与 `GalleryScenePlayback`，内置对象负责预览、轮询、取消与资源释放，不选择具体应用页面。缩略图请求捕获本次取消源与行快照，旧请求不能回写替换后的列表。场景重播等待 pending startup 结束后才释放；已由启动取消路径释放的 run 不再留在 pending slot 中，避免重复释放。
 
-内置三布局统一使用 Themes 的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，目标平台实际显示仍需验收。Editor 自身字体不在本次范围。
+Sample 使用配色库的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，目标平台实际显示仍需验收。Editor 自身字体不在本次范围。
 
 需要返回行为的页面继承 `BackNavigablePageViewModel`，获得共享 `BackCommand`、受保护的 `Navigation` 和可重写的 `OnBack()`；默认通过导航历史返回。设置、存读档、鉴赏及其详情、关于页已接入；视频详情的 `OnBack()` 先停止播放。标题、加载和剧情页不默认开启返回。页面 XAML 继续绑定 `BackCommand`，无需绑定键盘事件。
 
@@ -38,41 +38,25 @@ GameShell 的返回标题和应用输入动作由组合入口提供回调；Game
 
 ## 页面与组合
 
-共享 ViewModel 由 `AddAvaloniaGameViewPages(theme)` 注册，普通 View 由所选主题提供：
+Sample 的标题、加载、游戏、设置、存读档、Gallery/详情/诊断及关于页全部位于项目 Views/ViewModels。项目 VM 定义业务命令和明确路由，复用内置呈现、存档行、缩略图、媒体和重播状态。
 
-| 页面 | 作用 |
-| --- | --- |
-| `TitlePageViewModel` | 开始、继续和进入其他页面 |
-| `LoadingPageViewModel` | 游戏会话加载状态 |
-| `GamePage` / `GamePageViewModel` | 游戏场景、对话、选择和交互 |
-| `SaveSlotsPageViewModel` | 存档槽和读写操作 |
-| `SettingsPageViewModel` | 运行期设置 |
-| `GalleryPageViewModel` | 已解锁内容 |
-| `AboutPageViewModel` | 宿主提供的关于内容 |
+`AddAvaloniaGameView(configureViews, configureGalleryPages)` 为显式映射的普通 VM/View 注册 Scoped 服务，不要求固定全量页面。注册表不可变，映射按实际 VM 类型查找；导航到没有映射的类型会报告其全名。启用游戏/截图能力时分别要求 GamePage/ScreenshotDialog 行为控件，截图窗口每次构造并释放。Gallery 只按显式内容类型匹配，缺失类型由应用的回调显示诊断。
 
-宿主可以在 `AddAvaloniaGameViewPages(theme)` 的注册回调中覆盖主题 View，或者追加自定义页面。注册表构建后不可修改。
+### 项目样式与配色
 
-### 布局主题与独立配色
+配色库仅提供 GamePalette 和 GameTypography，不包含页面和布局注册协议。SampleCustomization.CreateStyles() 创建独立的 Fluent 样式、语义配色及项目 Styles/Player.axaml、Dimensions.axaml。Sample 在自己的播放器根、导航壳和截图窗口应用这些资源；内置 GameShell 和截图服务不选择应用样式。新增页面基础通过模板源码表达，不引入运行期主题切换。
 
-`IGameLayoutTheme` 位于 GameView.Composition，提供 `CreateStyles()` 和 `RegisterViews(IPageViewRegistryBuilder)`。`AddAvaloniaGameViewPages(theme: theme)` 主题参数必需，按共享 GamePage 宿主、主题页面、宿主 Gallery 回调、宿主 View 回调顺序注册，随后检查全部必需映射及 GamePage/ScreenshotDialog 基类契约；缺失时列出诊断并拒绝初始化。普通 View 自动补充 Scoped DI 注册，截图对话框每次新建并释放。共享 ViewModel 与业务服务继续由 GameView/宿主注册。
+资源分为 GalNet.Palette.*Color、GalNet.Brush.* 语义颜色，以及应用赋值的 GalNet.Theme.* 尺寸/字体键。GamePalette 校验 21 个必需画刷；Fluent 颜色桥接要求对应 Color 或纯色画刷。控件库保留中性默认资源；根资源可覆盖，不能在多个根复用同一个 Styles 实例。
 
-可选 `GalNet.Avalonia.Themes` 集合提供 Classic、Minimal、Paper 布局和 Ocean、Rose、Mono 配色，布局与配色任意组合。配置由开发者在启动代码决定，运行期固定。GameShell 获取 DI 中的主题，并把资源与样式加载到游戏根；Sample 和 Editor 预览均显式选择 Classic；GameView 不再提供默认页面或玩家样式。独立语言选择与截图弹窗接入同一主题资源。官方布局使用玩家根内的 Fluent 模板和所选配色，宿主 Semi、编辑器、调试 UI 与系统文件选择器保持各自作用域。
-
-资源分为 `GalNet.Color.*` 基础色、`GalNet.Palette.*Color` 语义色、`GalNet.Brush.*` 语义画刷和 `GalNet.Theme.*` 布局尺寸。Controls 提供中性画刷回退；Palette 提供完整配色；内置布局不重定义公共语义色，宿主可通过玩家根 Resources 覆盖。GamePalette 检查 21 个必需画刷；官方 Fluent 桥接需对应 Color 资源或可解析的纯色画刷。
-
-普通页保持 UserControl + 共享 ViewModel。三套内置布局分别提供全部普通页面的 XAML View，包含标题、设置、存档、关于、加载、Gallery 入口/列表/详情和诊断页；GameView 不保留普通页面回退；最终映射必须包含全部内置页面与 ScreenshotDialogViewModel。替换单页无需实现完整主题。配置和扩展示例见 [Themes README](../../../src/Presentation/GalNet.Avalonia.Themes/README.md)。
-
-页面容器不绘制外框。同一主题内保持一致的返回位置：Classic 顶部页头右侧、Minimal 侧栏底部、Paper 居中标题左侧。图片按比例缩放至独立内容区，不覆盖返回操作。`GalNet.Theme.PageMaxWidth`、`PageHeaderMinHeight`、`BackMinWidth`、`BackMinHeight` 可调整整体宽度与返回点击区域；这些尺寸属于玩家设计画布，实际显示受宿主缩放影响。
-
-对白 `DialogueFontSize` 与 `SpeakerFontSize` 独立配置，内置主题人物名比正文大 4 个设计单位（Classic/Paper 为 26/22，Minimal 为 24/20）；中性回退为 22/18。
+页面容器和返回按钮位置、对白人物名/正文字号等由项目 XAML/资源决定。当前默认页面保持顶部页头右侧返回、独立媒体区域以及人物名/正文 26/22 设计字号。局部按钮可直接写 XAML、样式或 ControlTheme，不要求实现整套主题。
 
 ### GamePage 模板契约
 
 `GamePage` 是稳定的 TemplatedControl，拥有 `Scene`、`SceneHost`、`Dialogue`、`Nvl`、`Choice` 内容及输入行为。其 ControlTheme 必须包含 `PART_Scene`、`PART_Dialogue`、`PART_Nvl`、`PART_Choice` 四个 ContentPresenter，并用 TemplateBinding 呈现对应内容。不得创建第二套核心 presenter 或重复挂载内容；缺失或错误承载点在模板应用时明确报错，阻塞呈现前调用 EnsureLayout。
 
-GamePageViewModel 的自定义 View 必须继承 GamePage；DI 中的 GamePage 别名与页面工厂解析同一 Scoped 实例。只变更布局推荐覆盖 ControlTheme。模板重建及运行期主题切换不在当前契约内，NVL/打字机内部部件仍保存呈现状态。
+实现 IGameplayPage 的页面 VM 对应 View 必须继承 GamePage；DI 中的 GamePage 别名与页面工厂解析同一 Scoped 实例。只变更布局推荐覆盖 ControlTheme。模板重建及运行期主题切换不在当前契约内，NVL/打字机内部部件仍保存呈现状态。
 
-页面识别按钮、SelectingItemsControl、TextBox 和 RangeBase 的交互；自定义交互区域设置 `GamePage.IsPlayerInteraction=true`，避免点击操作同时推进剧情。非交互区域继续调用共享 ViewModel 的推进逻辑。
+页面识别按钮、SelectingItemsControl、TextBox 和 RangeBase 的交互；自定义交互区域设置 `GamePage.IsPlayerInteraction=true`，避免点击操作同时推进剧情。非交互区域继续调用 Presentation 的推进逻辑。
 
 ### 截图对话框契约
 
@@ -114,7 +98,7 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 `SettingsPageViewModel` 通过 `IPlayerSettingsService.Categories` 获取只读分类及类型化设置项，通过 `Editors` 借用该宿主的字段工厂注册表，分类使用局部 TabControl，不创建导航子页面。数值/滑块、Bool、String、Choice 使用 SchemaForm 的共享默认工厂；Action 与自定义编辑器保留专属行为。Step 仅改变操作步长，不参与校验；动态可见性、可用性和原因 key 驱动界面更新。应用/保存由 SettingsCoordinator 串行协调，保存失败可重试而不重复应用。共享页面不读取配置文件。
 
-内置主题的 `Common.SettingsCategories.Editors` 接收宿主 EditorRegistry；普通设置通过 `SettingItem<T>` 的 IFieldBinding 调用原有 apply/save 队列，类型化选项使用 ValueCodec 编码，标签与值分开。主题提供单字段表单模板与统一设置行的标签、说明、单位、可用性及错误；工厂注册或替换由宿主组合。旧 EditorTemplates/SettingEditor 和数值/选项 UI 转换代理已移除。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
+内置 `Controls.SettingsCategories.Editors` 接收宿主 EditorRegistry；普通设置通过 `SettingItem<T>` 的 IFieldBinding 调用原有 apply/save 队列，类型化选项使用 ValueCodec 编码，标签与值分开。控件提供单字段表单与设置行的标签、说明、单位、可用性及错误；工厂注册或替换由宿主组合。旧 EditorTemplates/SettingEditor 和数值/选项 UI 转换代理已移除。自定义设置通过 `CustomSettingEditor` 创建独立控件租约并在 detach 时释放。
 
 设置页的 Checkbox 左对齐。音频音量项通过 `SettingItem.InlineToggle` 引用同分类中的静音 BoolSetting；`DisplayItems` 仅负责合并显示，原 `Items`、设置 ID、可用性及 SettingsCoordinator 写入队列保持完整。静音按钮与实际滑块编辑器同行，以喇叭/斜杠喇叭区分状态，保留键盘焦点和无障碍名称。
 
@@ -122,7 +106,7 @@ Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列�
 
 操作设置的触屏手势和手柄确认布局以本地化 key 作为 ComboBox 数据项，由 ItemTemplate 分别创建选中区和弹出列表的文本控件，不共享 PlayerTextBlock 实例。关闭列表、提交设置或切换语言不应清空选中区文字；自定义编辑器卸载后仍正常释放本地化绑定。
 
-三套布局共用单外框 `SaveSlotCard`：预览铺满卡片，底部半透明信息区只显示名称和时间；悬停或内部焦点高亮整卡。有效存档的名称支持直接编辑，Enter/失焦提交、Escape 放弃。宿主通过可选 `ISaveSlotNamingSession` 接入；空槽、坏档和不支持改名的宿主保持只读。文件存档沿用原 `Description` 字段保存名称，`ISaveSlotNamingService` 只修改此字段，时间、预览和剧情快照保持原值。默认 PlayerSession 覆盖槽位时保留名称；改名不改变“继续游戏”按时间选择最近存档的顺序。
+Sample 使用单外框 `SaveSlotCard`：预览铺满卡片，底部半透明信息区只显示名称和时间；悬停或内部焦点高亮整卡。有效存档的名称支持直接编辑，Enter/失焦提交、Escape 放弃。宿主通过可选 `ISaveSlotNamingSession` 接入；空槽、坏档和不支持改名的宿主保持只读。文件存档沿用原 `Description` 字段保存名称，`ISaveSlotNamingService` 只修改此字段，时间、预览和剧情快照保持原值。默认 PlayerSession 覆盖槽位时保留名称；改名不改变“继续游戏”按时间选择最近存档的顺序。
 
 GameShell 新生成的存档预览上限为 480×270；旧图按 480 宽度解码展示。默认会话整表刷新只发送一次集合 Reset，普通保存只替换目标槽位，其他行与已解码预览继续复用。`ISaveSlotInfoSource` 是存储的可选单槽元数据查询能力，PlayerSession 对未实现该接口的存储回退整表查询；文件存储实现直接查询并在后台序列化保存数据。
 

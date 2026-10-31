@@ -81,3 +81,35 @@ P1 原生退出缺口已定位并修正测试夹具：NativeSampleWindow 使用�
 中间失败保留：一次 XAML 数据模板误加页面状态前缀，编译定位后修正；一次新测试用 nameof(类型别名) 断言诊断文本，实际报告真实类型全名，改用 typeof(...).FullName。`integration-before-assert-fix.trx` 保留该断言错误与 Editor 基线失败，不隐藏新增测试问题。
 
 本阶段不改变平台外壳、契约、发布图或 debug/player 编译边界。Windows 原生场景与 LibVLC 已验证；真实原生窗口手动存读档、Linux/Android 设备与发行矩阵留在 P6，不用 headless 回归代替相应验收。P5 继续删除整套主题及旧适配，只保留配色与内置控件默认样式。
+
+
+## P5 进行中（2026-11-01）
+
+已删除完整主题协议、三套重复布局和旧普通页面 VM/默认表面；Sample 自己创建普通 Avalonia Styles、加载项目 Styles/Player.axaml 与 Dimensions.axaml。配色库只保留 GamePalette/GameTypography 及颜色资源；Fluent 桥接只负责颜色。AudioGalleryRow、SettingsCategories 移入 GameView.Controls。GameShell 与截图服务不选择应用样式，Sample 为根/壳/截图窗口加载自己的样式。GamePresentationState 只继承 ObservableObject；GamePage.Presentation 显式接线，不再以 DataContext 推断状态。Sample 的运行 GamePage 通过实际页面映射解析并接入 State，替换控件时保证工厂与运行对象身份一致。
+
+测试迁移：把原三种布局矩阵收敛到唯一模板，仍保留全部配色/输入/尺寸/异步行为断言。架构检查不允许 Presentation.Tests 引用 Sample，因此将依赖项目 UI/样式的测试及其本地化资源移入 IntegrationTests；纯机制测试保留在 Presentation.Tests，没有放宽架构规则。首次完整集成 333 passed / 2 failed：一项既有 Editor dirty，另一项为移动测试时漏随迁的嵌入文案，已定位并补迁，待最终回归。此前呈现集 311 passed / 3 failed 均为 UI 分类计数假设，已改为验证全部实际可见分类，UI 用例已随迁集成。
+
+默认全解决方案 force-evaluate restore 已成功；其余 profile 锁图、最终回归/原生与文档仍在推进，不宣称 P5 已完成。
+
+P6 环境发现：WSL 发行版为 Ubuntu；Android SDK 实际为 F:/Android/android-sdk，ADB 当前无设备（List of devices attached 为空）。已异步询问用户是否接设备，继续独立推进其他验收。不得将本轮旧 APK 或此前设备结果视为 P5/P6 新实现的真机证据。
+
+
+### P5 最终结果
+
+整套主题协议、三套重复页面、旧普通页面 VM、DefaultPlayerApplication/旧 PlayerView 与语言布局、GamePage 的 DataContext 状态兼容和 GamePresentationState 的页面继承均已删除。唯一应用页面在 Sample，配色库无任何 ProjectReference，仅保留 Avalonia Fluent 颜色桥接/资源与字体回退。GameView 保留稳定控件默认样式，不包含应用页面注册策略。普通样式/字体/尺寸归项目 Styles/。
+
+Sample 的 GamePage 服务按实际 VM→View 映射解析，同 scoped 页面工厂实例与运行 surface 一致，并显式指定 Presentation。自定义控件映射不再被固定 Views.GamePage 别名绕过。所有运行库不引用 Sample 或旧普通页面类型，旧 API/资源 URI 搜索无残留。
+
+最终证据位于 `.artifacts/sample-ui-template/p5/`：
+
+- `presentation-final.trx`：225 total / 219 executed / 219 passed / 0 failed，6 个显式用例未执行。
+- `integration-final.trx`：350 total / 335 executed / 334 passed / 1 既有 Editor dirty 失败，15 个显式用例未执行。模板 UI 相关测试及文案资源从呈现层迁入集成层，旧三布局的重复参数移除，保留唯一模板 × 全部配色/窗口/交互断言；不能用测试数量减少声称覆盖增强。
+- `architecture-final.trx`：56 passed；配色库直接项目依赖 allowlist 收紧为空，没有放宽测试项目依赖规则。
+- `native-media.trx`：6 passed，含真实 Sample 五个不同渲染检查点、确认退出码 0 与五项 LibVLC 音视频/取消释放。
+- `captures/`：标题、游戏、各普通页、配色、弹窗、媒体控件与窄窗口渲染证据；已查看 Mono 标题，保持默认布局。
+- `locked-profiles.json`：Desktop 四 RID × 两模式，Android/iOS/Browser 各两模式，共 14 组 locked restore 全部成功。默认解决方案、配色库 WindowsReadyToRun locked restore 成功。它们只证明图可还原，不代表 macOS/iOS/Browser 实际运行已验收。
+- `palette-lock-scan.json`：全部源锁图不存在配色库到 GalNet 项目的旧依赖边。普通 locked restore 曾保留三个旧边，最终再次 force-evaluate 再 locked 后清零。
+- 包版本没有升级。结构化核对发现两份 Browser 图的 SDK 隐式包 Microsoft.NET.Sdk.WebAssembly.Pack 10.0.12 生成 contentHash 与基线不同；保留本机工作负载真实还原结果，并逐份 locked 复核，未伪造旧哈希。Browser 运行仍不在本 feature 支持范围。其余共同包的版本/contentHash 不变，初始检查与差异记录在 lock-comparison.json。
+- `format-final.log` 和 `git diff --check` 通过。构建/还原日志保留中间编译、测试分层和文案遗漏的失败记录；最终没有新增回归失败。
+
+P5 已完成。后续持续执行 P6 仓库外定制、实际平台/发行与收尾；Android 当前无设备，不把 AOT 或 headless 验证当作真机验收。

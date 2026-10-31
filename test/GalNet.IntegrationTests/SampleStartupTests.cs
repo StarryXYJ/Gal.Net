@@ -1,3 +1,4 @@
+using LanguageSelectionView = GalNet.Sample.CrossPlatform.Views.LanguageSelectionView;
 using Avalonia.Controls;
 using DynamicLocalization.Core;
 using DynamicLocalization.Core.Providers;

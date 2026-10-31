@@ -31,7 +31,7 @@ public sealed class TextureEffectsTests
             """;
         using var texture = new SceneTexture(new Avalonia.Media.DrawingImage(), Solid(SKColors.White));
         using var assets = new TextureAssetManager(texture);
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         using var resolver = new SkiaShaderEffectProgramResolver(new StaticShaderSource(shader));
         using var runtime = new AvaloniaEffectRuntime(page, resolver, assets);
         var request = new EffectRequest("", "mask", "layer", Parameters: "{\"mask\":\"ok\"}", ProgramResource: "mask-program");
@@ -82,7 +82,7 @@ public sealed class TextureEffectsTests
     [Test]
     public async Task Texture_runtime_preserves_static_values_for_animatable_parameters_without_a_track()
     {
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         using var resolver = new SkiaShaderEffectProgramResolver(new StaticShaderSource(ColorGradeSource));
         using var runtime = new AvaloniaEffectRuntime(page, programs: resolver);
         var request = new EffectRequest(
@@ -110,7 +110,7 @@ public sealed class TextureEffectsTests
     [Test]
     public async Task Texture_runtime_keeps_blade_count_static_and_binds_only_progress()
     {
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         using var resolver = new SkiaShaderEffectProgramResolver(new StaticShaderSource(BlindsSource));
         using var runtime = new AvaloniaEffectRuntime(page, programs: resolver);
         var request = new EffectRequest(

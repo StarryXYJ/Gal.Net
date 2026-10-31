@@ -29,9 +29,6 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
         registrations.AddScoped(_ => options)
             .AddScoped<AvaloniaGameSession>()
             .AddScoped<IGameSessionService>(services => services.GetRequiredService<AvaloniaGameSession>());
-        registrations.TryAddScoped<LanguageSelectionViewModel>();
-        registrations.TryAddScoped<PlayerView>();
-        registrations.TryAddScoped<IPlayerApplication, DefaultPlayerApplication>();
         configure(registrations);
         _root = registrations.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         _scope = _root.CreateAsyncScope();

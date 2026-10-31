@@ -1,3 +1,11 @@
+using MissingGalleryPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.MissingGalleryPageViewModel;
+using SceneGalleryPlayerPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPlayerPageViewModel;
+using VideoGalleryPlayerPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.VideoGalleryPlayerPageViewModel;
+using CgGalleryImagePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.CgGalleryImagePageViewModel;
+using GalleryPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.GalleryPageViewModel;
+using AboutPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.AboutPageViewModel;
+using SettingsPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel;
+using SaveSlotsPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using Avalonia;
@@ -308,21 +316,6 @@ public sealed class SampleTemplatePagesTests
         services.AddSingleton<IGameSessionService>(session);
         services.AddScoped<Notebook>();
         SampleCustomization.ConfigureServices(services, views => views.Register<Notebook, NotebookView>());
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.TitlePageViewModel>(_ => throw new AssertionException("Legacy title VM must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.LoadingPageViewModel>(_ => throw new AssertionException("Legacy loading VM must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.GamePageViewModel>(_ => throw new AssertionException("Legacy game VM must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(_ => throw new AssertionException("Legacy SettingsPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.SaveSlotsPageViewModel>(_ => throw new AssertionException("Legacy SaveSlotsPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.AboutPageViewModel>(_ => throw new AssertionException("Legacy AboutPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.GalleryPageViewModel>(_ => throw new AssertionException("Legacy GalleryPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.CgGalleryPageViewModel>(_ => throw new AssertionException("Legacy CgGalleryPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.CgGalleryImagePageViewModel>(_ => throw new AssertionException("Legacy CgGalleryImagePage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.AudioGalleryPageViewModel>(_ => throw new AssertionException("Legacy AudioGalleryPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.VideoGalleryPageViewModel>(_ => throw new AssertionException("Legacy VideoGalleryPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.VideoGalleryPlayerPageViewModel>(_ => throw new AssertionException("Legacy VideoGalleryPlayerPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPageViewModel>(_ => throw new AssertionException("Legacy SceneGalleryPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPlayerPageViewModel>(_ => throw new AssertionException("Legacy SceneGalleryPlayerPage must not be used."));
-        services.AddScoped<GalNet.Avalonia.GameView.ViewModels.MissingGalleryPageViewModel>(_ => throw new AssertionException("Legacy MissingGalleryPage must not be used."));
         return services;
     }
 

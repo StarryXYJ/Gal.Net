@@ -41,7 +41,7 @@ public class ProjectDependencyTests
             ],
             ["GalNet.Avalonia.GameHost"] = ["GalNet.Contracts.Builtins", "GalNet.Storage.FileSystem", "GalNet.Media.LibVlc", "GalNet.Media.Miniaudio", "GalNet.Input.Sdl3", "GalNet.GameHost", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView", "GalNet.Avalonia.Rendering", "GalNet.Primitives.Builtins", "GalNet.Runtime", "GalNet.Presentation.Abstractions", "GalNet.Assets", "GalNet.Core"],
             ["GalNet.Avalonia.Controls"] = ["GalNet.Contracts.Builtins", "GalNet.Core"],
-            ["GalNet.Avalonia.Themes"] = ["GalNet.Contracts.Builtins", "GalNet.Avalonia.Controls", "GalNet.Avalonia.GameView"],
+            ["GalNet.Avalonia.Themes"] = [],
             ["GalNet.Avalonia.GameView"] =
             ["GalNet.Contracts.Builtins",
                 "GalNet.Media.LibVlc",

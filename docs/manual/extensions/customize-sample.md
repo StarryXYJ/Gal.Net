@@ -6,7 +6,7 @@
 
 项目 VM 组合内置状态：播放通过 `GamePresentationState`，存档行通过 `SaveSlotCollection`，鉴赏预览与播放通过 `GalleryThumbnailCollection`、`GalleryAudioState`、`GalleryVideoState`、`GalleryImageState`、`GalleryScenePlayback`。项目决定页面路由，内置状态负责取消、媒体及 Bitmap 释放。无需派生旧默认页面 VM或复制播放与资源管理逻辑。
 
-`SampleCustomization` 集中注册页面、加载/返回回调、配色、本地化、契约和执行模块。`AddAvaloniaGameView` 只注册明确列出的页面和机制；普通页面的一条 VM→View 映射会自动注册两者的 Scoped 服务，不要求完整的固定页面列表。Gallery 另按 `cg/audio/video/scene` 等精确内容类型注册；缺失类型由项目诊断页显示。当前样式仍借用旧 Classic 资源，整套主题删除属于 F-20261031-02 P5，尚未完成。
+`SampleCustomization` 集中注册页面、加载/返回回调、配色、本地化、契约和执行模块。`AddAvaloniaGameView` 只注册明确列出的页面和机制；普通页面的一条 VM→View 映射会自动注册两者的 Scoped 服务，不要求完整的固定页面列表。Gallery 另按 `cg/audio/video/scene` 等精确内容类型注册；缺失类型由项目诊断页显示。配色、尺寸及默认样式分别由 PlayerPalette、项目 Styles/Dimensions.axaml 和 Styles/Player.axaml 提供。
 
 直接接入宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，注册 `IPlayerApplication` 提供根表面与启动/返回策略。Sample 的 `Views.PlayerView` 继承无页面布局的 `PlayerSurface` 行为基类，加载项目 XAML 后调用 `InitializeSurface()`；保留命名控件以复用确认取消、焦点恢复、输入屏蔽及公告清理。平台项目负责窗口或单视图挂载及生命周期，宿主负责 scope 和会话释放。
 

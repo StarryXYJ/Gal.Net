@@ -29,3 +29,10 @@ Avalonia 展示按领域拆为 dialogue/choice、layer、animation 和 particle 
 Gallery catalog 是平台无关的静态内容。宿主把其自动生成的 `gallery_<item-id>_unlocked` Player bool 注册到变量服务；`GalleryDataSource` 合并 catalog 与当前 Player 值。Gallery 解锁不存于独立 UI 状态或存档槽。
 
 Avalonia GameView 通过精确 Gallery `typeId` 的 `IGalleryPageRegistry` 选择页面。零个有内容类型时入口不可用，一个类型直达，多类型显示选择页；没有页面映射时进入诊断页，绝不按资源类型 fallback。Gallery 媒体的路径适配由宿主 resolver 完成，并且必须以 `AssetManager` acquire 的内容为来源。
+
+
+## Sample UI 与内置机制
+
+Sample 单个应用项目拥有所有页面 XAML、应用 VM、导航及语言/确认/公告布局。GamePresentationState、SaveSlotCollection、Gallery 的预览/媒体/独立重播状态属于内置机制；页面组合这些对象并负责应用路由，不复制等待者、解码、轮询或 run 清理。GamePage.Presentation 独立于 DataContext。
+
+AvaloniaPlayerHost 拥有 scope、初始化取消、会话及后端释放，应用显式提供 IPlayerApplication。无布局 PlayerSurface 维护确认取消、焦点恢复、输入屏蔽与公告解绑。Gallery 重播释放等待 pending startup 收束，旧缩略图任务不能回写替换后的列表；这些规则在直接修改项目页面后仍然成立。应用样式每个根独立创建，配色库不决定页面和资源生命周期。

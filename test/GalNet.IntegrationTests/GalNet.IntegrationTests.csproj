@@ -10,6 +10,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="Localization/*.json" />
     <PackageReference Include="Avalonia.Headless" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Assets\GalNet.Assets.csproj" />
     <ProjectReference Include="..\..\src\Shared\GalNet.Core\GalNet.Core.csproj" />

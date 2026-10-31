@@ -10,13 +10,13 @@
 
 ## Avalonia 玩家宿主
 
-`Avalonia.GameHost` 提供 `AvaloniaPlayerHost`、无页面布局的 `Views.PlayerSurface` 行为基类和首次语言选择机制。旧 `Views.PlayerView` 及布局暂供迁移中的消费者使用，Sample 使用自己的 PlayerView/LanguageSelectionView XAML。`AvaloniaPlayerHost.CreateAsync(options, configure)` 由调用方注册应用 UI、本地化、设置、启动服务及平台后端。`IPlayerApplication` 提供 Control 表面、挂载/解绑、语言选择、启动状态及返回/退出策略；宿主不解析具体标题或游戏页面 VM，`View` 返回 Control，退出确认通过 `ConfirmExitAsync` 委托给应用。外部调试启动同样通过该应用的 `StartNewGameAsync`，不会绕过项目自己的开始命令。项目可以接入自己的表面而不解析内置 PlayerView/GameShell/TitlePageViewModel；现有默认页面适配暂供迁移中的消费者使用。
+`Avalonia.GameHost` 提供 `AvaloniaPlayerHost`、无页面布局的 `Views.PlayerSurface` 行为基类和首次语言选择机制。Sample 使用自己的 PlayerView/LanguageSelectionView XAML。`AvaloniaPlayerHost.CreateAsync(options, configure)` 由调用方注册应用 UI、本地化、设置、启动服务及平台后端。`IPlayerApplication` 提供 Control 表面、挂载/解绑、语言选择、启动状态及返回/退出策略；宿主不解析具体标题或游戏页面 VM，`View` 返回 Control，退出确认通过 `ConfirmExitAsync` 委托给应用。外部调试启动同样通过该应用的 `StartNewGameAsync`，不会绕过项目自己的开始命令。项目可以接入自己的表面而不解析内置 PlayerView/GameShell/TitlePageViewModel；应用必须显式注册 IPlayerApplication，不再提供固定页面回退。
 
 `AvaloniaPlayerHost` 在 UI 线程创建和操作，建立 DI 根与玩家 scope，挂载视图；初始化可等待用户选择语言。释放先取消初始化并等待结束，再停止会话、解绑窗口/视图、恢复借用的本地化解析器、释放 scope 与服务根。构造失败同样清理已创建的异步服务。暂停停止 Gallery/剧情媒体并落盘检查点，回到标题；标题页根据退出能力返回宿主或显示确认，不把 Activity 重建等同于新建剧情运行。
 
 `Storage.FileSystem.BundledGameInstaller` 接受宿主拥有的内容流，将其复制、计算 hash 并交给正式安装器校验到分版缓存；不会关闭调用方的流。`GameProfilePaths.GetProfileDirectory(content, profileRoot)` 根据项目身份计算稳定目录，应用名与操作系统默认根由宿主决定。`SceneScreenshotWriter.SaveAsync` 捕获借用的 GamePage 并以不覆盖的方式发布 PNG，拒绝路径穿越/目录链接；项目 entry schema 和文件名业务约束由项目执行适配提供。
 
-当前维护的 CrossPlatform Sample 在单个应用项目内通过 `SampleCustomization` 注册页面、项目契约/执行模块及目录策略，平台项目提供最小入口。全部应用页面及其 VM、截图、语言和确认/公告布局位于 Sample 的 Views/ViewModels；游戏 VM 组合 scoped GamePresentationState，不继承内置页面 VM。PlayerApplication 决定默认页面、平台返回和退出；宿主继续负责 scope、初始化取消与释放。复杂存档行、预览和媒体/重播状态留在内置层，场景重播组合项目游戏布局与独立呈现状态。旧主题样式和迁移适配仍待 P5 删除。
+当前维护的 CrossPlatform Sample 在单个应用项目内通过 `SampleCustomization` 注册页面、项目契约/执行模块及目录策略，平台项目提供最小入口。全部应用页面及其 VM、截图、语言和确认/公告布局位于 Sample 的 Views/ViewModels；游戏 VM 组合 scoped GamePresentationState，不继承内置页面 VM。PlayerApplication 决定默认页面、平台返回和退出；宿主继续负责 scope、初始化取消与释放。复杂存档行、预览和媒体/重播状态留在内置层，场景重播组合项目游戏布局与独立呈现状态。旧主题及页面适配已删除，应用样式只在 Sample 源码中维护。
 
 `AvaloniaPlayerLocalization.FromEmbeddedResources` 先加载 GameHost 的通用 UI 文案，再按顺序加载调用方提供的资源程序集。项目标题/说明由项目资源拥有，通用 UI 不包含 Sample 身份或调试文案。AttachGame 保留原始的精确文化来源，由最终 resolver 统一处理翻译覆盖、父文化和默认语言回退，避免内层提前回退遮住外部译文。
 

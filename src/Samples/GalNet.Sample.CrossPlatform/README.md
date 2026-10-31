@@ -6,7 +6,7 @@
 
 内置 `GamePresentationState`、`SaveSlotCollection`、Gallery 的缩略图/媒体/重播状态及 `PlayerSurface` 保留播放、异步取消、预览释放、焦点和输入屏蔽机制。项目页面组合这些对象，不复制机制，也不派生旧默认页面 VM。场景鉴赏使用项目游戏布局和独立呈现状态，不能通过菜单进入主会话存读档/设置。
 
-当前仍借用旧 Classic 主题的样式资源，完整主题抽象及旧页面清理由 F-20261031-02 的 P5 处理；尚未完成只保留配色的最终收敛。会话/scope 所有权来自 `GalNet.Avalonia.GameHost`，内容安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`。
+整套主题与旧页面适配已删除。配色库只提供语义颜色和字体回退；应用样式与尺寸位于项目 Styles/。会话/scope 所有权来自 `GalNet.Avalonia.GameHost`，内容安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`。
 
 | 工程 | 职责与当前验证 |
 | --- | --- |
@@ -78,7 +78,7 @@ iOS 在装有 Xcode/对应 workload 的 Mac 上构建，传入 `GalNetGamePackag
 - 暂停时停止 Gallery，串行保存稳定剧情检查点、进度与偏好，再释放剧情媒体并回到标题；恢复后由“继续”选择最新有效的检查点或手动存档。检查点位于独立 `profile/resume/saves`，不覆盖玩家槽；开始新游戏、显式读档或清空状态会移除旧检查点。不是任意媒体时间点的无缝恢复，也不依赖进程正常退出。
 - 系统返回通过 Avalonia `TopLevel.BackRequested` 进入页面 BackCommand，以执行页面清理；剧情页打开设置。Android/iOS 隐藏程序退出菜单；Android 标题页的系统返回保存后台状态并退到桌面，保留可再次打开的共享会话，不永久 Shutdown App。桌面继续显示退出确认，再次返回取消确认。
 - Android 使用 InsetsManager 的 edge-to-edge 与隐藏系统栏设置收起顶部状态栏/底部导航栏；安全区仍由 TopLevel 自动保护刘海/挖孔。16:9 设计画布等比缩放到扩大的区域，长屏侧边留白不裁剪或拉伸消除。iOS 显示与设备行为尚未验证。
-- 剧情视频、Gallery 三种主题及缩略图共享 LibVLC CPU 像素回调，不创建 Gallery 原生子窗口；Windows/Linux 各 5 项真实解码、缩略图和释放用例通过。
+- 剧情视频、Gallery 播放与缩略图共享 LibVLC CPU 像素回调，不创建 Gallery 原生子窗口；Windows/Linux 各 5 项真实解码、缩略图和释放用例通过。
 - `App.RestartAsync(clearPlayerState: true)` 重建当前应用中的会话，不启动第二个进程；关闭调用 `ShutdownAsync`。这两个入口由平台 UI 线程调用。
 - 项目注册/执行在主项目的 `SampleCustomization`；通用宿主为 `AvaloniaPlayerHost`，视图不选择 Sample 主题或文案程序集。通用 UI 文案在 GameHost，项目文案在本项目的 `Localization`；`FromEmbeddedResources` 按顺序合并，内容及外部翻译继续保留原覆盖和文化回退规则。
 
