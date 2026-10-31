@@ -39,6 +39,7 @@ public sealed partial class GameThemeTests
                 var rows = view.GetVisualDescendants().OfType<AudioGalleryRow>().ToArray();
                 Assert.That(rows, Has.Length.EqualTo(2));
                 var title = rows[0].FindControl<TextBlock>("TrackName")!;
+                Assert.That(title.TextAlignment, Is.EqualTo(TextAlignment.Left));
                 Assert.That(title.Text, Is.EqualTo(name)); Assert.That(title.TextTrimming, Is.EqualTo(TextTrimming.CharacterEllipsis));
                 Assert.That(ToolTip.GetTip(title), Is.EqualTo(name));
                 Assert.That(rows[0].ToggleCommand, Is.SameAs(page.ToggleAudioCommand));
@@ -50,7 +51,10 @@ public sealed partial class GameThemeTests
                 Assert.That(time.HorizontalAlignment, Is.EqualTo(global::Avalonia.Layout.HorizontalAlignment.Right));
                 Assert.That(Grid.GetRow(rows[0].FindControl<Grid>("Timeline")!), Is.Zero);
                 Assert.That(((GalleryEntryViewModel)rows[1].DataContext!).Name, Is.Empty);
-                Assert.That(rows[1].FindControl<TextBlock>("TrackName")!.Text, Is.EqualTo("???"));
+                var lockedTitle = rows[1].FindControl<TextBlock>("TrackName")!;
+                Assert.That(lockedTitle.Text, Is.EqualTo("???"));
+                Assert.That(lockedTitle.IsEffectivelyEnabled, Is.True, "Only playback controls should be disabled; the locked title must remain readable.");
+                Assert.That(ToolTip.GetTip(lockedTitle), Is.Null);
                 Capture(window, $"{layout}-music-gallery-wide");
                 window.Width = 480;
                 await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
@@ -167,13 +171,21 @@ public sealed partial class GameThemeTests
                 _ => scope.ServiceProvider.GetRequiredService<SceneGalleryPageViewModel>()
             };
             page.Items.Add(new(new(new GalleryItem { Id = 2 }, false), "Spoiler"));
+            page.Items.Add(new(new(new GalleryItem { Id = 3 }, true)));
+            page.Items.Add(new(new(new GalleryItem { Id = 4 }, true), "Named resource"));
             var view = scope.ServiceProvider.GetRequiredService<IPageViewFactory>().Create(page);
             var root = new Border { Classes = { "galnet-player" }, Child = view }; root.Styles.Add(theme.CreateStyles());
             var window = new Window { Width = 1000, Height = 600, Content = root }; window.Show();
             try
             {
                 window.UpdateLayout();
-                var caption = view.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Name == "CardTitle");
+                var captions = view.GetVisualDescendants().OfType<TextBlock>().Where(text => text.Name == "CardTitle").ToArray();
+                Assert.That(captions, Has.Length.EqualTo(3));
+                Assert.That(captions.All(text => text.TextAlignment == TextAlignment.Center), Is.True);
+                var caption = captions.Single(text => ((GalleryEntryViewModel)text.DataContext!).IsLocked);
+                var unnamedButton = view.GetVisualDescendants().OfType<Button>().Single(button => button.DataContext is GalleryEntryViewModel { Id: 3 });
+                Assert.That(unnamedButton.IsEffectivelyEnabled, Is.True, "An unlocked card without a name must still open.");
+                Assert.That(ToolTip.GetTip(unnamedButton), Is.Null);
                 Assert.That(caption.Text, Is.EqualTo("???"));
                 Assert.That(caption.IsEffectivelyVisible && caption.IsEffectivelyEnabled, Is.True);
                 Assert.That(caption.Bounds.Height, Is.GreaterThan(10));

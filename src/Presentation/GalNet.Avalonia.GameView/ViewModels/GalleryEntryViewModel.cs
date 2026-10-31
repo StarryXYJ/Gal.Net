@@ -11,6 +11,7 @@ public sealed partial class GalleryEntryViewModel(GalleryItemData data, string? 
     public int Id => Data.Item.Id;
     public string Name { get; } = data.IsUnlocked ? name ?? "" : "";
     public bool HasName => Name.Length > 0;
+    public string? NameTooltip => HasName ? Name : null;
     public string Title => IsLocked ? "???" : HasName ? Name : $"{unnamedTitle} {Id.ToString(CultureInfo.InvariantCulture)}";
     private bool _updating;
     private bool _seeking;

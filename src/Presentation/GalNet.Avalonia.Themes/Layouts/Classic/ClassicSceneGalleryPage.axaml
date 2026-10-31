@@ -23,7 +23,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:GalleryEntryViewModel">
                 <Grid Margin="6" RowDefinitions="*,Auto" ClipToBounds="True">
-                  <Button Grid.RowSpan="2" Margin="0" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ClipToBounds="True" IsEnabled="{Binding IsUnlocked}" Command="{Binding #Items.DataContext.OpenItemCommand}" CommandParameter="{Binding}" ToolTip.Tip="{Binding Name}" ToolTip.IsEnabled="{Binding HasName}">
+                  <Button Grid.RowSpan="2" Margin="0" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ClipToBounds="True" IsEnabled="{Binding IsUnlocked}" Command="{Binding #Items.DataContext.OpenItemCommand}" CommandParameter="{Binding}" ToolTip.Tip="{Binding NameTooltip}">
                     <Grid ClipToBounds="True" RowDefinitions="*" Background="{DynamicResource GalNet.Brush.Surface}">
                       <PathIcon Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5" IsVisible="{Binding !HasThumbnail}" Data="M 4,2 L 14,8 L 4,14 Z" />
                       <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsUnlocked}" />
@@ -34,7 +34,7 @@
                     </Grid>
                   </Button>
                   <Border Grid.Row="1" Background="{DynamicResource GalNet.Brush.Overlay}" Padding="10,7" IsHitTestVisible="False">
-                    <TextBlock x:Name="CardTitle" Text="{Binding Title}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="CardTitle" Text="{Binding Title}" TextAlignment="Center" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" TextTrimming="CharacterEllipsis" />
                   </Border>
                 </Grid>
               </DataTemplate>

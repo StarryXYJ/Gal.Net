@@ -436,3 +436,5 @@
 - [受管理资源 sidecar](lessons/L-20261031-01-managed-resource-sidecars.md)：名称/鉴赏 meta 与 i18n 共用作者事务；移动、删除、复制及导入选项必须识别待保存 sidecar，普通文本入口仍受保护。四类鉴赏与样例迁移见 features/F-20261031-01-resource-gallery/summary.md。
 
 - [LibVLC Parse 回调释放](lessons/L-20261031-02-libvlc-parse-native-callback.md)：3.10.0 Parse 的默认完成源可内联回调；解析后释放 Media 前用异步完成转发，避免原生回调内释放事件源。
+
+- [ToolTip.IsEnabled 禁用目标](lessons/L-20261031-03-tooltip-enabled-target.md)：它是继承的 InputElement.IsEnabled，空提示用 Tip=null，不能绑定 HasName 来开关 tooltip；检查真实控件启用与点击状态。
