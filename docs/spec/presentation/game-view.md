@@ -168,7 +168,7 @@ DtoEditorItem 包含稳定 Id、可选 DtoType、冻结字段清单及借用 bin
 
 Context 的生命周期包装取消旧提交、保留动态选项和 IFieldPreviewBinding 的能力；卸载、换项或创建失败先取消上下文并释放自建字段，再卸载内容与释放控件 lease，清理错误进入 Diagnostics。事件仅由实际订阅者退订一次，不释放借用宿主 binding。宿主提交回调必须遵守取消令牌，框架不回滚回调已完成的写入；工厂在交出 lease 前仍须负责自身临时控件资源。
 
-内置设置主题的普通设置使用 SettingItem.EditorItem/DtoEditorHost，保留设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 在组合后冻结 registry。Editor Group 表单直接绑定作者 JSON，文本、资源、表达式和 Timeline 等专属编辑器按字段契约适配，不再用阶段计划说明当前能力；细节见[Group 规范](../editor/groups.md)。
+Sample 设置页的普通设置使用 SettingItem.EditorItem/DtoEditorHost，保留设置应用/保存队列；Action/ICustomSetting 保留各自行为。Sample 的 CreateFieldEditors 在组合后冻结 registry。Editor Group 表单直接绑定作者 JSON，文本、资源、表达式和 Timeline 等专属编辑器按字段契约适配，不再用阶段计划说明当前能力；细节见[Group 规范](../editor/groups.md)。
 
 StructuredFieldEditor 复用 Expander 主题（StyleKey 为 Expander，宿主样式使用 Expander.structured-field 类选择器），按展开创建、折叠释放子控件。通过 Core 的 ValueDocument / ValueStructureResolver 统一读取 DTO、显式描述的 JSON 对象、一维数组、List<T>/IList<T>/IReadOnlyList<T>/IEnumerable<T> 以及 Dictionary/IDictionary/IReadOnlyDictionary<string,T>。嵌套对象继续通过 DtoEditorHost 支持整 DTO 覆盖，默认内部表单继续成员/类型注册；公共结构解析器根据 JsonTypeInfo 映射实际 wire 名，不构造 DTO 来生成 UI。对象提交使用公共属性 patch，仅替换编辑成员，保留未知成员。没有结构适配的对象级 converter、未知对象、不支持的键类型、八层深度或超过 200 元素使用 JSON；用户也可显式切换结构/JSON。
 

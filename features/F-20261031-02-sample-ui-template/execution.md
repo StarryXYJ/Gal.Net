@@ -113,3 +113,45 @@ Sample 的 GamePage 服务按实际 VM→View 映射解析，同 scoped 页面�
 - `format-final.log` 和 `git diff --check` 通过。构建/还原日志保留中间编译、测试分层和文案遗漏的失败记录；最终没有新增回归失败。
 
 P5 已完成。后续持续执行 P6 仓库外定制、实际平台/发行与收尾；Android 当前无设备，不把 AOT 或 headless 验证当作真机验收。
+
+## P6a：仓库外模板、桌面原生与交付验收
+
+状态：verified（2026-11-01）。实现冻结提交 `ba1fd764fd794940c1f690a354841b6875c4f7a0`，本地验证版本 `0.1.0-dev.99`，没有上传包或发布版本。P6b 的 Android 本轮真机操作仍待设备，整个 feature 保留 implementation。
+
+### 独立消费者
+
+证据根 `.artifacts/sample-ui-template/p6/`。`Pack-NuGet.ps1` 实际生成六个包；`Test-NuGet.ps1` 的 `package-validation/package-validation.json` passed=true，独立验证包闭包、生成器、导出类型、原生加载和许可。没有把仓库 ProjectReference 构建冒充包消费。
+
+`probes/external-template.py` 将唯一 Sample 应用和自有契约复制到仓库外，用六包中的真实 GalNet.Avalonia/Contracts/SchemaGenerator（可选 Debugging）消费，不包含内置库源码引用。`external-template.json` 记录实际目录与 8 个修改/新增应用文件；9 项已有模板回归加五项定制的综合用例，最终 10/10 通过：标题按钮纯 XAML、自有计数命令、Notebook 页面/返回、Rose 配色及 Magenta 局部按钮模板、游戏工具栏自定义且实际点击不推进。
+
+首轮新增工具栏用例在页面动画完成前查找按钮失败；修正探针等待 `ResetToAsync`，没有修改产品实现。原始 `external-before-transition-fix.trx` 保留，不以重试掩盖引擎失败。
+
+### 发布与真实窗口
+
+- `publish-windows/application-publish.json`：Editor、CLI、CrossPlatform Player/Developer 的 win-x64 自包含 raw publish/布局/共享契约闭包通过。
+- `linux-application-publish.json`：Ubuntu 24.04.3 内原生 SDK 10.0.401 从独立检出发布上述四角色，passed=true；并非 Windows cross-publish。SDK 归档 SHA512 与保存的官方来源记录一致，`linux-environment.json`/`linux-steps.json` 记录源码、命令与退出码。
+- `native-windows-final/window/native-flow.json`：真实 HWND，passed=true，previewBytes=261359，存档/改名/读取/scope 重建、暂停重挂载、确认取消/接受全部 true。前后实际场景 PNG 和 profile 保留；最终可复现驱动 `probes/native-windows.ps1` 已实跑通过。
+- `native-linux.json`：真实 XID，Ubuntu 24.04.3 / WSLg，完全相同流程 passed=true，previewBytes=261359，前后场景图保存在 p6 根目录。使用实际控件绑定命令/UI 线程，不是操作系统鼠标全流程；不将 WSLg 宣称原生 Linux 桌面发行验收。
+- `linux-stock-player/verification.json` 与 `linux-stock-developer/verification.json`：原封不动的原生发布，两个窗口均完成 Session ready、进度落盘、X11 关闭请求和确认退出码 0。PATH/SDK 发现被隔离，maps 验证私有 CoreCLR、VLC 和 SDL。
+
+Linux 原生 CLI 首次对 Windows 包的共享 Core 字节校验拒绝，保留 `linux-native-contract-mismatch.log`。最终独立 Linux 包消费者显式引用 Windows 消费者已经交付的自有项目契约产物与匹配内容；Linux 原生源码发布另用自己的契约集合导出内容。不混用两套身份，不放宽严格校验。
+
+探针初次遗漏正式入口的 WithInterFont/默认 Inter 导致 glyphTypeface 失败；随后 WSLg 原生进程曾以 -11 退出。按正式入口补齐字体并沿用已有 d3d12 环境配置后完整流程成功；保留 `linux-native-before-font-fix.log`、`linux-native-segfault.json`。未修改产品默认渲染策略，未在没有原生栈的情况下断言单一崩溃根因。临时 `/tmp` 工作目录曾消失，后改用经边界检查的独占 `~/work`；不复用旧应用快照。
+
+### 媒体、Android 与完整回归
+
+- `linux-media.trx` 首轮 4 passed / 1 failed：MusicGalleryRetainsEachTrackPositionAndCanStartBySeeking(200) 暂停记忆为 0，预期 >1000。`linux-media-retry.trx` 独立两项音频 2/2；`linux-media-final.trx` 全部五项 5/5（两视频实际解码/暂停/定位/释放，两音频位置记忆与定位，时长解析取消）。仍保留首轮异常，原因未确认，不能称已修复或长期稳定性已证明。这些控件是 headless，媒体是私有实际 VLC；真实窗口证据单列。
+- Android 用正常 r28 NDK 源码、Release、Mono、RunAOTCompilation=true、PublishAot=false、双 ABI、CI=true/version99 构建，未切换为单 ABI 锁图。首次缺少显式 NDK 路径的失败保留；补齐现有 NDK 后成功。再从本次 Android 契约导出完整 galpak，嵌入最终 APK，未关闭契约校验或全局抑制诊断。
+- `android-package.json`：签名本地 APK 145667556 字节，ARM64/x86_64 各 114 个 AOT 条目；完整 `assets/game.galpak` 与导出相同，全部原生 ELF LOAD ≥16 KB、架构正确、VLC/miniaudio 存在、无桌面 SDL。deviceTested=false；不安装/卸载/覆盖用户设备。`android-bundled.log` 与 `android-publish-final.log` 为成功构建日志。
+- 官方 `Invoke-CI.ps1 -Stage BuildTest -Configuration Release`：build 0 errors，15 个 TRX 合计 2562 total / 2541 executed / 2538 passed / 3 failed，21 项未执行；`ci/ci-results.json` passed=false，报告没有改写。Editor 两项（文案白名单和居中 258/8）与跨平台 feature 历史记录相同；Integration 为 P1 已记录的保存后 dirty/取消关闭。完整原始 TRX 和 `ci-counts.json` 保留。
+- 不将 `Explicit` 未执行等价为通过；P5 Windows 实际 LibVLC 五项与原生 Sample 证据仍有效，P6 Linux 专项独立执行。macOS/iOS/真实手柄维持原延期，不用锁图存在替代实跑。
+
+### 文档与自审
+
+`summary.md` 记录最终实现、成本和限制，`review.md` 为明确标注的自审。修正正式手册残留“两个 Sample”“主题拥有普通页”“内置设置主题”，补充真实包消费者与冻结契约操作。`scripts/docs/sync_wiki.py check` 检查 72 页及本地链接/锚点通过；没有发布 Wiki。
+
+代码统计 `code-lines.json`：基线 d2d8665a→ba1fd764，四个受影响生产工程的 C#/XAML 13215→12086，净减1129（8.5%）；Sample 832→2559，Themes 2899→262。不把删除总量当净减，也不把测试参数合并当覆盖增强。
+
+## P6b：Android 设备验收待环境
+
+状态：pending-environment。本轮两次 ADB 设备列表为空；用户尚未提供设备。剩余操作是使用本轮匹配内容/契约 APK，在保留数据和正确签名条件下验证挂载、后台重进、返回优先级及暂停落盘；不能卸载清数据绕过签名，也不能沿用旧 UI 的设备结果。连接设备后继续此阶段，合格后再将 P6/整个 feature 标记 verified/complete 并单独提交。

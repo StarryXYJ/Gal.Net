@@ -30,7 +30,7 @@ dotnet build src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform
 
 移动端使用包裹游戏视图的 `DebugToolsOverlay`，确认与日志不需要额外窗口，隐藏打开目录入口；资源重载通过原进程内的 scope 重建完成。移动远程调试的传输与邀请入口尚未验收。窗口装饰、调色板和桌面调试接线留在各 Sample 项目，不增加共享玩家窗口基类。
 
-本地化使用 `AvaloniaPlayerLocalization.FromEmbeddedResources` 时，将可选调试程序集放在项目资源程序集之前加载，使项目仍可覆盖通用文案；关闭调试时不加载该程序集。两个 Sample 的启用接线可直接作为示例。
+本地化使用 `AvaloniaPlayerLocalization.FromEmbeddedResources` 时，将可选调试程序集放在项目资源程序集之前加载，使项目仍可覆盖通用文案；关闭调试时不加载该程序集。Sample 的启用接线可直接作为示例。
 
 所有构建无内容参数时默认加载应用同级 `pak/`，不依赖当前工作目录。发行依赖位于 `lib/`，程序明确区分程序集根与应用根。缺失或损坏内容通过启动窗口报告。默认 profile 为用户 `LocalApplicationData/GalNet/<SHA-256>/`：摘要输入是 `project:` 加 game.pak 内的 projectId（旧安装读取 content.json），与安装路径和 buildId 无关；开发目录缺少内容身份时使用 `directory:` 加目录绝对路径。日志位于 profile 的 `logs/`。此策略由 Sample 显式传入共享会话，旧 profile 不自动迁移或删除。
 
@@ -42,16 +42,22 @@ dotnet build src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform
 
 ## 推荐改造顺序
 
+如果从源码建立独立产品，复制共享应用项目及所需平台入口；项目契约保留为独立交付物。脱离仓库时，将应用对内置 GameHost/Themes 等工程引用换成同版本 `GalNet.Avalonia` 包；启用调试时再引用可选 `GalNet.Avalonia.Debugging`。自建契约项目引用 `GalNet.Contracts` 和构建期 `GalNet.SchemaGenerator`。同时迁移中央包版本、编译属性及平台原生依赖，不能只复制一个 csproj 并期待仓库级配置自动存在。
+
+只改标题按钮通常只需修改一份 XAML；新增行为再修改对应 VM。新增普通页面需要 View/XAML、VM、组合映射和调用入口。换配色修改 `SampleCustomization.PlayerPalette`，单按钮完全自定义可直接写局部 `ControlTheme`。修改这些文件不会要求复制播放、取消、媒体或存档机制。
+
+CLI/Editor、应用和内容必须使用同一套冻结契约产物。跨机器或跨 OS 重新编译相同源码不等于程序集字节一致；先确定实际交付的契约，再让导出工具与玩家共同消费它。
+
 1. **建立项目契约。** 复制或引用 `GalNet.Sample.Contracts`，在 `ProjectSchemas.Modules` 中列出项目允许的 `IEntryModule`。构建后用 `scripts/contracts/build-project-contracts.ps1` 部署到内容项目的 `Contracts/`。CLI/Editor 与玩家必须消费同一契约集合。
 2. **配置运行组合。** 在共享主项目的 `SampleCustomization` 中配置 catalog、执行模块、资源/玩家存储、音频 host 和项目启动策略。把项目专属 primitive 注册在组合入口，不为一条业务能力修改通用 Session 或关闭链。
-3. **定制外观。** 默认以 Classic 视觉为基础，优先直接编辑项目内页面、按钮和局部样式，通过 `PlayerPalette` 调整配色。尚在内置层的页面可通过 `configureViews` 替换。当前不支持运行期整页布局切换。
+3. **定制外观。** 直接编辑项目内页面、按钮和局部样式，通过 `PlayerPalette` 调整配色。普通页面全部属于项目；新页面在 `SampleCustomization` 加一条 VM→View 映射。按钮可直接声明自己的 Avalonia `ControlTheme`，无需建立整套主题协议。
 4. **扩展项目功能。** schema/DTO 与 composite 放在契约项目；执行模块放在 Avalonia 或项目执行程序集。参数 DTO 用 `GenerateFieldSchema`/字段特性生成 descriptor，平台控件仅在页面/设置工厂中处理。
 
 ## 上线前检查
 
 - Project `Contracts/` 是与当前 GalNet API 匹配的可信构建产物；重新构建游戏或 CLI 不会自动更新该目录。
 - 自定义 entry 已在 CLI 校验/编译、Avalonia 运行和保存恢复路径中测试；Headless 缺少平台实现时应清晰报错。
-- 主题的普通页面映射完整，`GamePage` 布局可在目标分辨率和输入方式下工作。
+- 项目实际使用的页面已注册，`GamePage` 布局可在目标分辨率和输入方式下工作。
 - 退出、切换项目和读档均由会话链路释放旧的 presentation、媒体与资源。
 
-主题的可复制示例在[Themes README](../../../src/Presentation/GalNet.Avalonia.Themes/README.md)；运行与页面的精确约束见[Avalonia 游戏页面规范](../../spec/presentation/game-view.md)。
+配色和字体入口见[Themes README](../../../src/Presentation/GalNet.Avalonia.Themes/README.md)；运行与页面的精确约束见[Avalonia 游戏页面规范](../../spec/presentation/game-view.md)。
