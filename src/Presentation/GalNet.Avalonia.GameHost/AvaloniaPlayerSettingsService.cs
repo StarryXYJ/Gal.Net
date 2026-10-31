@@ -5,7 +5,6 @@ using GalNet.Avalonia.GameView.Input;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.GameHost;
@@ -20,7 +19,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     public const string LocaleVariable = PlayerPreferences.LocaleVariable;
     public const string TextSpeedVariable = PlayerPreferences.TextSpeedVariable;
     private readonly IPlayerLocalization _localization;
-    private readonly GamePageViewModel _gameplay;
+    private readonly GamePresentationState _gameplay;
     private readonly ChoiceSetting<string> _language;
     private readonly SettingsCoordinator _coordinator;
     private readonly DispatcherTimer _audioPreviewTimer;
@@ -48,7 +47,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
     private readonly AvaloniaGamepadInput _gamepadInput;
 
-    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePageViewModel gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
+    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePresentationState gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
     {
         Editors = editors ?? EditorRegistry.CreateDefault();
         _localization = localization;

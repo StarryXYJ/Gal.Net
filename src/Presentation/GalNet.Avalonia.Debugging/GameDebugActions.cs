@@ -1,12 +1,12 @@
+using GalNet.Avalonia.GameView.Presentation;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameHost;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Logging;
 
 namespace GalNet.Avalonia.Debugging;
 
 /// <summary>Debug operations borrow the active host and use its normal save/command gate.</summary>
-public sealed class GameDebugActions(AvaloniaGameSession session, GamePageViewModel gameplay, GameDebugHostOptions options)
+public sealed class GameDebugActions(AvaloniaGameSession session, GamePresentationState gameplay, GameDebugHostOptions options)
 {
     public bool CanOpenLogDirectory => options.OpenLogDirectory is not null;
 

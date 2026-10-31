@@ -1,5 +1,5 @@
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Variable;
 using GalNet.GameHost;
@@ -14,14 +14,14 @@ public partial class AvaloniaGameSession
 {
     private SceneReplayHandle? _sceneReplay;
     private readonly SemaphoreSlim _replayCommands = new(1, 1);
-    public async Task<IAsyncDisposable> StartSceneAsync(GalleryItemData item, GamePageViewModel model, GamePage surface,
+    public async Task<IAsyncDisposable> StartSceneAsync(GalleryItemData item, GamePresentationState model, GamePage surface,
         Action completed, CancellationToken cancellationToken)
     {
         await _replayCommands.WaitAsync(cancellationToken);
         try { return await StartSceneCoreAsync(item, model, surface, completed, cancellationToken); }
         finally { _replayCommands.Release(); }
     }
-    private async Task<IAsyncDisposable> StartSceneCoreAsync(GalleryItemData item, GamePageViewModel model, GamePage surface,
+    private async Task<IAsyncDisposable> StartSceneCoreAsync(GalleryItemData item, GamePresentationState model, GamePage surface,
         Action completed, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

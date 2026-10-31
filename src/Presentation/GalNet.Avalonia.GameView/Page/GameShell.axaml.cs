@@ -90,9 +90,24 @@ public partial class GameShell : UserControl, IDisposable
             () => _inputSettings?.IsCapturing == true);
         if (settings.Input is { } input)
         {
-            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack);
+            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack, HandleApplicationActionAsync);
             _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
         }
+    }
+
+    // Application navigation stays outside the device-independent playback dispatcher.
+    private Task HandleApplicationActionAsync(string action)
+    {
+        if (_viewModel.CurrentViewModel is not GamePageViewModel game) return Task.CompletedTask;
+        return action switch
+        {
+            "open.save" => game.OpenSaveSlotsCommand.ExecuteAsync(null),
+            "open.load" => game.OpenLoadSlotsCommand.ExecuteAsync(null),
+            "open.settings" => OpenSettings(),
+            _ => Task.CompletedTask
+        };
+
+        Task OpenSettings() { game.OpenSettingsCommand.Execute(null); return Task.CompletedTask; }
     }
 
     private void GoBack()

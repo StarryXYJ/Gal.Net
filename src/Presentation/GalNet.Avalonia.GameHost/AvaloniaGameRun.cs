@@ -1,6 +1,6 @@
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.GameHost;
@@ -15,7 +15,7 @@ namespace GalNet.Avalonia.GameHost;
 /// <summary>Default page binding and run ownership; the engine owns execution and terminal states.</summary>
 internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
 {
-    private readonly GamePageViewModel _gameplay;
+    private readonly GamePresentationState _gameplay;
     private readonly GameRun _run;
     private GameEngine _engine => _run.Engine;
     private readonly AvaloniaGamePresentation _presentation;
@@ -36,7 +36,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     private DialogueHistoryDispatcher _history = null!;
 
     private AvaloniaGameRun(
-        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, IAvaloniaPlayerSettings playerSettings,
+        GamePresentationState gameplay, GameRun run, AvaloniaGamePresentation presentation, IAvaloniaPlayerSettings playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync, Func<Task> flushPlayerVariables, Func<GameEngine, IDisposable>? attachRun)
     {
@@ -65,7 +65,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     }
 
     public static async Task<AvaloniaGameRun> CreateAsync(
-        GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
+        GamePresentationState gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
         PlayerSession saveSession, IAvaloniaPlayerSettings playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
         GalNet.Contracts.Builtins.Audio.AudioConfiguration audioConfiguration, LibVlcRuntime mediaRuntime, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,

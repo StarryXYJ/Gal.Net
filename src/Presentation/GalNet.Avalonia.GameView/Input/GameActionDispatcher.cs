@@ -1,15 +1,16 @@
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Input;
 
 /// <summary>Executes device-independent player actions through the existing game commands.</summary>
 public sealed class GameActionDispatcher(
     PlayerInputSettings settings,
-    Func<GamePageViewModel?> activeGame,
-    IGameSessionService session)
+    Func<GamePresentationState?> activeGame,
+    IGameSessionService session,
+    Func<string, Task>? applicationAction = null)
 {
-    private GamePageViewModel? _heldGame;
+    private GamePresentationState? _heldGame;
     private bool _busy;
 
     public bool CanReceive => session.IsPlaying && !settings.IsCapturing && !_busy &&
@@ -30,16 +31,20 @@ public sealed class GameActionDispatcher(
                 case "toggle.auto": await game.ToggleAutoCommand.ExecuteAsync(null); break;
                 case "skip.unread": game.RequestSkipCommand.Execute(null); break;
                 case "toggle.ui": game.CancelPlayback(); game.IsUiHidden = !game.IsUiHidden; break;
-                case "open.save": game.CancelPlayback(); await game.OpenSaveSlotsCommand.ExecuteAsync(null); break;
-                case "open.load": game.CancelPlayback(); await game.OpenLoadSlotsCommand.ExecuteAsync(null); break;
-                case "open.settings": game.CancelPlayback(); game.OpenSettingsCommand.Execute(null); break;
+                case "open.save":
+                case "open.load":
+                case "open.settings":
+                    game.CancelPlayback();
+                    if (applicationAction is not null) await applicationAction(action);
+                    break;
                 case "screenshot": game.RequestScreenshotCommand.Execute(null); break;
                 case "toggle.fullscreen": if (settings.ToggleFullscreenAsync is { } fullscreen) await fullscreen(); break;
                 case "open.history": if (settings.OpenHistoryAsync is { } history) { game.CancelPlayback(); await history(); } break;
                 case "save.first-empty":
                     game.CancelPlayback();
-                    if (session is IFirstEmptySlotSession saves && await saves.SaveFirstEmptyAsync() is null && ReferenceEquals(game, activeGame()))
-                        await game.OpenSaveSlotsCommand.ExecuteAsync(null);
+                    if (session is IFirstEmptySlotSession saves && await saves.SaveFirstEmptyAsync() is null &&
+                        ReferenceEquals(game, activeGame()) && applicationAction is not null)
+                        await applicationAction("open.save");
                     break;
             }
         }

@@ -22,6 +22,26 @@ namespace GeneralTest.Presentation;
 public sealed class PlayerInputTests
 {
     [Test]
+    public async Task ApplicationActionsUseHostCallbackWithStandalonePresentationState()
+    {
+        using var settings = Settings();
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
+        var requested = new List<string>();
+        var dispatcher = new GameActionDispatcher(settings, () => state, new Session(), action =>
+        {
+            requested.Add(action);
+            return Task.CompletedTask;
+        });
+        await dispatcher.DispatchAsync("open.save");
+        await dispatcher.DispatchAsync("open.load");
+        await dispatcher.DispatchAsync("open.settings");
+        Assert.That(requested, Is.EqualTo(new[] { "open.save", "open.load", "open.settings" }));
+        state.IsInteractionBlocked = true;
+        await dispatcher.DispatchAsync("open.save");
+        Assert.That(requested, Has.Count.EqualTo(3));
+    }
+
+    [Test]
     public async Task OpenGamepadPanelTracksBackendAvailabilityAndNativeFaceLabels()
     {
         await Ui(() =>

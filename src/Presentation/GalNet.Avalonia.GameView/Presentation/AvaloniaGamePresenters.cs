@@ -1,5 +1,4 @@
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Execution;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
@@ -19,7 +18,7 @@ public sealed class AvaloniaGamePresenters : IDisposable
     private readonly AvaloniaParticlePresenter _particles;
 
     public AvaloniaGamePresenters(
-        GamePageViewModel state,
+        GamePresentationState state,
         GamePage page,
         IGamePageLayerFactory layers,
         IAvaloniaUiDispatcher? dispatcher = null)

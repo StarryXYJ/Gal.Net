@@ -33,7 +33,7 @@
 
 ## P2：提取共享游戏呈现状态，保持现有页面可运行
 
-状态：planned。前置：P1。
+状态：verified。前置：P1。结果见 [execution.md](execution.md)：Presentation 361 passed / 0 failed / 6 未执行；Sample 集成 79 passed / 1 与 P1 相同的 Editor dirty 失败，无新增失败。文件夹模式格式检查通过。
 
 **目标**：让运行/呈现/设置/输入不再依赖应用页面 VM，使后续迁移不复制复杂机制。
 

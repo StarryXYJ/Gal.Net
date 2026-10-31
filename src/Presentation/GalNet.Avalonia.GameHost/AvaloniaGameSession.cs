@@ -6,7 +6,6 @@ using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Runtime;
 using GalNet.GameHost;
@@ -20,7 +19,7 @@ namespace GalNet.Avalonia.GameHost;
 public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, ISaveSlotNamingSession, IGameGallerySession, ISceneGallerySession, IAsyncDisposable
 {
     private readonly AvaloniaGameHostOptions _options;
-    private readonly GamePageViewModel _gameplay;
+    private readonly GamePresentationState _gameplay;
     private readonly GamePage _page;
     private readonly IAvaloniaPlayerSettings _settings;
     private readonly IPlayerLocalization _localization;
@@ -42,7 +41,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private readonly object _disposeGate = new();
     private Task? _disposeTask;
 
-    public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePageViewModel gameplay, GamePage page, IAvaloniaPlayerSettings settings,
+    public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePresentationState gameplay, GamePage page, IAvaloniaPlayerSettings settings,
         IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime)
     {
         _options = options;

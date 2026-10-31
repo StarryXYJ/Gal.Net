@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameView.Presentation;
 using System.Linq.Expressions;
 using Avalonia;
 using Avalonia.Controls;
@@ -7,7 +8,6 @@ using Avalonia.Data;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Primitives;
 using GalNet.Game.Controls;
 using GalNet.Rendering.Scene;
@@ -48,26 +48,26 @@ public class GamePage : TemplatedControl
     public GamePage()
     {
         Scene = new Grid { ClipToBounds = true, Children = { SceneHost } };
-        BindContent(SceneHost, SceneLayerHost.ItemsSourceProperty, page => ((GamePageViewModel)page.DataContext!).Layers);
-        BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, page => ((GamePageViewModel)page.DataContext!).TextureEffects);
-        BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, page => ((GamePageViewModel)page.DataContext!).SceneRenderables);
-        BindContent(Dialogue, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsDialogueOverlayVisible);
-        BindContent(Dialogue, ReadTextStyle.ForegroundProperty, page => ((GamePageViewModel)page.DataContext!).ReadTextBrush);
-        BindContent(Nvl, ReadTextStyle.ForegroundProperty, page => ((GamePageViewModel)page.DataContext!).ReadTextBrush);
-        BindContent(History, ReadTextStyle.ForegroundProperty, page => ((GamePageViewModel)page.DataContext!).ReadTextBrush);
-        BindContent(Dialogue, DialoguePresenter.CanReplayVoiceProperty, page => ((GamePageViewModel)page.DataContext!).CanReplayDialogue);
-        BindContent(Dialogue, DialoguePresenter.ReplayVoiceCommandProperty, page => ((GamePageViewModel)page.DataContext!).ReplayDialogueCommand);
-        BindContent(Dialogue, DialoguePresenter.ReplayIconProperty, page => ((GamePageViewModel)page.DataContext!).ReplayIcon);
+        BindContent(SceneHost, SceneLayerHost.ItemsSourceProperty, page => ((GamePresentationState)page.DataContext!).Layers);
+        BindContent(SceneHost, SceneLayerHost.EffectsSourceProperty, page => ((GamePresentationState)page.DataContext!).TextureEffects);
+        BindContent(SceneHost, SceneLayerHost.RenderablesSourceProperty, page => ((GamePresentationState)page.DataContext!).SceneRenderables);
+        BindContent(Dialogue, IsVisibleProperty, page => ((GamePresentationState)page.DataContext!).IsDialogueOverlayVisible);
+        BindContent(Dialogue, ReadTextStyle.ForegroundProperty, page => ((GamePresentationState)page.DataContext!).ReadTextBrush);
+        BindContent(Nvl, ReadTextStyle.ForegroundProperty, page => ((GamePresentationState)page.DataContext!).ReadTextBrush);
+        BindContent(History, ReadTextStyle.ForegroundProperty, page => ((GamePresentationState)page.DataContext!).ReadTextBrush);
+        BindContent(Dialogue, DialoguePresenter.CanReplayVoiceProperty, page => ((GamePresentationState)page.DataContext!).CanReplayDialogue);
+        BindContent(Dialogue, DialoguePresenter.ReplayVoiceCommandProperty, page => ((GamePresentationState)page.DataContext!).ReplayDialogueCommand);
+        BindContent(Dialogue, DialoguePresenter.ReplayIconProperty, page => ((GamePresentationState)page.DataContext!).ReplayIcon);
         if (MarkupExtensions.PlayerTextExtension.CreateBinding("History.ReplayVoice", "Replay voice") is ReflectionBinding replayLabel)
             Dialogue.Bind(DialoguePresenter.ReplayLabelProperty, replayLabel);
-        BindContent(Nvl, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsNvlOverlayVisible);
-        BindContent(Choice, IsVisibleProperty, page => ((GamePageViewModel)page.DataContext!).IsChoiceOverlayVisible);
-        BindContent(Choice, ItemsControl.ItemsSourceProperty, page => ((GamePageViewModel)page.DataContext!).Choices);
-        BindContent(Choice, ChoiceList.SelectionCommandProperty, page => ((GamePageViewModel)page.DataContext!).CompleteChoiceCommand);
+        BindContent(Nvl, IsVisibleProperty, page => ((GamePresentationState)page.DataContext!).IsNvlOverlayVisible);
+        BindContent(Choice, IsVisibleProperty, page => ((GamePresentationState)page.DataContext!).IsChoiceOverlayVisible);
+        BindContent(Choice, ItemsControl.ItemsSourceProperty, page => ((GamePresentationState)page.DataContext!).Choices);
+        BindContent(Choice, ChoiceList.SelectionCommandProperty, page => ((GamePresentationState)page.DataContext!).CompleteChoiceCommand);
         AddHandler(PointerPressedEvent, OnPagePointerPressed, RoutingStrategies.Tunnel);
         AddHandler(KeyDownEvent, (_, args) =>
         {
-            if (DataContext is not GamePageViewModel game) return;
+            if (DataContext is not GamePresentationState game) return;
             game.ClearPlaybackPointer();
             if (game.IsHistoryOpen && args.Key == Key.Escape) { game.CloseHistoryCommand.Execute(null); args.Handled = true; }
         }, RoutingStrategies.Tunnel);
@@ -110,7 +110,7 @@ public class GamePage : TemplatedControl
 
     private void OnPagePointerPressed(object? sender, PointerPressedEventArgs eventArgs)
     {
-        if (DataContext is not GamePageViewModel viewModel ||
+        if (DataContext is not GamePresentationState viewModel ||
             eventArgs.Pointer.Type == PointerType.Touch && viewModel.Input is not null ||
             eventArgs.Handled ||
             !eventArgs.GetCurrentPoint(this).Properties.IsLeftButtonPressed)

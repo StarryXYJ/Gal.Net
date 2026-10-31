@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameView.Presentation;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -7,7 +8,6 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Input;
 
@@ -16,7 +16,7 @@ public sealed class PlayerInputRouter : IDisposable
 {
     private readonly Control _root;
     private readonly PlayerInputSettings _settings;
-    private readonly Func<GamePageViewModel?> _activeGame;
+    private readonly Func<GamePresentationState?> _activeGame;
     private readonly GameActionDispatcher _actions;
     private readonly KeyboardMouseShortcutListener _keyboardMouse;
     private readonly Action _back;
@@ -26,10 +26,11 @@ public sealed class PlayerInputRouter : IDisposable
     private string? _navigationDirection;
     private ComboBox? _editingChoice;
     private int _originalChoice;
-    public PlayerInputRouter(Control root, PlayerInputSettings settings, Func<GamePageViewModel?> activeGame, IGameSessionService session, Action back)
+    public PlayerInputRouter(Control root, PlayerInputSettings settings, Func<GamePresentationState?> activeGame, IGameSessionService session, Action back,
+        Func<string, Task>? applicationAction = null)
     {
         _root = root; _settings = settings; _activeGame = activeGame; _back = back;
-        _actions = new GameActionDispatcher(settings, activeGame, session);
+        _actions = new GameActionDispatcher(settings, activeGame, session, applicationAction);
         _keyboardMouse = new KeyboardMouseShortcutListener(root, settings, () => _actions.CanReceive,
             _actions.DispatchAsync, _actions.ReleaseHold);
         settings.GamepadChanged += Gamepad;

@@ -3,7 +3,7 @@ using Avalonia.Controls.Notifications;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameHost.ViewModels;
 
 namespace GalNet.Avalonia.GameHost.Views;
@@ -12,7 +12,7 @@ namespace GalNet.Avalonia.GameHost.Views;
 public partial class PlayerView : UserControl
 {
     private GameShell? _shell;
-    private GamePageViewModel? _audioGame;
+    private GamePresentationState? _audioGame;
     private bool _returnToTitle;
     private LanguageSelectionViewModel? _languageSelection;
     private TaskCompletionSource<bool>? _exitConfirmation;
@@ -47,7 +47,7 @@ public partial class PlayerView : UserControl
         _languageSelection = null;
     }
 
-    internal void BindAudioAnnouncements(GamePageViewModel gameplay)
+    internal void BindAudioAnnouncements(GamePresentationState gameplay)
     {
         if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
         _audioGame = gameplay;

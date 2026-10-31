@@ -1,5 +1,4 @@
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Execution;
 using GalNet.Presentation.Abstractions.View;
 
@@ -8,7 +7,7 @@ namespace GalNet.Avalonia.GameView.Presentation;
 public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresenter, IChoicePresenter, ICatchUpTextRecorder, IDisposable
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
-    private readonly GamePageViewModel _state;
+    private readonly GamePresentationState _state;
     private readonly GamePage _page;
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly List<(string Text, bool WasRead)> _nvlHistory = [];
@@ -20,7 +19,7 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
     private string? _text;
     private string _speaker = "";
 
-    public AvaloniaDialoguePresenter(GamePageViewModel state, GamePage page, IAvaloniaUiDispatcher dispatcher)
+    public AvaloniaDialoguePresenter(GamePresentationState state, GamePage page, IAvaloniaUiDispatcher dispatcher)
     {
         _state = state;
         _page = page;

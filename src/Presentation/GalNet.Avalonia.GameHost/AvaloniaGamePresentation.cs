@@ -3,7 +3,6 @@ using GalNet.Assets.Variants;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Audio;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Contracts.Builtins.Variants;
@@ -27,7 +26,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     private SkiaShaderEffectProgramResolver? _programs;
     private Task? _disposeTask;
     private readonly object _disposeGate = new();
-    private GamePageViewModel _gameplay = null!;
+    private GamePresentationState _gameplay = null!;
 
     private AvaloniaGamePresentation() { }
 
@@ -43,7 +42,7 @@ public sealed class AvaloniaGamePresentation : IAsyncDisposable, ICatchUpPresent
     public GalNet.GameHost.DialogueVoiceReplay VoiceReplay { get; private set; } = null!;
 
     public static async Task<AvaloniaGamePresentation> CreateAsync(
-        GamePageViewModel gameplay, GamePage page, IAssetManager assets,
+        GamePresentationState gameplay, GamePage page, IAssetManager assets,
         IReadOnlyDictionary<string, AssetHandle<SceneTexture>> textures,
         IReadOnlyList<EffectProgramResource> effectPrograms, IAssetFileMaterializer files,
         Action<GameRegistration, AvaloniaGamePresentation> configure,

@@ -5,9 +5,9 @@ using GalNet.Core.Execution;
 using GalNet.Core.Primitives;
 using GalNet.Presentation.Abstractions.View;
 
-namespace GalNet.Avalonia.GameView.ViewModels;
+namespace GalNet.Avalonia.GameView.Presentation;
 
-public partial class GamePageViewModel
+public partial class GamePresentationState
 {
     public GalNet.Avalonia.GameView.Input.PlayerInputSettings? Input { get; set; }
     public Task SetQuickHeldAsync(bool held)

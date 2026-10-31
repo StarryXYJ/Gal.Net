@@ -3,9 +3,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Presentation.Abstractions.Application;
 
-namespace GalNet.Avalonia.GameView.ViewModels;
+namespace GalNet.Avalonia.GameView.Presentation;
 
-public partial class GamePageViewModel
+public partial class GamePresentationState
 {
     [ObservableProperty] private bool _isHistoryOpen;
     [ObservableProperty] private IReadOnlyList<DialogueHistoryLine> _historyLines = [];

@@ -77,6 +77,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.TryAddScoped<GameShellViewModel>();
         services.TryAddScoped<TitlePageViewModel>();
         services.TryAddScoped<GamePageViewModel>();
+        services.TryAddScoped<GalNet.Avalonia.GameView.Presentation.GamePresentationState>(provider => provider.GetRequiredService<GamePageViewModel>());
         services.TryAddScoped<SaveSlotsPageViewModel>();
         services.TryAddScoped<SettingsPageViewModel>();
         services.TryAddScoped<GalleryPageViewModel>();

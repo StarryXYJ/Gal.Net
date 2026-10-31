@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.GameHost;
@@ -56,7 +57,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
             result.Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
             result.View = result.Services.GetRequiredService<PlayerView>();
             result.View.Attach(result.Services.GetRequiredService<GameShell>(), result.Services.GetRequiredService<LanguageSelectionViewModel>());
-            result.View.BindAudioAnnouncements(result.Services.GetRequiredService<GamePageViewModel>());
+            result.View.BindAudioAnnouncements(result.Services.GetRequiredService<GamePresentationState>());
             return result;
         }
         catch (Exception error)

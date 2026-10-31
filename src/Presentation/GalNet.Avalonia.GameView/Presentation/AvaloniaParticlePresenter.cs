@@ -1,4 +1,3 @@
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
 
@@ -6,14 +5,14 @@ namespace GalNet.Avalonia.GameView.Presentation;
 
 public sealed class AvaloniaParticlePresenter : IParticlePresenter, IDisposable
 {
-    private readonly GamePageViewModel _state;
+    private readonly GamePresentationState _state;
     private readonly IGamePageLayerFactory _layers;
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly Dictionary<string, ParticleEmitter> _emitters = new(StringComparer.Ordinal);
     private long _burstSequence;
 
     public AvaloniaParticlePresenter(
-        GamePageViewModel state,
+        GamePresentationState state,
         IGamePageLayerFactory layers,
         IAvaloniaUiDispatcher dispatcher)
     {

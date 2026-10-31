@@ -1,3 +1,4 @@
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Game.Controls.Forms;
 
@@ -16,7 +17,7 @@ public sealed record SettingOption(string Value, string DisplayName);
 
 internal sealed class DefaultPlayerSettingsService : IPlayerSettingsService
 {
-    public DefaultPlayerSettingsService(ViewModels.GamePageViewModel gameplay)
+    public DefaultPlayerSettingsService(GamePresentationState gameplay)
     {
         Categories = Array.AsReadOnly(new[] { new SettingCategory("game", "Settings.Game",
             [new DoubleSetting("textSpeed", "Settings.TextSpeed", 30, 0, 120, 1,
