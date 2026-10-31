@@ -16,12 +16,12 @@ public sealed class AudioAnnouncementTests
         await using var runtime = new AudioRuntime(host);
         var names = Channel.CreateUnbounded<string>();
         runtime.PlaybackStarted += name => names.Writer.TryWrite(name);
-        runtime.Play(Tracks, new("music", "a", AudioPlacement.Enqueue, LoopCount: 0) { DisplayName = " First " });
+        runtime.Play(Tracks, new("music", "a", AudioPlacement.Enqueue, LoopCount: 0) { AnnounceName = true });
         var first = await host.StartAsync();
-        runtime.Play(Tracks, new("music", "b", AudioPlacement.Enqueue) { DisplayName = "Second" });
+        runtime.Play(Tracks, new("music", "b", AudioPlacement.Enqueue) { AnnounceName = true });
         Assert.That(names.Reader.TryRead(out _), Is.False);
         host.Raise(first, AudioBackendEventKind.Started);
-        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("First"));
+        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("a"));
         host.Raise(first, AudioBackendEventKind.Started);
         runtime.Pause(Tracks, "music"); runtime.Resume(Tracks, "music");
         host.Raise(first, AudioBackendEventKind.Ended);
@@ -30,7 +30,7 @@ public sealed class AudioAnnouncementTests
         runtime.Next(Tracks, "music");
         var second = await host.StartAsync();
         host.Raise(second, AudioBackendEventKind.Started);
-        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("Second"));
+        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("b"));
         Assert.That(names.Reader.TryRead(out _), Is.False);
     }
 
@@ -41,19 +41,19 @@ public sealed class AudioAnnouncementTests
         await using var runtime = new AudioRuntime(host);
         var names = Channel.CreateUnbounded<string>();
         runtime.PlaybackStarted += name => names.Writer.TryWrite(name);
-        runtime.Play(Tracks, new("music", "bad", AudioPlacement.Replace) { DisplayName = "Bad" });
+        runtime.Play(Tracks, new("music", "bad", AudioPlacement.Replace) { AnnounceName = true });
         var failed = await host.StartAsync();
         host.Raise(failed, AudioBackendEventKind.Failed);
         host.Raise(failed, AudioBackendEventKind.Started);
-        runtime.Play(Tracks, new("music", "blank", AudioPlacement.Replace) { DisplayName = "  " });
+        runtime.Play(Tracks, new("music", "blank", AudioPlacement.Replace) { AnnounceName = false });
         host.Raise(await host.StartAsync(), AudioBackendEventKind.Started);
         runtime.BeginCatchUp();
-        runtime.Play(Tracks, new("music", "restore", AudioPlacement.Replace) { DisplayName = "Restored" });
+        runtime.Play(Tracks, new("music", "restore", AudioPlacement.Replace) { AnnounceName = true });
         runtime.EndCatchUp();
         host.Raise(await host.StartAsync(), AudioBackendEventKind.Started);
-        runtime.Play(Tracks, new("music", "valid", AudioPlacement.Replace) { DisplayName = "Valid" });
+        runtime.Play(Tracks, new("music", "valid", AudioPlacement.Replace) { AnnounceName = true });
         host.Raise(await host.StartAsync(), AudioBackendEventKind.Started);
-        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("Valid"));
+        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("valid"));
         Assert.That(names.Reader.TryRead(out _), Is.False);
     }
 
@@ -70,15 +70,15 @@ public sealed class AudioAnnouncementTests
         runtime.Bind(state);
         var names = Channel.CreateUnbounded<string>();
         runtime.PlaybackStarted += name => names.Writer.TryWrite(name);
-        runtime.Play(Tracks, new("music", "saved", AudioPlacement.Replace) { DisplayName = "Saved" });
+        runtime.Play(Tracks, new("music", "saved", AudioPlacement.Replace) { AnnounceName = true });
         var old = await host.StartAsync();
         await runtime.RestoreAsync(state, Tracks, CancellationToken.None);
         var restored = await host.StartAsync();
         host.Raise(old, AudioBackendEventKind.Started);
         host.Raise(restored, AudioBackendEventKind.Started);
-        runtime.Play(Tracks, new("music", "fresh", AudioPlacement.Replace) { DisplayName = "Fresh" });
+        runtime.Play(Tracks, new("music", "fresh", AudioPlacement.Replace) { AnnounceName = true });
         host.Raise(await host.StartAsync(), AudioBackendEventKind.Started);
-        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("Fresh"));
+        Assert.That(await names.Reader.ReadAsync().AsTask().WaitAsync(TimeSpan.FromSeconds(3)), Is.EqualTo("fresh"));
         Assert.That(names.Reader.TryRead(out _), Is.False);
     }
 
@@ -94,7 +94,7 @@ public sealed class AudioAnnouncementTests
             Assert.That(Task.Run(() => runtime.Pause(Tracks, "music")).Wait(TimeSpan.FromSeconds(2)), Is.True);
             observed.TrySetResult();
         };
-        runtime.Play(Tracks, new("music", "a", AudioPlacement.Replace) { DisplayName = "A" });
+        runtime.Play(Tracks, new("music", "a", AudioPlacement.Replace) { AnnounceName = true });
         await observed.Task.WaitAsync(TimeSpan.FromSeconds(3));
     }
 

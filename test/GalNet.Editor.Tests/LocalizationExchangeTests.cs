@@ -82,7 +82,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         CharacterEntry(project); WriteTranslation(project, """{"line":"原文"}""");
         var panel = project.Services.GetRequiredService<GameLocalizationPanelService>(); await panel.AddLanguageAsync("en-US");
-        var group = panel.Snapshot("characters").Categories.First(category => category.Id is not ("characters" or "branches")).Id;
+        var group = panel.Snapshot("characters").Categories.First(category => category.Id is not ("characters" or "branches" or "resources")).Id;
         await panel.SetAsync(panel.Capture(group, "line", "en-US"), "Original English");
         var exchange = project.Services.GetRequiredService<LocalizationExchangeService>(); var preview = exchange.Preview("""{"line":"stale"}""", "en-US");
         var history = project.Services.GetRequiredService<EditorHistories>().Content; var started = new TaskCompletionSource(); var release = new TaskCompletionSource();

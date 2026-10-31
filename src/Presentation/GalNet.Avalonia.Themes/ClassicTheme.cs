@@ -16,6 +16,8 @@ public sealed class ClassicTheme(GamePalette? palette = null) : GameLayoutTheme(
         views.Register<GalleryPageViewModel, ClassicGalleryPage>();
         views.Register<CgGalleryPageViewModel, ClassicCgGalleryPage>();
         views.Register<CgGalleryImagePageViewModel, ClassicCgGalleryImagePage>();
+        views.Register<SceneGalleryPageViewModel, ClassicSceneGalleryPage>();
+        views.Register<SceneGalleryPlayerPageViewModel, Common.SceneGalleryPlayerPage>();
         views.Register<AudioGalleryPageViewModel, ClassicAudioGalleryPage>();
         views.Register<VideoGalleryPageViewModel, ClassicVideoGalleryPage>();
         views.Register<VideoGalleryPlayerPageViewModel, ClassicVideoGalleryPlayerPage>();

@@ -8,6 +8,7 @@ namespace GalNet.Editor.Shared.Services;
 
 public sealed record LocalizationEntryPatch(string GroupId, string EntryId, string Type,
     IReadOnlyDictionary<string, JsonElement> Before, IReadOnlyDictionary<string, JsonElement> After);
+public sealed record LocalizationGroupMetadataPatch(string NodeId, JsonElement Before, JsonElement After);
 public sealed record LocalizationOptionPatch(string NodeId, string OptionId, string Before, string After);
 
 /// <summary>Data-only atomic edit; a GUI history adapter owns its execution and undo position.</summary>
@@ -18,31 +19,37 @@ public sealed class LocalizationEditOperation
     private readonly LocalizationFilePatch[] _patches;
     private readonly LocalizationEntryPatch[] _entries;
     private readonly LocalizationOptionPatch[] _options;
+    private readonly LocalizationGroupMetadataPatch[] _groups;
     private readonly IEditorDocumentService? _documents;
     private readonly Dictionary<string, byte[]> _removedSaved = [];
     public long RetainedBytes => _patches.Sum(patch => patch.Before.Data.LongLength + patch.After.LongLength) + _removedSaved.Values.Sum(bytes => bytes.LongLength)
-        + JsonSerializer.SerializeToUtf8Bytes(_entries).LongLength + JsonSerializer.SerializeToUtf8Bytes(_options).LongLength;
+        + JsonSerializer.SerializeToUtf8Bytes(_entries).LongLength + JsonSerializer.SerializeToUtf8Bytes(_options).LongLength + JsonSerializer.SerializeToUtf8Bytes(_groups).LongLength;
 
     internal LocalizationEditOperation(IProjectContentSession content, Action requireActive, IEnumerable<LocalizationFilePatch> patches,
-        IEditorDocumentService? documents = null, IEnumerable<LocalizationEntryPatch>? entries = null, IEnumerable<LocalizationOptionPatch>? options = null)
+        IEditorDocumentService? documents = null, IEnumerable<LocalizationEntryPatch>? entries = null, IEnumerable<LocalizationOptionPatch>? options = null, IEnumerable<LocalizationGroupMetadataPatch>? groups = null)
     {
         _content = content; _requireActive = requireActive;
         _documents = documents;
+        _groups = (groups ?? []).Select(group => group with { Before = group.Before.Clone(), After = group.After.Clone() }).ToArray();
+        if (_groups.Length > 0 && (documents is null || _groups.Select(group => group.NodeId).Distinct().Count() != _groups.Length)) throw new ArgumentException("Group metadata targets must be unique.", nameof(groups));
         _options = (options ?? []).ToArray();
         if (_options.Length > 0 && (documents is null || _options.Select(option => (option.NodeId, option.OptionId)).Distinct().Count() != _options.Length))
             throw new ArgumentException("Option targets must be unique and belong to a document service.", nameof(options));
         _entries = (entries ?? []).Select(entry => entry with { Before = Clone(entry.Before), After = Clone(entry.After) }).ToArray();
         if (_entries.Length > 0 && (documents is null || _entries.Select(entry => (entry.GroupId, entry.EntryId)).Distinct().Count() != _entries.Length))
             throw new ArgumentException("Entry targets must be unique and belong to a document service.", nameof(entries));
-        _patches = patches.Select(patch => new LocalizationFilePatch(patch.Before with { Path = LocalizationJson.Path(patch.Before.Path), Data = patch.Before.Data.ToArray() }, patch.After.ToArray())).ToArray();
+        _patches = patches.Select(patch => new LocalizationFilePatch(patch.Before with { Path = IsResource(patch.Before.Path) ? ProjectFilePaths.Normalize(patch.Before.Path) : LocalizationJson.Path(patch.Before.Path), Data = patch.Before.Data.ToArray() }, patch.After.ToArray())).ToArray();
         if (_patches.Any(patch => string.IsNullOrWhiteSpace(patch.Before.Id)) || _patches.Select(patch => patch.Before.Id).Distinct(StringComparer.Ordinal).Count() != _patches.Length)
             throw new ArgumentException("File identities must be nonempty and unique.", nameof(patches));
         if (_patches.Select(patch => patch.Before.Path).Distinct(ProjectFilePaths.Comparer).Count() != _patches.Length)
             throw new ArgumentException("Combine changes to one file before preparing an operation.", nameof(patches));
         foreach (var patch in _patches)
         {
-            LocalizationJson.Validate(patch.Before.Path, patch.Before.Data);
-            LocalizationJson.Validate(patch.Before.Path, patch.After);
+            if (IsResource(patch.Before.Path))
+            {
+                if (JsonNode.Parse(LocalizationJson.Decode(patch.Before.Data)) is not JsonObject || JsonNode.Parse(LocalizationJson.Decode(patch.After)) is not JsonObject) throw new InvalidDataException("Resource metadata must be an object.");
+            }
+            else { LocalizationJson.Validate(patch.Before.Path, patch.Before.Data); LocalizationJson.Validate(patch.Before.Path, patch.After); }
         }
     }
 
@@ -74,15 +81,29 @@ public sealed class LocalizationEditOperation
             foreach (var value in values) _content.FileDocuments[value.Id].Data = value.Bytes;
             foreach (var value in entryValues) value.Entry.Parameters = value.Values;
             foreach (var value in optionValues) value.Option.Text = value.Value;
+            ApplyGroups(forward);
             _content.Refresh();
         }
     }
 
+    private static bool IsResource(string path) => path.StartsWith("Assets/", StringComparison.Ordinal) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase);
+    private void ApplyGroups(bool forward)
+    {
+        foreach (var patch in _groups)
+            _documents!.CurrentDocument.Nodes.Single(node => node.Id == patch.NodeId).Metadata =
+                JsonSerializer.Deserialize<GalNet.Core.Assets.AssetMeta>((forward ? patch.After : patch.Before).GetRawText(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
     private EditorEntryData Find(LocalizationEntryPatch patch) => _documents is { IsLoaded: true } &&
         _documents.Groups.TryGetValue(patch.GroupId, out var group) && group.Entries.SingleOrDefault(entry => entry.StableId == patch.EntryId) is { } entry
             ? entry : throw new EditorOperationException("entry.obsolete", "Entry no longer exists.");
     private void CheckEntries(bool forward)
     {
+        foreach (var patch in _groups)
+        {
+            var node = _documents!.CurrentDocument.Nodes.SingleOrDefault(node => node.Id == patch.NodeId);
+            if (node?.Type != "Group" || !JsonElement.DeepEquals(JsonSerializer.SerializeToElement(node.Metadata, new JsonSerializerOptions(JsonSerializerDefaults.Web)), forward ? patch.Before : patch.After))
+                throw new EditorOperationException("graph.changed", "Group metadata changed outside this edit.");
+        }
         foreach (var patch in _options)
             if (FindOption(patch).Text != (forward ? patch.Before : patch.After))
                 throw new EditorOperationException("graph.branchChanged", "The option changed outside this edit.");
@@ -146,6 +167,8 @@ public sealed class LocalizationEditOperation
         {
             if (version == AuthorDocumentVersion.Working)
             {
+                foreach (var patch in Owner._groups)
+                    document.Graph.Nodes.Single(node => node.Id == patch.NodeId).Metadata = JsonSerializer.Deserialize<GalNet.Core.Assets.AssetMeta>((Forward ? patch.After : patch.Before).GetRawText(), new JsonSerializerOptions(JsonSerializerDefaults.Web));
                 foreach (var patch in Owner._entries)
                     document.GroupEntries[patch.GroupId].Single(entry => entry.StableId == patch.EntryId).Parameters = Clone(Forward ? patch.After : patch.Before);
                 foreach (var patch in Owner._options)

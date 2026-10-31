@@ -17,7 +17,7 @@ using GalNet.Storage.FileSystem;
 namespace GalNet.Avalonia.GameHost;
 
 /// <summary>Default Avalonia session adapter. Neutral GameSession owns command coordination.</summary>
-public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, ISaveSlotNamingSession, IGameGallerySession, IAsyncDisposable
+public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource, IGameSessionService, IPreparedGameSessionService, IParameterizedGameSessionService, IFirstEmptySlotSession, ISaveSlotNamingSession, IGameGallerySession, ISceneGallerySession, IAsyncDisposable
 {
     private readonly AvaloniaGameHostOptions _options;
     private readonly GamePageViewModel _gameplay;
@@ -222,6 +222,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     public async Task SuspendAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed || !IsReady) return;
+        await ReleaseSceneAsync();
         var cleanup = new ResourceCleanup();
         await cleanup.RunAsync(() => new(_settings.FlushAsync()));
         await cleanup.RunAsync(() => new(_session.CheckpointAndReleaseAsync(async (snapshot, token) =>
@@ -345,6 +346,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         {
             var cleanup = new ResourceCleanup();
             _disposed = true;
+            await cleanup.RunAsync(() => new(ReleaseSceneAsync()));
             _gameplay.InteractionObserved -= OnInteractionObserved;
             await cleanup.RunAsync(() => _session.DisposeAsync());
             await cleanup.RunAsync(() => new(_settings.FlushAsync()));

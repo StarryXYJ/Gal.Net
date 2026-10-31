@@ -11,6 +11,7 @@ public sealed record LocalizationSource(string Path, string Json);
 public sealed record LocalizationReference(string Owner, string? EntryId, string JsonPointer, string Key, FieldValueSemantic Semantic)
 {
     public PropertyPath? Path { get; init; }
+    public string? ResourcePath { get; init; }
     public string LocationKey => Path?.ToLogicalPointer() ?? JsonPointer;
     public JsonElement Rewrite(JsonElement parameters, string key)
     {
@@ -83,6 +84,8 @@ public sealed class LocalizationReferenceIndex
                         Walk(parameters.Describe(field, groupId, entry), value, groupId, entry.StableId, "/" + Escape(field.Id), structures, parameters, new EntryStructureContext(groupId, entry));
             }
         }
+        foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Group" && !string.IsNullOrWhiteSpace(node.Metadata?.DisplayNameKey)))
+            _references.Add(new("resources", node.Id, "/metadata/displayNameKey", node.Metadata!.DisplayNameKey!, FieldValueSemantic.LocalizedText) { ResourcePath = "Graph/" + (node.File ?? node.Id) });
         foreach (var node in document.Graph.Nodes.Where(node => node.Type == "Branch" && node.BranchType == "Choice"))
             foreach (var option in node.Options ?? [])
             {
@@ -146,6 +149,18 @@ public sealed class LocalizationReferenceIndex
     private void ReadSource(LocalizationSource source)
     {
         var path = source.Path.Replace('\\', '/');
+        if (path.StartsWith("Assets/", StringComparison.Ordinal) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+        {
+            try
+            {
+                using var meta = JsonDocument.Parse(source.Json);
+                if (meta.RootElement.ValueKind != JsonValueKind.Object) { Issue("resource.metadata", path, "", "Resource metadata must be an object."); return; }
+                if (meta.RootElement.TryGetProperty("displayNameKey", out var name) && name.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(name.GetString()))
+                    _references.Add(new("resources", ProjectRawReader.Text(meta.RootElement, "id"), "/displayNameKey", name.GetString()!, FieldValueSemantic.LocalizedText) { ResourcePath = path[..^5] });
+            }
+            catch (JsonException error) { Issue("resource.metadata", path, "", error.Message); }
+            return;
+        }
         if (!path.StartsWith("I18n/", StringComparison.Ordinal)) return;
         var parts = path.Split('/');
         if (parts.Length < 3) { Issue("source.layout", path, "", "Localization files must be below a culture directory."); return; }

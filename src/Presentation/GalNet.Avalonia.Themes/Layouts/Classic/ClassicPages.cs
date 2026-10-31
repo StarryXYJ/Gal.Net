@@ -56,3 +56,8 @@ public partial class ClassicLoadingPage : UserControl
 {
     public ClassicLoadingPage() => InitializeComponent();
 }
+
+public partial class ClassicSceneGalleryPage : UserControl
+{
+    public ClassicSceneGalleryPage() => InitializeComponent();
+}

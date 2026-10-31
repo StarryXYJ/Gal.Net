@@ -220,8 +220,8 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
                 }
             }
             var value = new AudioItemState { Request = request };
-            if (!_catchUp && _host is not null && !string.IsNullOrWhiteSpace(request.DisplayName))
-                _announcements[value.Id] = request.DisplayName.Trim();
+            if (!_catchUp && _host is not null && request.AnnounceName)
+                _announcements[value.Id] = request.AssetId;
             if (_host is not null) Tickets(value.Id).Add(ticket);
             switch (request.Placement)
             {

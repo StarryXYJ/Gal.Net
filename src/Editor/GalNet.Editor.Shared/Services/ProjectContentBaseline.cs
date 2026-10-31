@@ -27,9 +27,20 @@ internal sealed class ProjectContentBaseline
         Map(a.GroupEntries, b.GroupEntries, (x, y) => Sequence(x, y, Entry)) && Map(a.Files, b.Files, File);
 
     private static bool Node(EditorGraphNodeDto a, EditorGraphNodeDto b) =>
-        a.Id == b.Id && a.Type == b.Type && a.Name == b.Name && a.X.Equals(b.X) && a.Y.Equals(b.Y) && a.File == b.File && a.BranchType == b.BranchType && a.StoryPackage == b.StoryPackage &&
+        a.Id == b.Id && a.Type == b.Type && a.Name == b.Name && a.X.Equals(b.X) && a.Y.Equals(b.Y) && a.File == b.File && a.BranchType == b.BranchType && a.StoryPackage == b.StoryPackage && Metadata(a.Metadata, b.Metadata) &&
         Sequence(a.Options, b.Options, (x, y) => x.Id == y.Id && x.Text == y.Text && x.Condition == y.Condition) &&
         Sequence(a.Conditions, b.Conditions, (x, y) => x.Id == y.Id && x.Expression == y.Expression);
+    private static bool Metadata(GalNet.Core.Assets.AssetMeta? a, GalNet.Core.Assets.AssetMeta? b)
+    {
+        if (a is null || b is null) return a is null && b is null;
+        if (a.Id != b.Id || a.TypeId != b.TypeId || a.Path != b.Path || a.Compress != b.Compress ||
+            a.DisplayNameKey != b.DisplayNameKey || a.GalleryUnlockId != b.GalleryUnlockId ||
+            (a.ExtensionData?.Count ?? 0) != (b.ExtensionData?.Count ?? 0)) return false;
+        if (a.ExtensionData is not null)
+            foreach (var (key, value) in a.ExtensionData)
+                if (b.ExtensionData?.TryGetValue(key, out var other) != true || !JsonElement.DeepEquals(value, other)) return false;
+        return true;
+    }
     private static bool Edge(EditorGraphEdgeDto a, EditorGraphEdgeDto b) =>
         a.Id == b.Id && a.FromNodeId == b.FromNodeId && a.FromOutlet == b.FromOutlet && a.ToNodeId == b.ToNodeId;
     private static bool Entry(EditorEntryData a, EditorEntryData b)

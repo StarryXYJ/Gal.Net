@@ -26,7 +26,7 @@ public sealed class AssetGalleryResourceResolver : IGalleryResourceResolver, IDi
         var resolver = new AssetGalleryResourceResolver(assets, files);
         try
         {
-            foreach (var id in gallery.Items.Select(item => item.ResourceId).Distinct(StringComparer.OrdinalIgnoreCase))
+            foreach (var id in gallery.Items.Select(item => item.ResourceId).Concat(gallery.Items.Where(item => item.PreviewResourceId is not null).Select(item => item.PreviewResourceId!)).Distinct(StringComparer.OrdinalIgnoreCase))
             {
                 try { resolver._leases.Add(id, await resolver._files.AcquireAsync(id, ct).ConfigureAwait(false)); }
                 catch (FileNotFoundException) { } // Missing optional Gallery media remains unavailable.

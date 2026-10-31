@@ -1,1 +1,9 @@
-{"id":"a1000000000000000000000000000003","type":"sprite","path":"bg.png","filter":"bilinear","compress":"none"}
+{
+  "id": "a1000000000000000000000000000003",
+  "type": "sprite",
+  "path": "bg.png",
+  "filter": "bilinear",
+  "compress": "none",
+  "galleryUnlockId": 101,
+  "displayNameKey": "asset.evening.name"
+}

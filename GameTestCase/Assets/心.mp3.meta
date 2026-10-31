@@ -1,1 +1,8 @@
-{"id":"a1000000000000000000000000000010","type":"audio","path":"心.mp3","compress":"none"}
+{
+  "id": "a1000000000000000000000000000010",
+  "type": "audio",
+  "path": "心.mp3",
+  "compress": "none",
+  "galleryUnlockId": 200,
+  "displayNameKey": "asset.heart.name"
+}

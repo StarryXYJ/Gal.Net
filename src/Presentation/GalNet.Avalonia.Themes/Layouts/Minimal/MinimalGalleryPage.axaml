@@ -9,33 +9,34 @@
              x:DataType="vm:GalleryPageViewModel">
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
-      <Grid ColumnDefinitions="200,*" ColumnSpacing="36">
-        <Grid x:Name="PageHeader" RowDefinitions="Auto,*,Auto">
+      <Grid RowDefinitions="Auto,Auto,*,Auto">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
           <StackPanel Spacing="3">
             <TextBlock Text="{text:PlayerText Title.Gallery, 'Gallery'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             <TextBlock Text="{text:PlayerText Gallery.Description, 'Unlocked memories and artwork'}" Opacity="0.64" />
           </StackPanel>
-          <Button Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Bottom" x:Name="PageBackButton" Grid.Row="2" HorizontalAlignment="Stretch" />
         </Grid>
-        <ScrollViewer Margin="0" HorizontalScrollBarVisibility="Disabled" Grid.Column="1">
-          <ItemsControl x:Name="TypeList" ItemsSource="{Binding Types}">
+        <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <ScrollViewer Grid.Row="2" Margin="0,24,0,0" HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Center">
+          <ItemsControl x:Name="TypeList" ItemsSource="{Binding Types}" HorizontalAlignment="Center" MinWidth="280" MaxWidth="320">
             <ItemsControl.ItemsPanel>
               <ItemsPanelTemplate>
-                <WrapPanel ItemWidth="260" ItemHeight="120" />
+                <StackPanel Spacing="12" />
               </ItemsPanelTemplate>
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="gallery:GalleryTypeData">
-                <Button Margin="6" Padding="20" HorizontalContentAlignment="Stretch" Command="{Binding #TypeList.DataContext.OpenTypeCommand}" CommandParameter="{Binding}">
+                <Button Padding="24,16" MinHeight="64" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding #TypeList.DataContext.OpenTypeCommand}" CommandParameter="{Binding}">
                   <StackPanel Spacing="6">
-                    <TextBlock Text="{Binding Type.TypeId}" FontSize="22" FontWeight="SemiBold" />
-                    <TextBlock Text="{Binding Type.ResourceTypeId}" Opacity="0.6" />
+                    <text:PlayerTextBlock Key="{Binding Type.DisplayNameKey}" FontSize="22" FontWeight="SemiBold" />
+
                   </StackPanel>
                 </Button>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
+        <Button Grid.Row="3" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Bottom" HorizontalAlignment="Left" Width="200" Margin="0,16,0,0" x:Name="PageBackButton" />
       </Grid>
     </Border>
   </Grid>

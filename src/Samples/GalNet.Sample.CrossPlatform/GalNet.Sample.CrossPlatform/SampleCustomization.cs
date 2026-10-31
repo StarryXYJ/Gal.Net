@@ -52,6 +52,7 @@ public static class SampleCustomization
         services.AddAvaloniaGameViewPages(theme: PlayerTheme, configureViews: configureViews)
             .AddSingleton(_ => CreateLocalizationService())
             .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<AvaloniaPlayerLocalization>())
+            .AddSingleton<GalNet.Core.Services.ITextResolver>(provider => provider.GetRequiredService<IPlayerLocalization>())
             .AddSingleton<LibVlcRuntime>()
             .AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
                 provider.GetRequiredService<GamePageViewModel>(), editors: CreateFieldEditors()))

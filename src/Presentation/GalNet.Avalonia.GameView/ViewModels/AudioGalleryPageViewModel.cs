@@ -13,21 +13,31 @@ public sealed partial class AudioGalleryPageViewModel(
     IGameNavigationService navigation,
     GalleryMediaService media) : BackNavigablePageViewModel(navigation), IGalleryPageViewModel, IDisposable
 {
+    private CancellationTokenSource? _preparation;
     public ObservableCollection<GalleryEntryViewModel> Items { get; } = [];
+    [ObservableProperty] private string? _errorMessage;
     [ObservableProperty] private string _title = "Gallery";
 
-    public Task ActivateAsync(GalleryTypeData gallery, CancellationToken cancellationToken = default)
+    public async Task ActivateAsync(GalleryTypeData gallery, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        _preparation?.Cancel(); _preparation?.Dispose();
+        _preparation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        var preparation = _preparation;
         media.PlaybackChanged -= OnPlaybackChanged;
         media.PlaybackChanged += OnPlaybackChanged;
         foreach (var item in Items) item.Dispose();
         Items.Clear();
-        Title = gallery.Type.TypeId;
+        Title = media.ResolveText(gallery.Type.DisplayNameKey, gallery.Type.TypeId);
         foreach (var item in gallery.Items.OrderBy(item => item.Item.Id))
-            Items.Add(new GalleryEntryViewModel(item));
+            Items.Add(new GalleryEntryViewModel(item, media.ResolveName(item.Item), percent => media.SeekAudio(item, percent), media.ResolveText("Gallery.Untitled", "Untitled")));
         UpdateAudioState();
-        return Task.CompletedTask;
+        try
+        {
+            foreach (var item in gallery.Items.Where(item => item.IsUnlocked))
+                await media.PrepareAudioAsync(item, preparation.Token);
+        }
+        catch (OperationCanceledException) when (preparation.IsCancellationRequested) { }
     }
 
     [RelayCommand]
@@ -39,8 +49,11 @@ public sealed partial class AudioGalleryPageViewModel(
     }
 
 
+    protected override void OnBack() { _preparation?.Cancel(); media.StopPlayback(); base.OnBack(); }
+
     public void Dispose()
     {
+        _preparation?.Cancel(); _preparation?.Dispose(); _preparation = null;
         media.PlaybackChanged -= OnPlaybackChanged;
         foreach (var item in Items) item.Dispose();
         Items.Clear();
@@ -54,14 +67,15 @@ public sealed partial class AudioGalleryPageViewModel(
 
     private void UpdateAudioState()
     {
-        var duration = media.AudioDuration;
-        var position = media.AudioPosition;
+        ErrorMessage = media.LastError;
         foreach (var item in Items)
         {
             var active = item.Id == media.ActiveAudioItemId;
             item.IsPlaying = active && media.IsAudioPlaying;
-            item.Progress = active && duration > 0 ? Math.Clamp(position * 100d / duration, 0, 100) : 0;
-            item.TimeText = active ? $"{FormatTime(position)} / {FormatTime(duration)}" : "00:00 / 00:00";
+            var preview = media.GetAudioPreview(item.Data);
+            item.CanSeek = item.IsUnlocked;
+            item.UpdateProgress(preview.Progress);
+            item.TimeText = $"{FormatTime(preview.Position)} / {FormatTime(preview.Duration)}";
         }
     }
 

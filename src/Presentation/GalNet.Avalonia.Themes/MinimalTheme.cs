@@ -16,6 +16,8 @@ public sealed class MinimalTheme(GamePalette? palette = null) : GameLayoutTheme(
         views.Register<GalleryPageViewModel, MinimalGalleryPage>();
         views.Register<CgGalleryPageViewModel, MinimalCgGalleryPage>();
         views.Register<CgGalleryImagePageViewModel, MinimalCgGalleryImagePage>();
+        views.Register<SceneGalleryPageViewModel, MinimalSceneGalleryPage>();
+        views.Register<SceneGalleryPlayerPageViewModel, Common.SceneGalleryPlayerPage>();
         views.Register<AudioGalleryPageViewModel, MinimalAudioGalleryPage>();
         views.Register<VideoGalleryPageViewModel, MinimalVideoGalleryPage>();
         views.Register<VideoGalleryPlayerPageViewModel, MinimalVideoGalleryPlayerPage>();

@@ -144,5 +144,5 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
     }
 
     private IReadOnlyList<GalleryTypeData> GetGalleryTypes() =>
-        (_session as IGameGallerySession)?.GalleryDataSource?.GetTypes() ?? [];
+        (_session as IGameGallerySession)?.GalleryDataSource?.GetTypes().Where(type => type.Items.Count > 0 && _galleryNavigation.Supports(type.Type.TypeId)).ToArray() ?? [];
 }

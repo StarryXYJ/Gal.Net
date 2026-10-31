@@ -56,3 +56,8 @@ public partial class MinimalLoadingPage : UserControl
 {
     public MinimalLoadingPage() => InitializeComponent();
 }
+
+public partial class MinimalSceneGalleryPage : UserControl
+{
+    public MinimalSceneGalleryPage() => InitializeComponent();
+}

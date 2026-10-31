@@ -6,7 +6,7 @@
              x:Class="GalNet.Avalonia.Themes.Common.GameToolbar"
              x:DataType="vm:GamePageViewModel"
              FontSize="18"
-             IsVisible="{Binding IsGameUiVisible}"
+             IsVisible="{Binding IsGameToolbarVisible}"
              page:GamePage.IsPlayerInteraction="True">
   <UserControl.Resources>
     <SolidColorBrush x:Key="Toolbar.Hover" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.08" />

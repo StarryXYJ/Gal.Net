@@ -2,6 +2,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:common="using:GalNet.Avalonia.Themes.Common"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.Themes.Layouts.Minimal.MinimalAudioGalleryPage"
              x:DataType="vm:AudioGalleryPageViewModel">
@@ -17,15 +19,7 @@
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:GalleryEntryViewModel">
                 <Border Margin="0,0,0,8" Padding="14" Background="{DynamicResource GalNet.Brush.Surface}" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
-                  <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
-                    <TextBlock Text="{Binding Title}" FontSize="17" />
-                    <TextBlock Grid.Column="1" Text="{text:PlayerText Gallery.Locked, 'Locked'}" IsVisible="{Binding IsLocked}" Opacity="0.7" />
-                    <ProgressBar Grid.Row="1" Margin="0,10,12,0" Minimum="0" Maximum="100" Value="{Binding Progress}" Height="5" IsVisible="{Binding IsUnlocked}" />
-                    <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,6,0,0" Orientation="Horizontal" Spacing="10" IsVisible="{Binding IsUnlocked}">
-                      <TextBlock Text="{Binding TimeText}" Opacity="0.65" />
-                      <Button Content="{text:PlayerText Gallery.PlayPause, 'Play / Pause'}" Command="{Binding #Items.DataContext.ToggleAudioCommand}" CommandParameter="{Binding}" />
-                    </StackPanel>
-                  </Grid>
+                  <common:AudioGalleryRow ToggleCommand="{Binding #Items.DataContext.ToggleAudioCommand}" />
                 </Border>
               </DataTemplate>
             </ItemsControl.ItemTemplate>

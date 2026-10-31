@@ -132,7 +132,7 @@ public sealed class ProjectFileTransactionTests
     {
         await EditorProjectCreator.CreateAsync(new(_root, "Metadata"));
         File.WriteAllBytes(Path.Combine(_root, "Assets/a.png"), [1]);
-        var json = """{"id":"asset-a","type":"sprite","path":"a.png","gallery":"invalid","custom":{"x":17}}""";
+        var json = """{"id":"asset-a","type":"sprite","path":"a.png","galleryUnlockId":"invalid","custom":{"x":17}}""";
         File.WriteAllText(Path.Combine(_root, "Assets/a.png.meta"), json);
         var executor = new AssetFileCommandExecutor(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
         var result = await executor.ExecuteAsync(_root, new RenameAssetCommand("a.png", "b.png"));

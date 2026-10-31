@@ -9,7 +9,7 @@
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid ColumnDefinitions="200,*" ColumnSpacing="36">
         <Grid x:Name="PageHeader" RowDefinitions="Auto,*,Auto">
-          <TextBlock Text="{Binding Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding Title}" ToolTip.Tip="{Binding Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
           <Button Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Bottom" Grid.Row="2" HorizontalAlignment="Stretch" />
         </Grid>
         <Border Classes="player-media-stage" Margin="0" Grid.Column="1">

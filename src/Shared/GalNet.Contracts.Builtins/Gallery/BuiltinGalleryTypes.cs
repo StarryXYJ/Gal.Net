@@ -7,5 +7,6 @@ public static class BuiltinGalleryTypes
         .Add("cg", "sprite")
         .Add("video", "video")
         .Add("audio", "audio")
+        .Add("scene", "group")
         .Build(resourceTypes);
 }

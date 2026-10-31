@@ -116,6 +116,15 @@ public sealed class AssetCatalogService : IAssetCatalogService
         try
         {
             var metaPath = file + ".meta";
+            var content = _projects.Current?.Services.GetService(typeof(IProjectContentSession)) as IProjectContentSession;
+            var relative = "Assets/" + Relative(file) + ".meta";
+            var managed = content?.FileDocuments.Values.Where(document => document.ManagedContent &&
+                Shared.Services.ProjectFilePaths.Comparer.Equals(document.Path, relative)).ToArray();
+            if (managed is { Length: > 0 })
+            {
+                var live = managed.SingleOrDefault(document => document.Exists);
+                return live is null ? null : _metaCodec.Deserialize(Shared.Services.LocalizationJson.Decode(live.Data), Relative(file));
+            }
             return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath), Relative(file)) : null;
         }
         catch { return null; }

@@ -16,6 +16,8 @@ public sealed class PaperTheme(GamePalette? palette = null) : GameLayoutTheme(pa
         views.Register<GalleryPageViewModel, PaperGalleryPage>();
         views.Register<CgGalleryPageViewModel, PaperCgGalleryPage>();
         views.Register<CgGalleryImagePageViewModel, PaperCgGalleryImagePage>();
+        views.Register<SceneGalleryPageViewModel, PaperSceneGalleryPage>();
+        views.Register<SceneGalleryPlayerPageViewModel, Common.SceneGalleryPlayerPage>();
         views.Register<AudioGalleryPageViewModel, PaperAudioGalleryPage>();
         views.Register<VideoGalleryPageViewModel, PaperVideoGalleryPage>();
         views.Register<VideoGalleryPlayerPageViewModel, PaperVideoGalleryPlayerPage>();

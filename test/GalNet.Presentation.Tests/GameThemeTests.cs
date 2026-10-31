@@ -734,17 +734,17 @@ public sealed partial class GameThemeTests
                     if (viewModel is AudioGalleryPageViewModel audioGallery)
                     {
                         audioGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
-                            new GalleryItem { Id = 1, Title = "Evening melody / 暮色之声" }, true)));
+                            new GalleryItem { Id = 1, DisplayNameKey = "melody.name" }, true), "Evening melody / 暮色之声"));
                         audioGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
-                            new GalleryItem { Id = 2, Title = "An undiscovered melody" }, false)));
+                            new GalleryItem { Id = 2, DisplayNameKey = "locked.name" }, false)));
                     }
                     if (viewModel is GalleryVisualPageViewModelBase visualGallery)
                     {
                         visualGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
-                            new GalleryItem { Id = 1, Title = "Evening light / 暮色" }, true))
+                            new GalleryItem { Id = 1, DisplayNameKey = "image.name" }, true), "Evening light / 暮色")
                         { Thumbnail = CreateGalleryArtwork() });
                         visualGallery.Items.Add(new GalleryEntryViewModel(new GalleryItemData(
-                            new GalleryItem { Id = 2, Title = "An undiscovered memory" }, false)));
+                            new GalleryItem { Id = 2, DisplayNameKey = "locked.name" }, false)));
                     }
                     if (viewModel is CgGalleryImagePageViewModel imagePage)
                     {

@@ -89,7 +89,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     }
 
     private static AudioPlayRequest PlayRequest(AudioPlayOptions options, AudioPlacement placement) => new(
-        options.TrackId, options.Asset ?? "", placement, options.Gain, options.FadeIn, options.LoopCount, options.Completion, options.FadeOut) { DisplayName = options.DisplayName };
+        options.TrackId, options.Asset ?? "", placement, options.Gain, options.FadeIn, options.LoopCount, options.Completion, options.FadeOut) { AnnounceName = options.AnnounceName };
 
     private static AudioPlaybackPrimitiveInstance Playback(PrimitiveCreateContext context, AudioRuntime runtime,
         AudioScope scope, AudioConfiguration tracks, AudioPlayOptions options, AudioPlacement placement) => new(() =>

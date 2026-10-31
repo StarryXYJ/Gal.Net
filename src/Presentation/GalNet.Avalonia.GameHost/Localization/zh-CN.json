@@ -129,5 +129,14 @@
   "ReturnToTitle.Title": "返回标题？",
   "ReturnToTitle.Message": "未保存的剧情进度将丢失。",
   "Window.FitAspectRatio": "适应画面比例",
-  "ReturnToTitle.Confirm": "返回标题"
+  "ReturnToTitle.Confirm": "返回标题",
+  "Gallery.Pause": "暂停",
+  "Gallery.Seek": "播放进度",
+  "Gallery.Play": "播放",
+  "Gallery.Stop": "停止",
+  "Gallery.Type.cg": "图片鉴赏",
+  "Gallery.Type.video": "视频鉴赏",
+  "Gallery.Type.audio": "音乐鉴赏",
+  "Gallery.Type.scene": "场景鉴赏",
+  "Gallery.Untitled": "未命名资源"
 }

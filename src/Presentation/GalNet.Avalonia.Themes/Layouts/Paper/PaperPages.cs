@@ -56,3 +56,8 @@ public partial class PaperLoadingPage : UserControl
 {
     public PaperLoadingPage() => InitializeComponent();
 }
+
+public partial class PaperSceneGalleryPage : UserControl
+{
+    public PaperSceneGalleryPage() => InitializeComponent();
+}

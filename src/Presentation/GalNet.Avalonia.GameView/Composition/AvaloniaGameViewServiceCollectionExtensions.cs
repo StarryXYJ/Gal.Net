@@ -27,6 +27,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         galleryPages.Add<CgGalleryPageViewModel>("cg");
         galleryPages.Add<VideoGalleryPageViewModel>("video");
         galleryPages.Add<AudioGalleryPageViewModel>("audio");
+        galleryPages.Add<SceneGalleryPageViewModel>("scene");
 
         theme.RegisterViews(views);
         configureGalleryPages?.Invoke(galleryPages);
@@ -37,7 +38,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         {
             typeof(TitlePageViewModel), typeof(GamePageViewModel), typeof(SettingsPageViewModel),
             typeof(SaveSlotsPageViewModel), typeof(GalleryPageViewModel), typeof(CgGalleryPageViewModel),
-            typeof(CgGalleryImagePageViewModel), typeof(AudioGalleryPageViewModel), typeof(VideoGalleryPageViewModel),
+            typeof(SceneGalleryPageViewModel), typeof(SceneGalleryPlayerPageViewModel), typeof(CgGalleryImagePageViewModel), typeof(AudioGalleryPageViewModel), typeof(VideoGalleryPageViewModel),
             typeof(VideoGalleryPlayerPageViewModel), typeof(MissingGalleryPageViewModel), typeof(AboutPageViewModel),
             typeof(LoadingPageViewModel), typeof(ScreenshotDialogViewModel)
         };
@@ -81,6 +82,7 @@ public static class AvaloniaGameViewServiceCollectionExtensions
         services.TryAddScoped<GalleryPageViewModel>();
         services.TryAddScoped<CgGalleryImagePageViewModel>();
         services.TryAddScoped<VideoGalleryPlayerPageViewModel>();
+        services.TryAddScoped<SceneGalleryPlayerPageViewModel>();
         services.TryAddScoped<MissingGalleryPageViewModel>();
         services.TryAddScoped<AboutPageViewModel>();
         services.TryAddScoped<LoadingPageViewModel>();

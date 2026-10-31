@@ -4,7 +4,7 @@
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels"
              x:Class="GalNet.Avalonia.Themes.Layouts.Minimal.MinimalCgGalleryPage"
-             x:DataType="vm:CgGalleryPageViewModel">
+             x:DataType="vm:GalleryVisualPageViewModelBase">
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid ColumnDefinitions="200,*" ColumnSpacing="36">
@@ -21,17 +21,20 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="vm:GalleryEntryViewModel">
-                <Button Margin="6" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ClipToBounds="True" IsEnabled="{Binding IsUnlocked}" Command="{Binding #Items.DataContext.OpenItemCommand}" CommandParameter="{Binding}">
-                  <Grid ClipToBounds="True" RowDefinitions="*,Auto" Background="{DynamicResource GalNet.Brush.Surface}">
-                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsUnlocked}" />
-                    <Border Background="{DynamicResource GalNet.Brush.SurfaceRaised}" IsVisible="{Binding IsLocked}">
-                      <TextBlock Text="{text:PlayerText Gallery.Locked, 'Locked'}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity="0.7" />
-                    </Border>
-                    <Border Grid.Row="1" Background="{DynamicResource GalNet.Brush.Overlay}" Padding="10,7">
-                      <TextBlock Text="{Binding Title}" TextTrimming="CharacterEllipsis" />
-                    </Border>
-                  </Grid>
-                </Button>
+                <Grid Margin="6" RowDefinitions="*,Auto" ClipToBounds="True">
+                  <Button Grid.RowSpan="2" Margin="0" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ClipToBounds="True" IsEnabled="{Binding IsUnlocked}" Command="{Binding #Items.DataContext.OpenItemCommand}" CommandParameter="{Binding}" ToolTip.Tip="{Binding Name}" ToolTip.IsEnabled="{Binding HasName}">
+                    <Grid ClipToBounds="True" RowDefinitions="*" Background="{DynamicResource GalNet.Brush.Surface}">
+                      <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsUnlocked}" />
+                      <Border Background="{DynamicResource GalNet.Brush.SurfaceRaised}" IsVisible="{Binding IsLocked}">
+                        <TextBlock Text="{text:PlayerText Gallery.Locked, 'Locked'}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity="0.7" />
+                      </Border>
+
+                    </Grid>
+                  </Button>
+                  <Border Grid.Row="1" Background="{DynamicResource GalNet.Brush.Overlay}" Padding="10,7" IsHitTestVisible="False">
+                    <TextBlock x:Name="CardTitle" Text="{Binding Title}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" TextTrimming="CharacterEllipsis" />
+                  </Border>
+                </Grid>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

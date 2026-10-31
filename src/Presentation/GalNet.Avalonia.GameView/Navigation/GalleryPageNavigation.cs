@@ -106,6 +106,7 @@ public sealed class GalleryNavigationService(
     IGameNavigationService navigation,
     IGalleryPageRegistry pages)
 {
+    public bool Supports(string typeId) => pages.TryGetViewModelType(typeId, out _);
     public async Task OpenTypeAsync(GalleryTypeData gallery, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(gallery);

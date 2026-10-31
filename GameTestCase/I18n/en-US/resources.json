@@ -1,0 +1,14 @@
+{
+  "asset.classroom.name": "Classroom",
+  "asset.evening.name": "The street at dusk — a long resource name to verify ellipsis and full-name tooltips",
+  "asset.heart.name": "Heart",
+  "asset.theme.name": "Journey theme — Starlight and beyond",
+  "asset.film.name": "Animated short",
+  "asset.preview.name": "Animated short · Preview",
+  "asset.gallery-classroom.name": "A classroom memory",
+  "group.gallery-classroom.line.1": "This is line 1 of replay 1. Finishing returns to Gallery without following the main story.",
+  "group.gallery-classroom.line.2": "This is line 2 of replay 1. Finishing returns to Gallery without following the main story.",
+  "asset.gallery-evening.name": "A memory at dusk",
+  "group.gallery-evening.line.1": "This is line 1 of replay 2. Finishing returns to Gallery without following the main story.",
+  "group.gallery-evening.line.2": "This is line 2 of replay 2. Finishing returns to Gallery without following the main story."
+}

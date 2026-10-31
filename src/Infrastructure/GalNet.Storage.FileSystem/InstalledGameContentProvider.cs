@@ -43,6 +43,7 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
         var culture = _options.SelectDefaultCulture?.Invoke(settings);
         var localization = documents is null ? GameLocalizationLoader.Load(_directory, graph, culture, cancellationToken)
             : GameLocalizationLoader.LoadPacked(_directory, graph, documents, packages.Localization!, culture, cancellationToken);
+        GameLocalizationLoader.ValidateResourceNames(localization, (await assets.GetFilesAsync(ct: cancellationToken)).Select(file => file.Metadata));
         return new GameContent { Graph = graph, Gallery = gallery, Configuration = settings, Localization = localization };
     }, cancellationToken);
 }

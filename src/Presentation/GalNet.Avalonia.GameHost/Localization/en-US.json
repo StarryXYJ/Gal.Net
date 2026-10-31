@@ -129,5 +129,14 @@
   "ReturnToTitle.Title": "Return to title?",
   "ReturnToTitle.Message": "Unsaved story progress will be lost.",
   "Window.FitAspectRatio": "Fit game aspect ratio",
-  "ReturnToTitle.Confirm": "Return to title"
+  "ReturnToTitle.Confirm": "Return to title",
+  "Gallery.Pause": "Pause",
+  "Gallery.Seek": "Playback position",
+  "Gallery.Play": "Play",
+  "Gallery.Stop": "Stop",
+  "Gallery.Type.cg": "Images",
+  "Gallery.Type.video": "Videos",
+  "Gallery.Type.audio": "Music",
+  "Gallery.Type.scene": "Scenes",
+  "Gallery.Untitled": "Untitled"
 }

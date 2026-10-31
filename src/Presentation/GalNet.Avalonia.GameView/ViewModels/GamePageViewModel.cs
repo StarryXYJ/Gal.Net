@@ -33,6 +33,9 @@ public partial class GamePageViewModel : PageViewModelBase
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private string _statusMessage = string.Empty;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isUiHidden;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isGameUiReady;
+    [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private bool _isGalleryReplay;
+    public bool IsGameToolbarVisible => IsGameUiVisible && !IsGalleryReplay;
+    partial void OnIsGalleryReplayChanged(bool value) => OnPropertyChanged(nameof(IsGameToolbarVisible));
     public bool IsGameUiVisible => IsGameUiReady && !IsUiHidden;
     public bool IsDialogueOverlayVisible => IsDialogueVisible && !IsUiHidden;
     public bool IsNvlOverlayVisible => IsNvlMode && !IsUiHidden;
@@ -66,14 +69,14 @@ public partial class GamePageViewModel : PageViewModelBase
 
     [RelayCommand]
     private Task OpenSaveSlotsAsync(CancellationToken cancellationToken) =>
-        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
+        IsGalleryReplay ? Task.CompletedTask : _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
 
     [RelayCommand]
     private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
-        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
+        IsGalleryReplay ? Task.CompletedTask : _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
 
     [RelayCommand] private void ToggleNvlMode() => IsNvlMode = !IsNvlMode;
-    [RelayCommand] private void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] private void OpenSettings() { if (!IsGalleryReplay) _navigation.Navigate<SettingsPageViewModel>(); }
     [RelayCommand] private void ReturnToTitle()
     {
         if (IsInteractionBlocked) return;
@@ -88,12 +91,13 @@ public partial class GamePageViewModel : PageViewModelBase
     partial void OnIsUiHiddenChanged(bool value)
     {
         OnPropertyChanged(nameof(IsGameUiVisible));
+        OnPropertyChanged(nameof(IsGameToolbarVisible));
         OnPropertyChanged(nameof(IsDialogueOverlayVisible));
         OnPropertyChanged(nameof(IsNvlOverlayVisible));
         OnPropertyChanged(nameof(IsChoiceOverlayVisible));
     }
 
-    partial void OnIsGameUiReadyChanged(bool value) => OnPropertyChanged(nameof(IsGameUiVisible));
+    partial void OnIsGameUiReadyChanged(bool value) { OnPropertyChanged(nameof(IsGameUiVisible)); OnPropertyChanged(nameof(IsGameToolbarVisible)); }
 
     partial void OnIsDialogueVisibleChanged(bool value) => OnPropertyChanged(nameof(IsDialogueOverlayVisible));
     partial void OnIsNvlModeChanged(bool value) => OnPropertyChanged(nameof(IsNvlOverlayVisible));

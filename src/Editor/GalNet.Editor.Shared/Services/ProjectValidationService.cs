@@ -201,7 +201,7 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         for (var i = 0; i < nodes.Count; i++)
         {
             var node = nodes[i]; var pointer = $"/nodes/{i}";
-            if (!Shape(node, GraphFile, pointer, diagnostics, ["id", "type", "name", "x", "y", "file", "storyPackage", "branchType", "options", "conditions"])) continue;
+            if (!Shape(node, GraphFile, pointer, diagnostics, ["id", "type", "name", "x", "y", "file", "storyPackage", "branchType", "options", "conditions", "metadata"])) continue;
             Identity(node, "id", nodeIds, GraphFile, pointer, diagnostics);
             String(node, "name", GraphFile, pointer, diagnostics, required: true);
             foreach (var key in new[] { "file", "storyPackage", "branchType" })
@@ -210,6 +210,16 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             foreach (var key in new[] { "x", "y" })
                 if (node.TryGetProperty(key, out var coord) && (coord.ValueKind != JsonValueKind.Number || !coord.TryGetDouble(out var coordinate) || !double.IsFinite(coordinate)))
                     Error(diagnostics, "graph.coordinateInvalid", "Coordinate must be a number.", GraphFile, pointer + "/" + key);
+            if (node.TryGetProperty("metadata", out var metadata) && metadata.ValueKind != JsonValueKind.Null)
+            {
+                if (metadata.ValueKind != JsonValueKind.Object) Error(diagnostics, "resource.metadataInvalid", "Resource metadata must be an object.", GraphFile, pointer + "/metadata");
+                else
+                {
+                    if (metadata.TryGetProperty("galleryPreviewAssetId", out var preview) && preview.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)) Error(diagnostics, "resource.previewInvalid", "Gallery preview must be a sprite resource ID or null.", GraphFile, pointer + "/metadata/galleryPreviewAssetId");
+                    if (metadata.TryGetProperty("displayNameKey", out var name) && name.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)) Error(diagnostics, "resource.nameInvalid", "Resource name key must be a string or null.", GraphFile, pointer + "/metadata/displayNameKey");
+                    if (metadata.TryGetProperty("galleryUnlockId", out var unlock) && unlock.ValueKind != JsonValueKind.Null && (unlock.ValueKind != JsonValueKind.Number || !unlock.TryGetInt32(out var id) || id <= 0)) Error(diagnostics, "resource.galleryIdInvalid", "Gallery unlock ID must be a positive integer or null.", GraphFile, pointer + "/metadata/galleryUnlockId");
+                }
+            }
             var type = ProjectRawReader.Text(node, "type");
             if (type is not ("Entry" or "Group" or "Branch")) Error(diagnostics, "graph.nodeTypeInvalid", "Node type must be Entry, Group or Branch.", GraphFile, pointer + "/type");
             if (type == "Group")

@@ -70,6 +70,8 @@ public sealed class ProjectContentContractTests
         copy.Graph.Nodes[0].Options![0].Text = "changed";
         copy.Graph.Nodes[0].Conditions![0].Expression = "false";
         copy.Graph.Edges.Clear();
+        copy.Graph.Nodes[0].Metadata!.DisplayNameKey = "changed";
+        copy.Graph.Nodes[0].Metadata!.ExtensionData!.Clear();
         copy.Graph.PlayerVariables[0].DefaultValue.Name = "changed";
         copy.Graph.PlayerVariables[0].DefaultValue.SetValue(42);
         copy.Graph.SaveVariables[0].Description = "changed";
@@ -268,6 +270,12 @@ public sealed class ProjectContentContractTests
                 {
                     Id = "group", Type = "Group", Name = "Group", X = 1.5, Y = 2.5, File = "groups/a.rawgalgroup",
                     StoryPackage = "chapter", BranchType = "choice",
+                    Metadata = new GalNet.Core.Assets.AssetMeta
+                    {
+                        Id = "group:group", TypeId = "group", Path = "groups/a.rawgalgroup", Compress = "none",
+                        DisplayNameKey = "resource.name", GalleryUnlockId = 41,
+                        ExtensionData = new() { ["galleryPreviewAssetId"] = JsonSerializer.SerializeToElement("cover") }
+                    },
                     Options = [new() { Id = "option", Text = "Choice", Condition = "true" }],
                     Conditions = [new() { Id = "condition", Expression = "true" }]
                 }],

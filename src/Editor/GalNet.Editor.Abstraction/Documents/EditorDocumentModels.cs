@@ -56,6 +56,10 @@ public sealed class EditorGraphNodeDto
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? StoryPackage { get; set; }
 
+    [JsonPropertyName("metadata")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public GalNet.Core.Assets.AssetMeta? Metadata { get; set; }
+
     [JsonPropertyName("branchType")]
     public string? BranchType { get; set; }
 

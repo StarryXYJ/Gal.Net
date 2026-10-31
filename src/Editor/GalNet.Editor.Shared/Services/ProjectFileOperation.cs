@@ -79,6 +79,8 @@ public sealed partial class ProjectFileOperation : IDisposable
     private FileStream? _lease;
     private bool _caseOnly;
     private HashSet<int>? _galleryIds;
+    private HashSet<int> _groupGalleryIds = [];
+    private readonly Dictionary<string, byte[]> _workingMetadata = new(ProjectFilePaths.Comparer);
     private RemovedContent? _removedWorking, _removedSaved;
     public string Id { get; } = Guid.NewGuid().ToString("N");
     public long RetainedBytes => _storedBytes + _removedBytes;
@@ -171,6 +173,9 @@ public sealed partial class ProjectFileOperation : IDisposable
 
     private void Initialize(EditorProjectDocument working, EditorProjectDocument saved)
     {
+        foreach (var file in working.Files.Values.Where(file => file.Exists && file.ManagedContent && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && file.Path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+            _workingMetadata[_reader.Resolve(file.Path)] = file.Data.ToArray();
+        _groupGalleryIds = working.Graph.Nodes.Where(node => node.Metadata?.GalleryUnlockId is not null).Select(node => node.Metadata!.GalleryUnlockId!.Value).ToHashSet();
         Directory.CreateDirectory(_retained);
         _lease = new FileStream(Path.Combine(_retained, "owner.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None);
         _managed = working.Graph.Nodes.Concat(saved.Graph.Nodes).Where(node => node.Type == "Group").Select(node => "Graph/" + node.File).ToHashSet(ProjectFilePaths.Comparer);
@@ -287,6 +292,9 @@ public sealed partial class ProjectFileOperation : IDisposable
             if (_before.TryGetValue(path + ".meta", out var meta)) values.Add(_codec.Deserialize(File.ReadAllText(meta.Backup), path[7..]).Id);
         }
         var references = new List<ProjectFileReference>();
+        foreach (var node in document.Graph.Nodes)
+            if (node.Metadata?.ExtensionData?.TryGetValue("galleryPreviewAssetId", out var preview) == true && preview.ValueKind == JsonValueKind.String && values.Contains(preview.GetString()!))
+                references.Add(new("group/" + node.Id, "galleryPreviewAssetId", true));
         foreach (var pair in document.GroupEntries)
         {
             if (_request.DeleteGroups && document.Graph.Nodes.Any(node => node.Id == pair.Key && _roots.Any(root => ProjectFilePaths.Within("Graph/" + node.File, root)))) continue;
@@ -301,11 +309,19 @@ public sealed partial class ProjectFileOperation : IDisposable
         }
         if (Strings(JsonSerializer.SerializeToElement(document.Configuration)).Any(text => values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))))
             references.Add(new("settings.json", "custom", false));
-        foreach (var file in document.Files.Values.Where(file => file.Exists && file.ManagedContent && !_roots.Any(root => ProjectFilePaths.Within(file.Path, root))))
+        foreach (var file in document.Files.Values.Where(file => file.Exists && file.ManagedContent && !_roots.Any(root => OwnsResourcePath(file.Path, root))))
         {
             using var stream = new MemoryStream(file.Data, writable: false);
             using var reader = new StreamReader(stream, new System.Text.UTF8Encoding(false, true), detectEncodingFromByteOrderMarks: true);
             var text = reader.ReadToEnd();
+            if (file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && file.Path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+            {
+                using var json = JsonDocument.Parse(text);
+                foreach (var property in json.RootElement.EnumerateObject().Where(property => property.Name is not ("id" or "path" or "displayNameKey" or "type" or "galleryUnlockId")))
+                    if (Strings(property.Value).Any(value => values.Any(candidate => value.Contains(candidate, StringComparison.OrdinalIgnoreCase))))
+                        references.Add(new(file.Path, property.Name, property.Name == "galleryPreviewAssetId"));
+                continue;
+            }
             if (values.Any(value => text.Contains(value, StringComparison.OrdinalIgnoreCase))) references.Add(new(file.Path, "custom", false));
         }
         foreach (var file in new[] { "UI/ui.json" }.Where(path => File.Exists(_reader.Resolve(path)) && !document.Files.Values.Any(file => file.Exists && file.ManagedContent && ProjectFilePaths.Comparer.Equals(file.Path, path))))
@@ -328,7 +344,7 @@ public sealed partial class ProjectFileOperation : IDisposable
         AssetMeta meta;
         if (original is not null && File.Exists(original + ".meta"))
         {
-            var json = File.ReadAllText(original + ".meta");
+            var json = _workingMetadata.TryGetValue(original + ".meta", out var buffer) ? LocalizationJson.Decode(buffer) : File.ReadAllText(original + ".meta");
             meta = _codec.Deserialize(json, destination[7..]);
             // Readers may tolerate malformed optional fields; an authoring operation must not discard them.
             try { _ = JsonSerializer.Deserialize(json, _types.Get(meta.TypeId).MetaDtoType, new JsonSerializerOptions(JsonSerializerDefaults.Web)); }
@@ -340,23 +356,19 @@ public sealed partial class ProjectFileOperation : IDisposable
             meta = (AssetMeta)Activator.CreateInstance(type.MetaDtoType)!; meta.TypeId = type.TypeId; meta.Id = Guid.NewGuid().ToString("N");
         }
         if (newId) meta.Id = Guid.NewGuid().ToString("N");
-        var annotations = meta.ReadGallery();
-        if (newId && annotations.Count > 0)
+        if (newId && meta.GalleryUnlockId is { } originalGalleryId)
         {
+            if (originalGalleryId <= 0) throw ProjectFilePaths.Error("galleryId", destination);
             if (_galleryIds is null)
             {
-                _galleryIds = [];
+                _galleryIds = _groupGalleryIds.ToHashSet();
                 if (Directory.Exists(_reader.Resolve("Assets")))
                     foreach (var path in Enumerate(_reader.Resolve("Assets")).Files.Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
-                        foreach (var item in _codec.Deserialize(File.ReadAllText(path), _reader.Relative(path)[7..^5]).ReadGallery()) _galleryIds.Add(item.Id);
+                        if (_codec.Deserialize(_workingMetadata.TryGetValue(path, out var bytes) ? LocalizationJson.Decode(bytes) : File.ReadAllText(path), _reader.Relative(path)[7..^5]).GalleryUnlockId is { } existing) _galleryIds.Add(existing);
             }
-            meta.SetGallery(annotations.Select(item =>
-            {
-                if (item.Id <= 0) throw ProjectFilePaths.Error("galleryId", destination);
-                if (_galleryIds.Add(item.Id)) return item;
-                var id = 1; while (_galleryIds.Contains(id)) id = checked(id + 1);
-                _galleryIds.Add(id); return item with { Id = id };
-            }));
+            var id = originalGalleryId;
+            if (_galleryIds.Contains(id)) { id = 1; while (_galleryIds.Contains(id)) id = checked(id + 1); }
+            _galleryIds.Add(id); meta.GalleryUnlockId = id;
         }
         meta.Path = destination[7..];
         if (_request.Action == ProjectFileAction.Metadata) { if (meta is SpriteAssetMeta sprite && _request.Filter is not null) sprite.Filter = _request.Filter; if (_request.Compression is not null) meta.Compress = _request.Compression; }
@@ -370,9 +382,19 @@ public sealed partial class ProjectFileOperation : IDisposable
         foreach (var (from, to) in _moves)
         {
             var source = forward ? from : to; var target = forward ? to : from;
+            if (ProjectFilePaths.Comparer.Equals(path, source + ".meta")) return target + ".meta";
             if (ProjectFilePaths.Within(path, source)) return target + path[source.Length..];
         }
         return path;
+    }
+    private static bool OwnsResourcePath(string path, string root) => ProjectFilePaths.Within(path, root) || ProjectFilePaths.Comparer.Equals(path, root + ".meta");
+    private void RebaseMetadataBuffer(EditorFileDocument file, bool forward)
+    {
+        if (!file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) || !file.Path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) return;
+        var destination = Map(file.Path, forward);
+        if (destination == file.Path) return;
+        var root = System.Text.Json.Nodes.JsonNode.Parse(LocalizationJson.Decode(file.Data))!.AsObject();
+        root["path"] = destination[7..^5]; file.Data = LocalizationJson.WriteLike(file.Data, root);
     }
     private Snapshot SnapshotFile(string file)
     {
@@ -397,7 +419,7 @@ public sealed partial class ProjectFileOperation : IDisposable
     {
         var nodes = document.Graph.Nodes.Where(node => node.Type == "Group" && _roots.Any(root => ProjectFilePaths.Within("Graph/" + node.File, root))).ToArray();
         var ids = nodes.Select(node => node.Id).ToHashSet();
-        return new(Clone(new EditorProjectDocument { Graph = new() { Nodes = nodes.ToList(), Edges = document.Graph.Edges.Where(edge => ids.Contains(edge.FromNodeId) || ids.Contains(edge.ToNodeId)).ToList() }, GroupEntries = document.GroupEntries.Where(pair => ids.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value), Files = document.Files.Where(pair => _roots.Any(root => ProjectFilePaths.Within(pair.Value.Path, root))).ToDictionary(pair => pair.Key, pair => pair.Value) }),
+        return new(Clone(new EditorProjectDocument { Graph = new() { Nodes = nodes.ToList(), Edges = document.Graph.Edges.Where(edge => ids.Contains(edge.FromNodeId) || ids.Contains(edge.ToNodeId)).ToList() }, GroupEntries = document.GroupEntries.Where(pair => ids.Contains(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value), Files = document.Files.Where(pair => _roots.Any(root => OwnsResourcePath(pair.Value.Path, root))).ToDictionary(pair => pair.Key, pair => pair.Value) }),
             document.Graph.Nodes.Select((node, index) => (node.Id, index)).ToDictionary(item => item.Id, item => item.index),
             document.Graph.Edges.Select((edge, index) => (edge.Id, index)).ToDictionary(item => item.Id, item => item.index));
     }
@@ -410,9 +432,9 @@ public sealed partial class ProjectFileOperation : IDisposable
             var removed = version == AuthorDocumentVersion.Working ? Working : Saved;
             foreach (var file in document.Files.Values)
             {
-                if (Owner.Action == ProjectFileAction.Move && file.Exists && file.ManagedContent) Owner.RebaseVariantBuffer(file, Forward);
+                if (Owner.Action == ProjectFileAction.Move && file.Exists && file.ManagedContent) { Owner.RebaseVariantBuffer(file, Forward); Owner.RebaseMetadataBuffer(file, Forward); }
                 if (Owner.Action == ProjectFileAction.Move) file.Path = Owner.Map(file.Path, Forward);
-                if (Owner.Action == ProjectFileAction.Delete && Owner._roots.Any(root => ProjectFilePaths.Within(file.Path, root)))
+                if (Owner.Action == ProjectFileAction.Delete && Owner._roots.Any(root => OwnsResourcePath(file.Path, root)))
                 {
                     file.Exists = !Forward;
                     if (!Forward && removed?.Document.Files.TryGetValue(file.Id, out var previous) == true) file.Data = previous.Data.ToArray();

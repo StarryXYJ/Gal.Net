@@ -21,7 +21,7 @@ public sealed partial class CgGalleryImagePageViewModel(
         Image?.Dispose();
         Image = null;
         ErrorMessage = null;
-        Title = string.IsNullOrWhiteSpace(item.Item.Title) ? item.Item.Id.ToString(CultureInfo.InvariantCulture) : item.Item.Title;
+        Title = item.IsUnlocked ? media.ResolveName(item.Item) : "";
         if (!item.IsUnlocked) { ErrorMessage = "This Gallery item is locked."; return Task.CompletedTask; }
         var path = media.ResolvePath(item.Item.ResourceId);
         try { Image = path is null ? null : new Bitmap(path); }

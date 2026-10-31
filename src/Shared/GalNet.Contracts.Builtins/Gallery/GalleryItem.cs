@@ -14,8 +14,12 @@ public sealed record GalleryItem
     [JsonPropertyName("resourceId")]
     public string ResourceId { get; init; } = "";
 
-    [JsonPropertyName("title")]
+    [JsonPropertyName("previewResourceId")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Title { get; init; }
+    public string? PreviewResourceId { get; init; }
+
+    [JsonPropertyName("displayNameKey")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? DisplayNameKey { get; init; }
 
 }

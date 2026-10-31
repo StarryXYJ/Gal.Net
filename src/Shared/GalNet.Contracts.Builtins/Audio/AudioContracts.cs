@@ -83,7 +83,7 @@ public sealed record AudioPlayRequest(
     AudioCompletion Completion = AudioCompletion.Discard,
     float FadeOutSeconds = 0f)
 {
-    public string? DisplayName { get; init; }
+    public bool AnnounceName { get; init; }
 }
 
 public sealed record AudioStopRequest(string TrackId, bool ClearQueue, float? FadeOutSeconds = null);

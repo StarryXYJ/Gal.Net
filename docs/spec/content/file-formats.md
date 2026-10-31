@@ -19,7 +19,7 @@ Project/
   Output/ Temp/ .galnet/  工作文件，不是游戏内容
 ```
 
-项目根不存在可编辑 `gallery.json`。Gallery 从 `Assets/**/*.meta` 的 `gallery[]` 聚合：类型由宿主代码/插件注册，item ID 为全局唯一正整数，资源 ID 是父 metadata 的 GUID。开发运行在内容加载时聚合一次；发行运行读取 `game.pak` 内导出生成的 `gallery.json`。
+项目根不存在可编辑 `gallery.json`。Gallery 从资源通用 metadata 的可选 `galleryUnlockId` 聚合，包含 Graph 节点编译出的 group metadata：分类按宿主注册的资源类型映射选择，ID 为全局唯一正整数并用于排序，资源名称通过 `displayNameKey` 引用现有 i18n 文本。开发运行在内容加载时聚合一次；发行运行读取 `game.pak` 内导出生成的 `gallery.json`。
 
 `I18n/` 的人物表、文本源与默认语言完整性检查见 [国际化](localization.md)。它是特殊内容，不是资源 provider 输入。
 
@@ -110,8 +110,8 @@ GameInstallation 缓存当前包集合；重启或新建安装会话采用新增
 {
   "version": 2,
   "types": [{ "typeId": "cg", "resourceType": "sprite" }],
-  "items": [{ "id": 100, "typeId": "cg", "resourceId": "asset-guid", "title": "Opening" }]
+  "items": [{ "id": 100, "typeId": "cg", "resourceId": "asset-guid", "displayNameKey": "asset.opening.name" }]
 }
 ```
 
-加载时会与当前冻结 `IGalleryTypeCatalog` 校验；生成文件不会反向注册类型。每项对应 Player bool `gallery_<id>_unlocked`，解锁状态不写回 metadata 或该 JSON。
+加载时与当前冻结 `IGalleryTypeCatalog` 取交集；相同 type ID 的资源类型映射冲突仍拒绝，未注册类型不显示。生成文件不会反向注册类型。每项对应 Player bool `gallery_<id>_unlocked`，解锁状态不写回 metadata 或该 JSON。

@@ -11,7 +11,8 @@
   "path": "characters/alice.png",
   "filter": "bilinear",
   "compress": "brotli",
-  "gallery": [{ "id": 100, "typeId": "cg", "title": "Alice" }]
+  "displayNameKey": "asset.alice.name",
+  "galleryUnlockId": 100
 }
 ```
 
@@ -19,10 +20,10 @@
 - `type` 是资源类型 ID；组合根通过冻结的 `IResourceTypeCatalog` 将其映射到具体 `AssetMeta` DTO。内置作者资源类型为 `sprite`、`image-variants`、`audio`、`video`、`font`、`effect-program` 和 `data`；`graph`、`group` 用于编译生成的剧情资源。
 - `path` 相对 `Assets/`；provider 会以实际逻辑路径校正缺失或过时的值。
 - 可选字段缺失时使用 DTO 默认值；未知字段保存在 extension data，供 Editor 重写时保留。未知 `type`、无效 JSON、缺失 GUID 或缺失源文件是加载错误，不能静默跳过。
-- `gallery` 是 Gallery 的唯一作者真源。每项使用全局唯一正整数 ID；没有 `sortOrder` 或项目根可编辑 `gallery.json`。
+- `displayNameKey` 和 `galleryUnlockId` 是任意资源都可携带的可选通用 metadata。名称文本位于现有 i18n 来源中；Gallery ID 留空表示不收录，填写时必须为全局唯一正整数，同时决定同分类内的排序。没有独立排序字段。Gallery 只收录该资源类型已在应用 `IGalleryTypeCatalog` 注册的项；未实现类型仍保留这些 metadata。
 
 
-通用 `AssetMeta` 与类型目录协议位于 Core.Assets；`BuiltinResourceTypes`、sprite metadata 及默认 Gallery/ImageVariants 契约位于 Contracts.Builtins。没有专属字段的默认资源共用 AssetMeta，身份由 type ID 决定。Gallery 用可选 ReadGallery/SetGallery 扩展读取、重写 extension data，未知 annotation 字段也保留。
+通用 `AssetMeta` 与类型目录协议位于 Core.Assets；`BuiltinResourceTypes`、sprite metadata 及默认 Gallery/ImageVariants 契约位于 Contracts.Builtins。没有专属字段的默认资源共用 AssetMeta，身份由 type ID 决定。通用名称与鉴赏 ID 随 metadata 通过开发 provider、PAK 和资源查询保留；未知扩展字段继续保留。Group 的作者 `metadata` 位于 Graph 节点，编译时传入对应 group 资源；场景封面的可选 `galleryPreviewAssetId` 位于该扩展信封，聚合后作为 Gallery 的 `previewResourceId`。
 
 资源注册可显式传入 JSON resolver，`AssetMetaCodec` 按注册类型组合源生成元数据并缓存 options；默认实例由注册时的泛型工厂创建，`Add/Replace<TMeta>` 要求公开无参构造函数。内置目录已提供元数据；反射关闭的玩家扩展须注册自己的 context，见 [NativeAOT 手册](../../manual/publishing/native-aot.md)。
 
@@ -30,7 +31,7 @@
 
 资源类型只负责识别、保存、枚举和打包；它不注册 decoder、Editor inspector 或 Avalonia 页面。decoder 以 `(typeId, target CLR type)` 另行注册。
 
-Editor 将原始资源与 sidecar 作为一次项目文件编辑：移动保留 ID 并重定位 path，导入/复制生成新资源 ID，保留 Gallery 内容与 metadata 扩展；Gallery ID 与项目/同批内容冲突时为副本重新分配正整数 ID，type/title 保持原值；无法无损类型化的 metadata 拒绝重写。资源索引刷新只读，不负责补建 sidecar。GUI 操作支持项目历史撤销，CLI 共用事务而不保留 GUI 历史，见 [Editor 项目文件操作](../editor/project-and-files.md)。
+Editor 将原始资源与 sidecar 作为一次项目文件编辑：移动保留 ID 并重定位 path，导入/复制生成新资源 ID，保留名称 key 与 metadata 扩展；Gallery ID 与项目/同批内容冲突时为副本重新分配正整数 ID；无法无损类型化的 metadata 拒绝重写。资源索引刷新只读，不负责补建 sidecar。GUI 操作支持项目历史撤销，CLI 共用事务而不保留 GUI 历史，见 [Editor 项目文件操作](../editor/project-and-files.md)。
 
 ## 查询、解码与生命周期
 

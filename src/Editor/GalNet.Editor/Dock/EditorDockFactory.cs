@@ -303,6 +303,18 @@ public sealed class EditorDockFactory : Factory, IDisposable
         OpenPanel(EditorDockPanelIds.Timeline);
     }
 
+    public void NavigateResource(string? id, string? path)
+    {
+        if (_workspace is null) return;
+        var node = _workspace.Nodes.FirstOrDefault(node => node.Id == id);
+        if (node is not null) { _workspace.SelectNode(node); OpenPanel(EditorDockPanelIds.NodeGraph); }
+        else if (path is not null && path.StartsWith("Assets/", StringComparison.Ordinal))
+        {
+            var asset = _serviceProvider.GetRequiredService<IAssetCatalogService>().GetEntry(path[7..]);
+            if (asset is not null) _workspace.FocusAsset(asset);
+        }
+        ShowInspector();
+    }
     public void NavigateLocalization(string owner, string? entryId)
     {
         if (owner == "characters") { OpenPanel(EditorDockPanelIds.Characters); return; }

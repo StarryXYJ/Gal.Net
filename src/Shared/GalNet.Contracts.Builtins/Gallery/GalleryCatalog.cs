@@ -32,7 +32,7 @@ public sealed class GalleryCatalog
             var typeId = NormalizeTypeId(item.TypeId);
             if (!knownTypes.ContainsKey(typeId)) throw new InvalidDataException($"Gallery item '{item.Id}' references unknown type '{typeId}'.");
             if (string.IsNullOrWhiteSpace(item.ResourceId)) throw new InvalidDataException($"Gallery item '{item.Id}' must reference a resource.");
-            items.Add(item with { TypeId = typeId, ResourceId = item.ResourceId.Trim(), Title = string.IsNullOrWhiteSpace(item.Title) ? null : item.Title.Trim() });
+            items.Add(item with { TypeId = typeId, ResourceId = item.ResourceId.Trim(), DisplayNameKey = string.IsNullOrWhiteSpace(item.DisplayNameKey) ? null : item.DisplayNameKey.Trim() });
         }
         if (items.Select(item => item.Id).Distinct().Count() != items.Count) throw new InvalidDataException("Gallery item IDs must be globally unique.");
         return new GalleryCatalog(new ReadOnlyCollection<GalleryTypeRegistration>(types), new ReadOnlyCollection<GalleryItem>(items.OrderBy(item => item.TypeId, StringComparer.Ordinal).ThenBy(item => item.Id).ToList()));

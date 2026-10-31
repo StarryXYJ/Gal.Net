@@ -14,7 +14,7 @@ public abstract partial class GalleryVisualPageViewModelBase(
     private GalleryTypeData? _gallery;
 
     public ObservableCollection<GalleryEntryViewModel> Items { get; } = [];
-    public string Title => _gallery?.Type.TypeId ?? "Gallery";
+    public string Title => _gallery is { } gallery ? media.ResolveText(gallery.Type.DisplayNameKey, gallery.Type.TypeId) : "Gallery";
 
     protected async Task ActivateGalleryAsync(
         GalleryTypeData gallery,
@@ -30,7 +30,7 @@ public abstract partial class GalleryVisualPageViewModelBase(
         OnPropertyChanged(nameof(Title));
 
         foreach (var item in gallery.Items.OrderBy(item => item.Item.Id))
-            Items.Add(new GalleryEntryViewModel(item));
+            Items.Add(new GalleryEntryViewModel(item, media.ResolveName(item.Item), unnamedTitle: media.ResolveText("Gallery.Untitled", "Untitled")));
 
         try
         {

@@ -34,11 +34,15 @@ public static class CompiledStoryResources
             if (document.Kind != GroupDocumentKind.Compiled || document.Version != CompiledGroupDocument.CurrentVersion)
                 throw new InvalidDataException($"Group '{id}' is not compiled for this runtime.");
             var dependencies = analyzeGroup?.Invoke(id, document) ?? new AssetDependencyInfo([], document.Entries.Count == 0);
+            var authorMeta = node["metadata"] is { } annotation ? JsonCodec.Deserialize<AssetMeta>(annotation.ToJsonString(), Options) : null;
             var meta = new DependentAssetMeta
             {
                 Id = resourceId,
                 TypeId = "group",
                 Path = "Story/groups/" + Uri.EscapeDataString(id) + ".galgroup",
+                DisplayNameKey = authorMeta?.DisplayNameKey,
+                GalleryUnlockId = authorMeta?.GalleryUnlockId,
+                ExtensionData = authorMeta?.ExtensionData,
                 Dependencies = dependencies.Direct.ToList(),
                 DependenciesComplete = dependencies.Complete
             };

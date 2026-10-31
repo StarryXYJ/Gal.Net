@@ -32,7 +32,6 @@ namespace GalNet.Contracts.Builtins;
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.DefaultProjectOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.DialogueTextOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.EffectApplyOptions))]
-[JsonSerializable(typeof(global::GalNet.Contracts.Builtins.Gallery.GalleryAnnotation[]))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.Gallery.GalleryConfiguration))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.GalleryUnlockOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.ImpactPresetOptions))]
