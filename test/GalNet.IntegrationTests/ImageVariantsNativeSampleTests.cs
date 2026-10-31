@@ -63,6 +63,9 @@ public sealed class ImageVariantsNativeSampleTests
             entries.Add(JsonSerializer.SerializeToNode(new { id = "end", type = "dialogue.text", parameters = new { content = "variants.end" } }));
             entries.Insert(0, JsonSerializer.SerializeToNode(new { id = "start", type = "dialogue.text", parameters = new { content = "variants.end" } }));
             Directory.CreateDirectory(Path.Combine(project, "I18n", "en-US"));
+            // The copied assets include resource-name keys; keep their translations with the fixture.
+            File.Copy(Path.Combine(sample, "I18n", "en-US", "resources.json"),
+                Path.Combine(project, "I18n", "en-US", "resources.json"));
             await File.WriteAllTextAsync(Path.Combine(project, "I18n", "en-US", "main.json"), """{"variants.end":"Variants captured."}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "groups", "main.rawgalgroup"),
                 new JsonObject { ["version"] = 2, ["kind"] = "Raw", ["entries"] = entries }.ToJsonString());
