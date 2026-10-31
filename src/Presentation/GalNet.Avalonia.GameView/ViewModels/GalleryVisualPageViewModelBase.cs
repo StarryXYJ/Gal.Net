@@ -1,69 +1,25 @@
 using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Contracts.Builtins.Gallery;
-
 namespace GalNet.Avalonia.GameView.ViewModels;
-
-/// <summary>Shared lifecycle for Gallery pages that display a thumbnail grid.</summary>
-public abstract partial class GalleryVisualPageViewModelBase(
-    IGameNavigationService navigation,
-    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IDisposable
+// Transitional page adapter for legacy layouts; removed with their registration in P5.
+public abstract partial class GalleryVisualPageViewModelBase : BackNavigablePageViewModel, IDisposable
 {
-    private CancellationTokenSource? _thumbnailCancellation;
-    private GalleryTypeData? _gallery;
-
-    public ObservableCollection<GalleryEntryViewModel> Items { get; } = [];
-    public string Title => _gallery is { } gallery ? media.ResolveText(gallery.Type.DisplayNameKey, gallery.Type.TypeId) : "Gallery";
-
-    protected async Task ActivateGalleryAsync(
-        GalleryTypeData gallery,
-        Func<GalleryItemData, CancellationToken, Task<global::Avalonia.Media.Imaging.Bitmap?>> loadThumbnail,
-        CancellationToken cancellationToken)
+    public GalleryThumbnailCollection Thumbnails { get; }
+    protected GalleryVisualPageViewModelBase(IGameNavigationService navigation, GalleryMediaService media) : base(navigation)
     {
-        _thumbnailCancellation?.Cancel();
-        _thumbnailCancellation?.Dispose();
-        _thumbnailCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        foreach (var item in Items) item.Dispose();
-        Items.Clear();
-        _gallery = gallery;
-        OnPropertyChanged(nameof(Title));
-
-        foreach (var item in gallery.Items.OrderBy(item => item.Item.Id))
-            Items.Add(new GalleryEntryViewModel(item, media.ResolveName(item.Item), unnamedTitle: media.ResolveText("Gallery.Untitled", "Untitled")));
-
-        try
-        {
-            foreach (var item in Items.Where(item => item.IsUnlocked))
-            {
-                var thumbnail = await loadThumbnail(item.Data, _thumbnailCancellation.Token);
-                if (_thumbnailCancellation.IsCancellationRequested)
-                {
-                    thumbnail?.Dispose();
-                    return;
-                }
-                item.Thumbnail = thumbnail;
-            }
-        }
-        catch (OperationCanceledException) when (_thumbnailCancellation.IsCancellationRequested) { }
+        Media = media;
+        Thumbnails = new(media);
+        Thumbnails.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
     }
-
-    protected abstract Task OpenDetailAsync(GalleryItemData item, CancellationToken cancellationToken);
-
-    [CommunityToolkit.Mvvm.Input.RelayCommand]
-    private Task OpenItemAsync(GalleryEntryViewModel item, CancellationToken cancellationToken) =>
-        item.IsUnlocked ? OpenDetailAsync(item.Data, cancellationToken) : Task.CompletedTask;
-
-
-    public void Dispose()
-    {
-        _thumbnailCancellation?.Cancel();
-        _thumbnailCancellation?.Dispose();
-        _thumbnailCancellation = null;
-        foreach (var item in Items) item.Dispose();
-        Items.Clear();
-        GC.SuppressFinalize(this);
-    }
-
-    protected GalleryMediaService Media => media;
+    public ObservableCollection<GalleryEntryViewModel> Items => Thumbnails.Items;
+    public string Title => Thumbnails.Title;
+    protected GalleryMediaService Media { get; }
+    protected Task ActivateGalleryAsync(GalleryTypeData gallery, Func<GalleryItemData, CancellationToken, Task<global::Avalonia.Media.Imaging.Bitmap?>> load, CancellationToken token) => Thumbnails.ActivateAsync(gallery, load, token);
+    protected abstract Task OpenDetailAsync(GalleryItemData item, CancellationToken token);
+    [RelayCommand] private Task OpenItemAsync(GalleryEntryViewModel item, CancellationToken token) => item.IsUnlocked ? OpenDetailAsync(item.Data, token) : Task.CompletedTask;
+    public void Dispose() => Thumbnails.Dispose();
 }

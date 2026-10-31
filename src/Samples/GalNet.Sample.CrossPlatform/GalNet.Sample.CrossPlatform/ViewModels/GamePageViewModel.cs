@@ -13,13 +13,13 @@ public sealed partial class GamePageViewModel(GamePresentationState state, IGame
 
     [RelayCommand]
     private Task OpenSaveSlotsAsync(CancellationToken cancellationToken) =>
-        navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
+        State.IsGalleryReplay ? Task.CompletedTask : navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Save, cancellationToken);
 
     [RelayCommand]
     private Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
-        navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
+        State.IsGalleryReplay ? Task.CompletedTask : navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
 
-    [RelayCommand] private void OpenSettings() => navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] private void OpenSettings() { if (!State.IsGalleryReplay) navigation.Navigate<SettingsPageViewModel>(); }
 
     public Task HandleInputActionAsync(string action)
     {

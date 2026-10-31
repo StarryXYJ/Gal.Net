@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
+using GalNet.Avalonia.GameView.Presentation;
 using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
@@ -9,13 +9,14 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public enum SaveSlotsMode { Save, Load }
 
-public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel, IActivatablePageViewModel<SaveSlotsMode>, IDisposable
+public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel, IActivatablePageViewModel<SaveSlotsMode>, IGameSavePreviewPage, IDisposable
 {
     private readonly IGameSessionService _session;
     private readonly GameLaunchFlow _launchFlow;
 
     public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots => _session.SaveSlots;
-    public ObservableCollection<GameSaveSlotRowViewModel> Slots { get; } = [];
+    private readonly SaveSlotCollection _rows;
+    public ObservableCollection<GameSaveSlotRowViewModel> Slots => _rows.Slots;
     [CommunityToolkit.Mvvm.ComponentModel.ObservableProperty] private SaveSlotsMode _mode;
     public string Heading => Mode == SaveSlotsMode.Save ? "Save game" : "Load game";
     public string HeadingKey => Mode == SaveSlotsMode.Save ? "SaveSlots.SaveTitle" : "SaveSlots.LoadTitle";
@@ -28,8 +29,8 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
     {
         _session = session;
         _launchFlow = launchFlow;
-        ((INotifyCollectionChanged)_session.SaveSlots).CollectionChanged += OnSlotsChanged;
-        RebuildRows();
+        _rows = new(session, SaveSlotAsync, slot => LoadSlotAsync(slot, CancellationToken.None));
+        _rows.Refresh(IsSaveMode);
     }
 
     [RelayCommand]
@@ -62,48 +63,9 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
         OnPropertyChanged(nameof(Heading));
         OnPropertyChanged(nameof(HeadingKey));
         OnPropertyChanged(nameof(IsSaveMode));
-        RebuildRows();
+        _rows.Refresh(IsSaveMode);
         return Task.CompletedTask;
     }
 
-    public void Dispose()
-    {
-        ((INotifyCollectionChanged)_session.SaveSlots).CollectionChanged -= OnSlotsChanged;
-        foreach (var row in Slots) row.Dispose();
-        Slots.Clear();
-    }
-    private void OnSlotsChanged(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        if (e.Action == NotifyCollectionChangedAction.Replace && e.NewStartingIndex >= 0 && e.NewItems is { Count: 1 }
-            && e.NewItems[0] is GameSaveSlot replacement && e.NewStartingIndex < Slots.Count)
-        {
-            if (e.OldItems?[0] is GameSaveSlot previous && replacement with { Description = previous.Description } == previous)
-                Slots[e.NewStartingIndex].UpdateDescription(replacement.Description);
-            else
-            {
-                var old = Slots[e.NewStartingIndex];
-                Slots[e.NewStartingIndex] = CreateRow(replacement);
-                old.Dispose();
-            }
-            return;
-        }
-        RebuildRows();
-    }
-    private GameSaveSlotRowViewModel CreateRow(GameSaveSlot slot) => new(
-        slot, Mode == SaveSlotsMode.Save, SaveSlotAsync,
-        slotIndex => LoadSlotAsync(slotIndex, CancellationToken.None),
-        _session is ISaveSlotNamingSession { CanRenameSlots: true } naming
-            ? (slotIndex, name) => naming.RenameSlotAsync(slotIndex, name) : null);
-    private void RebuildRows()
-    {
-        foreach (var row in Slots) row.Dispose();
-        Slots.Clear();
-        foreach (var slot in _session.SaveSlots)
-        {
-            var row = CreateRow(slot);
-            if (Mode == SaveSlotsMode.Save)
-                row.LoadCommand.NotifyCanExecuteChanged();
-            Slots.Add(row);
-        }
-    }
+    public void Dispose() => _rows.Dispose();
 }

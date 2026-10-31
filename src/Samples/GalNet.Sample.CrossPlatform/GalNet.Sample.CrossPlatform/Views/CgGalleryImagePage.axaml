@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             xmlns:sharedvm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
+             x:Class="GalNet.Sample.CrossPlatform.Views.CgGalleryImagePage"
+             x:DataType="vm:CgGalleryImagePageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+          <TextBlock Text="{Binding State.Title}" ToolTip.Tip="{Binding State.Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
+        </Grid>
+        <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <Border Classes="player-media-stage" Grid.Row="2" Margin="0,24,0,0">
+          <Grid>
+            <Image Source="{Binding State.Image}" Stretch="Uniform" ClipToBounds="True" x:Name="PageMedia" />
+            <TextBlock Margin="32" Text="{Binding State.ErrorMessage}" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource GalNet.Brush.Warning}" />
+          </Grid>
+        </Border>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

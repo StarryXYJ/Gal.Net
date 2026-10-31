@@ -159,8 +159,8 @@ public sealed class SharedPlayerHostTests
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel>().CanExit = false;
         Assert.That(await host.HandleBackAsync().WaitAsync(TimeSpan.FromSeconds(5)), Is.True);
-        Assert.That(host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CancelExitConfirmation(), Is.False);
-        navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
+        Assert.That(host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().CancelExitConfirmation(), Is.False);
+        navigation.Navigate<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
         Assert.That(await host.HandleBackAsync(), Is.False);
         Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel>());
         Assert.That(await host.HandleBackAsync(), Is.True);
@@ -171,7 +171,7 @@ public sealed class SharedPlayerHostTests
     {
         await using var host = await OpenHost(CrossSample.CreateHostOptions());
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
-        navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
+        navigation.Navigate<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
         Assert.That(await host.HandleBackAsync(), Is.False);
         Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel>());
         var prompt = host.HandleBackAsync();

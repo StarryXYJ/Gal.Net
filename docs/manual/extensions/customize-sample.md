@@ -1,12 +1,14 @@
 # 定制跨平台 Sample
 
-`GalNet.Sample.CrossPlatform` 是正式维护的示例，共享主项目通过 `SampleCustomization` 选择主题、页面、文案、契约和执行模块，Desktop/Android/iOS 项目提供平台入口。旧 Avalonia 桌面示例已退出版本控制，本机副本位于 Git 忽略的 `local-only/`，不再维护。
+`GalNet.Sample.CrossPlatform` 是正式维护的示例，共享主项目通过 `SampleCustomization` 注册页面、文案、契约和执行模块，Desktop/Android/iOS 项目提供平台入口。旧 Avalonia 桌面示例已退出版本控制，本机副本位于 Git 忽略的 `local-only/`，不再维护。
 
-标题、加载和游戏页已直接放在主项目的 `Views/` 和 `ViewModels/`。改标题菜单编辑 `Views/TitlePage.axaml`；改开始/继续前的业务编辑 `ViewModels/TitlePageViewModel.cs`；改游戏工具栏和承载布局编辑 `Views/GamePage.axaml`，项目命令在对应 VM，播放命令通过 `State` 绑定内置呈现状态。无需派生默认页面 VM、注册服务别名或编写新主题。`SampleCustomization` 集中注册这些页面与加载/返回回调；其余页面及通用启动布局仍沿用当前内置实现。
+全部应用页面及其 VM 已位于主项目的 `Views/` 和 `ViewModels/`。改标题菜单编辑 `Views/TitlePage.axaml`；改开始/继续前的业务编辑 `ViewModels/TitlePageViewModel.cs`；改工具栏和承载布局编辑 `Views/GamePage.axaml`。设置、存读档、鉴赏及其详情同样直接编辑对应页面与 VM。语言、退出/返回确认及音乐公告布局在项目的 `LanguageSelectionView.axaml`、`PlayerView.axaml`；截图布局在 `ScreenshotDialog.axaml`。
 
-在共享主项目的 `SampleCustomization` 中调整主题/配色、页面映射、字段编辑器、HostOptions、catalog 和执行模块。通用玩家视图、语言选择和 scope/会话协调位于 `Avalonia.GameHost`。平台项目负责内容/profile 路径、窗口或单视图挂载及生命周期，不复制通用资源释放或检查点机制。
+项目 VM 组合内置状态：播放通过 `GamePresentationState`，存档行通过 `SaveSlotCollection`，鉴赏预览与播放通过 `GalleryThumbnailCollection`、`GalleryAudioState`、`GalleryVideoState`、`GalleryImageState`、`GalleryScenePlayback`。项目决定页面路由，内置状态负责取消、媒体及 Bitmap 释放。无需派生旧默认页面 VM或复制播放与资源管理逻辑。
 
-直接接入通用宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，在 `configure` 中注册页面/主题、本地化、设置与启动服务。可以注册 `PlayerView` 工厂，在该实例的 Resources/Styles 应用自己的主题和文案资源；通用视图不会自动引用 Sample 资源或选择固定配色。窗口宿主也可以直接创建该视图并复用已有会话。
+`SampleCustomization` 集中注册页面、加载/返回回调、配色、本地化、契约和执行模块。`AddAvaloniaGameView` 只注册明确列出的页面和机制；普通页面的一条 VM→View 映射会自动注册两者的 Scoped 服务，不要求完整的固定页面列表。Gallery 另按 `cg/audio/video/scene` 等精确内容类型注册；缺失类型由项目诊断页显示。当前样式仍借用旧 Classic 资源，整套主题删除属于 F-20261031-02 P5，尚未完成。
+
+直接接入宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，注册 `IPlayerApplication` 提供根表面与启动/返回策略。Sample 的 `Views.PlayerView` 继承无页面布局的 `PlayerSurface` 行为基类，加载项目 XAML 后调用 `InitializeSurface()`；保留命名控件以复用确认取消、焦点恢复、输入屏蔽及公告清理。平台项目负责窗口或单视图挂载及生命周期，宿主负责 scope 和会话释放。
 
 包内内容流安装使用 `Storage.FileSystem.BundledGameInstaller`；稳定 profile 目录通过 `GameProfilePaths.GetProfileDirectory(content, profileRoot)` 计算，应用自行提供绝对根。项目截图 primitive 负责自己的 schema/参数，通用 `SceneScreenshotWriter.SaveAsync` 负责捕获与安全写入，两者不要求框架引用项目契约。
 

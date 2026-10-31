@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameHost.ViewModels;
-using GalNet.Avalonia.GameHost.Views;
+using GalNet.Sample.CrossPlatform.Views;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Presentation;

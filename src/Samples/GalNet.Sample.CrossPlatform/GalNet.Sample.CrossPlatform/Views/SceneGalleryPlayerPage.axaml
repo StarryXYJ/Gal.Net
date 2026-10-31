@@ -1,0 +1,14 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:sharedvm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels" xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+ x:Class="GalNet.Sample.CrossPlatform.Views.SceneGalleryPlayerPage" x:DataType="vm:SceneGalleryPlayerPageViewModel">
+ <UserControl.KeyBindings>
+  <KeyBinding Gesture="Space" Command="{Binding State.Gameplay.AdvanceCommand}" />
+  <KeyBinding Gesture="Enter" Command="{Binding State.Gameplay.AdvanceCommand}" />
+ </UserControl.KeyBindings>
+ <Grid Background="{DynamicResource GalNet.Brush.Background}">
+  <ContentControl Content="{Binding State.Surface}" />
+  <Button Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="24" />
+  <TextBlock Text="{Binding State.ErrorMessage}" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="600" />
+ </Grid>
+</UserControl>

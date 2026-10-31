@@ -1,84 +1,22 @@
-using System.Collections.ObjectModel;
-using System.Globalization;
-using Avalonia.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Contracts.Builtins.Gallery;
-
 namespace GalNet.Avalonia.GameView.ViewModels;
-
-public sealed partial class AudioGalleryPageViewModel(
-    IGameNavigationService navigation,
-    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IGalleryPageViewModel, IDisposable
+// Transitional adapter for legacy layouts; P5 removes it.
+public sealed class AudioGalleryPageViewModel : BackNavigablePageViewModel, IGalleryPageViewModel, IDisposable
 {
-    private CancellationTokenSource? _preparation;
-    public ObservableCollection<GalleryEntryViewModel> Items { get; } = [];
-    [ObservableProperty] private string? _errorMessage;
-    [ObservableProperty] private string _title = "Gallery";
-
-    public async Task ActivateAsync(GalleryTypeData gallery, CancellationToken cancellationToken = default)
+    public GalleryAudioState State { get; }
+    public AudioGalleryPageViewModel(IGameNavigationService navigation, GalleryMediaService media) : base(navigation)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        _preparation?.Cancel(); _preparation?.Dispose();
-        _preparation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var preparation = _preparation;
-        media.PlaybackChanged -= OnPlaybackChanged;
-        media.PlaybackChanged += OnPlaybackChanged;
-        foreach (var item in Items) item.Dispose();
-        Items.Clear();
-        Title = media.ResolveText(gallery.Type.DisplayNameKey, gallery.Type.TypeId);
-        foreach (var item in gallery.Items.OrderBy(item => item.Item.Id))
-            Items.Add(new GalleryEntryViewModel(item, media.ResolveName(item.Item), percent => media.SeekAudio(item, percent), media.ResolveText("Gallery.Untitled", "Untitled")));
-        UpdateAudioState();
-        try
-        {
-            foreach (var item in gallery.Items.Where(item => item.IsUnlocked))
-                await media.PrepareAudioAsync(item, preparation.Token);
-        }
-        catch (OperationCanceledException) when (preparation.IsCancellationRequested) { }
+        State = new(media);
+        State.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
     }
-
-    [RelayCommand]
-    private void ToggleAudio(GalleryEntryViewModel item)
-    {
-        if (!item.IsUnlocked) return;
-        media.ToggleAudio(item.Data);
-        UpdateAudioState();
-    }
-
-
-    protected override void OnBack() { _preparation?.Cancel(); media.StopPlayback(); base.OnBack(); }
-
-    public void Dispose()
-    {
-        _preparation?.Cancel(); _preparation?.Dispose(); _preparation = null;
-        media.PlaybackChanged -= OnPlaybackChanged;
-        foreach (var item in Items) item.Dispose();
-        Items.Clear();
-    }
-
-    private void OnPlaybackChanged()
-    {
-        if (Dispatcher.UIThread.CheckAccess()) UpdateAudioState();
-        else Dispatcher.UIThread.Post(UpdateAudioState);
-    }
-
-    private void UpdateAudioState()
-    {
-        ErrorMessage = media.LastError;
-        foreach (var item in Items)
-        {
-            var active = item.Id == media.ActiveAudioItemId;
-            item.IsPlaying = active && media.IsAudioPlaying;
-            var preview = media.GetAudioPreview(item.Data);
-            item.CanSeek = item.IsUnlocked;
-            item.UpdateProgress(preview.Progress);
-            item.TimeText = $"{FormatTime(preview.Position)} / {FormatTime(preview.Duration)}";
-        }
-    }
-
-    private static string FormatTime(long milliseconds) =>
-        TimeSpan.FromMilliseconds(Math.Max(0, milliseconds)).ToString(@"mm\:ss", CultureInfo.InvariantCulture);
+    public System.Collections.ObjectModel.ObservableCollection<GalleryEntryViewModel> Items => State.Items;
+    public string Title => State.Title;
+    public string? ErrorMessage => State.ErrorMessage;
+    public CommunityToolkit.Mvvm.Input.IRelayCommand<GalleryEntryViewModel> ToggleAudioCommand => State.ToggleAudioCommand;
+    public Task ActivateAsync(GalleryTypeData item, CancellationToken cancellationToken = default) => State.ActivateAsync(item, cancellationToken);
+    protected override void OnBack() { State.Stop(); base.OnBack(); }
+    public void Dispose() => State.Dispose();
 }

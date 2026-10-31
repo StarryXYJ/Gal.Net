@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             xmlns:conv="using:Avalonia.Data.Converters"
+             xmlns:common="using:GalNet.Avalonia.Themes.Common"
+             xmlns:sharedvm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
+             x:Class="GalNet.Sample.CrossPlatform.Views.AudioGalleryPage"
+             x:DataType="vm:AudioGalleryPageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
+      <Grid RowDefinitions="Auto,Auto,Auto,*">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+          <TextBlock Text="{Binding State.Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
+        </Grid>
+        <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <TextBlock Grid.Row="2" Text="{Binding State.ErrorMessage}" IsVisible="{Binding State.ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" Margin="0,12,0,0" />
+        <ScrollViewer Grid.Row="3" Margin="0,24,0,0" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl x:Name="Items" ItemsSource="{Binding State.Items}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="sharedvm:GalleryEntryViewModel">
+                <Border Margin="0,0,0,8" Padding="14" Background="{DynamicResource GalNet.Brush.Surface}" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
+                  <common:AudioGalleryRow ToggleCommand="{Binding #Items.DataContext.State.ToggleAudioCommand}" />
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

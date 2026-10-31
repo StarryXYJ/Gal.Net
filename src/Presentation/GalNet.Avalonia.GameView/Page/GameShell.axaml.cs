@@ -201,7 +201,7 @@ public partial class GameShell : UserControl, IDisposable
                 return;
             }
 
-            if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is SaveSlotsPageViewModel)
+            if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is IGameSavePreviewPage)
                 _savePreview = TryCaptureScene(page);
             targetContent = contentFactory();
             if (ReferenceEquals(PageHost.Content, targetContent))
@@ -298,7 +298,7 @@ public partial class GameShell : UserControl, IDisposable
 
     private void TrackGameplay(PageViewModelBase? viewModel)
     {
-        if (viewModel is SettingsPageViewModel) _inputSettings?.SelectedDevice = null;
+        if (_inputSettings is not null) _inputSettings.SelectedDevice = null;
         _inputRouter?.ResetInput();
         _touchInput?.Reset();
         var gameplay = GetGameplay(viewModel);

@@ -1,34 +1,20 @@
-using System.Globalization;
-using Avalonia.Media.Imaging;
-using CommunityToolkit.Mvvm.ComponentModel;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Contracts.Builtins.Gallery;
-
 namespace GalNet.Avalonia.GameView.ViewModels;
-
-public sealed partial class CgGalleryImagePageViewModel(
-    IGameNavigationService navigation,
-    GalleryMediaService media) : BackNavigablePageViewModel(navigation), IActivatablePageViewModel<GalleryItemData>, IDisposable
+// Transitional adapter for legacy layouts; P5 removes it.
+public sealed class CgGalleryImagePageViewModel : BackNavigablePageViewModel, IActivatablePageViewModel<GalleryItemData>, IDisposable
 {
-    [ObservableProperty] private string _title = "Gallery";
-    [ObservableProperty] private Bitmap? _image;
-    [ObservableProperty] private string? _errorMessage;
-
-    public Task ActivateAsync(GalleryItemData item, CancellationToken cancellationToken = default)
+    public GalleryImageState State { get; }
+    public CgGalleryImagePageViewModel(IGameNavigationService navigation, GalleryMediaService media) : base(navigation)
     {
-        cancellationToken.ThrowIfCancellationRequested();
-        Image?.Dispose();
-        Image = null;
-        ErrorMessage = null;
-        Title = item.IsUnlocked ? media.ResolveName(item.Item) : "";
-        if (!item.IsUnlocked) { ErrorMessage = "This Gallery item is locked."; return Task.CompletedTask; }
-        var path = media.ResolvePath(item.Item.ResourceId);
-        try { Image = path is null ? null : new Bitmap(path); }
-        catch (Exception exception) { ErrorMessage = exception.Message; }
-        if (Image is null && ErrorMessage is null) ErrorMessage = "The Gallery resource is unavailable.";
-        return Task.CompletedTask;
+        State = new(media);
+        State.PropertyChanged += (_, e) => OnPropertyChanged(e.PropertyName);
     }
-
-    public void Dispose() { Image?.Dispose(); Image = null; }
+    public string Title { get => State.Title; set => State.Title = value; }
+    public string? ErrorMessage { get => State.ErrorMessage; set => State.ErrorMessage = value; }
+    public global::Avalonia.Media.Imaging.Bitmap? Image { get => State.Image; set => State.Image = value; }
+    public Task ActivateAsync(GalleryItemData item, CancellationToken cancellationToken = default) => State.ActivateAsync(item, cancellationToken);
+    public void Dispose() => State.Dispose();
 }

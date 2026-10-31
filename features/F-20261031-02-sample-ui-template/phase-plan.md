@@ -78,7 +78,7 @@
 
 ## P4：迁移全部应用页面与全局 UI
 
-状态：planned。前置：P3。
+状态：verified。前置：P3。全部应用页面和全局布局已进入 Sample，复杂存档/预览/媒体/重播与确认生命周期留在内置层。Presentation 368 passed / 0 failed / 6 未执行，集成 95 passed / 1 既有 Editor dirty 失败，架构 56 passed，原生 Sample 1 passed，原生媒体 5 passed；完整证据和平台验收边界见 [execution.md](execution.md)。
 
 **目标**：Sample 拥有完整可编辑应用 UI，内置保留每项复杂机制。
 

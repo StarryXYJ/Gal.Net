@@ -2,7 +2,7 @@
 
 ## 当前范围
 
-`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供 GameShell、GamePage、截图对话框行为基类及共享 ViewModel/服务；普通页面布局由主题提供，通过组合期注册表完成 ViewModel 到 View 的映射。
+`GalNet.Avalonia.GameView` 是官方共享的 Avalonia 游戏页面宿主。它提供 GameShell、GamePage、截图对话框行为基类及共享 ViewModel/服务；Sample 的普通页面布局及应用 VM 位于其单个应用项目，通过组合期注册表完成 ViewModel 到 View 的映射；旧主题页面和旧组合入口暂供迁移中的消费者使用，待 P5 清理。
 
 页面宿主不读取游戏文件，也不持有项目目录。宿主负责提供游戏内容、资源、存档、玩家变量、进度和媒体实现；编辑器预览与官方 CrossPlatform Sample 在各自的组合根中装配这些服务。
 
@@ -25,6 +25,10 @@
 Sample 的游戏页面 VM 已通过 `IGameplayPage.State` 组合该状态，GameShell 通过此能力取得当前运行交互对象。`GamePage.Presentation` 独立于页面 DataContext，内部场景/对白/NVL/选项/历史绑定该状态，项目工具栏可以绑定自己 VM 的命令。旧页面 DataContext 直接为呈现状态的路径暂保留兼容，随页面迁移删除。
 
 GameShell 的返回标题和应用输入动作由组合入口提供回调；GameLaunchFlow 接收加载、游戏、失败三个呈现回调，不选择具体页面类型。加载呈现完成且准备完成后才开始播放；加载失败时取消并等待准备任务清理后执行失败呈现，避免 UI 回退先于资源释放。
+
+`AddAvaloniaGameView` 仅装配应用显式映射的页面和 Gallery 类型，自动注册普通页面 VM/View 的 Scoped 服务，不要求完整固定页面列表。启用的游戏和截图机制分别校验 GamePage/ScreenshotDialog 控件契约；无映射的路由按实际 VM 全名报告错误。Sample 的 Gallery 缺失类型诊断由项目回调提供。
+
+存档页组合 `SaveSlotCollection`，内置对象订阅槽位更新并释放预览，项目 VM 决定保存后返回及读档流程。Gallery 页面组合 `GalleryThumbnailCollection`、`GalleryImageState`、`GalleryAudioState`、`GalleryVideoState` 与 `GalleryScenePlayback`，内置对象负责预览、轮询、取消与资源释放，不选择具体应用页面。缩略图请求捕获本次取消源与行快照，旧请求不能回写替换后的列表。场景重播等待 pending startup 结束后才释放；已由启动取消路径释放的 run 不再留在 pending slot 中，避免重复释放。
 
 内置三布局统一使用 Themes 的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，目标平台实际显示仍需验收。Editor 自身字体不在本次范围。
 

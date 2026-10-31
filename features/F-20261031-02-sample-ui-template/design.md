@@ -130,3 +130,14 @@ Sample VM 负责页面展示状态、项目条件、按钮命令、导航目标�
 - 以模板可扩展性为名新增过多接口：以仓库外真实定制探针衡量，常见自定义不能要求修改内置源码。
 
 验收分为机制回归、挂载/控件渲染、真实宿主与仓库外定制四层；headless 不能代替真实媒体、平台生命周期和发布验证。执行顺序和退出条件见 [phase-plan.md](phase-plan.md)。正式 spec/manual 只在对应实现验证后更新。
+
+
+### P4 实际机制落点（2026-11-01）
+
+Sample 的全部普通页面、截图和全局启动/确认/公告布局已进入单个应用项目，普通页面 VM 组合内置机制，不派生旧默认页面 VM。GameView 的 SaveSlotCollection 管理存档行/缩略图；GalleryThumbnailCollection、GalleryImageState、GalleryAudioState、GalleryVideoState、GalleryScenePlayback 管理预览和媒体/独立重播。Sample VM 保留页面参数、业务命令和明确路由。
+
+GameHost 的无布局 PlayerSurface 复用确认、焦点、输入屏蔽、音频公告和挂载清理，通过命名控件接入项目 XAML。语言选择与 ScreenshotDialogViewModel 保留异步选择/预览/保存机制，具体布局由 Sample 提供。重播的 GamePage 来自项目游戏布局，使用独立 GamePresentationState，菜单不能打开主会话页面。
+
+AddAvaloniaGameView 自动为显式映射的普通 VM/View 注册 Scoped 服务，Gallery 另按实际类型注册。取消固定全量页面要求，只校验启用机制的 GamePage/ScreenshotDialog 运行契约；无效导航报告实际 VM 全名。Shell 使用 IGameSavePreviewPage 能力捕获场景预览，不选择具体存档页；切换页面时复位输入设置设备选择。
+
+P5 仍需删除旧主题、旧 VM 适配和旧完整性入口；当前 Sample 只借用 Classic 样式资源，不通过主题注册普通页面。上述迁移不新增 Sample UI/VM 工程，也不改变平台外壳及资源/契约边界。

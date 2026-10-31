@@ -1,3 +1,5 @@
+using LanguageSelectionView = GalNet.Sample.CrossPlatform.Views.LanguageSelectionView;
+using PlayerView = GalNet.Sample.CrossPlatform.Views.PlayerView;
 using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
 using Avalonia;
 using Avalonia.Controls;

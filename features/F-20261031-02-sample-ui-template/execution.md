@@ -44,3 +44,40 @@ GameLaunchFlow 不再依赖页面类型，接收三个呈现回调；仍保留�
 P1 原生退出缺口已定位并修正测试夹具：NativeSampleWindow 使用过时标题前缀 `GalNet CrossPlatform`，实际窗口为 `GalNet Avalonia CrossPlatform Player`。现在按实际标题精确识别，同时保留自有 PID、可见性和唯一窗口检查，没有放宽为任意窗口或以强杀代替退出。先前失败证据继续保留。
 
 正式宿主/页面规范、Sample 定制说明、页面扩展示例与 Sample README 已同步本阶段事实。P4–P6 仍待实施，特别是其他页面与全局布局迁移、整套主题删除、仓库外模板及平台/发行验收。
+
+
+## P4：完整项目页面与全局 UI（2026-11-01）
+
+全部普通页面及项目命令已进入唯一 Sample 应用项目。Sample 不再调用主题的页面注册，也不解析旧普通页面 VM。旧 VM/主题/默认表面仍作为其他旧消费者的过渡适配保留，P5 删除；不把本阶段描述为整套主题已取消。
+
+| 功能 | Sample 拥有 | 内置保留 | 验证 |
+| --- | --- | --- | --- |
+| 设置、关于 | XAML、VM、返回路由 | 设置分类/编辑器、持久化队列 | 本地化、设置保存恢复、独立宿主集成回归 |
+| 存读档 | XAML、模式和保存/读档后路由 | SaveSlotCollection、单槽替换/重命名、Bitmap 释放、会话保存 | 项目行命令进入/返回、改名复用行、原存档持久化/缩略图回归 |
+| Gallery 索引、CG/视频/场景网格 | XAML、实际内容类型注册与详情导航 | GalleryThumbnailCollection、行/缩略图生命周期 | 四类精确导航、缺失类型诊断、锁定项与名称/预览回归 |
+| CG、音频、视频详情 | XAML、VM 激活与退出策略 | GalleryImageState、GalleryAudioState、GalleryVideoState | 原生 LibVLC 五项通过；暂停/拖动/继续/位置保留/释放 |
+| 场景重播 | XAML、项目游戏布局、返回导航 | GalleryScenePlayback、独立 GamePresentationState、run 清理 | 两个真实 Sample 场景 headless 播放到边界且不落盘解锁/已读；门控启动取消/Dispose 各一次释放 |
+| 截图 | ScreenshotDialog.axaml | 截图控件行为、预览缓存、正式捕获和平台输出 | 项目弹窗预览/取消/UI 模式切换/完整输出；取消不调用完整捕获 |
+| 首次语言 | LanguageSelectionView.axaml | 语言选择等待与取消、本地化来源 | 等待期间释放、scope 重建、语言保存恢复 |
+| 退出/返回、公告 | PlayerView.axaml | 无布局 PlayerSurface 的取消/焦点/输入屏蔽/自动恢复/解绑 | 双确认隔离、取消恢复、同页重挂载、公告动画与中文最小窗口截图 |
+
+新增 AddAvaloniaGameView 只接受显式页面映射和 Gallery 注册，不强制完整页面列表。每条普通页面映射自动注册 VM/View Scoped 服务，减少组合入口重复声明。仍对已启用游戏和截图机制校验对应控件契约；错误包含实际模型/控件名。项目新增普通页面只需模型、视图、映射及导航调用。GalleryNavigationService 接受项目缺失类型呈现回调；GameShell 通过 IGameSavePreviewPage 能力捕获预览，切页复位设备选择，不引用具体设置/存档页。
+
+项目 VM 组合六种内置资源所有者，未复制复杂解码、轮询与 run 生命周期。场景重播使用项目 GamePage 布局和独立状态，并屏蔽主会话菜单路由。PlayerSurface 是无布局行为基类，项目加载自己的 XAML 后 InitializeSurface；命名控件缺失时给出对应名称和类型诊断。未新增 Sample UI/VM 子项目。
+
+提取时修正两项资源归属问题：缩略图异步请求持有本次取消源和行快照，旧结果不能借用新请求的取消状态；重播启动取消自行释放结果前清空 pending slot，后续 Close/Dispose 不再重复释放。四项门控测试覆盖列表替换/释放及重播取消/启动期间释放；经验记录见 L-20261101-01-gallery-generation-resource-owner。
+
+验证证据位于 `.artifacts/sample-ui-template/p4/`（本地输出不提交）：
+
+- `presentation-final.trx`：374 total / 368 executed / 368 passed / 0 failed，6 项显式用例未执行；包含四项新异步门控回归。
+- `integration-final.trx`：96 executed / 95 passed / 1 failed；范围为 Sample、PlayerInteraction、ResourceGallery、CrossPlatformWindow、SharedPlayerHost。保留唯一基线 Editor dirty 失败，不修改无关 Editor 行为。
+- `template.trx`：中途项目页面/存档/截图定向 8 passed；最终集成还覆盖新的启用机制契约诊断，共 9 项模板测试。
+- `media-final.trx`（以及中途 `media.trx`）：显式原生 LibVLC 5 passed / 0 failed，两个 Sample 视频、两首音乐及 duration parsing 释放，最终自动注册产物复验通过。
+- `architecture.trx`：56 passed / 0 failed。
+- `native.trx`：显式原生 Sample 1 passed / 0 failed，五个实际场景 PNG、项目启动链路和确认退出，进程退出码 0。
+- `captures-final/`：项目普通页面、公告、语言和退出确认截图；已查看设置页和中文紧凑窗口确认。默认布局沿用原 Classic，设置长标签的既有列宽不在本次迁移中重做。
+- `format-final.log`：修改/新增 C# 文件夹模式空白格式检查通过；`git diff --check`。
+
+中间失败保留：一次 XAML 数据模板误加页面状态前缀，编译定位后修正；一次新测试用 nameof(类型别名) 断言诊断文本，实际报告真实类型全名，改用 typeof(...).FullName。`integration-before-assert-fix.trx` 保留该断言错误与 Editor 基线失败，不隐藏新增测试问题。
+
+本阶段不改变平台外壳、契约、发布图或 debug/player 编译边界。Windows 原生场景与 LibVLC 已验证；真实原生窗口手动存读档、Linux/Android 设备与发行矩阵留在 P6，不用 headless 回归代替相应验收。P5 继续删除整套主题及旧适配，只保留配色与内置控件默认样式。

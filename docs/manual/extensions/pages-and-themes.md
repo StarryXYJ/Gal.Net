@@ -2,10 +2,9 @@
 
 ## 替换服务与页面行为
 
-Sample 的标题、加载和游戏页及其 VM 直接位于应用项目，日常定制直接修改对应 XAML 和 VM。新增页面只需项目 VM、View、集中注册及导航调用，不需要派生默认标题 VM 或注册别名。例如在 Sample 的组合入口注册：
+Sample 的全部应用页面及其 VM 直接位于应用项目，日常定制直接修改对应 XAML 和 VM。新增页面只需项目 VM、View、集中注册及导航调用，不需要派生默认标题 VM 或注册别名。例如在 Sample 的组合入口注册：
 
 ```csharp
-services.AddScoped<MyNotebookViewModel>();
 SampleCustomization.ConfigureServices(services,
     configureViews: views =>
     {
@@ -13,7 +12,7 @@ SampleCustomization.ConfigureServices(services,
     });
 ```
 
-在项目的标题 VM 增加命令，调用 `IGameNavigationService.Navigate<MyNotebookViewModel>()`，然后在 `Views/TitlePage.axaml` 增加绑定该命令的按钮；返回使用现有导航历史。`MyNotebookViewModel` 继承通用 `PageViewModelBase` 即可。其余内置页面的默认服务仍可在组合入口替换；项目页面使用自己的实际类型映射。更大幅度的定制可以替换导航/页面工厂，或通过 `IPlayerApplication` 提供自己的根表面。页面的 XAML 和业务服务不需要字段生成器。
+在项目的标题 VM 增加命令，调用 `IGameNavigationService.Navigate<MyNotebookViewModel>()`，然后在 `Views/TitlePage.axaml` 增加绑定该命令的按钮；返回使用现有导航历史。`MyNotebookViewModel` 继承通用 `PageViewModelBase` 即可。所有 Sample 应用页面使用项目自己的实际类型映射；一条映射自动注册页面 VM 和 View 的 Scoped 服务。更大幅度的定制可以替换导航/页面工厂，或通过 `IPlayerApplication` 提供自己的根表面。页面的 XAML 和业务服务不需要字段生成器。
 
 ## 页面与主题边界
 
@@ -27,11 +26,11 @@ SampleCustomization.ConfigureServices(services,
 
 `SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，修改配色时保持 `PlayerTheme` 使用同一调色板。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。
 
-退出确认的布局在 `Views/MainWindow.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由代码维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
+退出确认的布局在 `Views/PlayerView.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由内置 `PlayerSurface` 维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
 
 主页静态标题显式指定 `GalNet.Brush.TextPrimary`，避免退出确认禁用背景时继承容器的半透明禁用文字色。定制主页时保留这个前景色绑定；验证弹窗截图应挂载真实主页，再检查背景标题与取消后的恢复。
 
 - `GamePage` 是稳定的游戏页面宿主；其模板必须保留 `PART_Scene`、`PART_Dialogue`、`PART_Nvl` 和 `PART_Choice` 四个 ContentPresenter。
 - 对话与 NVL 的内部部件分别需要 `PART_Typewriter`、`PART_Lines` 和 `PART_ScrollViewer`。不要在剧情播放中重建这些部件。
-- 主题页面复用共享 ViewModel 和命令；只替换布局/样式，不复制 presenter、媒体或游戏会话逻辑。
+- Sample 页面及业务命令在项目源码中；通过组合内置呈现、存档行和 Gallery 状态复用机制，不复制 presenter、媒体或游戏会话逻辑。旧主题资源仍待 P5 清理。
 - Palette 使用完整的语义资源字典。宿主若覆写资源，以玩家根的资源为准；不要跨多个根复用同一 `Styles` 实例。

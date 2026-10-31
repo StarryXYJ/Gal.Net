@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
+             xmlns:sharedvm="using:GalNet.Avalonia.GameView.ViewModels"
+             xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
+             x:Class="GalNet.Sample.CrossPlatform.Views.SceneGalleryPage"
+             x:DataType="vm:GalleryGridPageViewModel">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}">
+    <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
+      <Grid RowDefinitions="Auto,Auto,*">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+          <TextBlock Text="{Binding Thumbnails.Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+          <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
+        </Grid>
+        <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <ScrollViewer Grid.Row="2" Margin="0,24,0,0" HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl x:Name="Items" ItemsSource="{Binding Thumbnails.Items}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel ItemWidth="260" ItemHeight="190" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="sharedvm:GalleryEntryViewModel">
+                <Grid Margin="6" RowDefinitions="*,Auto" ClipToBounds="True">
+                  <Button Grid.RowSpan="2" Margin="0" Padding="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ClipToBounds="True" IsEnabled="{Binding IsUnlocked}" Command="{Binding #Items.DataContext.OpenItemCommand}" CommandParameter="{Binding}" ToolTip.Tip="{Binding NameTooltip}">
+                    <Grid ClipToBounds="True" RowDefinitions="*" Background="{DynamicResource GalNet.Brush.Surface}">
+                      <PathIcon Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5" IsVisible="{Binding !HasThumbnail}" Data="M 4,2 L 14,8 L 4,14 Z" />
+                      <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsUnlocked}" />
+                      <Border Background="{DynamicResource GalNet.Brush.SurfaceRaised}" IsVisible="{Binding IsLocked}">
+                        <TextBlock Text="{text:PlayerText Gallery.Locked, 'Locked'}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="18" Opacity="0.7" />
+                      </Border>
+
+                    </Grid>
+                  </Button>
+                  <Border Grid.Row="1" Background="{DynamicResource GalNet.Brush.Overlay}" Padding="10,7" IsHitTestVisible="False">
+                    <TextBlock x:Name="CardTitle" Text="{Binding Title}" TextAlignment="Center" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" TextTrimming="CharacterEllipsis" />
+                  </Border>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+  </Grid>
+</UserControl>

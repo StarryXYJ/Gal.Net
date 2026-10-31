@@ -1,3 +1,4 @@
+using PlayerView = GalNet.Sample.CrossPlatform.Views.PlayerView;
 using GamePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel;
 using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
 using System.Collections.ObjectModel;
@@ -35,19 +36,19 @@ public sealed class PlayerInteractionTests
             services => SampleCustomization.ConfigureServices(services));
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         navigation.ResetTo<GamePageViewModel>(NavigationTransition.None);
-        host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CompleteStartup();
+        host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().CompleteStartup();
         var window = new Window { Content = host.View };
         window.Show();
         try
         {
             var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
             game.ReturnToTitleCommand.Execute(null);
-            var confirmation = host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().ConfirmReturnToTitleAsync();
+            var confirmation = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().ConfirmReturnToTitleAsync();
             Assert.That(host.View.FindControl<Grid>("PlayerContent")!.IsEnabled, Is.False);
             Assert.That(game.IsInteractionBlocked, Is.True);
             Assert.That(navigation.CurrentViewModel, Is.SameAs(host.Services.GetRequiredService<GamePageViewModel>()));
             Capture(window, "return-to-title");
-            Assert.That(host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().ConfirmReturnToTitleAsync(), Is.SameAs(confirmation));
+            Assert.That(host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().ConfirmReturnToTitleAsync(), Is.SameAs(confirmation));
             Assert.That(await host.ConfirmExitAsync(), Is.False);
             host.View.FindControl<Button>("CancelExitButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.That(await confirmation, Is.False);
@@ -79,13 +80,13 @@ public sealed class PlayerInteractionTests
         else await game.SetQuickHeldAsync(true);
         var advanced = 0;
         game.AdvanceRequested += () => advanced++;
-        var pending = host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().ConfirmReturnToTitleAsync();
+        var pending = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().ConfirmReturnToTitleAsync();
         Assert.That(controller.PlaybackMode, Is.EqualTo(PlaybackMode.Manual));
         game.AdvanceCommand.Execute(null);
         await game.ToggleQuickCommand.ExecuteAsync(null);
         Assert.That(advanced, Is.Zero);
         Assert.That(controller.PlaybackMode, Is.EqualTo(PlaybackMode.Manual));
-        host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CancelExitConfirmation();
+        host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().CancelExitConfirmation();
         Assert.That(await pending, Is.False);
         Assert.That(controller.PlaybackMode, Is.EqualTo(automatic ? PlaybackMode.Auto : PlaybackMode.Manual));
     });

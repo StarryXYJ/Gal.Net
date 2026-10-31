@@ -120,20 +120,21 @@ public sealed class ResourceGalleryTests
             services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services));
         Assert.That(await host.Session.InitializeAsync(_built, Path.Combine(_root, "profile-" + id), (_, _) => Task.FromResult<string?>("zh-CN")), Is.True, host.Session.StatusMessage);
         var navigation = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.Navigation.IGameNavigationService>(host.Services);
-        var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPlayerPageViewModel>(host.Services);
-        navigation.ResetTo<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPageViewModel>(GalNet.Avalonia.GameView.Navigation.NavigationTransition.None);
-        navigation.Navigate<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPlayerPageViewModel>(GalNet.Avalonia.GameView.Navigation.NavigationTransition.None);
-        host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>().CompleteStartup();
+        var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPlayerPageViewModel>(host.Services);
+        navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPageViewModel>(GalNet.Avalonia.GameView.Navigation.NavigationTransition.None);
+        navigation.Navigate<GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPlayerPageViewModel>(GalNet.Avalonia.GameView.Navigation.NavigationTransition.None);
+        host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().CompleteStartup();
         var window = new global::Avalonia.Controls.Window { Width = 1000, Height = 600, Content = host.View }; window.Show();
         try
         {
             var item = host.Session.GalleryDataSource!.GetTypes().Single(type => type.Type.TypeId == "scene").Items.Single(item => item.Item.Id == id);
             await model.ActivateAsync(item);
-            Assert.That(model.ErrorMessage, Is.Null.Or.Empty);
+            Assert.That(model.State.ErrorMessage, Is.Null.Or.Empty);
             window.UpdateLayout();
-            Assert.That(model.Gameplay.IsGameToolbarVisible, Is.False);
-            await model.Gameplay.OpenSaveSlotsCommand.ExecuteAsync(null); await model.Gameplay.OpenLoadSlotsCommand.ExecuteAsync(null);
-            model.Gameplay.OpenSettingsCommand.Execute(null);
+            Assert.That(model.State.Gameplay.IsGameToolbarVisible, Is.False);
+            var replayMenus = (GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel)model.State.Surface.DataContext!;
+            await replayMenus.OpenSaveSlotsCommand.ExecuteAsync(null); await replayMenus.OpenLoadSlotsCommand.ExecuteAsync(null);
+            replayMenus.OpenSettingsCommand.Execute(null);
             Assert.That(navigation.CurrentViewModel, Is.SameAs(model), "Replay commands cannot enter the main session's save/load/settings pages.");
             var capture = Environment.GetEnvironmentVariable("GALNET_THEME_CAPTURE_DIR");
             if (capture is not null)
@@ -143,8 +144,8 @@ public sealed class ResourceGalleryTests
                 bitmap!.Save(Path.Combine(capture, $"scene-replay-{id}.png"));
             }
             for (var attempt = 0; attempt < 150 && navigation.CurrentViewModel == model; attempt++)
-            { model.Gameplay.AdvanceCommand.Execute(null); await Task.Delay(25); }
-            Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Avalonia.GameView.ViewModels.SceneGalleryPageViewModel>());
+            { model.State.Gameplay.AdvanceCommand.Execute(null); await Task.Delay(25); }
+            Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPageViewModel>());
             var unlocked = id == 400 ? 100 : 101;
             Assert.That(player!.Variables.GetSnapshot(VariableScope.Player)[GalleryUnlockVariable.GetName(unlocked)].AsBool(), Is.False);
             Assert.That(player.Progress.IsRead(id == 400 ? "gallery-classroom" : "gallery-evening", "line-1"), Is.False);
@@ -161,32 +162,32 @@ public sealed class ResourceGalleryTests
             GalNet.Sample.CrossPlatform.SampleCustomization.CreateHostOptions(),
             services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services));
         Assert.That(await host.Session.InitializeAsync(_built, Path.Combine(_root, "video-profile-" + id), (_, _) => Task.FromResult<string?>("zh-CN")), Is.True, host.Session.StatusMessage);
-        var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.VideoGalleryPlayerPageViewModel>(host.Services);
+        var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.VideoGalleryPlayerPageViewModel>(host.Services);
         var media = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.Services.GalleryMediaService>(host.Services);
         var item = host.Session.GalleryDataSource!.GetTypes().Single(type => type.Type.TypeId == "video").Items.Single(item => item.Item.Id == id);
         await model.ActivateAsync(item with { IsUnlocked = true });
         async Task WaitFor(Func<bool> condition)
         {
             for (var attempt = 0; attempt < 100 && !condition(); attempt++) await Task.Delay(50);
-            Assert.That(condition(), Is.True, model.ErrorMessage);
+            Assert.That(condition(), Is.True, model.State.ErrorMessage);
         }
         try
         {
-            await WaitFor(() => model.IsPlaying && model.CanSeek);
-            model.TogglePlaybackCommand.Execute(null);
-            await WaitFor(() => !model.IsPlaying);
+            await WaitFor(() => model.State.IsPlaying && model.State.CanSeek);
+            model.State.TogglePlaybackCommand.Execute(null);
+            await WaitFor(() => !model.State.IsPlaying);
             var pausedAt = media.VideoPosition;
             await Task.Delay(300);
             Assert.That(media.VideoPosition, Is.EqualTo(pausedAt).Within(250));
-            model.BeginSeek(); model.Progress = 55;
+            model.State.BeginSeek(); model.State.Progress = 55;
             await Task.Delay(250);
-            Assert.That(model.Progress, Is.EqualTo(55), "Backend polling must preserve an in-progress drag.");
-            model.EndSeek();
+            Assert.That(model.State.Progress, Is.EqualTo(55), "Backend polling must preserve an in-progress drag.");
+            model.State.EndSeek();
             await WaitFor(() => Math.Abs(media.VideoPosition - media.VideoDuration * .55) < 800);
-            model.TogglePlaybackCommand.Execute(null);
-            await WaitFor(() => model.IsPlaying);
+            model.State.TogglePlaybackCommand.Execute(null);
+            await WaitFor(() => model.State.IsPlaying);
             model.BackCommand.Execute(null);
-            Assert.That(media.HasVideo, Is.False); Assert.That(model.HasVideo, Is.False);
+            Assert.That(media.HasVideo, Is.False); Assert.That(model.State.HasVideo, Is.False);
         }
         finally { model.Dispose(); }
     });
@@ -200,16 +201,16 @@ public sealed class ResourceGalleryTests
             GalNet.Sample.CrossPlatform.SampleCustomization.CreateHostOptions(),
             services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services));
         Assert.That(await host.Session.InitializeAsync(_built, Path.Combine(_root, "music-profile-" + firstId), (_, _) => Task.FromResult<string?>("zh-CN")), Is.True, host.Session.StatusMessage);
-        var page = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.ViewModels.AudioGalleryPageViewModel>(host.Services);
+        var page = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.AudioGalleryPageViewModel>(host.Services);
         var media = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.Services.GalleryMediaService>(host.Services);
         var gallery = host.Session.GalleryDataSource!.GetTypes().Single(type => type.Type.TypeId == "audio");
         await page.ActivateAsync(new(gallery.Type, gallery.Items.Select(item => item with { IsUnlocked = true }).ToArray()));
-        var first = page.Items.Single(item => item.Id == firstId);
-        var second = page.Items.Single(item => item.Id != firstId);
+        var first = page.State.Items.Single(item => item.Id == firstId);
+        var second = page.State.Items.Single(item => item.Id != firstId);
         async Task WaitFor(Func<bool> condition)
         {
             for (var attempt = 0; attempt < 100 && !condition(); attempt++) await Task.Delay(50);
-            Assert.That(condition(), Is.True, page.ErrorMessage);
+            Assert.That(condition(), Is.True, page.State.ErrorMessage);
         }
         try
         {
@@ -219,7 +220,7 @@ public sealed class ResourceGalleryTests
             first.BeginSeek(); first.Progress = 25; first.EndSeek();
             await WaitFor(() => first.IsPlaying && Math.Abs(first.Progress - 25) < 3 && media.AudioPosition > 1000);
             Assert.That(second.IsPlaying, Is.False);
-            page.ToggleAudioCommand.Execute(first);
+            page.State.ToggleAudioCommand.Execute(first);
             await WaitFor(() => !first.IsPlaying);
             var paused = media.GetAudioPreview(first.Data).Position;
             Assert.That(paused, Is.GreaterThan(1000));
@@ -227,7 +228,7 @@ public sealed class ResourceGalleryTests
             await WaitFor(() => second.IsPlaying && Math.Abs(second.Progress - 45) < 3 && media.AudioPosition > 1000);
             await Task.Delay(300);
             Assert.That(media.GetAudioPreview(first.Data).Position, Is.EqualTo(paused).Within(300));
-            page.ToggleAudioCommand.Execute(first);
+            page.State.ToggleAudioCommand.Execute(first);
             await WaitFor(() => first.IsPlaying && !second.IsPlaying);
             Assert.That(media.GetAudioPreview(first.Data).Position, Is.EqualTo(paused).Within(1000));
             Assert.That(second.Progress, Is.GreaterThan(40));

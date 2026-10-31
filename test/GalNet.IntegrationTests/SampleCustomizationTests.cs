@@ -49,7 +49,7 @@ public sealed class SampleCustomizationTests
 #if GALNET_GAME_DEBUG
                 Assert.That(host.Services.GetService<GameDebugViewModel>() is not null, Is.EqualTo(enableDebug));
 #endif
-                Assert.That(host.View, Is.SameAs(host.Services.GetRequiredService<GalNet.Avalonia.GameHost.Views.PlayerView>()));
+                Assert.That(host.View, Is.SameAs(host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>()));
             }
             Assert.That(GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve, Is.Null);
             return true;

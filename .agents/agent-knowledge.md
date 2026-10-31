@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [Gallery 异步资源归属](lessons/L-20261101-01-gallery-generation-resource-owner.md)：缩略图跨 await 捕获本次取消源和行快照；重播启动取消自行释放前清空 pending slot，禁止旧结果回写及重复释放。
 - [macOS CI 路径语义](lessons/L-20261030-21-macos-ci-path-semantics.md)：测试 TMPDIR 使用真实路径，保持 no-links；GetRelativePath 的大小写规则包含 macOS。
 - [apt 镜像下载计划](lessons/L-20261030-22-apt-mirror-download-plan.md)：解析 mirror+file 并保留签名索引 hash/size 验证；图形 loader 是宿主前置条件，不能打包 GPU 驱动。
 - [发行内容的契约来源](lessons/L-20261030-20-sample-release-contract-source.md)：Editor 默认项目契约与 Sample 同名契约不同；内容从目标发布载荷导出并严格核对全部契约。CLI 暂存目录名影响 projectId，须保留真实项目名。

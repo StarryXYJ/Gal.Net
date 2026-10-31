@@ -34,14 +34,14 @@ public static class SampleCustomization
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
     public static IGameLayoutTheme PlayerTheme { get; } = new ClassicTheme(PlayerPalette);
 
-    public static GalNet.Avalonia.GameHost.Views.PlayerView CreateView()
+    public static GalNet.Sample.CrossPlatform.Views.PlayerView CreateView()
     {
-        var view = new GalNet.Avalonia.GameHost.Views.PlayerView();
+        var view = new GalNet.Sample.CrossPlatform.Views.PlayerView();
         ConfigureView(view);
         return view;
     }
 
-    public static void ConfigureView(GalNet.Avalonia.GameHost.Views.PlayerView view)
+    public static void ConfigureView(GalNet.Sample.CrossPlatform.Views.PlayerView view)
     {
         view.Resources.MergedDictionaries.Add(PlayerPalette.CreateResources());
         view.Styles.Add(PlayerTheme.CreateStyles());
@@ -50,12 +50,28 @@ public static class SampleCustomization
     public static void ConfigureServices(IServiceCollection services, Action<IPageViewRegistryBuilder>? configureViews = null)
     {
         ConfigurePages(services);
-        services.AddAvaloniaGameViewPages(theme: PlayerTheme, configureViews: views =>
+        services.AddSingleton(PlayerTheme);
+        services.AddAvaloniaGameView(views =>
             {
                 views.Register<ViewModels.TitlePageViewModel, Views.TitlePage>();
                 views.Register<ViewModels.LoadingPageViewModel, Views.LoadingPage>();
                 views.Register<ViewModels.GamePageViewModel, Views.GamePage>();
+                views.Register<ViewModels.SettingsPageViewModel, Views.SettingsPage>();
+                views.Register<ViewModels.SaveSlotsPageViewModel, Views.SaveSlotsPage>();
+                views.Register<ViewModels.AboutPageViewModel, Views.AboutPage>();
+                views.Register<ViewModels.GalleryPageViewModel, Views.GalleryPage>();
+                views.Register<ViewModels.MissingGalleryPageViewModel, Views.MissingGalleryPage>();
+                views.Register<ViewModels.CgGalleryImagePageViewModel, Views.CgGalleryImagePage>();
+                views.Register<ViewModels.VideoGalleryPlayerPageViewModel, Views.VideoGalleryPlayerPage>();
+                views.Register<ViewModels.SceneGalleryPlayerPageViewModel, Views.SceneGalleryPlayerPage>();
+                views.Register<ScreenshotDialogViewModel, Views.ScreenshotDialog>();
                 configureViews?.Invoke(views);
+            }, galleries =>
+            {
+                galleries.Add<ViewModels.CgGalleryPageViewModel, Views.CgGalleryPage>("cg");
+                galleries.Add<ViewModels.AudioGalleryPageViewModel, Views.AudioGalleryPage>("audio");
+                galleries.Add<ViewModels.VideoGalleryPageViewModel, Views.VideoGalleryPage>("video");
+                galleries.Add<ViewModels.SceneGalleryPageViewModel, Views.SceneGalleryPage>("scene");
             })
             .AddSingleton(_ => CreateLocalizationService())
             .AddSingleton<IPlayerLocalization>(provider => provider.GetRequiredService<AvaloniaPlayerLocalization>())
@@ -73,9 +89,19 @@ public static class SampleCustomization
     private static void ConfigurePages(IServiceCollection services)
     {
         services.AddScoped<GamePresentationState>();
-        services.AddScoped<ViewModels.TitlePageViewModel>();
-        services.AddScoped<ViewModels.LoadingPageViewModel>();
-        services.AddScoped<ViewModels.GamePageViewModel>();
+        services.AddScoped(provider => new GalleryNavigationService(provider,
+            provider.GetRequiredService<IGameNavigationService>(), provider.GetRequiredService<IGalleryPageRegistry>(),
+            (gallery, token) => provider.GetRequiredService<IGameNavigationService>()
+                .NavigateAsync<ViewModels.MissingGalleryPageViewModel, GalleryTypeData>(gallery, token)));
+        services.AddScoped(provider =>
+        {
+            var state = new GamePresentationState();
+            var surface = new Views.GamePage(state)
+            {
+                DataContext = new ViewModels.GamePageViewModel(state, provider.GetRequiredService<IGameNavigationService>())
+            };
+            return new GalleryScenePlayback(provider.GetRequiredService<IGameSessionService>(), surface);
+        });
         services.AddScoped<Views.GamePage>();
         services.AddScoped<GamePage>(provider => provider.GetRequiredService<Views.GamePage>());
         services.AddScoped<IPlayerApplication, PlayerApplication>();

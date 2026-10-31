@@ -1,3 +1,5 @@
+using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
+using SettingsPageViewModel = GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel;
 using System.Globalization;
 using System.Text.Json;
 using Avalonia.Controls;

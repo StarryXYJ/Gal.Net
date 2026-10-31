@@ -1,14 +1,16 @@
 # GalNet cross-platform sample
 
-当前 CrossPlatform 已接入游戏会话，不再是欢迎页骨架。本项目是后续正式维护的图形 Sample，通过共享主项目的 `SampleCustomization` 选择主题/页面、项目文案、契约、执行模块与目录策略。旧 Avalonia 桌面 Sample 已从仓库移除，本机副本保留在 Git 忽略的 `local-only/src/Samples/GalNet.Sample.Avalonia/`，不再同步或维护。
+当前 CrossPlatform 已接入游戏会话，不再是欢迎页骨架。本项目是后续正式维护的图形 Sample，通过共享主项目的 `SampleCustomization` 注册页面、项目文案、契约、执行模块与目录策略。旧 Avalonia 桌面 Sample 已从仓库移除，本机副本保留在 Git 忽略的 `local-only/src/Samples/GalNet.Sample.Avalonia/`，不再同步或维护。
 
-主项目的 `Views/TitlePage.axaml`、`LoadingPage.axaml`、`GamePage.axaml` 与对应 `ViewModels/` 是当前可直接修改的模板入口。标题按钮与游戏工具栏在项目 XAML 展开；游戏 VM 组合内置 `GamePresentationState`，不复制播放逻辑。`PlayerApplication` 提供应用启动/返回策略，`SampleCustomization` 集中注册页面和回调。其余页面及主题抽象仍按 F-20261031-02 后续阶段迁移，当前尚未完成整套 UI 收敛。
+主项目的 `Views/` 和 `ViewModels/` 拥有标题、加载、游戏、设置、存读档、鉴赏及详情、关于、截图、语言选择和确认/公告布局。按钮与页面命令直接编辑项目源码；普通页面只需在 `SampleCustomization` 注册一次 VM→View 映射，VM/View 自动注册为 Scoped，Gallery 另按实际内容类型注册。`PlayerApplication` 提供应用启动/返回策略。
 
-通用主视图/语言选择和会话所有权来自 `GalNet.Avalonia.GameHost`，内容流安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`；通用截图 dispatch/捕获/写入与 Sample entry 注册分开。两个项目可保留相似配置，通用机制只有一个实现来源。
+内置 `GamePresentationState`、`SaveSlotCollection`、Gallery 的缩略图/媒体/重播状态及 `PlayerSurface` 保留播放、异步取消、预览释放、焦点和输入屏蔽机制。项目页面组合这些对象，不复制机制，也不派生旧默认页面 VM。场景鉴赏使用项目游戏布局和独立呈现状态，不能通过菜单进入主会话存读档/设置。
+
+当前仍借用旧 Classic 主题的样式资源，完整主题抽象及旧页面清理由 F-20261031-02 的 P5 处理；尚未完成只保留配色的最终收敛。会话/scope 所有权来自 `GalNet.Avalonia.GameHost`，内容安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`。
 
 | 工程 | 职责与当前验证 |
 | --- | --- |
-| `SampleCustomization` | 本主项目的主题、页面、本地化、契约与执行组合配置 |
+| `SampleCustomization` | 本主项目的页面、配色、本地化、契约与执行组合配置 |
 | CrossPlatform 共享 App | 会话组合、Activity 视图重挂载、scope 重建和关闭 |
 | Desktop | Windows/Linux/macOS 入口；Windows/WSLg 启动、会话和正常退出已验证，macOS 验收延期 |
 | Android | ARM64 真机已安装启动，语言页、剧情视频叠加立绘、声音与触摸推进通过基础 smoke；存读档/Gallery/生命周期完整验收待补 |
