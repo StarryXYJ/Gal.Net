@@ -78,6 +78,11 @@ public sealed partial class GameThemeTests
                 window.UpdateLayout();
                 Assert.That(((ISolidColorBrush)combo.Foreground!).Color,
                     Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.TextDisabled")!).Color));
+                Assert.That(((ISolidColorBrush)combo.Background!).Opacity, Is.EqualTo(.18));
+                Assert.That(((ISolidColorBrush)combo.BorderBrush!).Opacity, Is.EqualTo(.5));
+                var disabledText = combo.GetVisualDescendants().OfType<TextBlock>().First(block => block.Text == "简体中文");
+                Assert.That(((ISolidColorBrush)disabledText.Foreground!).Color,
+                    Is.EqualTo(((ISolidColorBrush)root.FindResource("GalNet.Brush.TextDisabled")!).Color));
                 Capture(window, $"ComboBox-{paletteName}-Disabled");
             }
             finally { window.Close(); }

@@ -30,9 +30,9 @@
           <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,20,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="settings:SettingItem">
-                <Grid ColumnDefinitions="180,*" ColumnSpacing="22" Margin="0,0,0,24" IsVisible="{Binding IsVisible}">
+                <Grid ColumnDefinitions="180,*" ColumnSpacing="22" Margin="0,0,0,24" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
                   <StackPanel Spacing="4" IsVisible="{Binding !IsFullWidth}">
-                    <ContentControl Content="{Binding Label}" />
+                    <ContentControl Classes="setting-label" Content="{Binding Label}" />
                     <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
                   </StackPanel>
                   <StackPanel Grid.Column="{Binding EditorColumn}" Grid.ColumnSpan="{Binding EditorColumnSpan}" Spacing="4">
@@ -82,6 +82,9 @@
     </TabControl.ContentTemplate>
   </TabControl>
   <UserControl.Styles>
+    <Style Selector="Grid.setting-unavailable ContentControl.setting-label">
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
+    </Style>
     <Style Selector="CheckBox"><Setter Property="HorizontalAlignment" Value="Left" /></Style>
     <Style Selector="ToggleButton.player-mute">
       <Setter Property="Width" Value="40" /><Setter Property="Height" Value="40" />
@@ -97,7 +100,11 @@
     <Style Selector="ToggleButton.player-mute:checked"><Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.Primary}" /><Setter Property="Background" Value="{DynamicResource GalNet.Brush.Selection}" /></Style>
     <Style Selector="ToggleButton.player-mute:pointerover"><Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" /><Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" /></Style>
     <Style Selector="ToggleButton.player-mute:focus-visible"><Setter Property="BorderThickness" Value="1" /><Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" /></Style>
-    <Style Selector="ToggleButton.player-mute:disabled"><Setter Property="Opacity" Value="0.45" /></Style>
+    <Style Selector="ToggleButton.player-mute:disabled">
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
+      <Setter Property="Background" Value="{DynamicResource GalNet.Brush.DisabledSurface}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.DisabledBorder}" />
+    </Style>
     <Style Selector="ToggleButton.player-mute Path.mute-slash"><Setter Property="IsVisible" Value="False" /></Style>
     <Style Selector="ToggleButton.player-mute:checked Path.mute-slash"><Setter Property="IsVisible" Value="True" /></Style>
     <Style Selector="ToggleButton.player-mute:checked Path.sound-waves"><Setter Property="IsVisible" Value="False" /></Style>

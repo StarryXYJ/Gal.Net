@@ -51,7 +51,7 @@
   "Settings.Graphics": "画面",
   "Settings.DisplayMode": "显示模式",
   "Settings.Display.Window": "窗口",
-  "Settings.Display.BorderlessFullscreen": "全屏窗口",
+  "Settings.Display.BorderlessFullscreen": "全屏窗口（无边框）",
   "Settings.Display.ExclusiveFullscreen": "独占全屏",
   "Settings.WindowSize": "窗口尺寸",
   "Settings.WindowSizeFullscreen": "请切换到窗口模式后调整窗口尺寸。",

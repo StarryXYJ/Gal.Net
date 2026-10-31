@@ -51,7 +51,7 @@
   "Settings.Graphics": "Graphics",
   "Settings.DisplayMode": "Display mode",
   "Settings.Display.Window": "Window",
-  "Settings.Display.BorderlessFullscreen": "Borderless fullscreen",
+  "Settings.Display.BorderlessFullscreen": "Fullscreen window (borderless)",
   "Settings.Display.ExclusiveFullscreen": "Exclusive fullscreen",
   "Settings.WindowSize": "Window size",
   "Settings.WindowSizeFullscreen": "Switch to window mode to change the window size.",

@@ -17,13 +17,19 @@ public partial class MainWindow : UrsaWindow
     private bool _windowedTitleBar;
     private WindowDecorations _windowedDecorations;
     private double _windowedTitleHeight;
+    private bool _windowedExtendClientArea;
 
     public MainWindow()
     {
         InitializeComponent();
         WindowDecorationProperties.SetElementRole(FitAspectButton, WindowDecorationsElementRole.User);
         Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
-        Closed += (_, _) => DetachDebugBindings();
+        if (OperatingSystem.IsWindows()) Win32Properties.AddWndProcHookCallback(this, FilterFullscreenMessages);
+        Closed += (_, _) =>
+        {
+            if (OperatingSystem.IsWindows()) Win32Properties.RemoveWndProcHookCallback(this, FilterFullscreenMessages);
+            DetachDebugBindings();
+        };
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -39,10 +45,12 @@ public partial class MainWindow : UrsaWindow
             _windowedTitleBar = IsTitleBarVisible;
             _windowedDecorations = WindowDecorations;
             _windowedTitleHeight = ExtendClientAreaTitleBarHeightHint;
+            _windowedExtendClientArea = ExtendClientAreaToDecorationsHint;
             CanResize = false;
             IsTitleBarVisible = false;
             WindowDecorations = WindowDecorations.None;
             ExtendClientAreaTitleBarHeightHint = 0;
+            ExtendClientAreaToDecorationsHint = false;
         }
         else
         {
@@ -50,6 +58,7 @@ public partial class MainWindow : UrsaWindow
             IsTitleBarVisible = _windowedTitleBar;
             WindowDecorations = _windowedDecorations;
             ExtendClientAreaTitleBarHeightHint = _windowedTitleHeight;
+            ExtendClientAreaToDecorationsHint = _windowedExtendClientArea;
         }
         if (this.FindControl<Button>("FitAspectButton") is { } fit) fit.IsVisible = !fullscreen;
     }

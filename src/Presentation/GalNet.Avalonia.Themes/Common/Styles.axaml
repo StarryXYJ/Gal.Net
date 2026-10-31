@@ -36,6 +36,8 @@
       <x:Double x:Key="GalNet.Theme.HeadingSize">32</x:Double>
       <x:Double x:Key="GalNet.Theme.TitleSize">48</x:Double>
       <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
+      <SolidColorBrush x:Key="GalNet.Brush.DisabledSurface" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" Opacity="0.18" />
+      <SolidColorBrush x:Key="GalNet.Brush.DisabledBorder" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" Opacity="0.5" />
       <!-- Fluent control resources also reach popup roots and focus/pressed template parts. -->
       <SolidColorBrush x:Key="ComboBoxForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
       <SolidColorBrush x:Key="ComboBoxBackground" Color="{DynamicResource GalNet.Palette.SurfaceColor}" />
@@ -56,8 +58,8 @@
       <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundFocusedPressed" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
       <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="{DynamicResource GalNet.Palette.SurfaceColor}" />
       <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="{DynamicResource GalNet.Palette.BorderColor}" />
-      <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="{DynamicResource GalNet.Palette.SurfaceRaisedColor}" />
-      <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="{DynamicResource GalNet.Palette.DividerColor}" />
+      <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" Opacity="0.18" />
+      <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" Opacity="0.5" />
       <SolidColorBrush x:Key="ComboBoxForegroundDisabled" Color="{DynamicResource GalNet.Palette.TextDisabledColor}" />
       <SolidColorBrush x:Key="ComboBoxDropDownGlyphForegroundDisabled" Color="{DynamicResource GalNet.Palette.TextDisabledColor}" />
       <SolidColorBrush x:Key="ComboBoxItemForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
@@ -136,9 +138,18 @@
     <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
   </Style>
   <Style Selector=".galnet-player ComboBox:disabled">
-    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.DisabledSurface}" />
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
-    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Divider}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.DisabledBorder}" />
+  </Style>
+  <Style Selector=".galnet-player ComboBox:disabled /template/ ContentPresenter">
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
+    <Setter Property="Opacity" Value="1" />
+  </Style>
+  <Style Selector=".galnet-player TextBox:disabled">
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.DisabledSurface}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.DisabledBorder}" />
   </Style>
   <Style Selector=".galnet-player ComboBox /template/ Border#PopupBorder">
     <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />

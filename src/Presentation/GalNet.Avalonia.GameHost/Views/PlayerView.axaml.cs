@@ -57,9 +57,10 @@ public partial class PlayerView : UserControl
     private void OnAudioAnnouncement(string name)
     {
         AudioToast.CloseAll();
+        // MusicToastTheme spends 0.8 seconds entering, then leaves two seconds to read.
         if (!string.IsNullOrWhiteSpace(name) && _exitConfirmation is null)
             AudioToast.Show(name, NotificationType.Information,
-                TimeSpan.FromSeconds(2), showIcon: false, showClose: false);
+                TimeSpan.FromSeconds(2.8), showIcon: false, showClose: false);
     }
 
     public Task<bool> ConfirmExitAsync() => ConfirmAsync(returnToTitle: false);

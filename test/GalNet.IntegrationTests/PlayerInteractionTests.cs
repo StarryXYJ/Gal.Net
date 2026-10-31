@@ -7,6 +7,8 @@ using Avalonia.Interactivity;
 using Avalonia.Headless;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Avalonia.Media;
+using GalNet.Avalonia.Themes;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameHost.Views;
 using GalNet.Avalonia.GameView.Navigation;
@@ -132,12 +134,15 @@ public sealed class PlayerInteractionTests
         var window = new GalNet.Sample.CrossPlatform.Views.MainWindow();
         var button = window.FindControl<Button>("FitAspectButton")!;
         var previousDecorations = window.WindowDecorations;
+        var previousExtend = window.ExtendClientAreaToDecorationsHint;
         window.WindowState = WindowState.FullScreen;
         Assert.That(window.IsTitleBarVisible || window.CanResize || button.IsVisible, Is.False);
         Assert.That(window.WindowDecorations, Is.EqualTo(WindowDecorations.None));
+        Assert.That(window.ExtendClientAreaToDecorationsHint, Is.False);
         window.WindowState = WindowState.Normal;
         Assert.That(window.IsTitleBarVisible && window.CanResize && button.IsVisible, Is.True);
         Assert.That(window.WindowDecorations, Is.EqualTo(previousDecorations));
+        Assert.That(window.ExtendClientAreaToDecorationsHint, Is.EqualTo(previousExtend));
         return Task.CompletedTask;
     });
 
@@ -152,15 +157,18 @@ public sealed class PlayerInteractionTests
         Assert.That(size.Height, Is.InRange(500, screenHeight));
     }
 
-    [Test]
-    public Task MusicToastExpiresAndDoesNotInterceptInput() => SampleUiTests.RunAsync(async () =>
+    [TestCase("Mono")]
+    [TestCase("Ocean")]
+    [TestCase("Rose")]
+    public Task MusicToastExpiresAndDoesNotInterceptInput(string paletteName) => SampleUiTests.RunAsync(async () =>
     {
         await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(),
             services => SampleCustomization.ConfigureServices(services));
         var semi = new Semi.Avalonia.SemiTheme();
         var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
         Application.Current!.Styles.Add(semi); Application.Current.Styles.Add(ursa);
-        var window = new Window { Content = host.View };
+        host.View.Resources.MergedDictionaries.Add((paletteName switch { "Ocean" => GamePalette.Ocean, "Rose" => GamePalette.Rose, _ => GamePalette.Mono }).CreateResources());
+        var window = new Window { Width = 800, Height = 450, Content = host.View };
         window.Show();
         try
         {
@@ -176,14 +184,49 @@ public sealed class PlayerInteractionTests
             Assert.That(cards, Has.Length.EqualTo(1));
             Assert.That(cards[0].Content, Is.EqualTo("Track two"));
             await Task.Delay(250);
-            Assert.That(cards[0].Bounds.Width, Is.GreaterThan(0));
+            Assert.That(cards[0].Bounds.Width, Is.GreaterThanOrEqualTo(280));
+            Assert.That(((ISolidColorBrush)cards[0].Background!).Opacity, Is.EqualTo(.84));
+            Assert.That(((ISolidColorBrush)cards[0].Foreground!).Color, Is.EqualTo(((ISolidColorBrush)host.View.FindResource("GalNet.Brush.TextPrimary")!).Color));
             Assert.That(cards[0].IsEffectivelyVisible, Is.True);
-            Capture(window, "music-toast");
-            await Task.Delay(2500);
-            Assert.That(manager.GetVisualDescendants().OfType<ToastCard>().All(card => card.IsClosing), Is.True);
+            Capture(window, $"music-toast-{paletteName}-entering");
+            await Task.Delay(750);
+            Capture(window, $"music-toast-{paletteName}-settled");
+            Assert.That(cards[0].IsEffectivelyVisible, Is.True);
+            for (var attempt = 0; attempt < 100 && !cards[0].IsClosing; attempt++) await Task.Delay(30);
+            Assert.That(cards[0].IsClosing, Is.True);
+            await Task.Delay(250);
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Assert.That(cards[0].IsClosed, Is.False, "The card stays attached during its exit animation.");
+            Assert.That(cards[0].RenderTransform!.Value.M31, Is.LessThan(0));
+            Capture(window, $"music-toast-{paletteName}-leaving");
+            await Task.Delay(850);
+            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+            Assert.That(manager.GetVisualDescendants().OfType<ToastCard>(), Is.Empty);
         }
         finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
     });
+    [Test]
+    public Task FullscreenBlocksNativeMoveAndResizeWithoutChangingNormalOrMaximizedBehavior() => SampleUiTests.RunAsync(() =>
+    {
+        var window = new GalNet.Sample.CrossPlatform.Views.MainWindow();
+        var filter = window.GetType().GetMethod("FilterFullscreenMessages", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        foreach (var state in new[] { WindowState.Normal, WindowState.Maximized, WindowState.FullScreen })
+        {
+            window.WindowState = state;
+            foreach (var (message, parameter) in new (uint, nint)[] { (0x84, 0), (0xA1, 2), (0xA3, 2), (0x112, 0xF012), (0x112, 0xF008) })
+            {
+                object[] arguments = [(nint)0, message, parameter, (nint)0, false];
+                var result = (nint)filter.Invoke(window, arguments)!;
+                Assert.That(arguments[4], Is.EqualTo(state == WindowState.FullScreen));
+                if (state == WindowState.FullScreen && message == 0x84) Assert.That(result, Is.EqualTo((nint)1));
+            }
+            object[] close = [(nint)0, (uint)0x112, (nint)0xF060, (nint)0, false];
+            filter.Invoke(window, close);
+            Assert.That(close[4], Is.False, "Close must remain available in fullscreen.");
+        }
+        return Task.CompletedTask;
+    });
+
     private sealed class PlayingSession : IGameSessionService
     {
         public string GameTitle => "Modal regression";
