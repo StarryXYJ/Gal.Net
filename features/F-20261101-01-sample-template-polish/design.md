@@ -33,6 +33,8 @@ Sample 的命令仍决定何时开始新游戏、继续或读档，以及前后�
 
 优先用项目内小型创建函数/现有映射能力完成，避免新的公开工厂体系。不能直接解析主游戏的 scoped state 给重播，也不能仅统一类名而继续绕过开发者配置的视图选择。自定义视图构造所需依赖与独立状态传入方式须在定向测试中体现。
 
+P2 实现选择项目私有 CreateGameView：普通游戏解析映射的 scoped 控件，重播通过 ActivatorUtilities 新建同一映射类型；项目私有服务视图只替换构造函数中的 GamePresentationState/GamePageViewModel，其他服务继续借用所属 scope。两者均显式设置 Presentation/DataContext。映射到基础 GamePage 时直接构造，避免 scoped 运行别名解析自身；不增加公开工厂 API。
+
 ## 取舍与风险
 
 - 保留页面 VM 组合层，接受少量清晰的项目命令代码，不追求最少文件数。

@@ -116,19 +116,14 @@ public static class SampleCustomization
         services.AddScoped(provider =>
         {
             var state = new GamePresentationState();
-            var surface = new Views.GamePage(state)
-            {
-                DataContext = new ViewModels.GamePageViewModel(state, provider.GetRequiredService<IGameNavigationService>())
-            };
+            var model = new ViewModels.GamePageViewModel(state, provider.GetRequiredService<IGameNavigationService>());
+            var surface = CreateGameView(provider, model, scoped: false);
             return new GalleryScenePlayback(provider.GetRequiredService<IGameSessionService>(), surface);
         });
-        services.AddScoped<Views.GamePage>();
         services.AddScoped<GamePage>(provider =>
         {
             var model = provider.GetRequiredService<ViewModels.GamePageViewModel>();
-            var page = (GamePage)provider.GetRequiredService<IPageViewFactory>().Create(model);
-            page.Presentation = model.State;
-            return page;
+            return CreateGameView(provider, model, scoped: true);
         });
         services.AddScoped<IPlayerApplication, PlayerApplication>();
         services.AddScoped(provider =>
@@ -152,6 +147,24 @@ public static class SampleCustomization
             shell.Styles.Add(CreateStyles());
             return shell;
         });
+    }
+
+    private static GamePage CreateGameView(IServiceProvider services, ViewModels.GamePageViewModel model, bool scoped)
+    {
+        var type = services.GetRequiredService<IPageViewRegistry>().GetViewType(typeof(ViewModels.GamePageViewModel));
+        var page = (GamePage)(scoped && type != typeof(GamePage) ? services.GetRequiredService(type)
+            : ActivatorUtilities.CreateInstance(new ReplayViewServices(services, model), type));
+        page.Presentation = model.State;
+        page.DataContext = model;
+        return page;
+    }
+
+    // Borrow other scoped services, but never inject the player's state or VM into a replay view.
+    private sealed class ReplayViewServices(IServiceProvider services, ViewModels.GamePageViewModel model) : IServiceProvider
+    {
+        public object? GetService(Type type) => type == typeof(GamePresentationState) ? model.State
+            : type == typeof(ViewModels.GamePageViewModel) ? model
+            : type == typeof(IServiceProvider) ? this : services.GetService(type);
     }
 
     public static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();

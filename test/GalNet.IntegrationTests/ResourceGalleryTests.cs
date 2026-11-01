@@ -95,9 +95,11 @@ public sealed class ResourceGalleryTests
         Assert.That(replay.Edges, Is.Empty); Assert.That(source.Edges, Has.Count.EqualTo(1));
     }
     [Explicit("Requires the native LibVLC deployment; exercises a real composed scene surface.")]
-    [TestCase(400)]
-    [TestCase(401)]
-    public Task SceneGalleryRendersBothSampleScenesAndReturnsWithoutChangingPlayerProgress(int id) => SampleUiTests.RunAsync(async () =>
+    [TestCase(400, false)]
+    [TestCase(401, false)]
+    [TestCase(400, true)]
+    [TestCase(401, true)]
+    public Task SceneGalleryRendersBothSampleScenesAndReturnsWithoutChangingPlayerProgress(int id, bool customLayout) => SampleUiTests.RunAsync(async () =>
     {
         var original = GalNet.Sample.CrossPlatform.SampleCustomization.CreateHostOptions();
         GalNet.GameHost.PlayerSession? player = null;
@@ -117,7 +119,10 @@ public sealed class ResourceGalleryTests
             }
         };
         await using var host = await GalNet.Avalonia.GameHost.AvaloniaPlayerHost.CreateAsync(options,
-            services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services));
+            services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services, views =>
+            {
+                if (customLayout) views.Register<GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel, SampleTemplatePagesTests.ReplacementGameView>();
+            }));
         Assert.That(await host.Session.InitializeAsync(_built, Path.Combine(_root, "profile-" + id), (_, _) => Task.FromResult<string?>("zh-CN")), Is.True, host.Session.StatusMessage);
         var navigation = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Avalonia.GameView.Navigation.IGameNavigationService>(host.Services);
         var model = Microsoft.Extensions.DependencyInjection.ServiceProviderServiceExtensions.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPlayerPageViewModel>(host.Services);
@@ -128,6 +133,7 @@ public sealed class ResourceGalleryTests
         try
         {
             var item = host.Session.GalleryDataSource!.GetTypes().Single(type => type.Type.TypeId == "scene").Items.Single(item => item.Item.Id == id);
+            if (customLayout) Assert.That(model.State.Surface, Is.TypeOf<SampleTemplatePagesTests.ReplacementGameView>());
             await model.ActivateAsync(item);
             Assert.That(model.State.ErrorMessage, Is.Null.Or.Empty);
             window.UpdateLayout();
@@ -141,7 +147,7 @@ public sealed class ResourceGalleryTests
             {
                 Directory.CreateDirectory(capture); global::Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
                 using var bitmap = window.CaptureRenderedFrame();
-                bitmap!.Save(Path.Combine(capture, $"scene-replay-{id}.png"));
+                bitmap!.Save(Path.Combine(capture, $"scene-replay-{id}-{(customLayout ? "custom" : "default")}.png"));
             }
             for (var attempt = 0; attempt < 150 && navigation.CurrentViewModel == model; attempt++)
             { model.State.Gameplay.AdvanceCommand.Execute(null); await Task.Delay(25); }

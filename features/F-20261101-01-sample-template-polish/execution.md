@@ -16,3 +16,11 @@ SampleCustomization 定义 350ms 加载停留与 2.8 秒公告；加载回调异
 - architecture.trx：56/56。docs check 72 页及本地链接通过，diff 空白检查通过。首次新增测试误用了无参 AssertionException 导致编译失败，已修正并完成上述重跑，初始日志保留。
 
 工作区有并行开场序列/启动可用性改动，涉及同一 TitlePageViewModel 与 SampleCustomization。只提交本 feature 的启动协议/时长改动，保留其余工作树内容；不将并行改动或旧 review、用户 lesson 混入阶段提交。
+
+## P2：同一布局来源与独立重播状态
+
+状态：verified，2026-11-01。Sample 的普通游戏和重播均通过项目私有 CreateGameView 读取实际页面映射。普通控件保持 scoped 实例；重播新建映射类型，构造时获得独立 state/VM，其他服务借用当前 scope。移除固定 Views.GamePage 注册和重播直接 new 该类型的路径。映射基础 GamePage 的别名递归也有回归保护。
+
+`.artifacts/sample-template-polish/p2/`：layout.trx 13/13；lifecycle.trx 4/4，覆盖取消结果不得回写与释放等待者；scenes-explicit.trx 4/4，两个真实内容场景 × 默认/替换布局，检查关闭、不可保存/读档、玩家进度/解锁不受污染，并保存四张独立 PNG。已目视检查自定义场景布局的渲染。
+
+中间 ResourceGallery 测试参数修改曾误匹配另一个 TestCase 导致编译错误，已修正。scenes.trx 混选普通类与 Explicit 方法时仅执行 13 个普通用例，未将它当作原生通过证据；随后单独选择场景方法取得上面真正执行的四项结果。

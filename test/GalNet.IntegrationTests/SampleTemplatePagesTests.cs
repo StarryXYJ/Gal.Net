@@ -38,6 +38,43 @@ namespace GalNet.IntegrationTests;
 public sealed class SampleTemplatePagesTests
 {
     [Test]
+    public Task RegisteredGameLayoutIsUsedForBothPlayerAndIndependentReplay() => SampleUiTests.RunAsync(async () =>
+    {
+        var session = new Session();
+        var collection = new ServiceCollection();
+        collection.AddSingleton<IGameSessionService>(session);
+        SampleCustomization.ConfigureServices(collection, views => views.Register<SampleGame, ReplacementGameView>());
+        await using var provider = collection.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var player = (ReplacementGameView)services.GetRequiredService<GamePage>();
+        var replay = services.GetRequiredService<GalleryScenePlayback>();
+        Assert.That(replay.Surface, Is.TypeOf<ReplacementGameView>());
+        var preview = (ReplacementGameView)replay.Surface;
+        Assert.That(player, Is.SameAs(services.GetRequiredService<IPageViewFactory>().Create(services.GetRequiredService<SampleGame>())));
+        Assert.That(preview, Is.Not.SameAs(player));
+        Assert.That(player.InjectedState, Is.SameAs(services.GetRequiredService<GamePresentationState>()));
+        Assert.That(preview.InjectedState, Is.SameAs(replay.Gameplay).And.Not.SameAs(player.InjectedState));
+        Assert.That(preview.InjectedModel, Is.SameAs(preview.DataContext).And.Not.SameAs(player.DataContext));
+        Assert.That(preview.InjectedModel.State, Is.SameAs(replay.Gameplay));
+        Assert.That(preview.InjectedNavigation, Is.SameAs(player.InjectedNavigation));
+    });
+
+    [Test]
+    public Task BareGameControlMappingDoesNotRecurseThroughItsScopedAlias() => SampleUiTests.RunAsync(async () =>
+    {
+        var collection = new ServiceCollection();
+        collection.AddSingleton<IGameSessionService>(new Session());
+        SampleCustomization.ConfigureServices(collection, views => views.Register<SampleGame, GamePage>());
+        await using var provider = collection.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var services = scope.ServiceProvider;
+        var page = services.GetRequiredService<GamePage>();
+        Assert.That(page, Is.SameAs(services.GetRequiredService<IPageViewFactory>().Create(services.GetRequiredService<SampleGame>())));
+        Assert.That(page.Presentation, Is.SameAs(services.GetRequiredService<GamePresentationState>()));
+    });
+
+    [Test]
     public Task ProjectOwnsAnnouncementDurationAndRejectsInvalidLifetimes() => SampleUiTests.RunAsync(() =>
     {
         var view = SampleCustomization.CreateView();
@@ -355,6 +392,12 @@ public sealed class SampleTemplatePagesTests
     }
 
     public sealed class Notebook : PageViewModelBase;
+    public sealed class ReplacementGameView(GamePresentationState state, SampleGame model, IGameNavigationService navigation) : SampleGameView(state)
+    {
+        public GamePresentationState InjectedState { get; } = state;
+        public SampleGame InjectedModel { get; } = model;
+        public IGameNavigationService InjectedNavigation { get; } = navigation;
+    }
     public sealed class NotebookView : UserControl
     {
         public NotebookView() => Content = new TextBlock { Text = "Notebook" };

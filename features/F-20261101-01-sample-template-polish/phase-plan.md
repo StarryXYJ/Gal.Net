@@ -1,6 +1,6 @@
 # 快速通道阶段计划
 
-P1 verified，P2/P3 planned；用户已授权实现。P1 因明确的公开便利入口和时长属性转普通 feature 流程，接口决策见 design.md。每个切片取得证据后单独提交；没有扩大到公开包拆分或全局契约变更。实际证据见 [execution.md](execution.md)。
+P1/P2 verified，P3 planned；用户已授权实现。P1 因明确的公开便利入口和时长属性转普通 feature 流程，接口决策见 design.md。每个切片取得证据后单独提交；没有扩大到公开包拆分或全局契约变更。实际证据见 [execution.md](execution.md)。
 
 ## P1：统一启动接线与项目视觉策略
 

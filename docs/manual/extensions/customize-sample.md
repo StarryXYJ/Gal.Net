@@ -12,6 +12,8 @@
 
 `SampleCustomization` 集中注册页面、加载/返回回调、配色、本地化、契约和执行模块。`AddAvaloniaGameView` 只注册明确列出的页面和机制；普通页面的一条 VM→View 映射会自动注册两者的 Scoped 服务，不要求完整的固定页面列表。Gallery 另按 `cg/audio/video/scene` 等精确内容类型注册；缺失类型由项目诊断页显示。配色、尺寸及默认样式分别由 PlayerPalette、项目 Styles/Dimensions.axaml 和 Styles/Player.axaml 提供。
 
+游戏布局映射也用于场景重播：主游戏保持 scoped 控件，重播新建同一映射类型，并向构造函数注入独立 `GamePresentationState`/项目游戏 VM；导航等其他服务仍借用当前 scope。自定义视图应通过这两个构造依赖或 Presentation/DataContext 读取本次状态，不应缓存主游戏状态作为全局单例。
+
 直接接入宿主时，调用 `AvaloniaPlayerHost.CreateAsync(options, configure)`，注册 `IPlayerApplication` 提供根表面与启动/返回策略。Sample 的 `Views.PlayerView` 继承无页面布局的 `PlayerSurface` 行为基类，加载项目 XAML 后调用 `InitializeSurface()`；保留命名控件以复用确认取消、焦点恢复、输入屏蔽及公告清理。平台项目负责窗口或单视图挂载及生命周期，宿主负责 scope 和会话释放。
 
 包内内容流安装使用 `Storage.FileSystem.BundledGameInstaller`；稳定 profile 目录通过 `GameProfilePaths.GetProfileDirectory(content, profileRoot)` 计算，应用自行提供绝对根。项目截图 primitive 负责自己的 schema/参数，通用 `SceneScreenshotWriter.SaveAsync` 负责捕获与安全写入，两者不要求框架引用项目契约。
