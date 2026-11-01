@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [Sample 首次显示窗口尺寸](lessons/L-20261101-02-sample-window-placement-before-first-show.md)：桌面入口在启动 lifetime 前已知 profile，应在赋值 MainWindow 前加载窗口记录并设置保存尺寸，Opened 仍负责屏幕适配；移动端不接入。
 - 2026-11-01 单项目模板：Sample 独占全部应用页面/VM/全局布局；内置 GamePresentationState、存档行及 Gallery 状态拥有复杂机制。整套主题/旧页面删除，Themes 只留配色字体，新增页用普通 VM→View 映射。P1–P5/P6a 已验证，Android 本轮真机按用户决定延期、保留未验证，不能沿用旧 UI 验收；参见 [总结](../features/F-20261031-02-sample-ui-template/summary.md)。
 - [Gallery 异步资源归属](lessons/L-20261101-01-gallery-generation-resource-owner.md)：缩略图跨 await 捕获本次取消源和行快照；重播启动取消自行释放前清空 pending slot，禁止旧结果回写及重复释放。
 - [macOS CI 路径语义](lessons/L-20261030-21-macos-ci-path-semantics.md)：测试 TMPDIR 使用真实路径，保持 no-links；GetRelativePath 的大小写规则包含 macOS。

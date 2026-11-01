@@ -29,7 +29,11 @@ public sealed class DesktopWindowPlacement
         Placements.Add(window, this);
         window.WindowStartupLocation = WindowStartupLocation.CenterScreen;
         if (window.IsVisible) Restore(saved);
-        else window.Opened += OnOpened;
+        else
+        {
+            PrepareStartupPlacement(saved);
+            window.Opened += OnOpened;
+        }
         window.SizeChanged += OnSizeChanged;
         window.PropertyChanged += OnPropertyChanged;
         window.Closed += OnClosed;
@@ -67,12 +71,13 @@ public sealed class DesktopWindowPlacement
 
     private void Restore(WindowPlacement? saved)
     {
+        var alreadyMaximized = saved?.Maximized == true && _window.WindowState == WindowState.Maximized;
         _restoring = true;
         try
         {
             var screen = _window.Screens.ScreenFromWindow(_window) ?? _window.Screens.Primary;
             var desired = saved is null ? _normalSize : new Size(saved.Width, saved.Height);
-            _window.WindowState = WindowState.Normal;
+            if (!alreadyMaximized) _window.WindowState = WindowState.Normal;
             var frame = _window.FrameSize ?? _window.ClientSize;
             var border = new Size(Math.Max(0, frame.Width - _window.ClientSize.Width), Math.Max(0, frame.Height - _window.ClientSize.Height));
             var size = screen is null ? desired : Fit(desired, new Size(_window.MinWidth, _window.MinHeight),
@@ -82,14 +87,14 @@ public sealed class DesktopWindowPlacement
             _window.Width = size.Width;
             _window.Height = size.Height;
             _normalSize = size;
-            if (screen is not null)
+            if (screen is not null && !alreadyMaximized)
             {
                 var area = screen.WorkingArea;
                 _window.Position = new PixelPoint(area.X + (int)((area.Width - (size.Width + border.Width) * screen.Scaling) / 2),
                     area.Y + (int)((area.Height - (size.Height + border.Height) * screen.Scaling) / 2));
             }
             _maximized = saved?.Maximized == true;
-            if (_maximized) _window.WindowState = WindowState.Maximized;
+            if (_maximized && !alreadyMaximized) _window.WindowState = WindowState.Maximized;
         }
         finally { _restoring = false; }
     }
@@ -131,6 +136,23 @@ public sealed class DesktopWindowPlacement
         var temporary = path + ".tmp";
         File.WriteAllText(temporary, JsonSerializer.Serialize(placement, WindowPlacementJsonContext.Default.WindowPlacement));
         File.Move(temporary, path, overwrite: true);
+    }
+
+    private void PrepareStartupPlacement(WindowPlacement? saved)
+    {
+        if (saved is null || !double.IsFinite(saved.Width) || saved.Width <= 0 ||
+            !double.IsFinite(saved.Height) || saved.Height <= 0) return;
+
+        _restoring = true;
+        try
+        {
+            _window.Width = saved.Width;
+            _window.Height = saved.Height;
+            _normalSize = new Size(saved.Width, saved.Height);
+            _maximized = saved.Maximized;
+            if (_maximized) _window.WindowState = WindowState.Maximized;
+        }
+        finally { _restoring = false; }
     }
 }
 

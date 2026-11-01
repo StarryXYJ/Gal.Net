@@ -5,6 +5,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <ApplicationManifest>app.manifest</ApplicationManifest>
+        <ApplicationIcon>../../Branding/galnet.ico</ApplicationIcon>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <DefaultContractsOutputRoot Condition="'$(Benchmark)' == 'true'">benchmark/</DefaultContractsOutputRoot>
         <DefaultContractsOutputRoot Condition="'$(PublishProfile)' == 'WindowsReadyToRun' And '$(Benchmark)' != 'true'">publish/WindowsReadyToRun/</DefaultContractsOutputRoot>
@@ -16,6 +17,7 @@
     <ProjectReference Include="../../Infrastructure/GalNet.Media.LibVlc/GalNet.Media.LibVlc.csproj" />
         <Folder Include="Models\" />
         <AvaloniaResource Include="Assets\**" />
+        <AvaloniaResource Include="..\..\Branding\galnet.ico" Link="Assets\galnet.ico" />
     </ItemGroup>
 
     <ItemGroup>

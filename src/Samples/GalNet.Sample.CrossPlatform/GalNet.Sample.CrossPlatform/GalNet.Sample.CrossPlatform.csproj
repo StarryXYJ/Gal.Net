@@ -13,6 +13,7 @@
     <ProjectReference Include="../../GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj" />
     <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true'" />
     <AvaloniaResource Include="Assets\**" />
+    <AvaloniaResource Include="..\..\..\Branding\galnet.ico" Link="Assets\galnet.ico" />
     <EmbeddedResource Include="Localization/*.json" />
   </ItemGroup>
 

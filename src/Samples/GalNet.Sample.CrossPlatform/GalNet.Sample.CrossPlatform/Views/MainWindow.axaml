@@ -3,7 +3,7 @@
                  xmlns:ursa="https://irihi.tech/ursa"
                  xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
                  x:Class="GalNet.Sample.CrossPlatform.Views.MainWindow"
-                 Icon="/Assets/avalonia-logo.ico"
+                 Icon="/Assets/galnet.ico"
                  Width="1280" Height="720" MinWidth="800" MinHeight="500"
                  Classes="galnet-player"
                  Background="{DynamicResource GalNet.Brush.Background}"

@@ -4,6 +4,7 @@
     <TargetFramework>net10.0-ios</TargetFramework>
     <SupportedOSPlatformVersion>13.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
+    <AppIcon>AppIcon</AppIcon>
     <UseMonoRuntime Condition="'$(UseMonoRuntime)' == ''">true</UseMonoRuntime>
     <PublishAot Condition="'$(PublishAot)' == ''">false</PublishAot>
     <GalNetBuildMiniaudio>false</GalNetBuildMiniaudio>

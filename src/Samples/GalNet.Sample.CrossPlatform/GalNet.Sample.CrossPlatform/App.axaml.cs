@@ -48,6 +48,8 @@ public partial class App : Application, IAsyncDisposable
         return Task.FromResult(new PlayerLaunchPaths(content, SampleCustomization.GetProfileDirectory(content)));
     };
 
+    public static string? DesktopWindowPlacementPath { get; set; }
+
     public Action? ExitRequested { get; set; }
     public static Action<IServiceCollection>? ConfigurePlatformServices { get; set; }
 
@@ -59,6 +61,8 @@ public partial class App : Application, IAsyncDisposable
         {
             var window = new MainWindow { Content = CreateHostView() };
             _window = window;
+            if (DesktopWindowPlacementPath is { } placementPath)
+                AttachDesktopWindowPlacement(window, placementPath);
             desktop.MainWindow = window;
             var closing = false;
             var allowed = false;
@@ -123,6 +127,15 @@ public partial class App : Application, IAsyncDisposable
         return host;
     }
 
+    private void AttachDesktopWindowPlacement(MainWindow window, string placementPath)
+    {
+        _windowPlacement = new DesktopWindowPlacement(window, DesktopWindowPlacement.ReadFile(placementPath), placement =>
+        {
+            try { DesktopWindowPlacement.WriteFile(placementPath, placement); }
+            catch (Exception error) { Log.Warning(error, "Could not save desktop window placement"); }
+        });
+    }
+
     private async void OnPlatformBackRequested(object? sender, RoutedEventArgs args)
     {
         args.Handled = true;
@@ -148,11 +161,7 @@ public partial class App : Application, IAsyncDisposable
                 if (_window is not null && _windowPlacement is null)
                 {
                     var placementPath = Path.Combine(paths.ProfileDirectory, "window-placement.json");
-                    _windowPlacement = new DesktopWindowPlacement(_window, DesktopWindowPlacement.ReadFile(placementPath), placement =>
-                    {
-                        try { DesktopWindowPlacement.WriteFile(placementPath, placement); }
-                        catch (Exception error) { Log.Warning(error, "Could not save desktop window placement"); }
-                    });
+                    AttachDesktopWindowPlacement(_window, placementPath);
                 }
                 Directory.CreateDirectory(Path.Combine(paths.ProfileDirectory, "logs"));
                 if (_logger is null)
