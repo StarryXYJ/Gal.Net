@@ -1,6 +1,6 @@
 # 单项目可定制 Sample：实现总结
 
-状态：P1–P5 verified；P6 桌面及交付验收已实施，Android 本轮真机验收待环境。实现已落地，不能据此宣称全部平台验收完成。阶段原始证据与失败记录见 [execution.md](execution.md)，分阶段退出条件见 [phase-plan.md](phase-plan.md)。
+状态：实现已收尾，验收含明确延期项。P1–P5/P6a verified；用户决定“暂不连接，保留真机未验证记录”，P6b Android 真机验收 deferred，不再等待设备继续当前实现。不能据此宣称全部平台验收完成。阶段原始证据与失败记录见 [execution.md](execution.md)，分阶段退出条件见 [phase-plan.md](phase-plan.md)。
 
 ## 最终结构
 
@@ -33,7 +33,7 @@
 2. 跨 OS 原生源码发布与 Windows NuGet 包的共享契约不保证字节一致；Linux 包消费者显式使用已冻结的项目契约与对应内容，Linux 原生 CLI/发布使用另一套内部一致的契约。严格校验未关闭。
 3. Linux 探针曾遗漏正式入口的 Inter 接线，随后在 WSLg 出现原生崩溃；补齐正式字体配置和已有 d3d12 环境配置后完整流程通过。保留中间失败，未修改产品渲染策略，未将崩溃根因过度归结为单一配置。
 4. Linux 媒体专项首轮有一次音频暂停位置为 0 的失败；独立两项音频重跑通过，完整五项复跑也通过。原因尚未确认；保留这次瞬态异常，不将重跑当成根因已修复或长期稳定性证明。
-5. 当前 ADB 无设备；P6 Android 迁移后的真实挂载、后台重进、返回和暂停落盘仍须完成。此前旧 UI 的真机记录不替代本轮结果。macOS/iOS、原生 Linux 桌面与真实手柄沿用既有延期，未扩大承诺。
+5. 当前 ADB 无设备；用户已明确暂不连接，P6b Android 迁移后的真实挂载、后台重进、返回和暂停落盘延期，保留未验证记录。此前旧 UI 的真机记录不替代本轮结果。macOS/iOS、原生 Linux 桌面与真实手柄沿用既有延期，未扩大承诺。
 6. 模板源码归开发者维护，旧主题 API 消费者需迁移到项目页面；没有模板自动升级合并器。PAK、存档、profile 身份和契约格式未改变。
 
 稳定架构事实已同步 [GameView](../../docs/spec/presentation/game-view.md)、[GameHost](../../docs/spec/presentation/game-host.md)、[模块](../../docs/spec/architecture/modules.md)及[生命周期](../../docs/spec/architecture/lifecycles.md)。正式文档以当前实现为准，历史设计保留过程与取舍。

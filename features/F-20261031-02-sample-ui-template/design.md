@@ -1,6 +1,6 @@
 # 单项目 Sample UI 开发模板设计
 
-状态：implementation；目标方案，按阶段实现。需求依据见 [feature.md](feature.md)。
+状态：implemented；方案已落地，真机验收延期及已知限制见 [summary.md](summary.md)。需求依据见 [feature.md](feature.md)。
 
 ## 2026-10-31 用户修订（优先于下文初版的主题保留设想）
 

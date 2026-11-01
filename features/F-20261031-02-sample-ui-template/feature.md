@@ -1,6 +1,6 @@
 # 单项目 Sample UI 开发模板
 
-状态：implementation，待 Android 真机验收（2026-11-01）。P1–P5 和 P6a 已验证；实现、仓库外定制、Windows/Linux 桌面与 Android AOT/打包完成，P6b 因无连接设备保留。用户已授权每完成并验证一个阶段单独提交一次，不包含发布。见 [summary.md](summary.md)。
+状态：implemented，验收含明确延期项（2026-11-01）。P1–P5 和 P6a 已验证；实现、仓库外定制、Windows/Linux 桌面与 Android AOT/打包完成。用户决定暂不连接手机，P6b 真机验收 deferred，保留未验证记录，不等待设备继续当前实现。未宣称全部平台验收通过。用户已授权分阶段提交，不包含发布。见 [summary.md](summary.md)。
 
 ## 用户原始目标
 
