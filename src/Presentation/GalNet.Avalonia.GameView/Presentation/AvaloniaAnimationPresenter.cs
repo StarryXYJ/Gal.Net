@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 
@@ -7,7 +6,7 @@ namespace GalNet.Avalonia.GameView.Presentation;
 
 public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposable
 {
-    private readonly GamePageViewModel _state;
+    private readonly GamePresentationState _state;
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly Lock _gate = new();
     private readonly Dictionary<string, ActiveAnimation> _activeAnimations = new(StringComparer.Ordinal);
@@ -19,7 +18,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
     private readonly Dictionary<string, ICompletablePlayback> _activePlaybacks = new(StringComparer.Ordinal);
     private long _sequence;
 
-    public AvaloniaAnimationPresenter(GamePageViewModel state, IAvaloniaUiDispatcher dispatcher)
+    public AvaloniaAnimationPresenter(GamePresentationState state, IAvaloniaUiDispatcher dispatcher)
     {
         _state = state;
         _dispatcher = dispatcher;

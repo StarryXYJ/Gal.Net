@@ -14,7 +14,7 @@ using GalNet.Presentation.Abstractions.View;
 using GalNet.Project.Contracts;
 using GalNet.Rendering.Scene;
 using GalNet.Runtime.Engine;
-using GalNet.Sample.Avalonia.Presentation;
+using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Avalonia.GameHost.Presentation;
 using SkiaSharp;
 
@@ -302,7 +302,7 @@ public sealed class ScreenshotEntryTests
     {
         var page = new GamePage();
         var root = new Border { Child = page, Classes = { "galnet-player" } };
-        root.Styles.Add(new ClassicTheme().CreateStyles());
+        root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
         var window = new Window { Width = 640, Height = 360, Content = root };
         window.Show();
         window.UpdateLayout();

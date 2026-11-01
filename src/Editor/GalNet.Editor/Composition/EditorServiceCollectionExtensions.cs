@@ -75,6 +75,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<LocalizationDocumentStore>();
         services.AddScoped<LocalizationAuthoringService>();
         services.AddScoped<GameTextAuthoringService>();
+        services.AddScoped<ResourceMetadataAuthoringService>();
         services.AddScoped<GameLocalizationPanelService>();
         services.AddScoped<LocalizationExchangeService>();
         services.AddScoped<GameLocalizationPanelViewModel>();

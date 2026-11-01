@@ -6,6 +6,7 @@ using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameView.Composition;
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.ViewModels;
@@ -25,9 +26,38 @@ public partial class GameShell : UserControl, IDisposable
     private readonly IGameNavigationService _navigation;
     private readonly GameNavigationTransitionCoordinator _transitions;
     private readonly SemaphoreSlim _transitionGate = new(1, 1);
-    private GamePageViewModel? _gameplay;
+    private GamePresentationState? _gameplay;
+    private readonly Action _showTitle;
+    private readonly Func<string, Task> _applicationAction;
     private bool _hadActiveRun;
     private bool _returningToTitle;
+    private GamePresentationState? _modalGame;
+    private bool _resumeAuto;
+    /// <summary>Optional player confirmation policy; embedded previews may keep direct navigation.</summary>
+    public Func<Task<bool>>? ConfirmReturnToTitleAsync { get; set; }
+
+    /// <summary>Blocks player actions and suspends automated playback for a host-owned modal.</summary>
+    public void SetConfirmationOpen(bool open, bool restorePlayback = true)
+    {
+        if (open)
+        {
+            _modalGame = _gameplay;
+            _resumeAuto = _modalGame?.IsAutoMode == true;
+            if (_modalGame is not null)
+            {
+                _modalGame.IsInteractionBlocked = true;
+                _modalGame.CancelPlayback();
+            }
+        }
+        else if (_modalGame is { } game)
+        {
+            _modalGame = null;
+            game.IsInteractionBlocked = false;
+            if (restorePlayback && _resumeAuto && ReferenceEquals(game, _gameplay) && _session.IsPlaying)
+                game.ToggleAutoCommand.Execute(null);
+            _resumeAuto = false;
+        }
+    }
     private bool _disposed;
     private byte[]? _savePreview;
     private readonly GalNet.Avalonia.GameView.Input.PlayerInputRouter? _inputRouter;
@@ -42,9 +72,12 @@ public partial class GameShell : UserControl, IDisposable
         IGameSessionService session,
         IGameNavigationService navigation,
         GameNavigationTransitionCoordinator transitions,
-        IGameLayoutTheme theme,
-        IPlayerSettingsService settings)
+        IPlayerSettingsService settings,
+        Action showTitle,
+        Func<string, Task> applicationAction)
     {
+        _showTitle = showTitle;
+        _applicationAction = applicationAction;
         _viewModel = viewModel;
         _views = views;
         _screenshots = screenshots;
@@ -54,7 +87,6 @@ public partial class GameShell : UserControl, IDisposable
         _transitions = transitions;
         _inputSettings = settings.Input;
         InitializeComponent();
-        Styles.Add(theme.CreateStyles());
         DataContext = viewModel;
         session.PropertyChanged += OnSessionPropertyChanged;
         _transitions.Attach(ShowPageAsync);
@@ -63,14 +95,16 @@ public partial class GameShell : UserControl, IDisposable
             () => _inputSettings?.IsCapturing == true);
         if (settings.Input is { } input)
         {
-            _inputRouter = new(this, input, () => _viewModel.CurrentViewModel as GamePageViewModel, session, GoBack);
-            _touchInput = new(this, input, () => _viewModel.CurrentViewModel is GamePageViewModel { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
+            _inputRouter = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel), session, GoBack, _applicationAction);
+            _touchInput = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel) is { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
         }
     }
 
+    private static GamePresentationState? GetGameplay(PageViewModelBase? page) => (page as IGameplayPage)?.State;
+
     private void GoBack()
     {
-        if (_viewModel.CurrentViewModel is GamePageViewModel { IsHistoryOpen: true } game)
+        if (GetGameplay(_viewModel.CurrentViewModel) is { IsHistoryOpen: true } game)
         {
             game.CloseHistoryCommand.Execute(null);
             return;
@@ -85,6 +119,8 @@ public partial class GameShell : UserControl, IDisposable
     public void Dispose()
     {
         _disposed = true;
+        SetConfirmationOpen(false, restorePlayback: false);
+        ConfirmReturnToTitleAsync = null;
         if (_session is ISavePreviewSource previewSource) previewSource.CaptureSavePreview = null;
         _pageBackInput.Dispose();
         _inputRouter?.Dispose();
@@ -116,8 +152,8 @@ public partial class GameShell : UserControl, IDisposable
         {
             // Do not rewrite history if a new run has already started or the host navigated
             // away while the old run was stopping.
-            if (!_session.IsPlaying && _viewModel.CurrentViewModel is GamePageViewModel)
-                _navigation.ResetTo<TitlePageViewModel>();
+            if (!_session.IsPlaying && GetGameplay(_viewModel.CurrentViewModel) is not null)
+                _showTitle();
         });
     }
 
@@ -163,7 +199,7 @@ public partial class GameShell : UserControl, IDisposable
                 return;
             }
 
-            if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is SaveSlotsPageViewModel)
+            if (PageHost.Content is GamePage page && _viewModel.CurrentViewModel is IGameSavePreviewPage)
                 _savePreview = TryCaptureScene(page);
             targetContent = contentFactory();
             if (ReferenceEquals(PageHost.Content, targetContent))
@@ -260,10 +296,11 @@ public partial class GameShell : UserControl, IDisposable
 
     private void TrackGameplay(PageViewModelBase? viewModel)
     {
-        if (viewModel is SettingsPageViewModel) _inputSettings?.SelectedDevice = null;
+        if (_inputSettings is not null) _inputSettings.SelectedDevice = null;
         _inputRouter?.ResetInput();
         _touchInput?.Reset();
-        if (!ReferenceEquals(_gameplay, viewModel))
+        var gameplay = GetGameplay(viewModel);
+        if (!ReferenceEquals(_gameplay, gameplay))
         {
             if (_gameplay is not null)
             {
@@ -272,7 +309,7 @@ public partial class GameShell : UserControl, IDisposable
                 _gameplay.ScreenshotRequested -= OnScreenshotRequested;
                 _gameplay.ReturnToTitleRequested -= OnReturnToTitleRequested;
             }
-            _gameplay = viewModel as GamePageViewModel;
+            _gameplay = gameplay;
             SkipPrompt.DataContext = _gameplay;
             if (_gameplay is not null)
             {
@@ -303,11 +340,19 @@ public partial class GameShell : UserControl, IDisposable
         _returningToTitle = true;
         try
         {
+            if (ConfirmReturnToTitleAsync is { } confirm && !await confirm()) return;
+            if (_disposed) return;
             await _session.StopAsync();
-            if (_viewModel.CurrentViewModel is GamePageViewModel)
-                _navigation.ResetTo<TitlePageViewModel>();
+            if (GetGameplay(_viewModel.CurrentViewModel) is not null)
+                _showTitle();
         }
-        finally { _returningToTitle = false; }
+        catch (Exception error) { Log.Logger.Error(error, "Unable to return to title"); }
+        finally
+        {
+            _returningToTitle = false;
+            if (!_disposed && !_session.IsPlaying)
+                OnSessionPropertyChanged(_session, new(nameof(IGameSessionService.IsPlaying)));
+        }
     }
 
     private byte[]? CaptureSavePreview() => PageHost.Content is GamePage page ? TryCaptureScene(page) : _savePreview;

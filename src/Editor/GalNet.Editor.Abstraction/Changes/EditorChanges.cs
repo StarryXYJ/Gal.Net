@@ -66,6 +66,12 @@ public static class EditorDocumentCloner
         Y = source.Y,
         File = source.File,
         StoryPackage = source.StoryPackage,
+        Metadata = source.Metadata is null ? null : new()
+        {
+            Id = source.Metadata.Id, TypeId = source.Metadata.TypeId, Path = source.Metadata.Path, Compress = source.Metadata.Compress,
+            DisplayNameKey = source.Metadata.DisplayNameKey, GalleryUnlockId = source.Metadata.GalleryUnlockId,
+            ExtensionData = source.Metadata.ExtensionData?.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
+        },
         BranchType = source.BranchType,
         Options = source.Options?.Select(option => new EditorGraphBranchOptionDto
         {

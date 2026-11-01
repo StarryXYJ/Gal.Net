@@ -8,6 +8,7 @@
               mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="800"
               x:Class="GalNet.Editor.Views.MainWindow"
               x:DataType="vm:MainWindowViewModel"
+              Icon="/Assets/galnet.ico"
               WindowStartupLocation="CenterScreen"
               Width="1200" Height="800"
               MinWidth="960" MinHeight="640"

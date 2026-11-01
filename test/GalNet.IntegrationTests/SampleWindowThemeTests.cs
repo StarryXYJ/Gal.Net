@@ -1,3 +1,6 @@
+using LanguageSelectionView = GalNet.Sample.CrossPlatform.Views.LanguageSelectionView;
+using PlayerView = GalNet.Sample.CrossPlatform.Views.PlayerView;
+using TitlePageViewModel = GalNet.Sample.CrossPlatform.ViewModels.TitlePageViewModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
@@ -9,10 +12,11 @@ using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.ViewModels;
-using GalNet.Sample.Avalonia;
-using GalNet.Sample.Avalonia.Views;
+using GalNet.Sample.CrossPlatform;
+using GalNet.Sample.CrossPlatform.Views;
 #if GALNET_GAME_DEBUG
 using GalNet.Avalonia.Debugging.Views;
+using GalNet.Avalonia.Debugging;
 #endif
 using GalNet.Avalonia.GameHost.Views;
 using GeneralTest.Integration;
@@ -30,18 +34,19 @@ public sealed class SampleWindowThemeTests
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
-            var services = new ServiceCollection();
-            SampleCustomization.ConfigureServices(services);
-            await using var provider = services.BuildServiceProvider();
-            await using var scope = provider.CreateAsyncScope();
-            var localization = scope.ServiceProvider.GetRequiredService<IPlayerLocalization>();
+            await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(), services =>
+            {
+                SampleCustomization.ConfigureServices(services);
+                services.AddGameDebugTools(new() { RestartAsync = _ => Task.CompletedTask }, new());
+            });
+            var localization = host.Services.GetRequiredService<IPlayerLocalization>();
             localization.CultureService.SetCulture("zh-CN");
             PlayerTextExtension.Resolve = localization.GetString;
             var semi = new Semi.Avalonia.SemiTheme();
             Application.Current!.Styles.Add(semi);
             var menu = new DebugMenuView
             {
-                DataContext = scope.ServiceProvider.GetRequiredService<GalNet.Avalonia.Debugging.GameDebugViewModel>()
+                DataContext = host.Services.GetRequiredService<GalNet.Avalonia.Debugging.GameDebugViewModel>()
             };
             var window = new Window { Width = 640, Height = 400, Content = menu };
             window.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
@@ -76,7 +81,7 @@ public sealed class SampleWindowThemeTests
         await session.Dispatch<bool>(async () =>
         {
             var services = new ServiceCollection();
-            SampleCustomization.ConfigureServices(services, enableDebug: false);
+            SampleCustomization.ConfigureServices(services);
             await using var provider = services.BuildServiceProvider();
             await using var scope = provider.CreateAsyncScope();
             var localization = scope.ServiceProvider.GetRequiredService<IPlayerLocalization>();
@@ -85,7 +90,10 @@ public sealed class SampleWindowThemeTests
             var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
             Application.Current!.Styles.Add(semi);
             Application.Current.Styles.Add(ursa);
-            var window = scope.ServiceProvider.GetRequiredService<MainWindow>();
+            await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(),
+                registrations => SampleCustomization.ConfigureServices(registrations));
+            var player = (PlayerView)host.View;
+            var window = new MainWindow { Content = player };
             window.Show();
             try
             {
@@ -98,9 +106,9 @@ public sealed class SampleWindowThemeTests
                 Assert.That(hover.Color, Is.EqualTo(palette.Color));
                 Assert.That(hover.Opacity, Is.EqualTo(.08));
                 Assert.That(((ISolidColorBrush)window.FindResource("CaptionButtonClosePointeroverBackground")!).Color, Is.EqualTo(Color.Parse("#C42B1C")));
-                var selection = window.SelectLanguageAsync("zh-CN", CancellationToken.None);
+                var selection = player.SelectLanguageAsync("zh-CN", CancellationToken.None);
                 window.UpdateLayout();
-                var languageView = window.Player.FindControl<LanguageSelectionView>("LanguageSelection")!;
+                var languageView = player.FindControl<LanguageSelectionView>("LanguageSelection")!;
                 var picker = languageView.FindControl<ComboBox>("LanguagePicker")!;
                 Assert.That(((ISolidColorBrush)picker.Background!).Color,
                     Is.EqualTo(((ISolidColorBrush)languageView.FindResource("GalNet.Brush.Surface")!).Color));
@@ -111,27 +119,27 @@ public sealed class SampleWindowThemeTests
                     Is.EqualTo(((ISolidColorBrush)picker.Background!).Color));
                 Capture(window, "Sample-LanguagePicker");
                 picker.IsDropDownOpen = false;
-                scope.ServiceProvider.GetRequiredService<GalNet.Avalonia.GameHost.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
+                host.Services.GetRequiredService<GalNet.Avalonia.GameHost.ViewModels.LanguageSelectionViewModel>().ConfirmCommand.Execute(null);
                 Assert.That(await selection, Is.EqualTo("zh-CN"));
-                scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("en-US");
-                scope.ServiceProvider.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
-                window.CompleteStartup();
+                host.Services.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("en-US");
+                host.Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
+                player.CompleteStartup();
                 window.UpdateLayout();
                 var title = window.GetVisualDescendants().OfType<TextBlock>()
-                    .Single(control => control.Text == scope.ServiceProvider.GetRequiredService<TitlePageViewModel>().GameTitle);
+                    .Single(control => control.Text == host.Services.GetRequiredService<TitlePageViewModel>().GameTitle);
                 var titleBrush = (ISolidColorBrush)title.Foreground!;
                 Capture(window, "Sample-TitleBeforeExit");
-                var confirmation = window.ConfirmExitAsync();
-                Assert.That(window.ConfirmExitAsync(), Is.SameAs(confirmation));
-                var cancel = window.Player.FindControl<Button>("CancelExitButton")!;
-                var content = window.Player.FindControl<Grid>("PlayerContent")!;
+                var confirmation = player.ConfirmExitAsync();
+                Assert.That(player.ConfirmExitAsync(), Is.SameAs(confirmation));
+                var cancel = player.FindControl<Button>("CancelExitButton")!;
+                var content = player.FindControl<Grid>("PlayerContent")!;
                 Assert.That(content.IsEnabled, Is.False);
                 Assert.That(cancel.IsFocused, Is.True);
                 window.UpdateLayout();
                 Capture(window, "Sample-ExitConfirmation");
                 Assert.That(((ISolidColorBrush)title.Foreground!).Color, Is.EqualTo(titleBrush.Color), "The modal must preserve the title's foreground.");
                 Assert.That(((ISolidColorBrush)title.Foreground!).Opacity, Is.EqualTo(titleBrush.Opacity), "The scrim alone dims static title text.");
-                scope.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("zh-CN");
+                host.Services.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture("zh-CN");
                 window.UpdateLayout();
                 Capture(window, "Sample-ExitConfirmation-zh-CN");
                 window.Width = 800;
@@ -142,8 +150,8 @@ public sealed class SampleWindowThemeTests
                 window.KeyRelease(Key.Escape, RawInputModifiers.None, PhysicalKey.Escape, null);
                 Assert.That(await confirmation, Is.False);
                 Assert.That(content.IsEnabled, Is.True);
-                confirmation = window.ConfirmExitAsync();
-                window.Player.FindControl<Button>("ConfirmExitButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                confirmation = player.ConfirmExitAsync();
+                player.FindControl<Button>("ConfirmExitButton")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                 Assert.That(await confirmation, Is.True);
             }
             finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }

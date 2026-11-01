@@ -1,7 +1,7 @@
+using GalNet.Avalonia.GameView.Presentation;
 using Avalonia;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using GalNet.Avalonia.GameView.ViewModels;
 
 namespace GalNet.Avalonia.GameView.Page;
 
@@ -17,7 +17,7 @@ public sealed class SkipConfirmation : TemplatedControl
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key != Key.Escape || DataContext is not GamePageViewModel state) return;
+        if (e.Key != Key.Escape || DataContext is not GamePresentationState state) return;
         state.CancelSkipCommand.Execute(null);
         e.Handled = true;
     }

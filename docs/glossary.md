@@ -24,7 +24,7 @@
 | 游戏执行上下文 | `IGameContext` | primitive/呈现借用的变量、场景与游戏能力；游标修改和读档由 Engine 管理。 |
 | 呈现端口 | presenter interfaces | 宿主提供的窄端口，例如 dialogue、choice、layer、animation、effect。 |
 | 快照 | `GameSnapshot` | 可保存和恢复的运行时位置、变量与场景状态。 |
-| Gallery 目录 | `GalleryCatalog` | 由资源 `.meta.gallery[]` 与冻结类型注册聚合、在发行包中生成快照的不可变类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |
+| Gallery 目录 | `GalleryCatalog` | 由资源 `.meta.galleryUnlockId` 与冻结类型注册聚合、在发行包中生成快照的不可变类型与资源条目索引，通过 `GameContent.Gallery` 交给宿主。 |
 | Gallery 类型 | `GalleryTypeRegistration` | 一个稳定 Gallery type ID 与资源类型字符串的关联；不等同于 Entry 模块或资源 decoder。 |
 | Gallery 条目 | `GalleryItem` | 使用全局唯一正整数 ID、Gallery type ID 和资源 GUID 描述的一项静态 Gallery 内容。 |
 | Gallery 解锁变量 | `gallery_<item-id>_unlocked` | 每个 Gallery item 自动生成、默认 `false`、跨存档槽持久化的系统 Player bool；是 Gallery 解锁的唯一真源。 |
@@ -72,7 +72,7 @@
 | 资源提供者 | `IAssetProvider` | 打开命名资源归档的来源，例如本地目录或 pak。 |
 | 归档 | `IArchive` | 按资源 ID 或路径寻址的一组 `IGameFile`。 |
 | 游戏文件 | `IGameFile` | 可重复读取的资源源描述，不是已解码资源或引用计数句柄。 |
-| 资源 metadata | `AssetMeta` / `.meta` | 与 `Assets/` 中资源相邻的描述文件，保存稳定 ID、资源类型及类型专属字段；`gallery[]` 是 Gallery 的唯一作者真源。 |
+| 资源 metadata | `AssetMeta` / `.meta` | 与 `Assets/` 中资源相邻的描述文件，保存稳定 ID、资源类型及类型专属字段；可选名称 key 与鉴赏解锁 ID 可被所有资源携带，鉴赏按应用注册类型聚合。 |
 | 资源类型目录 | `IResourceTypeCatalog` | 在组合期冻结的资源 type ID 到 `AssetMeta` DTO 的身份表；供 metadata、PAK、预览和导出共同使用。 |
 | Gallery 类型目录 | `IGalleryTypeCatalog` | 在组合期冻结的 Gallery type ID 到资源 type ID 的身份表；它不由 `gallery.json` 或资源 metadata 反向创建。 |
 | 资源管理器 | `IAssetManager` | 从 provider 按 GUID 定位资源，按 `(GUID, CLR 类型)` 解码/缓存，并以 `AssetHandle<T>` 引用计数释放已解析资源。 |

@@ -84,7 +84,7 @@ public sealed class GameTestCaseEditorTests
                 Assert.That(validation.Success, Is.True, JsonSerializer.Serialize(validation.Diagnostics));
                 var built = await new ProjectContentBuilder(reopened.Services.GetRequiredService<IEntryCatalog>())
                     .BuildAsync(root, Path.Combine(root, "Output"));
-                Assert.That(built.CompiledGroupCount, Is.EqualTo(4));
+                Assert.That(built.CompiledGroupCount, Is.EqualTo(6));
             }
             finally { await projects.CloseAsync(); }
         }

@@ -51,7 +51,7 @@ public sealed class AvaloniaGameResourcesTests
                 }
             };
             var presentation = await AvaloniaGamePresentation.CreateAsync(
-                new GalNet.Avalonia.GameView.ViewModels.GamePageViewModel(null!),
+                new GalNet.Avalonia.GameView.Presentation.GamePresentationState(),
                 new GalNet.Avalonia.GameView.Page.GamePage(), assets,
                 new Dictionary<string, AssetHandle<SceneTexture>>(), [], files,
                 (registration, _) => registration.RegisterSchema(new GalNet.Core.Entry.DefaultEntryModule("custom")), [], options);
@@ -79,7 +79,7 @@ public sealed class AvaloniaGameResourcesTests
             var audio = new Audio();
             var layers = new Layers(texture);
             Assert.ThrowsAsync<IOException>(() => AvaloniaGamePresentation.CreateAsync(
-                new GalNet.Avalonia.GameView.ViewModels.GamePageViewModel(null!),
+                new GalNet.Avalonia.GameView.Presentation.GamePresentationState(),
                 new GalNet.Avalonia.GameView.Page.GamePage(), assets,
                 new Dictionary<string, AssetHandle<SceneTexture>>(), [], files, (_, _) => { }, [], new()
                 {

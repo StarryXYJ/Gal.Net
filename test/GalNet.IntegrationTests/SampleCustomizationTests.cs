@@ -13,13 +13,12 @@ using GalNet.Presentation.Abstractions.View;
 using GalNet.Project.Contracts;
 using GalNet.GameHost.Content;
 using GalNet.Runtime.Runtime;
-using GalNet.Sample.Avalonia;
+using GalNet.Sample.CrossPlatform;
 #if GALNET_GAME_DEBUG
 using GalNet.Avalonia.Debugging;
 #endif
-using GalNet.Sample.Avalonia.Presentation;
+using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Avalonia.GameHost.Presentation;
-using GalNet.Sample.Avalonia.Services;
 using GeneralTest.Integration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,33 +34,22 @@ public sealed class SampleCustomizationTests
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ScreenshotTestApplication).Assembly);
         await session.Dispatch<bool>(async () =>
         {
-            var services = new ServiceCollection();
-            SampleCustomization.ConfigureServices(services, enableDebug);
-            await using (var root = services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true, ValidateOnBuild = true }))
+            await using (var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(), services =>
             {
-                await using var first = root.CreateAsyncScope();
-                await using var second = root.CreateAsyncScope();
-                var localization = first.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>();
-                GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = localization.GetString;
+                SampleCustomization.ConfigureServices(services);
+#if GALNET_GAME_DEBUG
+                if (enableDebug) services.AddGameDebugTools(SampleCustomization.CreateDebugOptions(_ => Task.CompletedTask), new());
+#endif
+            }))
+            {
+                var localization = host.Services.GetRequiredService<AvaloniaPlayerLocalization>();
                 Assert.That(localization.CultureService.AvailableCultures.Select(culture => culture.Name), Does.Contain("en-US"));
-                Assert.That(second.ServiceProvider.GetRequiredService<AvaloniaPlayerLocalization>(), Is.SameAs(localization));
-                var settings = first.ServiceProvider.GetRequiredService<AvaloniaPlayerSettingsService>();
-                Assert.That(first.ServiceProvider.GetRequiredService<IPlayerSettingsService>(), Is.SameAs(settings));
-                Assert.That(second.ServiceProvider.GetRequiredService<AvaloniaPlayerSettingsService>().Editors, Is.Not.SameAs(settings.Editors));
-                var game = first.ServiceProvider.GetRequiredService<SampleGameSessionService>();
-                Assert.That(first.ServiceProvider.GetRequiredService<IGameSessionService>(), Is.SameAs(game));
+                Assert.That(host.Services.GetRequiredService<IPlayerSettingsService>(), Is.SameAs(host.Settings));
+                Assert.That(host.Services.GetRequiredService<IGameSessionService>(), Is.SameAs(host.Session));
 #if GALNET_GAME_DEBUG
-                Assert.That(first.ServiceProvider.GetService<GameDebugViewModel>() is not null, Is.EqualTo(enableDebug));
+                Assert.That(host.Services.GetService<GameDebugViewModel>() is not null, Is.EqualTo(enableDebug));
 #endif
-                var window = first.ServiceProvider.GetRequiredService<GalNet.Sample.Avalonia.Views.MainWindow>();
-                window.CompleteStartup();
-#if GALNET_GAME_DEBUG
-                Assert.That(((GalNet.Avalonia.Debugging.Views.DebugMenuView)window.LeftContent!).IsVisible, Is.EqualTo(enableDebug));
-#else
-                Assert.That(window.LeftContent, Is.Null);
-#endif
-                window.DetachHostBindings();
-                window.Close();
+                Assert.That(host.View, Is.SameAs(host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>()));
             }
             Assert.That(GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve, Is.Null);
             return true;
@@ -81,7 +69,7 @@ public sealed class SampleCustomizationTests
             }, catalog).Document.Entries.Single();
             var page = new GamePage();
             using var layers = new GalNet.Avalonia.GameHost.DefaultGameLayerFactory(new Dictionary<string, GalNet.Core.Assets.AssetHandle<GalNet.Rendering.Scene.SceneTexture>>());
-            using var presenters = new AvaloniaGamePresenters(new GamePageViewModel(null!), page, layers);
+            using var presenters = new AvaloniaGamePresenters(new GalNet.Avalonia.GameView.Presentation.GamePresentationState(), page, layers);
             using var firstRegistration = new GameRegistration();
             using var secondRegistration = new GameRegistration();
             var content = new GameContent { Graph = new Graph() };

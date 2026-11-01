@@ -2,20 +2,17 @@
 
 ## 替换服务与页面行为
 
-`AddAvaloniaGameViewPages` 通过 `TryAddScoped` 提供默认服务，项目可以在调用前注册替代实现，或在调用后显式覆盖。标题、设置、游戏页面和 Shell 的默认 VM 可派生；标题命令的处理方法可以重载。注册派生 VM 的别名和实际 View：
+Sample 的全部应用页面及其 VM 直接位于应用项目，日常定制直接修改对应 XAML 和 VM。新增页面只需项目 VM、View、集中注册及导航调用，不需要派生默认标题 VM 或注册别名。例如在 Sample 的组合入口注册：
 
 ```csharp
-services.AddScoped<TitlePageViewModel, MyTitleViewModel>();
-services.AddScoped<MyNotebookViewModel>();
-services.AddAvaloniaGameViewPages(theme,
+SampleCustomization.ConfigureServices(services,
     configureViews: views =>
     {
-        views.Register<MyTitleViewModel, MyTitleView>();
         views.Register<MyNotebookViewModel, MyNotebookView>();
     });
 ```
 
-`MyTitleViewModel` 派生 `TitlePageViewModel`，自己的按钮命令可调用 `IGameNavigationService.Navigate<MyNotebookViewModel>()`；返回使用现有导航历史。工厂按实际 VM 类型选择 View，因此派生类型也需要映射。更大幅度的定制可以替换 `IGameNavigationService`、`IPageViewFactory`，或由自己的窗口构造 Shell。页面的 XAML 和业务服务不需要字段生成器。
+在项目的标题 VM 增加命令，调用 `IGameNavigationService.Navigate<MyNotebookViewModel>()`，然后在 `Views/TitlePage.axaml` 增加绑定该命令的按钮；返回使用现有导航历史。`MyNotebookViewModel` 继承通用 `PageViewModelBase` 即可。所有 Sample 应用页面使用项目自己的实际类型映射；一条映射自动注册页面 VM 和 View 的 Scoped 服务。更大幅度的定制可以替换导航/页面工厂，或通过 `IPlayerApplication` 提供自己的根表面。页面的 XAML 和业务服务不需要字段生成器。
 
 ## 页面与主题边界
 
@@ -27,13 +24,13 @@ services.AddAvaloniaGameViewPages(theme,
 
 音量与静音共用一行：在音量 SettingItem 上设置 `InlineToggle` 指向同分类的 BoolSetting，并仍将两项放在 `Items` 中，以保留应用、恢复与持久化队列。界面通过 `DisplayItems` 合并显示；修改外观无需改变原设置 ID。
 
-`SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，修改配色时保持 `PlayerTheme` 使用同一调色板。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。
+`SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，项目 `CreateStyles()` 默认使用该配色。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。
 
-退出确认的布局在 `Views/MainWindow.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由代码维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
+退出确认的布局在 `Views/PlayerView.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由内置 `PlayerSurface` 维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
 
 主页静态标题显式指定 `GalNet.Brush.TextPrimary`，避免退出确认禁用背景时继承容器的半透明禁用文字色。定制主页时保留这个前景色绑定；验证弹窗截图应挂载真实主页，再检查背景标题与取消后的恢复。
 
 - `GamePage` 是稳定的游戏页面宿主；其模板必须保留 `PART_Scene`、`PART_Dialogue`、`PART_Nvl` 和 `PART_Choice` 四个 ContentPresenter。
 - 对话与 NVL 的内部部件分别需要 `PART_Typewriter`、`PART_Lines` 和 `PART_ScrollViewer`。不要在剧情播放中重建这些部件。
-- 主题页面复用共享 ViewModel 和命令；只替换布局/样式，不复制 presenter、媒体或游戏会话逻辑。
+- Sample 页面及业务命令在项目源码中；通过组合内置呈现、存档行和 Gallery 状态复用机制，不复制 presenter、媒体或游戏会话逻辑。应用布局与尺寸在项目 Styles/ 和 Views/ 中维护。
 - Palette 使用完整的语义资源字典。宿主若覆写资源，以玩家根的资源为准；不要跨多个根复用同一 `Styles` 实例。

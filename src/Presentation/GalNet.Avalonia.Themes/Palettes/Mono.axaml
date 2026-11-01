@@ -25,7 +25,7 @@
   <SolidColorBrush x:Key="GalNet.Brush.TextPrimary" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />
   <StaticResource x:Key="GalNet.Palette.TextSecondaryColor" ResourceKey="GalNet.Color.Neutral.600" />
   <SolidColorBrush x:Key="GalNet.Brush.TextSecondary" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" />
-  <StaticResource x:Key="GalNet.Palette.TextDisabledColor" ResourceKey="GalNet.Color.Neutral.400" />
+  <StaticResource x:Key="GalNet.Palette.TextDisabledColor" ResourceKey="GalNet.Color.Neutral.600" />
   <SolidColorBrush x:Key="GalNet.Brush.TextDisabled" Color="{DynamicResource GalNet.Palette.TextDisabledColor}" />
   <StaticResource x:Key="GalNet.Palette.BorderColor" ResourceKey="GalNet.Color.Neutral.200" />
   <SolidColorBrush x:Key="GalNet.Brush.Border" Color="{DynamicResource GalNet.Palette.BorderColor}" />

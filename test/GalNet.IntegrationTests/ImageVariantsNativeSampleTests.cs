@@ -10,7 +10,7 @@ using GalNet.Debugging;
 using GalNet.Editor.Shared.Services;
 using GalNet.GameHost;
 using GalNet.Runtime.Engine;
-using GalNet.Sample.Avalonia.Presentation;
+using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -63,6 +63,9 @@ public sealed class ImageVariantsNativeSampleTests
             entries.Add(JsonSerializer.SerializeToNode(new { id = "end", type = "dialogue.text", parameters = new { content = "variants.end" } }));
             entries.Insert(0, JsonSerializer.SerializeToNode(new { id = "start", type = "dialogue.text", parameters = new { content = "variants.end" } }));
             Directory.CreateDirectory(Path.Combine(project, "I18n", "en-US"));
+            // The copied assets include resource-name keys; keep their translations with the fixture.
+            File.Copy(Path.Combine(sample, "I18n", "en-US", "resources.json"),
+                Path.Combine(project, "I18n", "en-US", "resources.json"));
             await File.WriteAllTextAsync(Path.Combine(project, "I18n", "en-US", "main.json"), """{"variants.end":"Variants captured."}""");
             await File.WriteAllTextAsync(Path.Combine(project, "Graph", "groups", "main.rawgalgroup"),
                 new JsonObject { ["version"] = 2, ["kind"] = "Raw", ["entries"] = entries }.ToJsonString());
@@ -85,7 +88,7 @@ public sealed class ImageVariantsNativeSampleTests
             var invitation = listener.Invitation;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             var accept = listener.AcceptAsync(timeout.Token);
-            var assembly = typeof(GalNet.Sample.Avalonia.App).Assembly.Location;
+            var assembly = Path.Combine(AppContext.BaseDirectory, "GalNet.Sample.CrossPlatform.Desktop.dll");
             var start = new ProcessStartInfo(Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet")
             {
                 UseShellExecute = false,

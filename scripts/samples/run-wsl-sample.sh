@@ -13,7 +13,7 @@ if [[ "${1:-}" == "--check" ]]; then
     shift
 fi
 
-if [[ ! -f "$sample_root/GalNet.Sample.Avalonia" || ! -f "$sample_root/pak/game.pak" ]]; then
+if [[ ! -f "$sample_root/GalNet.Sample.CrossPlatform.Desktop" || ! -f "$sample_root/pak/game.pak" ]]; then
     printf 'Missing Linux Sample or game content: %s\n' "$sample_root" >&2
     exit 1
 fi
@@ -43,6 +43,6 @@ if "$check_only"; then
     exit 0
 fi
 
-chmod u+x "$sample_root/GalNet.Sample.Avalonia"
+chmod u+x "$sample_root/GalNet.Sample.CrossPlatform.Desktop"
 cd -- "$sample_root"
-exec ./GalNet.Sample.Avalonia --profile "$profile_root" "$@"
+exec ./GalNet.Sample.CrossPlatform.Desktop --profile "$profile_root" "$@"

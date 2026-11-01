@@ -50,6 +50,7 @@ sealed class Program
 #endif
             var paths = new PlayerLaunchPaths(content, profile ?? SampleCustomization.GetProfileDirectory(content));
             App.PrepareLaunchAsync = _ => Task.FromResult(paths);
+            App.DesktopWindowPlacementPath = Path.Combine(paths.ProfileDirectory, "window-placement.json");
             return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
         catch (Exception error) { Console.Error.WriteLine(error); return 1; }

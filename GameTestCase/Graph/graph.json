@@ -95,6 +95,32 @@
       "branchType": null,
       "options": null,
       "conditions": null
+    },
+    {
+      "id": "gallery-classroom",
+      "type": "Group",
+      "name": "教室中的回忆",
+      "x": 360,
+      "y": 740,
+      "file": "groups/gallery-classroom.rawgalgroup",
+      "metadata": {
+        "displayNameKey": "asset.gallery-classroom.name",
+        "galleryUnlockId": 400,
+        "galleryPreviewAssetId": "a1000000000000000000000000000001"
+      }
+    },
+    {
+      "id": "gallery-evening",
+      "type": "Group",
+      "name": "暮色中的回忆",
+      "x": 720,
+      "y": 740,
+      "file": "groups/gallery-evening.rawgalgroup",
+      "metadata": {
+        "displayNameKey": "asset.gallery-evening.name",
+        "galleryUnlockId": 401,
+        "galleryPreviewAssetId": "a1000000000000000000000000000003"
+      }
     }
   ],
   "edges": [

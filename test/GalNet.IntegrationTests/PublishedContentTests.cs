@@ -1,5 +1,5 @@
 using GalNet.Core.Assets;
-using GalNet.Sample.Avalonia;
+using GalNet.Sample.CrossPlatform;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -12,8 +12,8 @@ public sealed class PublishedContentTests
     public async Task IntegratedReleaseLoadsThePackagedGraphAndResources(string deployment)
     {
         var extraction = TestContext.Parameters.Get("ReleaseExtractionDirectory", "");
-        Assert.That(extraction, Is.Not.Empty, "Set ReleaseExtractionDirectory to Test-Release.ps1's extraction directory.");
-        var contentRoot = Path.Combine(extraction, deployment, "Sample-GameTestCase", "pak");
+        Assert.That(extraction, Is.Not.Empty, "Set ReleaseExtractionDirectory to the extracted CrossPlatform release directory.");
+        var contentRoot = Path.Combine(extraction, deployment, "CrossPlatform-Bound", "pak");
         var catalogs = SampleCustomization.CreateContentCatalogs();
         using var resources = await GameResourceScope.OpenAsync(contentRoot, catalogs.Resources, catalogs.Gallery,
             SampleCustomization.CreateHostOptions().Content);

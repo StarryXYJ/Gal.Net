@@ -1,0 +1,10 @@
+<Project>
+  <Import Project="packaging/Repository.Build.props" />
+  <PropertyGroup>
+    <GalNetUsePackages>true</GalNetUsePackages>
+  </PropertyGroup>
+  <Target Name="ValidateTemplatePackageVersion" BeforeTargets="CollectPackageReferences;PrepareForBuild">
+    <Error Condition="'$(GalNetPackageVersion)' == ''"
+           Text="Pass -p:GalNetPackageVersion=&lt;version&gt; to restore/build/publish this independent template." />
+  </Target>
+</Project>

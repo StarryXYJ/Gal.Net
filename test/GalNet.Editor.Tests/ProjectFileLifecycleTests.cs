@@ -61,7 +61,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         var files = project.Services.GetRequiredService<ProjectFileAuthoringService>();
         var history = project.Services.GetRequiredService<EditorHistories>().Content;
         var source = Path.Combine(_root, "picture.png"); File.WriteAllBytes(source, [1, 2, 3]);
-        File.WriteAllText(source + ".meta", """{"id":"original","type":"sprite","path":"old.png","gallery":[{"id":17,"typeId":"cg"}],"custom":{"x":17}}""");
+        File.WriteAllText(source + ".meta", """{"id":"original","type":"sprite","path":"old.png","galleryUnlockId":17,"custom":{"x":17}}""");
         await files.ExecuteAsync(new(ProjectFileAction.Import, [source], "Assets"));
         var codec = new AssetMetaCodec(BuiltinResourceTypes.CreateCatalog());
         var imported = codec.Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/picture.png.meta")));
@@ -78,7 +78,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         Assert.That(moved.Id, Is.EqualTo(imported.Id));
         Assert.That(moved.Path, Is.EqualTo("renamed/picture.png"));
         Assert.That(moved.ExtensionData!["custom"].GetProperty("x").GetInt32(), Is.EqualTo(17));
-        Assert.That(moved.ReadGallery(), Has.Count.EqualTo(1));
+        Assert.That(moved.GalleryUnlockId, Is.EqualTo(17));
         Assert.That(Directory.Exists(Path.Combine(project.RootPath, "Assets/renamed/empty")), Is.True);
         await history.UndoAsync();
         Assert.That(Directory.Exists(Path.Combine(project.RootPath, "Assets/folder/empty")), Is.True);

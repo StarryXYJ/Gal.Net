@@ -1,0 +1,14 @@
+{
+  "asset.classroom.name": "教室",
+  "asset.evening.name": "暮色中的街道——一段很长的资源名称，用于验证截断和完整名称提示",
+  "asset.heart.name": "心",
+  "asset.theme.name": "旅途主题曲——星光与远方",
+  "asset.film.name": "动画短片",
+  "asset.preview.name": "动画短片 · 片段",
+  "asset.gallery-classroom.name": "教室中的回忆",
+  "group.gallery-classroom.line.1": "这是第 1 段独立鉴赏的第 1 句。结束后会返回鉴赏，不会继续主线。",
+  "group.gallery-classroom.line.2": "这是第 1 段独立鉴赏的第 2 句。结束后会返回鉴赏，不会继续主线。",
+  "asset.gallery-evening.name": "暮色中的回忆",
+  "group.gallery-evening.line.1": "这是第 2 段独立鉴赏的第 1 句。结束后会返回鉴赏，不会继续主线。",
+  "group.gallery-evening.line.2": "这是第 2 段独立鉴赏的第 2 句。结束后会返回鉴赏，不会继续主线。"
+}

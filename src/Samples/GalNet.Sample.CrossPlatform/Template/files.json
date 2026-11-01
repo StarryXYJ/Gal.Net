@@ -1,0 +1,21 @@
+{
+  "trees": [
+    "src/Samples/GalNet.Sample.CrossPlatform",
+    "src/Samples/GalNet.Sample.Contracts",
+    "src/Branding",
+    "src/Infrastructure/GalNet.Media.Miniaudio/native"
+  ],
+  "exclude": ["src/Samples/GalNet.Sample.CrossPlatform/README.md"],
+  "files": {
+    "src/Samples/GalNet.Sample.CrossPlatform/Template/README.md": "README.md",
+    "global.json": "global.json",
+    "LICENSE": "LICENSE",
+    "Directory.Build.props": "packaging/Repository.Build.props",
+    "Directory.Packages.props": "packaging/Repository.Packages.props",
+    "Directory.Build.targets": "Directory.Build.targets",
+    "packaging/GalNet.Player.props": "packaging/GalNet.Player.props",
+    "packaging/GalNet.Player.targets": "packaging/GalNet.Player.targets",
+    "src/Samples/GalNet.Sample.CrossPlatform/Template/Directory.Build.props": "Directory.Build.props",
+    "src/Samples/GalNet.Sample.CrossPlatform/Template/Directory.Packages.props": "Directory.Packages.props"
+  }
+}

@@ -30,6 +30,8 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private readonly IProjectService _projects;
     private readonly IEditorLocalizationService _localization;
     private readonly LibVlcFactory _mediaFactory;
+    private readonly ResourceMetadataAuthoringService? _metadataAuthoring;
+    [ObservableProperty] private ResourceMetadataEditorViewModel? _resourceMetadata;
     private bool _loading;
     private bool _isLocked;
     private LibVLC? _vlc;
@@ -66,8 +68,9 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     [ObservableProperty] private Bitmap? _imagePreview;
     [ObservableProperty] private string _imagePreviewError = "";
 
-    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization, ProjectTextFiles? texts = null, IResourceTypeCatalog? types = null, LibVlcFactory? mediaFactory = null)
+    public AssetInspectorControlViewModel(EditorWorkspaceViewModel workspace, IAssetCatalogService assets, IProjectFileCommandExecutor fileCommands, IProjectService projects, IEditorLocalizationService localization, ProjectTextFiles? texts = null, IResourceTypeCatalog? types = null, LibVlcFactory? mediaFactory = null, ResourceMetadataAuthoringService? metadataAuthoring = null)
     {
+        _metadataAuthoring = metadataAuthoring;
         Workspace = workspace;
         _assets = assets;
         _fileCommands = fileCommands;
@@ -78,6 +81,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         _texts = texts; _types = types;
         SyncAsset();
         _assets.Changed += OnAssetsChanged;
+        if (_metadataAuthoring is not null) _metadataAuthoring.Content.Changed += OnAssetsChanged;
         Workspace.PropertyChanged += OnWorkspacePropertyChanged;
         _localization.PropertyChanged += OnLocalizationPropertyChanged;
     }
@@ -131,6 +135,12 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
             if (variantsPath is not null && _texts is not null && _types is not null && _projectRoot is not null)
                 Variants = new(_projectRoot, _texts.Open(variantsPath), _projects, _types, _assets, _localization);
         }
+        if (InspectedAsset?.Id != asset?.Id || InspectedAsset?.RelativePath != asset?.RelativePath)
+        {
+            ResourceMetadata = null;
+            if (asset is { IsDirectory: false, HasValidMeta: true } && _metadataAuthoring is not null)
+                ResourceMetadata = _metadataAuthoring.Open("Assets/" + asset.RelativePath, false);
+        }
         InspectedAsset = asset;
         Load();
         _ = LoadImagePreviewAsync();
@@ -158,6 +168,16 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private async Task SaveMetadataAsync(AssetEntry asset)
     {
         if (_projects.Current is not { } project) return;
+        if (_metadataAuthoring is not null)
+        {
+            try
+            {
+                await _metadataAuthoring.SetImportOptionsAsync("Assets/" + asset.RelativePath, AssetFilter, AssetCompression);
+                await _assets.RefreshAsync();
+            }
+            catch (Exception error) { if (ResourceMetadata is { } metadata) metadata.Error = error.Message; }
+            return;
+        }
         var result = await _fileCommands.ExecuteAsync(
             project.RootPath,
             new PatchAssetMetadataCommand(asset.RelativePath, AssetFilter, AssetCompression));
@@ -245,9 +265,11 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private static string FormatTime(double milliseconds) => TimeSpan.FromMilliseconds(Math.Max(0, milliseconds)).ToString(@"m\:ss", CultureInfo.CurrentCulture);
     public void Dispose()
     {
+        ResourceMetadata = null;
         Variants?.Dispose(); Variants = null;
         if (_disposed) return; _disposed = true;
         _assets.Changed -= OnAssetsChanged;
+        if (_metadataAuthoring is not null) _metadataAuthoring.Content.Changed -= OnAssetsChanged;
         Workspace.PropertyChanged -= OnWorkspacePropertyChanged;
         _localization.PropertyChanged -= OnLocalizationPropertyChanged;
         ImagePreview?.Dispose();

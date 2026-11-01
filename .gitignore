@@ -18,8 +18,6 @@ mono_crash.*
 
 # Build results
 [Dd]ebug/
-!src/Samples/GalNet.Sample.Avalonia/Debug/
-!src/Samples/GalNet.Sample.Avalonia/Debug/*.cs
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
@@ -468,7 +466,6 @@ riderModule.iml
 !/scripts/release/**
 /scripts/release/__pycache__/
 !/src/Editor/GalNet.Editor/Properties/PublishProfiles/WindowsReadyToRun.pubxml
-!/src/Samples/GalNet.Sample.Avalonia/Properties/PublishProfiles/WindowsReadyToRun.pubxml
 !/src/Editor/GalNet.Editor.Headless/Properties/PublishProfiles/WindowsReadyToRun.pubxml
 /output/
 dev/*
@@ -476,3 +473,6 @@ dev/*
 GameTestCase/Output/
 GameTestCase/Output-new/
 Temp/
+
+# Local archives are deliberately excluded from repository synchronization.
+/local-only/

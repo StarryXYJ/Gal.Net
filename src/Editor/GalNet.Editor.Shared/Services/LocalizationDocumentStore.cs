@@ -23,10 +23,16 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
         if (_projectId != project.Id) throw new InvalidOperationException("Localization authoring belongs to a different project.");
     }
 
-    public LocalizationFileSnapshot CaptureFile(string path)
+    public LocalizationFileSnapshot CaptureFile(string path) => CaptureFileCore(LocalizationJson.Path(path), false);
+    public LocalizationFileSnapshot CaptureResourceMetadata(string path)
+    {
+        path = ProjectFilePaths.Normalize(path);
+        if (!path.StartsWith("Assets/", StringComparison.Ordinal) || !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw ProjectFilePaths.Error("protected", path);
+        return CaptureFileCore(path, true);
+    }
+    private LocalizationFileSnapshot CaptureFileCore(string path, bool resource)
     {
         RequireActive();
-        path = LocalizationJson.Path(path);
         var live = content.FileDocuments.Values.Where(file => file.Exists && ProjectFilePaths.Comparer.Equals(file.Path, path)).ToArray();
         if (live.Length > 1) throw ProjectFilePaths.Error("changed", path);
         if (live.SingleOrDefault() is { ManagedContent: true } managed)
@@ -34,10 +40,10 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
         var full = new ProjectRawReader(projects.Current!.RootPath).Resolve(path);
         // A pending deletion masks the old disk file. A new identity may subsequently occupy this path.
         if (live.Length == 0 && content.FileDocuments.Values.Any(file => !file.Exists && ProjectFilePaths.Comparer.Equals(file.Path, path)))
-            return new(Guid.NewGuid().ToString("N"), path, false, LocalizationJson.Initial(path));
-        if (!File.Exists(full)) return new(Guid.NewGuid().ToString("N"), path, false, LocalizationJson.Initial(path));
+            return new(Guid.NewGuid().ToString("N"), path, false, (resource ? "{}"u8.ToArray() : LocalizationJson.Initial(path)));
+        if (!File.Exists(full)) return new(Guid.NewGuid().ToString("N"), path, false, (resource ? "{}"u8.ToArray() : LocalizationJson.Initial(path)));
         var bytes = File.ReadAllBytes(full);
-        var file = content.TrackLocalizationFile(path, bytes);
+        var file = resource ? content.TrackResourceMetadataFile(path, bytes) : content.TrackLocalizationFile(path, bytes);
         return new(file.Id, path, true, file.Data.ToArray());
     }
 
@@ -104,6 +110,8 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
         RequireActive();
         return new(content, RequireActive, patches);
     }
+    public LocalizationEditOperation PrepareResource(IEnumerable<LocalizationFilePatch> patches, IEnumerable<LocalizationGroupMetadataPatch> groups) =>
+        new(content, RequireActive, patches, documents, groups: groups);
     public LocalizationEditOperation PrepareWithEntries(IEnumerable<LocalizationFilePatch> patches, IEnumerable<LocalizationEntryPatch> entries)
     {
         RequireActive();

@@ -13,7 +13,7 @@ import tempfile
 import zipfile
 
 REPO = pathlib.Path(__file__).resolve().parents[2]
-APPS = {"Sample": "GalNet.Sample.Avalonia", "Editor": "GalNet.Editor", "CLI": "GalNet.Editor.Headless"}
+APPS = {"Sample": "GalNet.Sample.CrossPlatform.Desktop", "Editor": "GalNet.Editor", "CLI": "GalNet.Editor.Headless"}
 
 
 def digest(path):

@@ -1,13 +1,34 @@
 <ursa:UrsaWindow xmlns="https://github.com/avaloniaui"
                  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
                  xmlns:ursa="https://irihi.tech/ursa"
+                 xmlns:loc="clr-namespace:GalNet.Avalonia.GameView.MarkupExtensions;assembly=GalNet.Avalonia.GameView"
                  x:Class="GalNet.Sample.CrossPlatform.Views.MainWindow"
-                 Icon="/Assets/avalonia-logo.ico"
+                 Icon="/Assets/galnet.ico"
                  Width="1280" Height="720" MinWidth="800" MinHeight="500"
                  Classes="galnet-player"
                  Background="{DynamicResource GalNet.Brush.Background}"
                  Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
                  Title="GalNet Avalonia CrossPlatform Player">
+  <ursa:UrsaWindow.RightContent>
+    <Button x:Name="FitAspectButton" Classes="fit-aspect" Width="40" Height="32" Padding="10,8" Click="OnFitAspect"
+            AutomationProperties.Name="{loc:Localize Window.FitAspectRatio}" ToolTip.Tip="{loc:Localize Window.FitAspectRatio}">
+      <PathIcon Width="16" Height="12" Data="M 0,0 L 16,0 16,12 0,12 Z M 3,3 L 13,3 13,9 3,9 Z" />
+    </Button>
+  </ursa:UrsaWindow.RightContent>
+  <ursa:UrsaWindow.Styles>
+    <Style Selector="Button.fit-aspect">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource CaptionButtonForeground}" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <Style Selector="Button.fit-aspect:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource CaptionButtonPointeroverBackground}" />
+    </Style>
+    <Style Selector="Button.fit-aspect:pressed /template/ ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource CaptionButtonPressedBackground}" />
+    </Style>
+  </ursa:UrsaWindow.Styles>
   <ursa:UrsaWindow.Resources>
     <!-- Match the desktop Sample's drawn caption buttons and title bar. -->
     <SolidColorBrush x:Key="CaptionButtonForeground" Color="{DynamicResource GalNet.Palette.TextPrimaryColor}" />

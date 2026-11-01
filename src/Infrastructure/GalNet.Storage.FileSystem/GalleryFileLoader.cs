@@ -31,11 +31,14 @@ public static class GalleryFileLoader
             var configuration = JsonCodec.Deserialize<GalleryConfiguration>(json, JsonOptions)
                 ?? throw new InvalidDataException($"The Gallery file '{sourceName}' is empty.");
             var catalog = GalleryCatalog.Create(configuration);
-            if (catalog.Types.Count != expectedTypes.Types.Count || catalog.Types.Any(type =>
-                    !expectedTypes.TryGet(type.TypeId, out var expected) ||
+            if (catalog.Types.Any(type => expectedTypes.TryGet(type.TypeId, out var expected) &&
                     !string.Equals(expected.ResourceTypeId, type.ResourceTypeId, StringComparison.Ordinal)))
                 throw new InvalidDataException("Generated Gallery type snapshot does not match the composed Gallery registry.");
-            return catalog;
+            return GalleryCatalog.Create(new GalleryConfiguration
+            {
+                Types = expectedTypes.Types.ToList(),
+                Items = catalog.Items.Where(item => expectedTypes.TryGet(item.TypeId, out _)).ToList()
+            });
         }
         catch (JsonException exception)
         {

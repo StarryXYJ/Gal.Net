@@ -7,7 +7,7 @@ using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Avalonia.Themes;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia;
+using GalNet.Sample.CrossPlatform;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -26,7 +26,7 @@ public sealed class SampleReadTextColorTests
                 using var localization = SampleCustomization.CreateLocalizationService();
                 var culture = localization.CultureService;
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
-                var game = new GamePageViewModel(null!);
+                var game = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
                 using (var settings = new AvaloniaPlayerSettingsService(localization, game))
                 {
                     await settings.AttachAsync(variables, new GameSettings());
@@ -35,7 +35,7 @@ public sealed class SampleReadTextColorTests
                     Assert.That(category.DisplayItems.Any(item => item.Id == "enableReadTextColor"), Is.False);
                     using var editor = colorSetting.CreateEditor();
                     var root = new Border { Child = editor.Control, Classes = { "galnet-player" } };
-                    root.Styles.Add(new ClassicTheme().CreateStyles());
+                    root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
                     var window = new Window { Width = 800, Height = 650, Content = root };
                     window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
                     window.Show();
@@ -73,7 +73,7 @@ public sealed class SampleReadTextColorTests
                     finally { window.Close(); }
                 }
                 var stored = await File.ReadAllTextAsync(Path.Combine(directory, "player-variables.json"));
-                var restoredGame = new GamePageViewModel(null!);
+                var restoredGame = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
                 using var restored = new AvaloniaPlayerSettingsService(localization, restoredGame);
                 await restored.AttachAsync(variables, new GameSettings());
                 Assert.That(restored.RuntimeSettings.EnableReadTextColor, Is.True);

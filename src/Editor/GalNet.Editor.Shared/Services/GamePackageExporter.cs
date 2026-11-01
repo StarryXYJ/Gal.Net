@@ -120,12 +120,12 @@ public static class GamePackageExporter
             using var provider = new LocalFileProvider(Path.Combine(privateStage, "Assets"), types, optional: true);
             using var archive = await provider.OpenArchiveAsync("assets", token);
             var assets = archive.AssetIds.Select(id => archive.GetAsset(id)!).ToArray();
-            var gallery = new GalleryCatalogCompiler(types, galleryTypes).Compile(assets.Select(file => file.Metadata));
             var story = StoryResourceCompiler.Compile(privateStage, catalog, token, assets);
+            var gallery = new GalleryCatalogCompiler(types, galleryTypes).Compile(assets.Concat(story).Select(file => file.Metadata));
             var available = assets.Concat(story).ToArray();
             var configuration = GalNet.Editor.Shared.Commands.DirectProjectPersistence.LoadSettings(privateStage);
             var options = configuration.Read(ContentPackagingOptions.Section);
-            var roots = options.IncludeResources.Concat(gallery.Items.Select(item => item.ResourceId))
+            var roots = options.IncludeResources.Concat(gallery.Items.Select(item => item.ResourceId)).Concat(gallery.Items.Where(item => item.PreviewResourceId is not null).Select(item => item.PreviewResourceId!))
                 .Concat(configuration.Read(ResourceOverrideOptions.Section).AdditionalOriginals)
                 .Concat(configuration.ReadDefaultOptions().DefaultVisualPrograms.Values.Where(id => !string.IsNullOrWhiteSpace(id))).ToArray();
             var complete = options.DeclaredCompleteResources.Select(id => available.Any(file => StringComparer.OrdinalIgnoreCase.Equals(file.Id, id)) ? id : StoryResourceIds.Group(id)).ToArray();

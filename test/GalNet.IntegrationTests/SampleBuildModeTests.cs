@@ -1,5 +1,3 @@
-using GalNet.Sample.Avalonia;
-
 namespace GalNet.IntegrationTests;
 
 public sealed class SampleBuildModeTests
@@ -7,78 +5,16 @@ public sealed class SampleBuildModeTests
     [Test]
     public void BuildContainsOnlyTheSelectedDebugCapability()
     {
-        var assembly = typeof(GameLaunchOptions).Assembly;
-        var debugTypes = assembly.GetTypes().Where(type => type.Namespace == "GalNet.Sample.Avalonia.Debug").ToArray();
+        var assembly = typeof(GalNet.Sample.CrossPlatform.App).Assembly;
         var references = assembly.GetReferencedAssemblies().Select(reference => reference.Name).ToArray();
-        var crossAssembly = typeof(GalNet.Sample.CrossPlatform.App).Assembly;
-        var crossReferences = crossAssembly.GetReferencedAssemblies().Select(reference => reference.Name).ToArray();
 #if GALNET_GAME_DEBUG
-        Assert.That(debugTypes, Is.Not.Empty);
-        Assert.That(references, Does.Contain("GalNet.Debugging"));
         Assert.That(references, Does.Contain("GalNet.Avalonia.Debugging"));
-        Assert.That(typeof(GalNet.Avalonia.Debugging.Views.DebugMenuView).Assembly.GetName().Name, Is.EqualTo("GalNet.Avalonia.Debugging"));
-        Assert.That(typeof(GameLaunchOptions).GetProperty("DebugInvitation"), Is.Not.Null);
-        Assert.That(crossReferences, Does.Contain("GalNet.Avalonia.Debugging"));
         Assert.That(typeof(GalNet.Sample.CrossPlatform.App).GetProperty("DebugInvitation"), Is.Not.Null);
 #else
-        Assert.That(debugTypes, Is.Empty);
         Assert.That(references, Does.Not.Contain("GalNet.Debugging"));
         Assert.That(references, Does.Not.Contain("GalNet.Avalonia.Debugging"));
-        Assert.That(references, Does.Not.Contain("AvaloniaUI.DiagnosticsSupport"));
-        Assert.That(assembly.GetType("GalNet.Sample.Avalonia.Views.DebugMenuView"), Is.Null);
-        Assert.That(assembly.GetType("GalNet.Sample.Avalonia.Views.DebugLogWindow"), Is.Null);
-        Assert.That(typeof(GameLaunchOptions).GetProperty("DebugInvitation"), Is.Null);
-        Assert.That(crossReferences, Does.Not.Contain("GalNet.Avalonia.Debugging"));
         Assert.That(typeof(GalNet.Sample.CrossPlatform.App).GetProperty("DebugInvitation"), Is.Null);
 #endif
-        foreach (var project in new[] { assembly, crossAssembly })
-            foreach (var resource in project.GetManifestResourceNames().Where(name => name.EndsWith(".json", StringComparison.Ordinal)))
-            {
-                using var stream = project.GetManifestResourceStream(resource)!;
-                using var json = System.Text.Json.JsonDocument.Parse(stream);
-                Assert.That(json.RootElement.EnumerateObject().Select(property => property.Name)
-                    .Where(name => name.StartsWith("Debug.", StringComparison.Ordinal) || name.StartsWith("DebugLog.", StringComparison.Ordinal)), Is.Empty);
-            }
-    }
-
-#if GALNET_LAUNCH_ARGS
-    [Test]
-    public void DeveloperBuildAcceptsContentAndProfileArguments()
-    {
-        var options = GameLaunchOptions.Parse(["game", "--profile", "profile"]);
-        Assert.That(options.GameDirectory, Is.EqualTo(Path.GetFullPath("game")));
-        Assert.That(options.ProfileDirectory, Is.EqualTo(Path.GetFullPath("profile")));
-    }
-
-#if !GALNET_GAME_DEBUG
-    [Test]
-    public void PlayerBuildRejectsDebugLaunchArguments()
-    {
-        var error = Assert.Throws<ArgumentException>(() => GameLaunchOptions.Parse(["game", "--debug-port", "1234"]));
-        Assert.That(error!.Message, Does.Contain("without game debugging support"));
-    }
-#endif
-#else
-    [TestCase("game")]
-    [TestCase("--profile")]
-    [TestCase("--debug-port")]
-    public void PlayerBuildRejectsLaunchArguments(string argument)
-    {
-        var error = Assert.Throws<ArgumentException>(() => GameLaunchOptions.Parse([argument]));
-        Assert.That(error!.Message, Does.Contain("without launch argument support"));
-    }
-#endif
-
-    [Test]
-    public void DefaultLaunchUsesApplicationPakAndUserDataInsteadOfWorkingDirectory()
-    {
-        var application = Path.Combine(Path.GetTempPath(), "galnet-launch-" + Guid.NewGuid().ToString("N"));
-        var options = GameLaunchOptions.Parse([], application);
-        Assert.That(options.GameDirectory, Is.EqualTo(Path.Combine(application, "pak")));
-        Assert.That(options.ProfileDirectory, Does.StartWith(Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GalNet") + Path.DirectorySeparatorChar));
-        Assert.That(options.LogDirectory, Is.EqualTo(Path.Combine(options.ProfileDirectory!, "logs")));
-        Assert.That(Directory.Exists(application), Is.False);
     }
 
     [Test]
@@ -93,13 +29,13 @@ public sealed class SampleBuildModeTests
             Directory.CreateDirectory(second);
             File.WriteAllText(Path.Combine(first, "content.json"), """{"projectId":"../../same-project","buildId":"first"}""");
             File.WriteAllText(Path.Combine(second, "content.json"), """{"projectId":"../../same-project","buildId":"second"}""");
-            var profile = GameLaunchOptions.GetDefaultProfileDirectory(first);
-            Assert.That(GameLaunchOptions.GetDefaultProfileDirectory(second), Is.EqualTo(profile));
+            var profile = GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(first);
+            Assert.That(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(second), Is.EqualTo(profile));
             Assert.That(Path.GetFileName(profile), Does.Match("^[a-f0-9]{64}$"));
             File.WriteAllText(Path.Combine(second, "content.json"), """{"projectId":"another-project"}""");
-            Assert.That(GameLaunchOptions.GetDefaultProfileDirectory(second), Is.Not.EqualTo(profile));
+            Assert.That(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(second), Is.Not.EqualTo(profile));
             File.WriteAllText(Path.Combine(second, "content.json"), "broken JSON");
-            Assert.DoesNotThrow(() => GameLaunchOptions.Parse([], Path.GetDirectoryName(second)!));
+            Assert.DoesNotThrow(() => GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(second));
             Assert.That(Directory.Exists(profile), Is.False);
         }
         finally { Directory.Delete(root, true); }
@@ -113,11 +49,11 @@ public sealed class SampleBuildModeTests
         Directory.CreateDirectory(library);
         try
         {
-            File.WriteAllText(Path.Combine(root, "GalNet.Sample.Avalonia.exe"), "apphost marker");
+            File.WriteAllText(Path.Combine(root, "GalNet.Sample.CrossPlatform.Desktop.exe"), "apphost marker");
             Directory.CreateDirectory(Path.Combine(root, "docs"));
-            File.WriteAllText(Path.Combine(root, "docs/application-layout.json"), """{"schemaVersion":1,"runtimeIdentifier":"win-x64","entryPoint":"GalNet.Sample.Avalonia.exe","managedDirectory":"lib","contractsDirectory":"lib","contentDirectory":"pak"}""");
-            Assert.That(GameLaunchOptions.GetApplicationDirectory(library), Is.EqualTo(root));
-            Assert.That(GameLaunchOptions.GetApplicationDirectory(root), Is.EqualTo(root));
+            File.WriteAllText(Path.Combine(root, "docs/application-layout.json"), """{"schemaVersion":1,"runtimeIdentifier":"win-x64","entryPoint":"GalNet.Sample.CrossPlatform.Desktop.exe","managedDirectory":"lib","contractsDirectory":"lib","contentDirectory":"pak"}""");
+            Assert.That(GalNet.Storage.FileSystem.ApplicationPackageLayout.FindApplicationRoot(library), Is.EqualTo(root));
+            Assert.That(GalNet.Storage.FileSystem.ApplicationPackageLayout.FindApplicationRoot(root), Is.EqualTo(root));
         }
         finally { Directory.Delete(root, true); }
     }

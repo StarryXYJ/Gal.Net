@@ -81,3 +81,9 @@ Avalonia Sample 在载入游戏内容和玩家变量后、显示标题和创建 
 资源的区域变体可由 `AssetLocaleResolver` 通过宿主选择的目录规则定位；这与文本的 `ITextResolver` 相互独立。
 
 文化与来源覆盖算法由 `Runtime.I18n.GameTextResolver` 统一实现，仅接收 `LocalizedTextSource` 查询委托；Runtime 不依赖 DynamicLocalization 或 JSON 格式。GameHost 的文本源解析为字典，Storage 校验复用同一解析规则；Avalonia.GameHost 负责嵌入来源和 observable 文本适配。Headless 不依赖 DynamicLocalization，两个宿主消费同一 Runtime 查询规则。默认文化由加载器写入 GameLocalizationContent.DefaultCulture，查询不读取默认项目 DTO。
+
+## 资源名称
+
+任意资源可在 metadata 中保存可选 `displayNameKey`；编辑器显示与编辑项目开发语言文本，内部维护基于稳定资源身份的 key。资源 Inspector 与 i18n 的“资源名称”分类共享同一文本和项目历史；Group 名称引用来自 Graph 节点的作者 metadata，编译后随 group 资源保留。资源名称的引用索引包括未加入鉴赏的资源；内容加载检查包内开发语言名称，外置翻译不能补足缺失的作者名称。
+
+鉴赏详情、卡片 tooltip 与音乐提示使用同一资源名称。Sample 将 `IPlayerLocalization` 注册为 `ITextResolver`，Gallery 通过该中立接口解析名称；名称不保存进独立鉴赏名字表。未解锁卡片不泄露真实名称。切换语言后重新进入鉴赏按当前语言解析；已显示的瞬时提示不重新翻译。

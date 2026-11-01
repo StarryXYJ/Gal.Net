@@ -51,7 +51,7 @@
   "Settings.Graphics": "画面",
   "Settings.DisplayMode": "显示模式",
   "Settings.Display.Window": "窗口",
-  "Settings.Display.BorderlessFullscreen": "全屏窗口",
+  "Settings.Display.BorderlessFullscreen": "全屏窗口（无边框）",
   "Settings.Display.ExclusiveFullscreen": "独占全屏",
   "Settings.WindowSize": "窗口尺寸",
   "Settings.WindowSizeFullscreen": "请切换到窗口模式后调整窗口尺寸。",
@@ -125,5 +125,18 @@
   "History.Empty": "暂无历史文本。",
   "Settings.ReadTextColor": "已读文本颜色",
   "Settings.EnableReadTextColor": "启用",
-  "Settings.InvalidColor": "请选择有效颜色。"
+  "Settings.InvalidColor": "请选择有效颜色。",
+  "ReturnToTitle.Title": "返回标题？",
+  "ReturnToTitle.Message": "未保存的剧情进度将丢失。",
+  "Window.FitAspectRatio": "适应画面比例",
+  "ReturnToTitle.Confirm": "返回标题",
+  "Gallery.Pause": "暂停",
+  "Gallery.Seek": "播放进度",
+  "Gallery.Play": "播放",
+  "Gallery.Stop": "停止",
+  "Gallery.Type.cg": "图片鉴赏",
+  "Gallery.Type.video": "视频鉴赏",
+  "Gallery.Type.audio": "音乐鉴赏",
+  "Gallery.Type.scene": "场景鉴赏",
+  "Gallery.Untitled": "未命名资源"
 }

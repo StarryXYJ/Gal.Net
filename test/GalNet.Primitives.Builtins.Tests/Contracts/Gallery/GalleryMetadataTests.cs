@@ -1,19 +1,24 @@
-using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Core.Assets;
-
 namespace GeneralTest.Gallery;
-
 public sealed class GalleryMetadataTests
 {
     [Test]
-    public void OptionalGalleryExtensionRetainsUnknownMetadataAndAnnotationMembers()
+    public void CommonMetadataRetainsNamesUnlockIdentityAndUnknownMembers()
     {
         var codec = new AssetMetaCodec(new ResourceTypeCatalogBuilder().Add<AssetMeta>("project").Build());
-        var metadata = codec.Deserialize("""{"id":"item","type":"project","path":"file","future":true,"gallery":[{"id":3,"typeId":"images","custom":{"kept":true}}]}""");
-        metadata.SetGallery(metadata.ReadGallery().Select(item => item with { Id = 4 }));
+        var metadata = codec.Deserialize("""{"id":"item","type":"project","path":"file","future":true,"galleryUnlockId":3,"displayNameKey":"asset.item.name"}""");
+        metadata.GalleryUnlockId = 4;
         var reloaded = codec.Deserialize(codec.Serialize(metadata));
-        Assert.That(reloaded.ReadGallery().Single().Id, Is.EqualTo(4));
-        Assert.That(reloaded.ReadGallery().Single().ExtensionData!["custom"].GetProperty("kept").GetBoolean(), Is.True);
+        Assert.That(reloaded.GalleryUnlockId, Is.EqualTo(4));
+        Assert.That(reloaded.DisplayNameKey, Is.EqualTo("asset.item.name"));
         Assert.That(reloaded.ExtensionData!["future"].GetBoolean(), Is.True);
+    }
+    [TestCase("0")]
+    [TestCase("-1")]
+    [TestCase("\"invalid\"")]
+    public void CommonUnlockIdentityCannotBeSilentlyDiscarded(string value)
+    {
+        var codec = new AssetMetaCodec(new ResourceTypeCatalogBuilder().Add<AssetMeta>("project").Build());
+        Assert.Throws<InvalidDataException>(() => codec.Deserialize("{\"id\":\"item\",\"type\":\"project\",\"path\":\"file\",\"galleryUnlockId\":" + value + "}"));
     }
 }

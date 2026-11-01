@@ -1,5 +1,4 @@
 using GalNet.Avalonia.GameView.Presentation;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Audio;
 using GalNet.Core.Assets;
 using GalNet.Media.Miniaudio;
@@ -16,5 +15,5 @@ public sealed class AvaloniaGamePresentationOptions
     public Func<IAssetManager, IAssetFileMaterializer, IAudioPlaybackHost> CreateAudioHost { get; init; } =
         (assets, files) => new MiniaudioAudioPlaybackHost(files);
     /// <summary>When omitted, uses the default LibVLC pixel presenter. A custom presenter owns its platform resources.</summary>
-    public Func<IAssetManager, GamePageViewModel, IAssetFileMaterializer, IVideoPresenter>? CreateVideoPresenter { get; init; }
+    public Func<IAssetManager, GamePresentationState, IAssetFileMaterializer, IVideoPresenter>? CreateVideoPresenter { get; init; }
 }

@@ -39,10 +39,18 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
         Refresh();
         return file;
     }
-    public EditorFileDocument TrackLocalizationFile(string path, byte[] textBytes)
+    public EditorFileDocument TrackLocalizationFile(string path, byte[] textBytes) => TrackStructuredFile(LocalizationJson.Path(path), textBytes);
+    public EditorFileDocument TrackResourceMetadataFile(string path, byte[] textBytes)
+    {
+        path = ProjectFilePaths.Normalize(path);
+        if (!path.StartsWith("Assets/", StringComparison.Ordinal) || !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw ProjectFilePaths.Error("protected", path);
+        using var json = JsonDocument.Parse(LocalizationJson.Decode(textBytes));
+        if (json.RootElement.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Resource metadata must be an object.");
+        return TrackStructuredFile(path, textBytes);
+    }
+    private EditorFileDocument TrackStructuredFile(string path, byte[] textBytes)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        path = LocalizationJson.Path(path);
         if (_suspended || RepairRequired || IsPublishing) throw ProjectFilePaths.Error("busy", path);
         var full = new ProjectRawReader(_project!.RootPath).Resolve(path);
         if (!File.Exists(full) || !File.ReadAllBytes(full).AsSpan().SequenceEqual(textBytes)) throw ProjectFilePaths.Error("changed", path);

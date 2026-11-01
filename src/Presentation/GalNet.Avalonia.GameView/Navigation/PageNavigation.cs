@@ -10,6 +10,9 @@ namespace GalNet.Avalonia.GameView.Navigation;
 /// <summary>Framework-neutral identity for a navigable page within an Avalonia game scope.</summary>
 public abstract class PageViewModelBase : ObservableObject;
 
+/// <summary>Requests the current scene preview before leaving its gameplay surface.</summary>
+public interface IGameSavePreviewPage;
+
 /// <summary>Optional activation contract for per-navigation data that must not enter DI.</summary>
 public interface IActivatablePageViewModel<in TArgs>
 {
@@ -242,6 +245,7 @@ public sealed class PageViewRegistryBuilder : IPageViewRegistryBuilder
     private bool _built;
 
     internal IEnumerable<Type> ViewTypes => _views.Values.Distinct();
+    internal IEnumerable<Type> ViewModelTypes => _views.Keys;
 
     public void Register<TViewModel, TView>()
         where TViewModel : class

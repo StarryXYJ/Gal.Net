@@ -26,6 +26,17 @@ public sealed class AssetMetaCodec(IResourceTypeCatalog resourceTypes, JsonSeria
             meta.TypeId = typeId;
             meta.Id = id.Trim();
             meta.Path = path.Trim().Replace('\\', '/');
+            if (document.RootElement.TryGetProperty("displayNameKey", out var name))
+            {
+                if (name.ValueKind is not (JsonValueKind.String or JsonValueKind.Null)) throw new InvalidDataException("displayNameKey must be a string or null.");
+                meta.DisplayNameKey = name.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(name.GetString()) ? name.GetString()!.Trim() : null;
+            }
+            if (document.RootElement.TryGetProperty("galleryUnlockId", out var unlock))
+            {
+                if (unlock.ValueKind == JsonValueKind.Null) meta.GalleryUnlockId = null;
+                else if (unlock.ValueKind != JsonValueKind.Number || !unlock.TryGetInt32(out var galleryId) || galleryId <= 0) throw new InvalidDataException("galleryUnlockId must be a positive integer or null.");
+                else meta.GalleryUnlockId = galleryId;
+            }
             return meta;
         }
     }

@@ -1,7 +1,6 @@
 using Avalonia;
 using GalNet.Assets;
 using GalNet.Avalonia.GameView.Presentation;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Assets;
 using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.View;
@@ -18,7 +17,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private readonly Dictionary<string, Playback> _playbacks = new(StringComparer.Ordinal);
     private readonly IAssetFileMaterializer _files;
     private readonly bool _ownsFiles;
-    private readonly GamePageViewModel _state;
+    private readonly GamePresentationState _state;
     private readonly IAvaloniaUiDispatcher _dispatcher;
     private readonly LibVLC? _vlc;
     private readonly bool _ownsVlc;
@@ -29,7 +28,7 @@ public sealed class AvaloniaVideoPresenter : IVideoPresenter, IDisposable, IAsyn
     private readonly TaskCompletionSource _drained = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private Task? _releaseTask;
 
-    public AvaloniaVideoPresenter(IAssetManager assets, GamePageViewModel state, IAvaloniaUiDispatcher? dispatcher = null,
+    public AvaloniaVideoPresenter(IAssetManager assets, GamePresentationState state, IAvaloniaUiDispatcher? dispatcher = null,
         IAssetFileMaterializer? files = null, LibVLC? sharedLibVlc = null, LibVlcFactory? mediaFactory = null)
     {
         _files = files ?? new AssetFileMaterializer(assets);

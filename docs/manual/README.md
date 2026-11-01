@@ -20,7 +20,7 @@
   - [存档、对白历史与 Gallery](sample/saves-history-and-gallery.md)
   - [平台支持与验证范围](sample/platform-support.md)
 - [Sample 与宿主扩展](extensions/README.md)
-  - [定制 Avalonia Sample](extensions/customize-sample.md)
+  - [定制跨平台 Sample](extensions/customize-sample.md)
   - [页面与主题扩展](extensions/pages-and-themes.md)
   - [用通用原语调用项目逻辑](extensions/actions-and-contracts.md)
   - [设置、变量与会话扩展](extensions/settings-and-variables.md)

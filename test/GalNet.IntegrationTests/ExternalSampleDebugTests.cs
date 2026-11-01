@@ -28,7 +28,7 @@ public sealed class ExternalSampleDebugTests
             var dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ?? "dotnet";
             if (!Path.IsPathRooted(dotnet))
                 dotnet = Path.Combine(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(), "..", "..", "..", OperatingSystem.IsWindows() ? "dotnet.exe" : "dotnet");
-            client.Launch(new(dotnet, [typeof(GalNet.Sample.Avalonia.GameLaunchOptions).Assembly.Location]), root, Path.Combine(root, "profile"));
+            client.Launch(new(dotnet, [Path.Combine(AppContext.BaseDirectory, "GalNet.Sample.CrossPlatform.Desktop.dll")]), root, Path.Combine(root, "profile"));
             await changed.Task.WaitAsync(TimeSpan.FromSeconds(20));
             Assert.Multiple(() =>
             {
@@ -50,10 +50,12 @@ public sealed class ExternalSampleDebugTests
         try
         {
             var actual = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(File.ReadAllBytes(typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location)));
-            string[] Args(string fingerprint) => [root, "--debug-port", "10000", "--debug-token", "token", "--debug-session", "session", "--debug-project", "project", "--debug-contract", fingerprint];
-            var error = Assert.Throws<InvalidDataException>(() => GalNet.Sample.Avalonia.GameLaunchOptions.Parse(Args("different")));
+            DebugInvitation? Parse(string fingerprint) => GalNet.Avalonia.Debugging.DebugLaunchArguments.Parse(
+                new Dictionary<string, string> { ["--debug-port"] = "10000", ["--debug-token"] = "token", ["--debug-session"] = "session", ["--debug-project"] = "project", ["--debug-contract"] = fingerprint },
+                root, typeof(GalNet.Project.Contracts.ProjectSchemas).Assembly.Location);
+            var error = Assert.Throws<InvalidDataException>(() => Parse("different"));
             Assert.That(error!.Message, Does.Contain("Expected SHA256: different").And.Contain($"actual SHA256: {actual}"));
-            Assert.That(GalNet.Sample.Avalonia.GameLaunchOptions.Parse(Args(actual)).DebugInvitation!.Identity.ContractFingerprint, Is.EqualTo(actual));
+            Assert.That(Parse(actual)!.Identity.ContractFingerprint, Is.EqualTo(actual));
         }
         finally { Directory.Delete(root, true); }
     }
@@ -106,7 +108,7 @@ public sealed class ExternalSampleDebugTests
             var invitation = listener.Invitation;
             using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(45));
             var accept = listener.AcceptAsync(timeout.Token);
-            var assembly = typeof(GalNet.Sample.Avalonia.App).Assembly.Location;
+            var assembly = Path.Combine(AppContext.BaseDirectory, "GalNet.Sample.CrossPlatform.Desktop.dll");
             var start = new ProcessStartInfo(string.IsNullOrEmpty(appHost) ? "dotnet" : appHost)
             {
                 UseShellExecute = false,

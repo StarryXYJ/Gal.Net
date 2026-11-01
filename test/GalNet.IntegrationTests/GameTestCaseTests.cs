@@ -15,7 +15,6 @@ using GalNet.Editor.Shared.Services;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
-using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
 
 namespace GeneralTest.Runtime;
@@ -121,7 +120,7 @@ public class GameTestCaseTests
             {
                 Assert.That(content.Graph.RootNodeId, Is.EqualTo("entry"));
                 Assert.That(content.Graph.Nodes.OfType<Group>().Single(group => group.Id == "entry").Entries, Is.Empty);
-                Assert.That(groups, Has.Length.EqualTo(4));
+                Assert.That(groups, Has.Length.EqualTo(6));
                 Assert.That(groups, Has.All.Matches<Group>(group => group.Entries.Count > 0));
                 Assert.That(groups.SelectMany(group => group.Entries), Has.All.TypeOf<PrimitiveEntry>());
                 Assert.That(groups.Single(group => group.Id == "intro").Entries.OfType<PrimitiveEntry>(),

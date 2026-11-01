@@ -51,7 +51,7 @@
   "Settings.Graphics": "Graphics",
   "Settings.DisplayMode": "Display mode",
   "Settings.Display.Window": "Window",
-  "Settings.Display.BorderlessFullscreen": "Borderless fullscreen",
+  "Settings.Display.BorderlessFullscreen": "Fullscreen window (borderless)",
   "Settings.Display.ExclusiveFullscreen": "Exclusive fullscreen",
   "Settings.WindowSize": "Window size",
   "Settings.WindowSizeFullscreen": "Switch to window mode to change the window size.",
@@ -125,5 +125,18 @@
   "History.Empty": "No dialogue yet.",
   "Settings.ReadTextColor": "Read text color",
   "Settings.EnableReadTextColor": "Enable",
-  "Settings.InvalidColor": "Choose a valid color."
+  "Settings.InvalidColor": "Choose a valid color.",
+  "ReturnToTitle.Title": "Return to title?",
+  "ReturnToTitle.Message": "Unsaved story progress will be lost.",
+  "Window.FitAspectRatio": "Fit game aspect ratio",
+  "ReturnToTitle.Confirm": "Return to title",
+  "Gallery.Pause": "Pause",
+  "Gallery.Seek": "Playback position",
+  "Gallery.Play": "Play",
+  "Gallery.Stop": "Stop",
+  "Gallery.Type.cg": "Images",
+  "Gallery.Type.video": "Videos",
+  "Gallery.Type.audio": "Music",
+  "Gallery.Type.scene": "Scenes",
+  "Gallery.Untitled": "Untitled"
 }

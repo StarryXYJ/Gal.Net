@@ -17,6 +17,8 @@ namespace GalNet.Editor.Inspector.ViewModels;
 public sealed partial class NodeInspectorControlViewModel : ObservableObject, IInspectorControlViewModel, IInspectorLockAware, IUndoRedoTarget
 {
     private readonly IEditorLocalizationService _localization;
+    private readonly GalNet.Editor.Services.ResourceMetadataAuthoringService? _metadataAuthoring;
+    [ObservableProperty] private ResourceMetadataEditorViewModel? _resourceMetadata;
     private bool _isLocked;
     private string? _inspectedNodeId;
 
@@ -36,8 +38,9 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
     public IReadOnlyList<ProjectVariableDefinition> ValidationVariables => Workspace.AllProjectVariableDefinitions;
     public string EntryCountText => _localization.Format("Inspector.Node.EntryCount", InspectedNode?.EntryCount ?? 0);
 
-    public NodeInspectorControlViewModel(EditorWorkspaceViewModel workspace, IEditorLocalizationService localization)
+    public NodeInspectorControlViewModel(EditorWorkspaceViewModel workspace, IEditorLocalizationService localization, GalNet.Editor.Services.ResourceMetadataAuthoringService? metadataAuthoring = null)
     {
+        _metadataAuthoring = metadataAuthoring;
         Workspace = workspace;
         _localization = localization;
         SyncSelection();
@@ -100,8 +103,14 @@ public sealed partial class NodeInspectorControlViewModel : ObservableObject, II
         RaiseSelectionPropertiesChanged();
     }
 
+    private string? _metadataNode;
     private void RaiseSelectionPropertiesChanged()
     {
+        if (_metadataNode != InspectedNode?.Id)
+        {
+            ResourceMetadata = null; _metadataNode = InspectedNode?.Id;
+            if (IsLinearGroupSelected && _metadataAuthoring is not null) ResourceMetadata = _metadataAuthoring.Open(_metadataNode!, true);
+        }
         OnPropertyChanged(nameof(IsAvailable));
         OnPropertyChanged(nameof(HasSelectedNode));
         OnPropertyChanged(nameof(IsLinearGroupSelected));

@@ -9,6 +9,7 @@
     <SelectableTextBlock Text="{Binding InspectedAsset.Id}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
     <TextBlock Text="{loc:Localize Inspector.Asset.Path}" Foreground="{DynamicResource SemiColorText2}"/>
     <SelectableTextBlock Text="{Binding InspectedAsset.RelativePath}" TextWrapping="Wrap"/>
+    <Panel IsVisible="{Binding ResourceMetadata, Converter={x:Static converters:ObjectConverters.IsNotNull}}"><views:ResourceMetadataEditor DataContext="{Binding ResourceMetadata}" /></Panel>
     <StackPanel IsVisible="{Binding IsSelectedAssetImage}" Spacing="6">
      <TextBlock Text="{loc:Localize Inspector.Asset.Filter}"/>
      <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding AssetFilter}" HorizontalAlignment="Stretch"/>

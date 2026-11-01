@@ -41,6 +41,7 @@ public interface IProjectContentSession
     IReadOnlyDictionary<string, EditorFileDocument> FileDocuments { get; }
     EditorFileDocument TrackFile(string path, byte[]? textBytes = null);
     EditorFileDocument TrackLocalizationFile(string path, byte[] textBytes);
+    EditorFileDocument TrackResourceMetadataFile(string path, byte[] textBytes) => throw new NotSupportedException("Structured resource metadata editing is unavailable.");
     Task SuspendAsync();
     void ResumeSaves();
 }

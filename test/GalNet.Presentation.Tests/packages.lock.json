@@ -312,7 +312,6 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
-          "LibVLCSharp.Avalonia": "[3.10.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
           "Serilog": "[4.2.0, )"
         }
@@ -329,10 +328,7 @@
       "galnet.avalonia.themes": {
         "type": "Project",
         "dependencies": {
-          "Avalonia.Themes.Fluent": "[12.0.5, )",
-          "GalNet.Avalonia.Controls": "[1.0.0, )",
-          "GalNet.Avalonia.GameView": "[1.0.0, )",
-          "GalNet.Contracts.Builtins": "[1.0.0, )"
+          "Avalonia.Themes.Fluent": "[12.0.5, )"
         }
       },
       "galnet.contracts.builtins": {
@@ -516,16 +512,6 @@
         "requested": "[3.10.0, )",
         "resolved": "3.10.0",
         "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
-      },
-      "LibVLCSharp.Avalonia": {
-        "type": "CentralTransitive",
-        "requested": "[3.10.0, )",
-        "resolved": "3.10.0",
-        "contentHash": "juoBLjh37+07kWDblbHLaWTQx1HsXOIJHU7aeH5/95xjN6dXfZMVE8ltg8NyaNL6vr2B4QgR3EiRBsEa+fPvlQ==",
-        "dependencies": {
-          "Avalonia": "11.3.13",
-          "LibVLCSharp": "3.10.0"
-        }
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {
         "type": "CentralTransitive",

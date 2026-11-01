@@ -1,4 +1,3 @@
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Rendering.Scene;
@@ -6,7 +5,7 @@ using GalNet.Rendering.Scene;
 namespace GalNet.Avalonia.GameView.Presentation;
 
 public sealed class AvaloniaLayerPresenter(
-    GamePageViewModel state,
+    GamePresentationState state,
     IGamePageLayerFactory layers,
     IAvaloniaUiDispatcher dispatcher) : ILayerPresenter
 {

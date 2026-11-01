@@ -14,6 +14,16 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [TestCase("audio.play")]
+    [TestCase("audio.enqueue")]
+    public void AudioAnnouncementOptInSurvivesAuthoringCompilation(string type)
+    {
+        var catalog = new TargetProfileEntryCatalog([BuiltinSchemas.CreateAudioModule()]);
+        var entry = Compile(catalog, type, new { trackId = "bgm", asset = "theme", announceName = true });
+        var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AudioPlayOptions>(AudioPlayOptions.Schema, entry.Arguments);
+        Assert.That(options.AnnounceName, Is.True);
+    }
+
     [Test]
     public async Task CompiledRepeatAndCompletionReachRuntimeAndAutoBlockingWaitsForAllIterations()
     {

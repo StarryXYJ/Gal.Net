@@ -97,7 +97,7 @@ cmake --build out/native-ios --config Release
 
 ## 桌面 VLC 配置与会话所有权
 
-剧情视频、Gallery 播放/缩略图和 Editor 音频预览通过 `GalNet.Media.LibVlc.LibVlcFactory` 创建会话。组合根可以在 `AddAvaloniaGameViewPages` / `AddEditorServices` 前注册自己的 singleton factory；默认注册使用 TryAdd，不覆盖宿主选择。工厂只集中原生初始化和加载配置，每个调用方仍释放自己的 LibVLC/MediaPlayer，Gallery 与剧情播放器不互相接管。
+剧情视频、Gallery 播放/缩略图和 Editor 音频预览通过 `GalNet.Media.LibVlc.LibVlcFactory` 创建会话。组合根可以在 `AddAvaloniaGameView` / `AddEditorServices` 前注册自己的 singleton factory；默认注册使用 TryAdd，不覆盖宿主选择。工厂只集中原生初始化和加载配置，每个调用方仍释放自己的 LibVLC/MediaPlayer，Gallery 与剧情播放器不互相接管。
 
 ```csharp
 services.AddSingleton(new LibVlcFactory(new LibVlcOptions

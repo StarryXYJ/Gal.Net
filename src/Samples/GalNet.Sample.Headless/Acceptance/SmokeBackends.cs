@@ -50,8 +50,9 @@ internal static class SmokeBackends
         var codec = new AssetMetaCodec(catalog);
         var meta = (SmokeMeta)codec.Deserialize("""{"id":"custom","type":"project-data","path":"data.custom","label":"资源","future":true}""");
         Check(((SmokeMeta)codec.Deserialize(codec.Serialize(meta))).Label == "资源" && meta.ExtensionData!["future"].GetBoolean(), "custom metadata");
-        meta.SetGallery([new GalleryAnnotation { Id = 1, TypeId = "images", ExtensionData = new() { ["future"] = JsonCodec.SerializeToElement(true) } }]);
-        Check(meta.ReadGallery().Single().ExtensionData!["future"].GetBoolean(), "gallery annotation extension data");
+        meta.GalleryUnlockId = 1;
+        meta.DisplayNameKey = "asset.item.name";
+        Check(meta.GalleryUnlockId == 1, "common Gallery unlock identity");
         var bytes = Archive.Serialize("assets", [new GameFile(meta.Id, meta.Path, meta.TypeId, meta, [1, 2, 3])], catalog);
         var provider = new PakStreamProvider(new Dictionary<string, Func<Stream>> { ["assets"] = () => new MemoryStream(bytes) }, catalog);
         using var assets = new AssetManager([provider]);

@@ -35,12 +35,18 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
     {
         Active();
         if (row.References.FirstOrDefault() is { } reference)
-            projects.Current!.Services.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>().NavigateLocalization(reference.Owner, reference.EntryId);
+            NavigateReference(reference);
     }
     public void Navigate(LocalizationReference reference)
     {
         Active();
-        projects.Current!.Services.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>().NavigateLocalization(reference.Owner, reference.EntryId);
+        NavigateReference(reference);
+    }
+    private void NavigateReference(LocalizationReference reference)
+    {
+        var dock = projects.Current!.Services.GetRequiredService<GalNet.Editor.Dock.EditorDockFactory>();
+        if (reference.Owner == "resources") dock.NavigateResource(reference.EntryId, reference.ResourcePath);
+        else dock.NavigateLocalization(reference.Owner, reference.EntryId);
     }
     private string Source => content.CaptureWorking().Configuration.ReadDefaultOptions().TargetLocale.Code;
     public IReadOnlyList<string> Languages => new[] { Source }.Concat(content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Select(locale => locale.Code))
@@ -65,7 +71,7 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
     public LocalizationTableSnapshot Snapshot(string category)
     {
         Active(); var document = content.CaptureWorking(); var index = query.Get()!; var source = document.Configuration.ReadDefaultOptions().TargetLocale.Code;
-        var categories = new List<LocalizationCategory> { new("characters", text["I18n.Characters"]) };
+        var categories = new List<LocalizationCategory> { new("characters", text["I18n.Characters"]), new("resources", text["I18n.Resources"]) };
         categories.AddRange(document.Graph.Nodes.Where(node => node.Type == "Group").Select(node => new LocalizationCategory(node.Id, node.Name)));
         categories.Add(new("branches", text["I18n.Branches"]));
         LocalizationRowContext Context(LocalizationReference reference)
@@ -75,7 +81,11 @@ public sealed class GameLocalizationPanelService(IProjectContentSession content,
             var slot = reference.LocationKey.TrimStart('/');
             var details = reference.Owner + "/" + id + reference.LocationKey;
             var displayDetails = details;
-            if (category == "characters")
+            if (category == "resources")
+            {
+                title = reference.ResourcePath ?? id; slot = ""; displayDetails = title;
+            }
+            else if (category == "characters")
             {
                 var character = index.Characters.FirstOrDefault(item => item.Id == reference.EntryId);
                 title = character is null ? id : index.FindDirect(source, character.DisplayNameKey)?.Text ?? id;

@@ -16,7 +16,7 @@ public sealed class GalleryCatalogTests
             ],
             Items =
             [
-                new GalleryItem { Id = 20, TypeId = "CG", ResourceId = " image-id ", Title = " Opening " },
+                new GalleryItem { Id = 20, TypeId = "CG", ResourceId = " image-id ", DisplayNameKey = " Opening " },
                 new GalleryItem { Id = 10, TypeId = "cg", ResourceId = "opening-2" }
             ]
         });
@@ -27,7 +27,7 @@ public sealed class GalleryCatalogTests
             Assert.That(catalog.GetItems("cg").Select(item => item.Id), Is.EqualTo([10, 20]));
             Assert.That(catalog.GetItems("cg")[1].ResourceId, Is.EqualTo("image-id"));
             Assert.That(catalog.TryGetItem(20, out var item), Is.True);
-            Assert.That(item.Title, Is.EqualTo("Opening"));
+            Assert.That(item.DisplayNameKey, Is.EqualTo("Opening"));
         });
     }
 

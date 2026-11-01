@@ -6,8 +6,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$sampleProject = Join-Path $repositoryRoot 'src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj'
-$sampleOutput = Join-Path $repositoryRoot "src/Samples/GalNet.Sample.Avalonia/bin/$Configuration/net10.0"
+$sampleProject = Join-Path $repositoryRoot 'src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj'
+$sampleOutput = Join-Path $repositoryRoot "src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/bin/$Configuration/net10.0"
 $contractsOutput = Join-Path $repositoryRoot "src/Samples/GalNet.Sample.Contracts/bin/$Configuration/net10.0"
 $destination = Join-Path $repositoryRoot 'out/Contracts'
 
@@ -23,4 +23,4 @@ Get-ChildItem -LiteralPath $contractsOutput -Filter '*.dll' -File | Copy-Item -D
 Write-Host "Contracts exported to: $destination"
 Write-Host "Contracts SHA256: $((Get-FileHash -LiteralPath (Join-Path $destination $contractName) -Algorithm SHA256).Hash)"
 Write-Host 'Close the Editor project, copy these DLLs to its Contracts directory, then reopen it.'
-Write-Host "Matching App: $(Join-Path $sampleOutput 'GalNet.Sample.Avalonia.exe')"
+Write-Host "Matching App: $(Join-Path $sampleOutput 'GalNet.Sample.CrossPlatform.Desktop.exe')"

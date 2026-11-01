@@ -17,7 +17,7 @@
   "GalNet.Avalonia": {
     "projects": ["Presentation/GalNet.Avalonia.Controls", "Presentation/GalNet.Avalonia.Rendering", "Presentation/GalNet.Avalonia.GameView", "Presentation/GalNet.Avalonia.Themes", "Presentation/GalNet.Avalonia.GameHost"],
     "dependencies": ["GalNet.Desktop"],
-    "description": "GalNet Avalonia player views, rendering, themes and host composition."
+    "description": "GalNet Avalonia player controls, rendering, palettes and host composition."
   },
   "GalNet.Avalonia.Debugging": {
     "projects": ["Presentation/GalNet.Avalonia.Debugging"],

@@ -1210,5 +1210,20 @@
   "Entry.Parameter.speed": "速度",
   "Entry.Parameter.motion": "動作",
   "Entry.Parameter.center": "中心",
-  "Entry.Parameter.blurProgram": "ぼかしプログラム"
+  "Entry.Parameter.blurProgram": "ぼかしプログラム",
+  "I18n.Resources": "リソース名",
+  "Resource.Name": "リソース名（開発言語）",
+  "Resource.Translate": "翻訳を編集",
+  "Resource.GalleryId": "鑑賞の解放 ID",
+  "Resource.GalleryEmpty": "空欄の場合、鑑賞に追加しません",
+  "Resource.GalleryHelp": "ID は全体で一意で、表示順にも使用します。既存の ID を変更すると解放記録に影響します。アプリが対応する種類のみ鑑賞に表示します。",
+  "History.ResourceMetadata": "リソース情報を編集 {0}",
+  "Resource.Cover": "シーン鑑賞のカバー画像（任意）",
+  "Entry.Parameter.announceName": "リソース名を通知する",
+  "Resource.MetadataMissing": "有効なメタデータがありません。先にリソースをインポートしてください。",
+  "Resource.Changed": "リソース情報、名前、または開発言語が変更されました。再読み込みしてください。",
+  "Resource.InvalidGalleryId": "鑑賞の解放 ID は正の整数で指定してください。",
+  "Resource.InvalidCover": "カバーには利用可能な画像リソースを指定してください。",
+  "Resource.DuplicateGalleryId": "鑑賞の解放 ID {0} は既に使用されています。",
+  "Resource.MissingCover": "見つからないリソース：{0}"
 }

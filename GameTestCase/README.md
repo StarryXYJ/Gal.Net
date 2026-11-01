@@ -143,7 +143,7 @@ The Sample launch scripts build and deploy Sample.Contracts before compiling thi
 fixture, including on a fresh checkout:
 
 ```powershell
-./scripts/samples/run-avalonia-sample.ps1
+./scripts/samples/run-cross-platform-sample.ps1
 ./scripts/samples/run-headless-sample.ps1
 ```
 
@@ -153,7 +153,7 @@ CLI use, deploy the contracts as shown above before running:
 ```text
 dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
 dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
-dotnet run --project src/Samples/GalNet.Sample.Avalonia/GalNet.Sample.Avalonia.csproj -- artifacts/sample-build
+dotnet run --project src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj -- artifacts/sample-build
 ```
 
 Video smoke: advance the first dialogue to reach blocking playback. Each left click seeks to the next point after the current position; the oversized final point ends playback. The following non-blocking playback uses rotation, scale and opacity below the portrait, then stops on dialogue advance. Headless has no video presenter and completes these entries immediately.
@@ -182,3 +182,11 @@ intro 在 gain 效果启用后新增暂停 BGM 的对白检查点。运行到提
 自动回归 `ModularSaveRestoreTests` 直接编译该实际作者文件中的图层/音频条目，通过 FileSaveService 写入全新槽位，再由 Engine 和注册式恢复会话读回；后端使用可观察的测试 host。实际 LibVLC 声音效果仍需按上面的原生媒体方式人工检查。
 
 Audio uses project section v2 (`audioBuses` / `busId`). The intro combines real track low/high-pass filters with bus `seffect.reverb`; effect entries use `scope` / `targetId`. The default Windows x64 host uses miniaudio; videos remain on LibVLC.
+
+## Gallery and resource-name coverage
+
+The sample contains exactly two items in each built-in Gallery: images 100/101, music 200/201, videos 300/301, and scenes 400/401. The intro unlocks these eight items. Resource names are authored in Chinese and English in `I18n/<culture>/resources.json`; the long image title exercises ellipsis and tooltips.
+
+Scene Groups `gallery-classroom` and `gallery-evening` have their own backgrounds and two dialogue lines. They are intentionally independent of the main flow and include a local unlock operation to exercise replay isolation. Their optional covers reference existing image resources. `Assets/Gallery/niko-preview.mp4` is a three-second remux of the existing sample video, used to verify switching video items without duplicating the full file.
+
+This revision uses common `displayNameKey` / `galleryUnlockId` metadata and the audio `announceName` switch. Refresh the Sample contract DLLs and rebuild the project; the previous Gallery annotation and Entry display-name formats are not maintained.

@@ -44,7 +44,7 @@ public sealed class LibVlcFactoryTests
     {
         var factory = new LibVlcFactory(new() { UseSystemLibraries = true });
         var services = new ServiceCollection().AddSingleton(factory);
-        services.AddAvaloniaGameViewPages(new ClassicTheme());
+        services.AddAvaloniaGameView(_ => { });
         using var provider = services.BuildServiceProvider();
         Assert.That(provider.GetRequiredService<LibVlcFactory>(), Is.SameAs(factory));
         Assert.That(factory.NativeVersion, Is.Null, "Registering pages must not initialize native media.");

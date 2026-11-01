@@ -4,7 +4,6 @@ using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Input;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -22,7 +21,7 @@ public sealed class SampleInputSettingsTests
             {
                 using var localization = new AvaloniaPlayerLocalization(new CultureService());
                 using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
-                using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!)))
+                using (var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState()))
                 {
                     await settings.AttachAsync(variables, new GameSettings());
                     Assert.That(settings.Categories.Select(category => category.Id), Is.EqualTo(new[] { "game", "operation", "graphics", "audio" }));
@@ -32,7 +31,7 @@ public sealed class SampleInputSettingsTests
                 }
                 var before = await File.ReadAllTextAsync(Path.Combine(directory, "player-variables.json"));
                 using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
-                using (var restored = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!)))
+                using (var restored = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState()))
                 {
                     await restored.AttachAsync(variables, new GameSettings());
                     Assert.That(restored.Input.Resolve(PlayerInputDevice.KeyboardMouse, "Control+MouseX1"), Is.EqualTo("toggle.auto"));

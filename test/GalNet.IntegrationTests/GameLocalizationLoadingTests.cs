@@ -12,7 +12,6 @@ using GalNet.Core.Graph;
 using GalNet.Core.Serialization;
 using GalNet.Editor.Shared.Services;
 using GalNet.GameHost.Content;
-using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;

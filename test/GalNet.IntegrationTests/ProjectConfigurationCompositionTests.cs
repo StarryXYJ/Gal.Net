@@ -38,10 +38,10 @@ public sealed class ProjectConfigurationCompositionTests
         configuration = JsonSerializer.Deserialize<ProjectConfiguration>(JsonSerializer.Serialize(configuration))!;
         var options = configuration.Read(section);
 
-        var state = new GamePageViewModel(null!) { TextSpeed = options.TextSpeed };
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState() { TextSpeed = options.TextSpeed };
         var page = new GamePage();
         var root = new Border { Child = page, Classes = { "galnet-player" } };
-        root.Styles.Add(new ClassicTheme().CreateStyles());
+        root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
         var window = new Window { Content = root, Width = 640, Height = 360 };
         window.Show();
         window.UpdateLayout();

@@ -17,7 +17,8 @@
         "fadeIn": 2,
         "gain": 1,
         "placement": "replace",
-        "trackId": "bgm"
+        "trackId": "bgm",
+        "announceName": true
       }
     },
     {
@@ -45,6 +46,62 @@
       "condition": "",
       "parameters": {
         "id": 100
+      }
+    },
+    {
+      "id": "unlock-gallery-101",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 101
+      }
+    },
+    {
+      "id": "unlock-gallery-200",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 200
+      }
+    },
+    {
+      "id": "unlock-gallery-201",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 201
+      }
+    },
+    {
+      "id": "unlock-gallery-300",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 300
+      }
+    },
+    {
+      "id": "unlock-gallery-301",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 301
+      }
+    },
+    {
+      "id": "unlock-gallery-400",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 400
+      }
+    },
+    {
+      "id": "unlock-gallery-401",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 401
       }
     },
     {

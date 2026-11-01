@@ -5,7 +5,6 @@ using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia.Services;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -25,7 +24,7 @@ public sealed class SampleDisplaySettingsTests
             using var localization = new AvaloniaPlayerLocalization(new CultureService());
             using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
             var display = new Display();
-            using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!), display))
+            using (var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState(), display))
             {
                 await settings.AttachAsync(variables, new GameSettings());
                 var category = settings.Categories.Single(category => category.Id == "graphics");
@@ -41,7 +40,7 @@ public sealed class SampleDisplaySettingsTests
                 await settings.FlushAsync();
             }
             var restoredDisplay = new Display();
-            using var restored = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!), restoredDisplay);
+            using var restored = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState(), restoredDisplay);
             await restored.AttachAsync(variables, new GameSettings());
             var before = File.ReadAllText(Path.Combine(directory, "player-variables.json"));
             await restored.RestoreDisplayAsync();
@@ -60,7 +59,7 @@ public sealed class SampleDisplaySettingsTests
     {
         using var localization = new AvaloniaPlayerLocalization(new CultureService());
         var display = new Display { FailMode = true };
-        using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!), display);
+        using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState(), display);
         var mode = settings.Categories.SelectMany(category => category.Items).OfType<ChoiceSetting<PlayerDisplayMode>>().Single();
         Assert.That(await mode.TrySetValueAsync(PlayerDisplayMode.BorderlessFullscreen), Is.False);
         Assert.That(mode.Value, Is.EqualTo(PlayerDisplayMode.Window));

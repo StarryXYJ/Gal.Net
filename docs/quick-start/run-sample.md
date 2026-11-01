@@ -5,7 +5,7 @@
 ## 从源码运行桌面示例
 
 ```powershell
-pwsh -NoProfile -File scripts/samples/run-avalonia-sample.ps1
+pwsh -NoProfile -File scripts/samples/run-cross-platform-sample.ps1
 ```
 
 脚本构建并部署示例契约到 `GameTestCase/Contracts/`，通过 Headless CLI 编译内容到 `GameTestCase/Output/`，然后以 Debug 配置启动桌面 Sample。玩家数据写入 `GameTestCase/.galnet/`。进入窗口后完成首次语言选择，在标题页开始游戏。
@@ -34,3 +34,6 @@ Headless 用于终端交互和后端验证，不展示完整 Avalonia 画面，�
 - 窗口报告内容缺失：确认使用整合包，或已在正确的应用根部署 `pak/`。
 
 接下来可以[创建自己的项目](first-project.md)，或阅读 [Sample 使用手册](../manual/sample/README.md)。
+
+
+页面定制入口是主项目的 `Views/`、`ViewModels/` 和 `Styles/`：直接修改按钮 XAML 与对应项目命令；新增页面在 `SampleCustomization` 写一条 VM→View 映射并添加导航调用即可。全局配色修改 PlayerPalette，局部控件可以直接覆盖样式或 ControlTheme。复杂播放与资源清理留在内置层。详见 [定制 Sample](../manual/extensions/customize-sample.md)。

@@ -321,13 +321,13 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var files = project.Services.GetRequiredService<ProjectFileAuthoringService>(); var external = Path.Combine(_root, "import.txt"); File.WriteAllText(external, "import");
             await files.ExecuteAsync(new(ProjectFileAction.Import, [external], "", UniqueNames: true)); Assert.That(File.ReadAllText(Path.Combine(project.RootPath, "import.txt")), Is.EqualTo("import"));
             await files.ExecuteAsync(new(ProjectFileAction.CreateFile, [], "Assets/image.png", Content: [1, 2]));
-            File.WriteAllText(Path.Combine(project.RootPath, "Assets/image.png.meta"), """{"id":"original","type":"sprite","path":"image.png","gallery":[{"id":17,"typeId":"cg","title":"Picture"}],"custom":"retained"}""");
+            File.WriteAllText(Path.Combine(project.RootPath, "Assets/image.png.meta"), """{"id":"original","type":"sprite","path":"image.png","galleryUnlockId":17,"displayNameKey":"asset.picture.name","custom":"retained"}""");
             await files.ExecuteAsync(new(ProjectFileAction.Copy, ["Assets/image.png"], "Assets", UniqueNames: true));
             var codec = new GalNet.Core.Assets.AssetMetaCodec(GalNet.Contracts.Builtins.Assets.BuiltinResourceTypes.CreateCatalog());
             var original = codec.Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/image.png.meta")));
             var copy = codec.Deserialize(File.ReadAllText(Path.Combine(project.RootPath, "Assets/image 1.png.meta")));
             Assert.That(copy.Id, Is.Not.EqualTo(original.Id)); Assert.That(copy.Path, Is.EqualTo("image 1.png"));
-            Assert.That(copy.ReadGallery().Single().Id, Is.Not.EqualTo(original.ReadGallery().Single().Id)); Assert.That(copy.ReadGallery().Single().Title, Is.EqualTo("Picture")); Assert.That(copy.ExtensionData!["custom"].GetString(), Is.EqualTo("retained"));
+            Assert.That(copy.GalleryUnlockId, Is.Not.EqualTo(original.GalleryUnlockId)); Assert.That(copy.DisplayNameKey, Is.EqualTo("asset.picture.name")); Assert.That(copy.ExtensionData!["custom"].GetString(), Is.EqualTo("retained"));
             await project.Services.GetRequiredService<EditorHistories>().Content.UndoAsync(); Assert.That(File.Exists(Path.Combine(project.RootPath, "Assets/image 1.png")), Is.False);
         }
         finally { await projects.CloseAsync(); }

@@ -156,7 +156,7 @@ public sealed class GameNavigationTests
     [Test]
     public void First_advance_after_hiding_ui_only_restores_the_player_ui()
     {
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         var advances = 0;
         page.AdvanceRequested += () => advances++;
         page.IsUiHidden = true;
@@ -175,7 +175,7 @@ public sealed class GameNavigationTests
     [Test]
     public void Dialogue_overlay_remains_available_with_a_missing_layer_fallback()
     {
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         using var fallback = new SceneTexture(new DrawingImage());
         page.SetLayer("missing-layer-demo", new SceneLayerItem
         {
@@ -199,7 +199,7 @@ public sealed class GameNavigationTests
     [Test]
     public async Task Advance_completes_the_current_player_wait()
     {
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         page.AdvanceRequested += page.CompleteAdvance;
         var wait = page.WaitForAdvanceAsync(TestContext.CurrentContext.CancellationToken);
 
@@ -211,7 +211,7 @@ public sealed class GameNavigationTests
     [Test]
     public async Task Selecting_a_choice_completes_the_choice_wait()
     {
-        var page = new GamePageViewModel(new NoOpGameNavigationService());
+        var page = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
         var choice = page.WaitForChoiceAsync(["Downtown", "Harbor"], TestContext.CurrentContext.CancellationToken);
 
         page.CompleteChoiceCommand.Execute(1);

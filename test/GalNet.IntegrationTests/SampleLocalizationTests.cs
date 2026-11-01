@@ -8,8 +8,7 @@ using GalNet.Avalonia.GameView.MarkupExtensions;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Runtime.Variables;
-using GalNet.Sample.Avalonia;
-using GalNet.Sample.Avalonia.Services;
+using GalNet.Sample.CrossPlatform;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
@@ -103,7 +102,7 @@ public sealed class SampleLocalizationTests
             var badBool = new GalNet.Core.Variable.Variable { Name = "player.galnet.settings.quickReadOnly" };
             badBool.SetValue("false");
             variables.NotifyVariableChanged(GalNet.Core.Variable.VariableScope.Player, badBool.Name, badBool);
-            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
             var runtime = new GameSettings { QuickReadOnly = false, QuickAdvanceIntervalMilliseconds = 3000 };
             await settings.AttachAsync(variables, runtime, GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
             Assert.That(runtime.QuickReadOnly, Is.True);
@@ -143,7 +142,7 @@ public sealed class SampleLocalizationTests
             {
                 using var localization = CreateLocalization();
                 using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
-                using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+                using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
                 var configuration = new GalNet.Contracts.Builtins.Audio.AudioConfiguration(
                     [new() { Id = "rain/near", BusId = "ambience" }, new() { Id = "wind", BusId = "ambience" }],
                     [new() { Id = "ambience", Name = "Environment" }]);
@@ -176,7 +175,7 @@ public sealed class SampleLocalizationTests
         {
             using var localization = CreateLocalization();
             using (var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory)))
-            using (var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!)))
+            using (var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState()))
             {
                 var other = new GalNet.Core.Variable.Variable { Name = "player.other" };
                 other.SetValue("preserved");
@@ -198,7 +197,7 @@ public sealed class SampleLocalizationTests
             }
             using var restoredLocalization = CreateLocalization();
             using var restoredVariables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(directory));
-            using var restoredSettings = new AvaloniaPlayerSettingsService(restoredLocalization, new GamePageViewModel(null!));
+            using var restoredSettings = new AvaloniaPlayerSettingsService(restoredLocalization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
             var restoredRuntime = new GameSettings();
             await restoredSettings.AttachAsync(restoredVariables, restoredRuntime, GalNet.Contracts.Builtins.BuiltinAudioDefaults.Create());
             Assert.Multiple(() =>
@@ -238,7 +237,7 @@ public sealed class SampleLocalizationTests
         try
         {
             using var localization = CreateLocalization();
-            using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+            using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
             localization.AttachGame(new GalNet.GameHost.Content.GameContent
             {
                 Graph = new(),
@@ -261,7 +260,7 @@ public sealed class SampleLocalizationTests
         using var title = new LocalizedString(localization.CultureService, "App.Title");
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
-        Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
+        Assert.That(title.Value, Is.EqualTo("GalNet CrossPlatform Sample Player"));
         localization.CultureService.SetCulture("zh-CN");
 #if GALNET_GAME_DEBUG
         Assert.That(localization["Debug.Menu"], Is.EqualTo("调试"));
@@ -289,7 +288,7 @@ public sealed class SampleLocalizationTests
             }
         };
         localization.AttachGame(content);
-        using var settings = new AvaloniaPlayerSettingsService(localization, new GamePageViewModel(null!));
+        using var settings = new AvaloniaPlayerSettingsService(localization, new GalNet.Avalonia.GameView.Presentation.GamePresentationState());
         Assert.That(title.Value, Is.EqualTo("Translated UI"));
         Assert.That(localization.Resolve("line"), Is.EqualTo("external"));
         Assert.That(localization.Resolve("unique"), Is.EqualTo("kept"));
@@ -301,7 +300,7 @@ public sealed class SampleLocalizationTests
         localization.AttachGame(content, [new("en-US", "custom", """{"line":"custom"}""")]);
         Assert.That(localization.Resolve("line"), Is.EqualTo("custom"));
         localization.AttachGame(new GalNet.GameHost.Content.GameContent { Graph = new() });
-        Assert.That(title.Value, Is.EqualTo("GalNet Avalonia Sample Player"));
+        Assert.That(title.Value, Is.EqualTo("GalNet CrossPlatform Sample Player"));
     }
 
     [Test]
@@ -319,10 +318,10 @@ public sealed class SampleLocalizationTests
         cultureService.RegisterProvider(provider);
 
         cultureService.SetCulture("en-US");
-        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet Avalonia Sample Player"));
+        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet CrossPlatform Sample Player"));
 
         cultureService.SetCulture("zh-CN");
-        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet Avalonia 示例播放器"));
+        Assert.That(cultureService["App.Title"], Is.EqualTo("GalNet 跨平台示例播放器"));
 
         provider.LoadJsonString("{\"App.Title\":\"External title\"}", "en-US");
         cultureService.SetCulture("en-US");

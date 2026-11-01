@@ -152,7 +152,7 @@ custom.invoke
 
 `audio.play` 与 `audio.enqueue` 支持 `loopCount`（非负整数，默认 1，0 为无限）及 `completion`（`discard` 或 `requeueTail`，默认 `discard`）。`loopCount` 控制一个播放项的连续播放次数，`completion` 控制次数耗尽后是否回到队尾；失败或显式移除不会重新入队。Editor 使用数字输入和选项下拉编辑，使用方式见[音频重复与轮播](../../manual/editor/audio.md)。
 
-`gallery.unlock` 的参数是正整数 `id`，其值必须是当前 `GalleryCatalog` 中存在的稳定 Gallery item ID。执行时写入 `player.gallery_<id>_unlocked = true`；Gallery item 从资源 `.meta.gallery[]` 聚合，发行运行读取其生成快照。旧的 category/sequence 参数不受支持。
+`gallery.unlock` 的参数是正整数 `id`，其值必须是当前 `GalleryCatalog` 中存在的稳定 Gallery item ID。执行时写入 `player.gallery_<id>_unlocked = true`；Gallery item 从资源 `.meta.galleryUnlockId` 聚合，发行运行读取其生成快照。旧的 category/sequence 参数不受支持。
 
 ## 图片差分指令
 
@@ -198,7 +198,7 @@ select 保留同一个 Layer 对象、变换、显示模式、层级、透明度
 
 ## DTO 字段声明
 
-GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldDto 成员访问，不生成平台控件。DefaultPrimitiveEntryBase.ForDto<T> 使用 T.Schema 建表，并记录 FieldDataType，不提供 Editor DTO 工厂。运行时仍调度通用 PrimitiveEntry；执行模块可使用 PrimitiveRegistry.Register<T>，注册时检查 DTO 类型，执行时用规范化参数和逐字段 ValueCodec 填充独立 DTO。契约运行时不依赖 Roslyn，生成器仅为构建工具。默认值通过完整 ValueCodec 投影；旧字符串文档不能无损表示的默认值不填入 Defaults，仍保留在字段描述中，避免 JSON null 字符串和字符串编码枚举被改写。具体接入方式见[定制 Avalonia Sample 手册](../../manual/extensions/customize-sample.md)。
+GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldDto 成员访问，不生成平台控件。DefaultPrimitiveEntryBase.ForDto<T> 使用 T.Schema 建表，并记录 FieldDataType，不提供 Editor DTO 工厂。运行时仍调度通用 PrimitiveEntry；执行模块可使用 PrimitiveRegistry.Register<T>，注册时检查 DTO 类型，执行时用规范化参数和逐字段 ValueCodec 填充独立 DTO。契约运行时不依赖 Roslyn，生成器仅为构建工具。默认值通过完整 ValueCodec 投影；旧字符串文档不能无损表示的默认值不填入 Defaults，仍保留在字段描述中，避免 JSON null 字符串和字符串编码枚举被改写。具体接入方式见[定制跨平台 Sample 手册](../../manual/extensions/customize-sample.md)。
 
 Timeline 使用 TimelineOptions.Timeline 对应的 timeline 根参数（JsonElement），内容为 TimelineDefinition；播放接口为 PlayTimelineAsync。旧 animation.play ID 和 plan 根参数没有别名。动画轨道、键与事件分别使用 TimelineTrackDefinition、TimelineKeyframeDefinition、TimelineEventDefinition，纯采样入口为 TimelineSampler。
 

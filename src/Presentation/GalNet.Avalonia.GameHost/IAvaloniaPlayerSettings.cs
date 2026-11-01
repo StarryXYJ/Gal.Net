@@ -16,6 +16,8 @@ public interface IAvaloniaPlayerSettings : IPlayerSettingsService
         CancellationToken cancellationToken = default);
     Task FlushAsync();
     void BindWindow(global::Avalonia.Controls.Window? window) { }
+    /// <summary>Defers optional native gamepad initialization while an application opening is running.</summary>
+    void SetGamepadEnabled(bool enabled) { }
     Task RestoreDisplayAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 }
 

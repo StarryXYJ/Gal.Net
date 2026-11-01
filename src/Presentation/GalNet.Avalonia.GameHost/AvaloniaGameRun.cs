@@ -1,6 +1,6 @@
+using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Runtime;
 using GalNet.Core.Services;
 using GalNet.GameHost;
@@ -15,7 +15,7 @@ namespace GalNet.Avalonia.GameHost;
 /// <summary>Default page binding and run ownership; the engine owns execution and terminal states.</summary>
 internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
 {
-    private readonly GamePageViewModel _gameplay;
+    private readonly GamePresentationState _gameplay;
     private readonly GameRun _run;
     private GameEngine _engine => _run.Engine;
     private readonly AvaloniaGamePresentation _presentation;
@@ -28,12 +28,15 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
     private Task _stateUpdate = Task.CompletedTask;
     private Task _settingsUpdate = Task.CompletedTask;
     private bool _disposed;
+    private bool _acceptAudioAnnouncements = true;
+    private IReadOnlyDictionary<string, string> _audioNames = new Dictionary<string, string>();
+    private ITextResolver _text = PassthroughTextResolver.Instance;
     private IDisposable? _runBinding;
     private readonly Func<GameEngine, IDisposable>? _attachRun;
     private DialogueHistoryDispatcher _history = null!;
 
     private AvaloniaGameRun(
-        GamePageViewModel gameplay, GameRun run, AvaloniaGamePresentation presentation, IAvaloniaPlayerSettings playerSettings,
+        GamePresentationState gameplay, GameRun run, AvaloniaGamePresentation presentation, IAvaloniaPlayerSettings playerSettings,
         Func<bool, string?, Task> updateStateAsync, Func<Task> runCompletedAsync,
         Func<Task> resetPresentationAsync, Func<Action, Task> onUiAsync, Func<Task> flushPlayerVariables, Func<GameEngine, IDisposable>? attachRun)
     {
@@ -58,34 +61,45 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _presentation.VoiceReplay.Changed += OnVoiceReplayChanged;
         _presentation.VoiceReplay.Failed += OnVoiceReplayFailed;
         _presentation.History.Changed += OnHistoryChanged;
+        _presentation.AudioModule.PlaybackStarted += OnAudioPlaybackStarted;
     }
 
     public static async Task<AvaloniaGameRun> CreateAsync(
-        GamePageViewModel gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
+        GamePresentationState gameplay, GamePage page, GameResourceScope resources, AvaloniaGameResources visuals,
         PlayerSession saveSession, IAvaloniaPlayerSettings playerSettings, ITextResolver textResolver, AvaloniaGameHostOptions options,
         GalNet.Contracts.Builtins.Audio.AudioConfiguration audioConfiguration, LibVlcRuntime mediaRuntime, Func<bool, string?, Task> updateStateAsync,
         Func<Task> runCompletedAsync, Func<Task> resetPresentationAsync,
-        Func<Action, Task> onUiAsync, CancellationToken cancellationToken)
+        Func<Action, Task> onUiAsync, CancellationToken cancellationToken,
+        GalNet.Core.Graph.Graph? replayGraph = null, GalNet.Runtime.Variables.PlayerVariableService? replayVariables = null,
+        GalNet.Runtime.Progress.IGameProgressService? replayProgress = null)
     {
+        var graph = replayGraph ?? resources.Content.Graph;
+        var variables = replayVariables ?? saveSession.Variables;
+        var progress = replayGraph is null ? saveSession.Progress : replayProgress;
         var presentation = await AvaloniaGamePresentation.CreateAsync(gameplay, page, resources.Assets,
             visuals.PreloadedTextures, visuals.EffectPrograms, resources.MediaFiles,
             (registration, presentation) => options.ConfigureExecution(registration, presentation, page, resources.Content),
-            resources.Content.Graph.Nodes.OfType<GalNet.Core.Graph.Group>()
+            graph.Nodes.OfType<GalNet.Core.Graph.Group>()
                 .SelectMany(group => group.Entries).Select(entry => entry.Type), options.Presentation, mediaRuntime.Instance,
             audioConfiguration: audioConfiguration, cancellationToken: cancellationToken, mediaFactory: mediaRuntime.Factory);
         GameRun? run = null;
         AvaloniaGameRun? adapter = null;
         try
         {
-            var runtime = new GameRuntime(textResolver, resources.Content.Graph.RootNodeId, saveSession.Variables,
-                saveDefaults: resources.Content.Graph.SaveVariables, playerDefaults: resources.Content.Graph.PlayerVariables);
-            var history = new DialogueHistoryDispatcher(presentation.View, presentation.History, saveSession.Progress, resources.Content.Localization.Characters);
-            run = new GameRun(resources.Content.Graph, runtime, history,
-                saveSession.Progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer,
+            var runtime = new GameRuntime(textResolver, graph.RootNodeId, variables,
+                saveDefaults: graph.SaveVariables, playerDefaults: graph.PlayerVariables);
+            var history = new DialogueHistoryDispatcher(presentation.View, presentation.History, progress, resources.Content.Localization.Characters);
+            run = new GameRun(graph, runtime, history,
+                progress, presentation.Presenters.ChoicePresenter, presentation, presentation.Restorer,
                 playbackOptions: playerSettings.PlaybackOptions);
             adapter = new AvaloniaGameRun(gameplay, run, presentation, playerSettings,
-                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => saveSession.Variables.FlushPlayerVariablesAsync(), options.AttachRun);
+                updateStateAsync, runCompletedAsync, resetPresentationAsync, onUiAsync, () => variables.FlushPlayerVariablesAsync(), options.AttachRun);
             adapter._history = history;
+            adapter._text = textResolver;
+            adapter._audioNames = (await resources.Assets.GetFilesAsync("audio", cancellationToken))
+                .Where(file => !string.IsNullOrWhiteSpace(file.Metadata.DisplayNameKey))
+                .ToDictionary(file => file.Id, file => file.Metadata.DisplayNameKey!, StringComparer.OrdinalIgnoreCase);
+            if (replayGraph is not null) adapter._acceptAudioAnnouncements = false;
             history.SuppressRecording = () => run.Engine.IsDebugReplaying;
             history.TextStarting += adapter.OnTextStarting;
             history.StoryContinuing += adapter.OnStoryContinuing;
@@ -142,8 +156,10 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
 
     public async Task StopAsync()
     {
+        _acceptAudioAnnouncements = false;
         OnStopVoiceReplay();
         var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(() => new(_onUiAsync(() => _gameplay.AnnounceAudio(""))));
         await cleanup.RunAsync(() => new(_settingsUpdate));
         await cleanup.RunAsync(() => new(_run.StopAsync()));
         var binding = _runBinding;
@@ -166,11 +182,13 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _presentation.VoiceReplay.Changed -= OnVoiceReplayChanged;
         _presentation.VoiceReplay.Failed -= OnVoiceReplayFailed;
         _presentation.History.Changed -= OnHistoryChanged;
+        _presentation.AudioModule.PlaybackStarted -= OnAudioPlaybackStarted;
         _gameplay.GetHistoryLines = null;
         _gameplay.PlayVoiceAsync = null;
         await _onUiAsync(_gameplay.ResetDialogueHistory);
         _playerSettings.SettingsChanged -= OnPlayerSettingsChanged;
         var cleanup = new ResourceCleanup();
+        await cleanup.RunAsync(() => new(_onUiAsync(() => _gameplay.AnnounceAudio(""))));
         cleanup.Run(() => _gameplay.BindPlayback(null));
         _gameplay.AdvanceRequested -= OnAdvanceRequested;
         _engine.StateChanged -= OnEngineStateChanged;
@@ -213,6 +231,11 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         _ = _onUiAsync(() => { if (!_disposed) _gameplay.CloseHistoryCommand.Execute(null); });
     }
     private void OnVoiceReplayChanged() => _ = _onUiAsync(() => { if (!_disposed) _gameplay.IsVoiceReplaying = _presentation.VoiceReplay.IsPlaying; });
+    private void OnAudioPlaybackStarted(string name) => _ = _onUiAsync(() =>
+    {
+        if (!_disposed && _acceptAudioAnnouncements && _audioNames.TryGetValue(name, out var key)) _gameplay.AnnounceAudio(_text.Resolve(key));
+    });
+
     private void OnVoiceReplayFailed(Exception error) => _ = _onUiAsync(() => { if (!_disposed) _gameplay.StatusMessage = error.Message; });
     private void OnHistoryChanged() => _ = _onUiAsync(() =>
     {

@@ -5,7 +5,6 @@ using GalNet.Avalonia.GameView.Input;
 using GalNet.Avalonia.GameView.Presentation;
 using GalNet.Avalonia.GameView.Services;
 using GalNet.Avalonia.GameView.Settings;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Core.Variable;
 using GalNet.Game.Controls.Forms;
 using GalNet.GameHost;
@@ -20,7 +19,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     public const string LocaleVariable = PlayerPreferences.LocaleVariable;
     public const string TextSpeedVariable = PlayerPreferences.TextSpeedVariable;
     private readonly IPlayerLocalization _localization;
-    private readonly GamePageViewModel _gameplay;
+    private readonly GamePresentationState _gameplay;
     private readonly ChoiceSetting<string> _language;
     private readonly SettingsCoordinator _coordinator;
     private readonly DispatcherTimer _audioPreviewTimer;
@@ -47,8 +46,10 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     public PlayerInputSettings Input { get; } = new();
     private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
     private readonly AvaloniaGamepadInput _gamepadInput;
+    private global::Avalonia.Controls.Window? _boundWindow;
+    private bool _gamepadEnabled = true;
 
-    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePageViewModel gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
+    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePresentationState gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
     {
         Editors = editors ?? EditorRegistry.CreateDefault();
         _localization = localization;
@@ -154,8 +155,17 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
 
     public void BindWindow(global::Avalonia.Controls.Window? window)
     {
-        _gamepadInput.Bind(window);
+        _boundWindow = window;
+        _gamepadInput.Bind(_gamepadEnabled ? window : null);
         if (_display is AvaloniaWindowDisplayService desktop) desktop.Bind(window);
+    }
+
+    public void SetGamepadEnabled(bool enabled)
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        if (_gamepadEnabled == enabled) return;
+        _gamepadEnabled = enabled;
+        _gamepadInput.Bind(enabled ? _boundWindow : null);
     }
 
     public async Task RestoreDisplayAsync(CancellationToken cancellationToken = default)
@@ -170,7 +180,8 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
             size = _windowSize.Choices.FirstOrDefault(choice => choice.Id == sizeValue.AsString())?.Value ?? size;
         // Restore remembered window dimensions before entering fullscreen; no preference writes.
         await _display.ApplyModeAsync(PlayerDisplayMode.Window, cancellationToken);
-        await _display.ApplyWindowSizeAsync(size, cancellationToken);
+        if (_display is not AvaloniaWindowDisplayService desktop || !desktop.RestoreWindowPlacement(size))
+            await _display.ApplyWindowSizeAsync(size, cancellationToken);
         await _display.ApplyModeAsync(mode, cancellationToken);
         OnDisplayChanged();
     }
@@ -314,6 +325,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     public void Dispose()
     {
         _gamepadInput.Dispose();
+        _boundWindow = null;
         Input.Dispose();
         _audioPreviewTimer.Stop();
         _audioPreviewTimer.Tick -= OnAudioPreviewTimerTick;

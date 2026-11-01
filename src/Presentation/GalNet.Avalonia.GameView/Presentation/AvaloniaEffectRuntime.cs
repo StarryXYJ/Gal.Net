@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
 using Avalonia.Threading;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Assets;
 using GalNet.Presentation.Abstractions.View;
@@ -20,11 +19,11 @@ public sealed class AvaloniaEffectRuntime : IDisposable, IEffectPresenter
     private readonly SkiaShaderEffectProgramResolver? _programs;
     private readonly Dictionary<string, SceneEffectInstance> _textureInstances = new(StringComparer.Ordinal);
     private readonly HashSet<string> _reportedProgramFailures = new(StringComparer.Ordinal);
-    private readonly GamePageViewModel _page;
+    private readonly GamePresentationState _page;
     private long _nextTextureEffectInsertionOrder;
     public IEffectCatalog Catalog { get; }
 
-    public AvaloniaEffectRuntime(GamePageViewModel page, SkiaShaderEffectProgramResolver? programs = null, IAssetManager? assets = null)
+    public AvaloniaEffectRuntime(GamePresentationState page, SkiaShaderEffectProgramResolver? programs = null, IAssetManager? assets = null)
     {
         _page = page;
         _textureFactories = DiscoverTextureFactories().ToDictionary(factory => factory.Definition.Id, StringComparer.OrdinalIgnoreCase);

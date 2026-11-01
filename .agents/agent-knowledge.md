@@ -1,4 +1,12 @@
 # GalNet Agent Knowledge
+- [开场 UI 同步重活](lessons/L-20261101-06-startup-ui-synchronous-work.md)：已迁移配置/LibVLC 与会话准备到后台串行流程，UI 分阶段创建并发布；取消等待 native 工厂收束再释放 scope。SDL 保留 UI 线程契约并延后到开场结束，57 项回归及三次原生启动通过。
+- [启动 UI 语言快照](lessons/L-20261101-05-startup-ui-culture-snapshot.md)：CultureService.SetCulture 会改写线程 UI 语言；初始化前捕获系统值，早读保存偏好，声明绑定观察值，首次选择沿用初始化后的文化。
+- [已加载构建任务与部分 NuGet 缓存](lessons/L-20261101-03-loaded-build-task-partial-cache.md)：先定位文件锁；VS 中已加载的 BuildServices 不随 build-server shutdown 卸载。可信同版本包分别核验原始归档/内容 hash 与现存 DLL 后，只补缺失文件，不能伪造完整标记。
+- [Ursa 标题栏首帧留白](lessons/L-20261101-04-ursa-caption-before-first-measure.md)：当前 Ursa 在 Loaded 才预留 caption 宽度；Sample 在首次 Measure 前测量 Overlay 的可见系统按钮，不能依赖延时或 Headless 类型断言。
+- 2026-11-01 Sample 接线与独立复制已完成：GameLaunchFlow 统一启动协议，项目选择视觉时长；正常/重播沿用页面映射并隔离状态。export-template.py 原样复制唯一应用和构建附件，GalNetUsePackages/GalNetPackageVersion 选择包依赖；无引擎 C# 工程。已移除无用 VideoView UI 包。Windows 原生/双 flavor 发布通过，CI 三个既有 Editor 失败及 Browser workload hash、延期平台保留，见 [总结](../features/F-20261101-01-sample-template-polish/summary.md)。
+- [Sample 首次显示窗口尺寸](lessons/L-20261101-02-sample-window-placement-before-first-show.md)：桌面入口在启动 lifetime 前已知 profile，应在赋值 MainWindow 前加载窗口记录并设置保存尺寸，Opened 仍负责屏幕适配；移动端不接入。
+- 2026-11-01 单项目模板：Sample 独占全部应用页面/VM/全局布局；内置 GamePresentationState、存档行及 Gallery 状态拥有复杂机制。整套主题/旧页面删除，Themes 只留配色字体，新增页用普通 VM→View 映射。P1–P5/P6a 已验证，Android 本轮真机按用户决定延期、保留未验证，不能沿用旧 UI 验收；参见 [总结](../features/F-20261031-02-sample-ui-template/summary.md)。
+- [Gallery 异步资源归属](lessons/L-20261101-01-gallery-generation-resource-owner.md)：缩略图跨 await 捕获本次取消源和行快照；重播启动取消自行释放前清空 pending slot，禁止旧结果回写及重复释放。
 - [macOS CI 路径语义](lessons/L-20261030-21-macos-ci-path-semantics.md)：测试 TMPDIR 使用真实路径，保持 no-links；GetRelativePath 的大小写规则包含 macOS。
 - [apt 镜像下载计划](lessons/L-20261030-22-apt-mirror-download-plan.md)：解析 mirror+file 并保留签名索引 hash/size 验证；图形 loader 是宿主前置条件，不能打包 GPU 驱动。
 - [发行内容的契约来源](lessons/L-20261030-20-sample-release-contract-source.md)：Editor 默认项目契约与 Sample 同名契约不同；内容从目标发布载荷导出并严格核对全部契约。CLI 暂存目录名影响 projectId，须保留真实项目名。
@@ -432,3 +440,9 @@
 - 2026-10-29 默认播放器对白历史/重播/已读颜色：历史正文只在实际保存时进入 GameSnapshot.Attachments，host.dialogue.history 状态只保留计数；同 Group、同 rawId 的相邻 audio.play 与文本按本次执行关联，重播使用独立后端 voice，任何有效继续均停止。阅读前导不能成为半句稳定快照，见 [阅读前导快照边界](lessons/L-20261029-09-reading-preamble-checkpoints.md)、docs/spec/presentation/game-view.md、runtime.md 和 features/F-20261029-03-dialogue-history。
 
 - [Android VLC 16 KB 页](lessons/L-20261030-07-android-vlc-page-alignment.md)：官方稳定 native 也可能只有 4 KB 对齐；核对实际 APK 全部 ELF LOAD/架构及 zipalign，预发布依赖/设备运行分开记录。跨平台 P7a 的移动媒体/后台独立检查点已接线，Win/Linux native 视频各 5 项通过；Android 双 ABI Mono AOT/完整内容载荷通过，设备及 iOS 编译仍待验。
+
+- [受管理资源 sidecar](lessons/L-20261031-01-managed-resource-sidecars.md)：名称/鉴赏 meta 与 i18n 共用作者事务；移动、删除、复制及导入选项必须识别待保存 sidecar，普通文本入口仍受保护。四类鉴赏与样例迁移见 features/F-20261031-01-resource-gallery/summary.md。
+
+- [LibVLC Parse 回调释放](lessons/L-20261031-02-libvlc-parse-native-callback.md)：3.10.0 Parse 的默认完成源可内联回调；解析后释放 Media 前用异步完成转发，避免原生回调内释放事件源。
+
+- [ToolTip.IsEnabled 禁用目标](lessons/L-20261031-03-tooltip-enabled-target.md)：它是继承的 InputElement.IsEnabled，空提示用 Tip=null，不能绑定 HasName 来开关 tooltip；检查真实控件启用与点击状态。

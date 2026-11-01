@@ -8,6 +8,8 @@ public sealed record GalleryTypeRegistration
     [JsonPropertyName("typeId")]
     public string TypeId { get; init; } = "";
 
+    [JsonIgnore] public string DisplayNameKey => "Gallery.Type." + TypeId;
+
     [JsonPropertyName("resourceType")]
     public string ResourceTypeId { get; init; } = "";
 }

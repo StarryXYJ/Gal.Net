@@ -1,0 +1,8 @@
+{
+  "id": "a1000000000000000000000000000031",
+  "type": "video",
+  "path": "Gallery/niko-preview.mp4",
+  "compress": "none",
+  "galleryUnlockId": 301,
+  "displayNameKey": "asset.preview.name"
+}

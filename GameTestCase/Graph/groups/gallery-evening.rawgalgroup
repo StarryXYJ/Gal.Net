@@ -1,0 +1,48 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "unlock-local",
+      "type": "gallery.unlock",
+      "condition": "",
+      "parameters": {
+        "id": 101
+      }
+    },
+    {
+      "id": "background",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000003",
+        "handleId": "background",
+        "displayMode": "Fill"
+      }
+    },
+    {
+      "id": "show-dialogue",
+      "type": "dialogue.show",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "line-1",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.gallery-evening.line.1",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "line-2",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.gallery-evening.line.2",
+        "speaker": "guide"
+      }
+    }
+  ]
+}

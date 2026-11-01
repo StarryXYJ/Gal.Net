@@ -12,6 +12,14 @@ namespace GalNet.Storage.FileSystem;
 /// <summary>Reads package text sources without referencing a concrete localization library.</summary>
 public static class GameLocalizationLoader
 {
+    public static void ValidateResourceNames(GameLocalizationContent localization, IEnumerable<GalNet.Core.Assets.AssetMeta> metadata)
+    {
+        var keys = localization.Sources.Where(source => source.Culture.Equals(localization.DefaultCulture, StringComparison.OrdinalIgnoreCase))
+            .SelectMany(source => source.ReadText().Keys).ToHashSet(StringComparer.Ordinal);
+        foreach (var meta in metadata)
+            if (!string.IsNullOrWhiteSpace(meta.DisplayNameKey) && !keys.Contains(meta.DisplayNameKey))
+                throw new InvalidDataException($"Resource '{meta.Path}' has no '{localization.DefaultCulture}' name for '{meta.DisplayNameKey}'.");
+    }
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
 
     public static GameLocalizationContent Load(string gameDirectory, Graph graph, string? defaultCulture = null,

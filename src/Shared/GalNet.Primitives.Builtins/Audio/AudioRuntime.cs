@@ -15,15 +15,19 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     private readonly Dictionary<string, TrackBinding> _tracks = new(StringComparer.Ordinal);
     private readonly Dictionary<string, VoiceBinding> _voices = new(StringComparer.Ordinal);
     private readonly Dictionary<string, List<AudioPlaybackTicket>> _tickets = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string> _announcements = new(StringComparer.Ordinal);
     private readonly Dictionary<string, RetiringVoice> _retiring = new(StringComparer.Ordinal);
     private GameState _state;
     private long _nextGeneration;
     private AudioMixOptions _mix = new();
     private bool _disposed;
+    private Task _announcementTail = Task.CompletedTask;
     private bool _catchUp;
     private AudioConfiguration? _configuration;
     private AudioConfiguration? _declarations;
     public event Action<string>? Diagnostic;
+    /// <summary>One announcement per new logical item, after the backend confirms its first start.</summary>
+    public event Action<string>? PlaybackStarted;
 
     public AudioRuntime(IAudioPlaybackHost? host = null, ISEffectCatalog? effects = null)
     {
@@ -216,6 +220,8 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
                 }
             }
             var value = new AudioItemState { Request = request };
+            if (!_catchUp && _host is not null && request.AnnounceName)
+                _announcements[value.Id] = request.AssetId;
             if (_host is not null) Tickets(value.Id).Add(ticket);
             switch (request.Placement)
             {
@@ -438,7 +444,10 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     private List<AudioPlaybackTicket> Tickets(string id)
     { if (!_tickets.TryGetValue(id, out var tickets)) _tickets[id] = tickets = []; return tickets; }
     private void Complete(AudioItemState item)
-    { if (_tickets.Remove(item.Id, out var tickets)) foreach (var ticket in tickets) ticket.Complete(); }
+    {
+        _announcements.Remove(item.Id);
+        if (_tickets.Remove(item.Id, out var tickets)) foreach (var ticket in tickets) ticket.Complete();
+    }
     private void StopVoice(TrackBinding track, AudioItemState item, float? requestedFade)
     {
         var fade = requestedFade ?? item.Request.FadeOutSeconds;
@@ -457,6 +466,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     {
         var bindings = _voices.Values.Concat(_retiring.Values.Select(value => value.Binding)).ToArray();
         _voices.Clear();
+        _announcements.Clear();
         _retiring.Clear();
         var pendingTickets = _tickets.Values.SelectMany(tickets => tickets).ToArray();
         _tickets.Clear();
@@ -467,9 +477,20 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     }
     private void OnBackendEvent(AudioBackendEvent value)
     {
+        (string ItemId, string Name, VoiceBinding Voice)? announcement = null;
         lock (_gate) _state.Update(() =>
         {
-            if (_disposed || value.Kind is not (AudioBackendEventKind.Ended or AudioBackendEventKind.Failed)) return;
+            if (_disposed) return;
+            if (value.Kind == AudioBackendEventKind.Started)
+            {
+                if (!_tracks.TryGetValue(value.TrackId, out var startedTrack)) return;
+                var started = startedTrack.State.Active.FirstOrDefault(item =>
+                    _voices.TryGetValue(item.Id, out var voice) && voice.Id == value.VoiceId && voice.Generation == value.Generation);
+                if (started is not null && _announcements.Remove(started.Id, out var name) && !_catchUp && !startedTrack.State.Paused)
+                    announcement = (started.Id, name, _voices[started.Id]);
+                return;
+            }
+            if (value.Kind is not (AudioBackendEventKind.Ended or AudioBackendEventKind.Failed)) return;
             if (_retiring.TryGetValue(value.VoiceId, out var retiring) && retiring.Binding.TrackId == value.TrackId && retiring.Binding.Generation == value.Generation)
             { _retiring.Remove(value.VoiceId); _dispatcher.CompleteVoice(value.VoiceId); return; }
             if (!_tracks.TryGetValue(value.TrackId, out var track)) return;
@@ -505,6 +526,30 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             Pump(track);
             Complete(item);
         });
+        if (announcement is { } notification) QueueAnnouncement(notification.ItemId, notification.Name, notification.Voice);
+    }
+
+    private void QueueAnnouncement(string itemId, string name, VoiceBinding voice)
+    {
+        lock (_gate)
+        {
+            var previous = _announcementTail;
+            // Backends may emit Started synchronously from Play. A worker waits until the
+            // outer submission releases the gate, preserves order, and rejects stale voices.
+            _announcementTail = Task.Run(async () =>
+            {
+                await previous.ConfigureAwait(false);
+                Delegate[] handlers;
+                lock (_gate)
+                {
+                    if (_disposed || _catchUp || !_voices.TryGetValue(itemId, out var current) || current != voice) return;
+                    handlers = PlaybackStarted?.GetInvocationList() ?? [];
+                }
+                foreach (var handler in handlers)
+                    try { ((Action<string>)handler)(name); }
+                    catch (Exception error) { Report($"Audio announcement failed: {error.Message}"); }
+            });
+        }
     }
     private void StopTicket(AudioPlaybackTicket ticket)
     {
@@ -528,7 +573,14 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             StopBindings(); ResetMixer(); if (_host is not null) _host.EventReceived -= OnBackendEvent;
         }
     }
-    public async ValueTask DisposeAsync() { Dispose(); await _dispatcher.DrainAsync().ConfigureAwait(false); }
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        await _dispatcher.DrainAsync().ConfigureAwait(false);
+        Task announcements;
+        lock (_gate) announcements = _announcementTail;
+        await announcements.ConfigureAwait(false);
+    }
     private void Report(string message)
     {
         foreach (var handler in Diagnostic?.GetInvocationList() ?? [])

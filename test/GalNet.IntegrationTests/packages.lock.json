@@ -365,7 +365,6 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
-          "LibVLCSharp.Avalonia": "[3.10.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
           "Serilog": "[4.2.0, )"
         }
@@ -382,10 +381,7 @@
       "galnet.avalonia.themes": {
         "type": "Project",
         "dependencies": {
-          "Avalonia.Themes.Fluent": "[12.0.5, )",
-          "GalNet.Avalonia.Controls": "[1.0.0, )",
-          "GalNet.Avalonia.GameView": "[1.0.0, )",
-          "GalNet.Contracts.Builtins": "[1.0.0, )"
+          "Avalonia.Themes.Fluent": "[12.0.5, )"
         }
       },
       "galnet.contracts.builtins": {
@@ -497,42 +493,6 @@
           "Serilog": "[4.2.0, )"
         }
       },
-      "galnet.sample.avalonia": {
-        "type": "Project",
-        "dependencies": {
-          "Avalonia": "[12.0.5, )",
-          "Avalonia.Desktop": "[12.0.5, )",
-          "Avalonia.Fonts.Inter": "[12.0.5, )",
-          "Avalonia.Themes.Fluent": "[12.0.5, )",
-          "AvaloniaUI.DiagnosticsSupport": "[2.2.3, )",
-          "CommunityToolkit.Mvvm": "[8.4.1, )",
-          "DynamicLocalization.Core": "[2.1.2, )",
-          "GalNet.Assets": "[1.0.0, )",
-          "GalNet.Avalonia.Controls": "[1.0.0, )",
-          "GalNet.Avalonia.Debugging": "[1.0.0, )",
-          "GalNet.Avalonia.GameHost": "[1.0.0, )",
-          "GalNet.Avalonia.GameView": "[1.0.0, )",
-          "GalNet.Avalonia.Themes": "[1.0.0, )",
-          "GalNet.Contracts.Builtins": "[1.0.0, )",
-          "GalNet.Core": "[1.0.0, )",
-          "GalNet.Debugging": "[1.0.0, )",
-          "GalNet.GameHost": "[1.0.0, )",
-          "GalNet.Media.LibVlc": "[1.0.0, )",
-          "GalNet.Presentation.Abstractions": "[1.0.0, )",
-          "GalNet.Primitives.Builtins": "[1.0.0, )",
-          "GalNet.Project.Contracts": "[1.0.0, )",
-          "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Storage.FileSystem": "[1.0.0, )",
-          "Irihi.Ursa": "[2.1.0, )",
-          "Irihi.Ursa.Themes.Semi": "[2.1.0, )",
-          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )",
-          "Semi.Avalonia": "[12.0.1, )",
-          "Serilog": "[4.2.0, )",
-          "Serilog.Sinks.Console": "[6.0.0, )",
-          "Serilog.Sinks.File": "[7.0.0, )",
-          "VideoLAN.LibVLC.Windows": "[3.0.23.1, )"
-        }
-      },
       "galnet.sample.crossplatform": {
         "type": "Project",
         "dependencies": {
@@ -549,6 +509,15 @@
           "Semi.Avalonia": "[12.0.1, )",
           "Serilog.Sinks.Console": "[6.0.0, )",
           "Serilog.Sinks.File": "[7.0.0, )"
+        }
+      },
+      "galnet.sample.crossplatform.desktop": {
+        "type": "Project",
+        "dependencies": {
+          "Avalonia.Desktop": "[12.0.5, )",
+          "AvaloniaUI.DiagnosticsSupport": "[2.2.3, )",
+          "GalNet.Sample.CrossPlatform": "[1.0.0, )",
+          "VideoLAN.LibVLC.Windows": "[3.0.23.1, )"
         }
       },
       "galnet.storage.filesystem": {
@@ -691,16 +660,6 @@
         "requested": "[3.10.0, )",
         "resolved": "3.10.0",
         "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
-      },
-      "LibVLCSharp.Avalonia": {
-        "type": "CentralTransitive",
-        "requested": "[3.10.0, )",
-        "resolved": "3.10.0",
-        "contentHash": "juoBLjh37+07kWDblbHLaWTQx1HsXOIJHU7aeH5/95xjN6dXfZMVE8ltg8NyaNL6vr2B4QgR3EiRBsEa+fPvlQ==",
-        "dependencies": {
-          "Avalonia": "11.3.13",
-          "LibVLCSharp": "3.10.0"
-        }
       },
       "Microsoft.Extensions.DependencyInjection": {
         "type": "CentralTransitive",

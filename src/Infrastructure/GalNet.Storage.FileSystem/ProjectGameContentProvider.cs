@@ -30,10 +30,13 @@ public sealed class ProjectGameContentProvider : IGameContentProvider
         var assetsDirectory = Path.Combine(_directory, "Assets");
         using var assets = new LocalFileProvider(assetsDirectory, _resourceTypes, optional: true);
         using var archive = assets.OpenArchive("assets");
+        using var storyArchive = new CompiledStoryAssetProvider(_directory).OpenArchive("story");
         var gallery = new GalleryCatalogCompiler(_resourceTypes, _galleryTypes)
-            .Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata));
+            .Compile(archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata)
+                .Concat(storyArchive.AssetIds.Select(id => storyArchive.GetAsset(id)!.Metadata)));
         var settings = GameProjectConfigurationLoader.Load(_directory, _options.Configurations);
         var localization = GameLocalizationLoader.Load(_directory, graph, _options.SelectDefaultCulture?.Invoke(settings), cancellationToken);
+        GameLocalizationLoader.ValidateResourceNames(localization, archive.AssetIds.Select(id => archive.GetAsset(id)!.Metadata).Concat(storyArchive.AssetIds.Select(id => storyArchive.GetAsset(id)!.Metadata)));
         return new GameContent { Graph = graph, Gallery = gallery, Configuration = settings, Localization = localization };
     }, cancellationToken);
 }

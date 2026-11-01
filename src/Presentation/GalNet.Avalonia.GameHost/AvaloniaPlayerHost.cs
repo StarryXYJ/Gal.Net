@@ -1,15 +1,13 @@
 using Avalonia.Controls;
 using Avalonia.Threading;
-using GalNet.Avalonia.GameView.Navigation;
-using GalNet.Avalonia.GameView.Page;
 using GalNet.Avalonia.GameView.Services;
-using GalNet.Avalonia.GameView.ViewModels;
 using GalNet.GameHost;
 using GalNet.Presentation.Abstractions.Application;
 using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Avalonia.GameHost.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using GalNet.Media.LibVlc;
 
 namespace GalNet.Avalonia.GameHost;
 
@@ -21,6 +19,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
     private readonly CancellationTokenSource _startup = new();
     private Task<bool>? _initialization;
     private Task? _disposal;
+    private IPlayerApplication? _application;
     private Func<string, object>? _previousResolver;
     private Func<string, object>? _resolver;
 
@@ -31,8 +30,6 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
         registrations.AddScoped(_ => options)
             .AddScoped<AvaloniaGameSession>()
             .AddScoped<IGameSessionService>(services => services.GetRequiredService<AvaloniaGameSession>());
-        registrations.TryAddScoped<LanguageSelectionViewModel>();
-        registrations.TryAddScoped<PlayerView>();
         configure(registrations);
         _root = registrations.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
         _scope = _root.CreateAsyncScope();
@@ -40,29 +37,37 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
 
     /// <summary>The caller registers project pages, localization, settings and platform services.</summary>
     public static async Task<AvaloniaPlayerHost> CreateAsync(AvaloniaGameHostOptions options,
-        Action<IServiceCollection> configure)
+        Action<IServiceCollection> configure, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(configure);
+        cancellationToken.ThrowIfCancellationRequested();
         var result = new AvaloniaPlayerHost(options, configure);
         try
         {
+            // Resolve only the native media dependency here. Controls and application services stay on the UI thread.
+            // Await the actual factory completion, even after cancellation, before disposing its owning scope.
+            await Task.Run(() => result.Services.GetRequiredService<LibVlcRuntime>(), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             result.Settings = result.Services.GetRequiredService<IAvaloniaPlayerSettings>();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, cancellationToken);
             var localization = result.Services.GetRequiredService<IPlayerLocalization>();
             result._previousResolver = GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve;
             result._resolver = localization.GetString;
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = result._resolver;
             result.Session = result.Services.GetRequiredService<AvaloniaGameSession>();
-            result.Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None);
-            result.View = result.Services.GetRequiredService<PlayerView>();
-            result.View.Attach(result.Services.GetRequiredService<GameShell>(), result.Services.GetRequiredService<LanguageSelectionViewModel>());
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, cancellationToken);
+            result._application = result.Services.GetRequiredService<IPlayerApplication>();
+            result.View = result._application.View;
+            result._application.Attach();
+            result._application.ShowTitle();
             return result;
         }
         catch (Exception error)
         {
             var cleanup = new ResourceCleanup();
             cleanup.Run(result.RestoreResolver);
-            if (result.View is not null) cleanup.Run(result.View.Detach);
+            if (result._application is not null) cleanup.Run(result._application.Detach);
             await cleanup.RunAsync(() => result._scope.DisposeAsync());
             await cleanup.RunAsync(() => result._root.DisposeAsync());
             cleanup.Run(result._startup.Dispose);
@@ -72,7 +77,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
     }
 
     public IServiceProvider Services => _scope.ServiceProvider;
-    public PlayerView View { get; private set; } = null!;
+    public Control View { get; private set; } = null!;
     public AvaloniaGameSession Session { get; private set; } = null!;
     public IAvaloniaPlayerSettings Settings { get; private set; } = null!;
 
@@ -84,23 +89,22 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
         cleanup.Run(() => Services.GetRequiredService<GalleryMediaService>().StopPlayback());
         await cleanup.RunAsync(() => new(Session.SuspendAsync()));
         if (Session.IsReady)
-            cleanup.Run(() => Services.GetRequiredService<IGameNavigationService>().ResetTo<TitlePageViewModel>(NavigationTransition.None));
+            cleanup.Run(_application!.ShowTitle);
         cleanup.ThrowIfFailed();
     }
 
     public async Task<bool> HandleBackAsync()
     {
         Dispatcher.UIThread.VerifyAccess();
-        if (View.CancelExitConfirmation()) return false;
-        var navigation = Services.GetRequiredService<IGameNavigationService>();
-        if (navigation.CurrentViewModel is BackNavigablePageViewModel page && navigation.CanGoBack)
-            page.BackCommand.Execute(null);
-        else if (navigation.CurrentViewModel is GamePageViewModel gameplay)
-            gameplay.OpenSettingsCommand.Execute(null);
-        else if (!Services.GetRequiredService<TitlePageViewModel>().CanExit)
-            return true;
-        else return await View.ConfirmExitAsync();
-        return false;
+        ObjectDisposedException.ThrowIf(_disposal is not null, this);
+        return await _application!.HandleBackAsync();
+    }
+
+    public Task<bool> ConfirmExitAsync()
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        ObjectDisposedException.ThrowIf(_disposal is not null, this);
+        return _application!.ConfirmExitAsync();
     }
 
     public void BindWindow(Window? window)
@@ -119,8 +123,8 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
 
     private async Task<bool> InitializeCoreAsync(string? contentDirectory, string? profileDirectory)
     {
-        var ready = await Session.InitializeAsync(contentDirectory, profileDirectory, View.SelectLanguageAsync, _startup.Token);
-        if (!_startup.IsCancellationRequested) View.CompleteStartup(ready ? null : Session.StatusMessage);
+        var ready = await Session.InitializeAsync(contentDirectory, profileDirectory, _application!.SelectLanguageAsync, _startup.Token);
+        if (!_startup.IsCancellationRequested) _application!.CompleteStartup(ready ? null : Session.StatusMessage);
         return ready;
     }
 
@@ -145,7 +149,7 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
         }
         await cleanup.RunAsync(() => new(Session.StopAsync()));
         cleanup.Run(() => Settings.BindWindow(null));
-        cleanup.Run(View.Detach);
+        cleanup.Run(_application!.Detach);
         cleanup.Run(RestoreResolver);
         await cleanup.RunAsync(() => _scope.DisposeAsync());
         await cleanup.RunAsync(() => _root.DisposeAsync());

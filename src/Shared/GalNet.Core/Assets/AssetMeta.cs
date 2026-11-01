@@ -17,6 +17,14 @@ public class AssetMeta
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? Compress { get; set; }
 
+    /// <summary>Optional player-facing name key, independent of Gallery membership.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? DisplayNameKey { get; set; }
+
+    /// <summary>Optional globally unique positive Gallery identity; also determines display order.</summary>
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? GalleryUnlockId { get; set; }
+
     /// <summary>Fields not understood by the current DTO are retained when metadata is rewritten.</summary>
     [System.Text.Json.Serialization.JsonExtensionData]
     public Dictionary<string, System.Text.Json.JsonElement>? ExtensionData { get; set; }
