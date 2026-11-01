@@ -16,6 +16,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Ursa.Controls;
 using Avalonia.VisualTree;
+using Avalonia.Threading;
 using GalNet.Avalonia.GameHost;
 using GalNet.Avalonia.GameView.Navigation;
 using GalNet.Avalonia.GameView.Page;
@@ -36,6 +37,40 @@ namespace GalNet.IntegrationTests;
 [NonParallelizable]
 public sealed class SampleTemplatePagesTests
 {
+    [Test]
+    public Task ProjectOwnsAnnouncementDurationAndRejectsInvalidLifetimes() => SampleUiTests.RunAsync(() =>
+    {
+        var view = SampleCustomization.CreateView();
+        Assert.That(view.AudioAnnouncementDuration, Is.EqualTo(TimeSpan.FromSeconds(2.8)));
+        Assert.Throws<ArgumentException>(() => view.AudioAnnouncementDuration = TimeSpan.Zero);
+        Assert.Throws<ArgumentException>(() => view.AudioAnnouncementDuration = TimeSpan.FromSeconds(-1));
+        return Task.CompletedTask;
+    });
+
+    [Test]
+    public Task CustomAnnouncementLifetimeClosesTheActualToast() => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(),
+            services => SampleCustomization.ConfigureServices(services));
+        var semi = new Semi.Avalonia.SemiTheme();
+        var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
+        Application.Current!.Styles.Add(semi);
+        Application.Current.Styles.Add(ursa);
+        var window = new Window { Width = 800, Height = 450, Content = host.View };
+        try
+        {
+            ((GalNet.Avalonia.GameHost.Views.PlayerSurface)host.View).AudioAnnouncementDuration = TimeSpan.FromMilliseconds(50);
+            window.Show();
+            host.Services.GetRequiredService<GamePresentationState>().AnnounceAudio("Short project announcement");
+            await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
+            var card = host.View.FindControl<WindowToastManager>("AudioToast")!.GetVisualDescendants().OfType<ToastCard>().Single();
+            Assert.That(card.IsClosing, Is.False);
+            await Task.Delay(300);
+            Assert.That(card.IsClosing, Is.True, "The project lifetime must be used instead of the generic three-second default.");
+        }
+        finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
+    });
+
     [Test]
     public Task ProjectPagesOwnTheirBindingsAndBeginOnlyAfterGameIsMounted() => SampleUiTests.RunAsync(async () =>
     {

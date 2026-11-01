@@ -32,6 +32,9 @@ namespace GalNet.Sample.CrossPlatform;
 public static class SampleCustomization
 {
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
+    public static TimeSpan MinimumLoadingDwell { get; } = TimeSpan.FromMilliseconds(350);
+    // The project toast spends 0.8 seconds entering, then leaves two seconds to read.
+    public static TimeSpan AudioAnnouncementDuration { get; } = TimeSpan.FromSeconds(2.8);
     public static global::Avalonia.Styling.IStyle CreateStyles(GamePalette? palette = null)
     {
         palette ??= PlayerPalette;
@@ -60,6 +63,7 @@ public static class SampleCustomization
 
     public static void ConfigureView(GalNet.Sample.CrossPlatform.Views.PlayerView view)
     {
+        view.AudioAnnouncementDuration = AudioAnnouncementDuration;
         view.Resources.MergedDictionaries.Add(PlayerPalette.CreateResources());
         view.Styles.Add(CreateStyles());
     }
@@ -131,7 +135,12 @@ public static class SampleCustomization
         {
             var navigation = provider.GetRequiredService<IGameNavigationService>();
             return new GameLaunchFlow(
-                token => navigation.ResetToAsync<ViewModels.LoadingPageViewModel>(cancellationToken: token),
+                async token =>
+                {
+                    ArgumentOutOfRangeException.ThrowIfLessThan(MinimumLoadingDwell, TimeSpan.Zero);
+                    await navigation.ResetToAsync<ViewModels.LoadingPageViewModel>(cancellationToken: token);
+                    await Task.Delay(MinimumLoadingDwell, token);
+                },
                 token => navigation.ResetToAsync<ViewModels.GamePageViewModel>(cancellationToken: token),
                 token => navigation.ResetToAsync<ViewModels.TitlePageViewModel>(cancellationToken: token));
         });

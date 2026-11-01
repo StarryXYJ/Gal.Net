@@ -41,20 +41,8 @@ public sealed partial class SaveSlotsPageViewModel : BackNavigablePageViewModel,
     }
 
     [RelayCommand]
-    private async Task LoadSlotAsync(int slotIndex, CancellationToken cancellationToken)
-    {
-        Func<int, CancellationToken, Task> prepare = _session is IPreparedGameSessionService prepared
-            ? prepared.PrepareLoadAsync
-            : _session.LoadAsync;
-        Func<CancellationToken, Task>? begin = null;
-        if (_session is IPreparedGameSessionService preparedSession)
-            begin = preparedSession.BeginPreparedGameAsync;
-
-        await _launchFlow.RunAsync(
-            token => prepare(slotIndex, token),
-            begin,
-            cancellationToken);
-    }
+    private Task LoadSlotAsync(int slotIndex, CancellationToken cancellationToken) =>
+        _launchFlow.LoadAsync(_session, slotIndex, cancellationToken);
 
 
     public Task ActivateAsync(SaveSlotsMode mode, CancellationToken cancellationToken = default)

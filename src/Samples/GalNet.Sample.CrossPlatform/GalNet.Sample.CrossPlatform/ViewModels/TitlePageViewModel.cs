@@ -50,10 +50,7 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
         IsLoading = true;
         try
         {
-            Func<CancellationToken, Task> prepare = _session is IPreparedGameSessionService prepared
-                ? prepared.PrepareNewGameAsync
-                : _session.StartNewGameAsync;
-            await LaunchGameAsync(prepare, cancellationToken);
+            await _launchFlow.StartNewGameAsync(_session, cancellationToken);
         }
         finally { IsLoading = false; }
     }
@@ -65,10 +62,7 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
         IsLoading = true;
         try
         {
-            Func<CancellationToken, Task> prepare = _session is IPreparedGameSessionService prepared
-                ? prepared.PrepareContinueAsync
-                : _session.ContinueAsync;
-            await LaunchGameAsync(prepare, cancellationToken);
+            await _launchFlow.ContinueAsync(_session, cancellationToken);
         }
         finally { IsLoading = false; }
     }
@@ -77,20 +71,9 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
     protected virtual async Task StartNewGameWithVariablesAsync(IReadOnlyDictionary<string, object> variables, CancellationToken cancellationToken)
     {
         if (!CanStartNewGame) return;
-        if (_session is not IParameterizedGameSessionService configured)
-            throw new NotSupportedException("This session does not accept new game variables.");
         IsLoading = true;
-        try { await LaunchGameAsync(token => configured.PrepareNewGameAsync(variables, token), cancellationToken); }
+        try { await _launchFlow.StartNewGameAsync(_session, variables, cancellationToken); }
         finally { IsLoading = false; }
-    }
-
-    private Task LaunchGameAsync(Func<CancellationToken, Task> prepare, CancellationToken cancellationToken)
-    {
-        Func<CancellationToken, Task>? begin = null;
-        if (_session is IPreparedGameSessionService prepared)
-            begin = prepared.BeginPreparedGameAsync;
-
-        return _launchFlow.RunAsync(prepare, begin, cancellationToken);
     }
 
     [RelayCommand]

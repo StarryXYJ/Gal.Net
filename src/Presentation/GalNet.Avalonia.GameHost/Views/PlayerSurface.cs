@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
 using Avalonia.Input;
@@ -11,6 +12,17 @@ namespace GalNet.Avalonia.GameHost.Views;
 /// <summary>Reusable modal, focus and announcement behavior. The application supplies the named surface controls.</summary>
 public abstract class PlayerSurface : UserControl
 {
+    public static readonly StyledProperty<TimeSpan> AudioAnnouncementDurationProperty =
+        AvaloniaProperty.Register<PlayerSurface, TimeSpan>(nameof(AudioAnnouncementDuration), TimeSpan.FromSeconds(3),
+            validate: value => value > TimeSpan.Zero);
+
+    /// <summary>Announcement lifetime, including the application's entry animation.</summary>
+    public TimeSpan AudioAnnouncementDuration
+    {
+        get => GetValue(AudioAnnouncementDurationProperty);
+        set => SetValue(AudioAnnouncementDurationProperty, value);
+    }
+
     private GameShell? _shell;
     private GamePresentationState? _audioGame;
     private bool _returnToTitle;
@@ -88,10 +100,9 @@ public abstract class PlayerSurface : UserControl
     private void OnAudioAnnouncement(string name)
     {
         AudioToast.CloseAll();
-        // MusicToastTheme spends 0.8 seconds entering, then leaves two seconds to read.
         if (!string.IsNullOrWhiteSpace(name) && _exitConfirmation is null)
             AudioToast.Show(name, NotificationType.Information,
-                TimeSpan.FromSeconds(2.8), showIcon: false, showClose: false);
+                AudioAnnouncementDuration, showIcon: false, showClose: false);
     }
 
     public Task<bool> ConfirmExitAsync() => ConfirmAsync(returnToTitle: false);

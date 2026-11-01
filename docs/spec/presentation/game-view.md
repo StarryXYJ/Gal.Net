@@ -180,6 +180,8 @@ PropertyFieldBinding 和通用结构子绑定转发 HostContext、可见性、�
 
 ## 宿主接入约束
 
+`GameLaunchFlow` 负责并行准备与加载呈现、成功切页后启动，以及取消/失败时等待准备任务收束。`StartNewGameAsync`、`ContinueAsync`、`LoadAsync` 适配普通与两阶段会话；带初始变量的启动要求 `IParameterizedGameSessionService`。加载页停留由项目 `showLoading` 回调提供，不是内置固定策略。即使准备回调忽略取消令牌，取消后也不能切入游戏或开始播放。
+
 - 每次独立运行必须使用独立的游戏会话与页面 Scope；切换项目或重启预览时释放旧 Scope。
 - 宿主负责实现 `IGamePageLayerFactory`、`IGameContentProvider`、存档、玩家变量、进度和媒体端口。
 - 共享页面可以被替换或覆写；最终客户端的窗口、主题、资源定位和平台服务不进入共享页面项目。
