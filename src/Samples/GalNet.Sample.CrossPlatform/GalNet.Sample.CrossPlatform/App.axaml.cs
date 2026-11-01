@@ -41,6 +41,7 @@ public partial class App : Application, IAsyncDisposable
     private DesktopWindowPlacement? _windowPlacement;
     private OpeningSequence? _opening;
     private Grid? _startupSurface;
+    private readonly CultureInfo _systemCulture = CultureInfo.CurrentUICulture;
 #if GALNET_GAME_DEBUG
     private DebugToolsOverlay? _debugSurface;
     public static DebugInvitation? DebugInvitation { get; set; }
@@ -158,9 +159,7 @@ public partial class App : Application, IAsyncDisposable
         OpeningSequence? opening = null;
         var generation = _generation;
         using var bootstrapText = SampleCustomization.CreateLocalizationService();
-        var culture = bootstrapText.CultureService.AvailableCultures.FirstOrDefault(c => c.Name == CultureInfo.CurrentUICulture.Name)
-            ?? bootstrapText.CultureService.AvailableCultures.FirstOrDefault(c => c.TwoLetterISOLanguageName == CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
-        if (culture is not null) bootstrapText.ApplyCulture(culture.Name);
+        StartupLocalization.ApplySystemCulture(bootstrapText, _systemCulture.Name);
         try
         {
             await _composition.WaitAsync(_lifetime.Token);
@@ -168,92 +167,12 @@ public partial class App : Application, IAsyncDisposable
             {
                 if (_stopping || _player is not null) return;
                 generation = ++_generation;
-                opening = _opening = SampleCustomization.CreateOpeningSequence(key =>
-                    _player?.Services.GetRequiredService<IPlayerLocalization>().CultureService[key] ?? bootstrapText[key]);
-                var openingView = new OpeningSequenceView { DataContext = opening };
-                var startupSurface = _startupSurface = new Grid();
-                startupSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
-                startupSurface.Styles.Add(SampleCustomization.CreateStyles());
-                startupSurface.Background = (global::Avalonia.Media.IBrush)startupSurface.FindResource("GalNet.Brush.Background")!;
-                startupSurface.Children.Add(new ProgressBar
-                {
-                    IsIndeterminate = true, Width = 100, Height = 2,
-                    HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
-                    VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center
-                });
-                startupSurface.Children.Add(openingView);
-                if (_mount is not null) _mount.Content = startupSurface;
-                _ = opening.RunAsync(openingView.PresentAsync, _lifetime.Token);
+                opening = ShowOpening(bootstrapText);
                 // Give the lightweight opening its first frame before platform installation/composition begins.
                 await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, _lifetime.Token);
-                var paths = await PrepareLaunchAsync(_lifetime.Token);
-                opening.SetProfileDirectory(paths.ProfileDirectory);
-                if (_window is not null && _windowPlacement is null)
-                {
-                    var placementPath = Path.Combine(paths.ProfileDirectory, "window-placement.json");
-                    AttachDesktopWindowPlacement(_window, placementPath);
-                }
-                Directory.CreateDirectory(Path.Combine(paths.ProfileDirectory, "logs"));
-                if (_logger is null)
-                {
-                    var logging = new LoggerConfiguration();
-#if GALNET_GAME_DEBUG
-                    logging.MinimumLevel.Debug().WriteTo.Sink(GameDebugLogStore.Shared);
-#else
-                    logging.MinimumLevel.Information();
-#endif
-                    _logger = logging.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
-                        .WriteTo.File(Path.Combine(paths.ProfileDirectory, "logs/game-.log"), rollingInterval: RollingInterval.Day,
-                            retainedFileCountLimit: 14, shared: true, formatProvider: CultureInfo.InvariantCulture).CreateLogger();
-                    Log.Logger = _logger;
-                }
-                var options = SampleCustomization.CreateHostOptions(
-#if GALNET_GAME_DEBUG
-                    attachRun: AttachDebugRun,
-#endif
-                    screenshotDirectory: title =>
-                    paths.ScreenshotDirectory ?? SampleScreenshotOutput.GetHostDirectory(title));
-                _player = await AvaloniaPlayerHost.CreateAsync(options, services =>
-                {
-                    SampleCustomization.ConfigureServices(services);
-                    services.AddSingleton(opening);
-                    services.AddSingleton(_ =>
-                    {
-                        var localization = SampleCustomization.CreateLocalizationService();
-                        localization.ApplyCulture(culture?.Name ?? "en-US");
-                        return localization;
-                    });
-#if GALNET_GAME_DEBUG
-                    Action? openLogs = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS() ? null : () =>
-                        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(paths.ProfileDirectory, "logs")) { UseShellExecute = true });
-                    services.AddGameDebugTools(SampleCustomization.CreateDebugOptions(_ => RestartAsync(), openLogs));
-#endif
-                    ConfigurePlatformServices?.Invoke(services);
-                });
-                _player.Services.GetRequiredService<TitlePageViewModel>().CanExit =
-                    !OperatingSystem.IsAndroid() && !OperatingSystem.IsIOS();
-                if (_window is not null) _player.BindWindow(_window);
-                _player.Services.GetRequiredService<TitlePageViewModel>().ExitRequested = () =>
-                {
-                    if (_window is not null) _window.Close();
-                    else _ = ConfirmPlatformExitAsync();
-                };
-                Control surface = _player.View;
-#if GALNET_GAME_DEBUG
-                if (_window is not null)
-                    _window.AttachDebugServices(_player.Services);
-                else
-                {
-                    _debugSurface = _player.Services.GetRequiredService<DebugToolsOverlay>();
-                    _debugSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
-                    _debugSurface.GameContent = surface;
-                    surface = _debugSurface;
-                }
-#endif
-                startupSurface.Children[0] = surface;
-                // The title may render while preparation continues; session-dependent commands remain gated.
-                _player.Services.GetRequiredService<PlayerView>().CompleteStartup();
-                initialization = _player.InitializeAsync(paths.ContentDirectory, paths.ProfileDirectory);
+                var paths = await PrepareEnvironmentAsync(bootstrapText, opening);
+                var player = await CreatePlayerAsync(paths, opening, bootstrapText);
+                initialization = player.InitializeAsync(paths.ContentDirectory, paths.ProfileDirectory);
             }
             finally { _composition.Release(); }
             // Shutdown must be able to cancel onboarding while initialization awaits user input.
@@ -261,6 +180,8 @@ public partial class App : Application, IAsyncDisposable
             if (_stopping || generation != _generation) return;
             if (ready) await opening.Completion;
             else await opening.DisposeAsync();
+            if (_stopping || generation != _generation) return;
+            if (ready) _player?.Settings.SetGamepadEnabled(true);
 #if GALNET_GAME_DEBUG
             if (_player is not null) _player.Services.GetRequiredService<GameDebugViewModel>().IsGameReady = ready;
             if (_debugSurface is not null) _debugSurface.ToolsEnabled = ready;
@@ -286,6 +207,105 @@ public partial class App : Application, IAsyncDisposable
                 _mount.Content = new TextBlock { Text = error.Message, TextWrapping = global::Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(24) };
             }
         }
+    }
+
+    private OpeningSequence ShowOpening(AvaloniaPlayerLocalization text)
+    {
+        var opening = _opening = SampleCustomization.CreateOpeningSequence(text);
+        var openingView = new OpeningSequenceView { DataContext = opening };
+        var startupSurface = _startupSurface = new Grid();
+        startupSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+        startupSurface.Styles.Add(SampleCustomization.CreateStyles());
+        startupSurface.Background = (global::Avalonia.Media.IBrush)startupSurface.FindResource("GalNet.Brush.Background")!;
+        startupSurface.Children.Add(new ProgressBar
+        {
+            IsIndeterminate = true, Width = 100, Height = 2,
+            HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center
+        });
+        startupSurface.Children.Add(openingView);
+        if (_mount is not null) _mount.Content = startupSurface;
+        _ = opening.RunAsync(openingView.PresentAsync, _lifetime.Token);
+        return opening;
+    }
+
+    private async Task<PlayerLaunchPaths> PrepareEnvironmentAsync(AvaloniaPlayerLocalization text, OpeningSequence opening)
+    {
+        var paths = await PrepareLaunchAsync(_lifetime.Token);
+        await StartupLocalization.ApplyProfileAsync(text, paths.ProfileDirectory, _systemCulture.Name, _lifetime.Token);
+        opening.SetProfileDirectory(paths.ProfileDirectory);
+        if (_window is not null && _windowPlacement is null)
+        {
+            var placementPath = Path.Combine(paths.ProfileDirectory, "window-placement.json");
+            AttachDesktopWindowPlacement(_window, placementPath);
+        }
+        Directory.CreateDirectory(Path.Combine(paths.ProfileDirectory, "logs"));
+        if (_logger is null)
+        {
+            var logging = new LoggerConfiguration();
+#if GALNET_GAME_DEBUG
+            logging.MinimumLevel.Debug().WriteTo.Sink(GameDebugLogStore.Shared);
+#else
+            logging.MinimumLevel.Information();
+#endif
+            _logger = logging.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+                .WriteTo.File(Path.Combine(paths.ProfileDirectory, "logs/game-.log"), rollingInterval: RollingInterval.Day,
+                    retainedFileCountLimit: 14, shared: true, formatProvider: CultureInfo.InvariantCulture).CreateLogger();
+            Log.Logger = _logger;
+        }
+        return paths;
+    }
+
+    private async Task<AvaloniaPlayerHost> CreatePlayerAsync(PlayerLaunchPaths paths, OpeningSequence opening, AvaloniaPlayerLocalization text)
+    {
+        var options = await Task.Run(() => SampleCustomization.CreateHostOptions(
+#if GALNET_GAME_DEBUG
+            attachRun: AttachDebugRun,
+#endif
+            screenshotDirectory: title =>
+            paths.ScreenshotDirectory ?? SampleScreenshotOutput.GetHostDirectory(title)), _lifetime.Token);
+        var player = _player = await AvaloniaPlayerHost.CreateAsync(options, services =>
+        {
+            SampleCustomization.ConfigureServices(services);
+            services.AddSingleton(opening);
+            services.AddSingleton(_ =>
+            {
+                var localization = SampleCustomization.CreateLocalizationService();
+                localization.ApplyCulture(text.CultureService.CurrentCulture.Name);
+                return localization;
+            });
+#if GALNET_GAME_DEBUG
+            Action? openLogs = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS() ? null : () =>
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(paths.ProfileDirectory, "logs")) { UseShellExecute = true });
+            services.AddGameDebugTools(SampleCustomization.CreateDebugOptions(_ => RestartAsync(), openLogs));
+#endif
+            ConfigurePlatformServices?.Invoke(services);
+        }, _lifetime.Token);
+        var title = player.Services.GetRequiredService<TitlePageViewModel>();
+        title.CanExit = !OperatingSystem.IsAndroid() && !OperatingSystem.IsIOS();
+        player.Settings.SetGamepadEnabled(false);
+        if (_window is not null) player.BindWindow(_window);
+        title.ExitRequested = () =>
+        {
+            if (_window is not null) _window.Close();
+            else _ = ConfirmPlatformExitAsync();
+        };
+        Control surface = player.View;
+#if GALNET_GAME_DEBUG
+        if (_window is not null)
+            _window.AttachDebugServices(player.Services);
+        else
+        {
+            _debugSurface = player.Services.GetRequiredService<DebugToolsOverlay>();
+            _debugSurface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+            _debugSurface.GameContent = surface;
+            surface = _debugSurface;
+        }
+#endif
+        _startupSurface!.Children[0] = surface;
+        // The title may render while preparation continues; session-dependent commands remain gated.
+        player.Services.GetRequiredService<PlayerView>().CompleteStartup();
+        return player;
     }
 
     public Task SetPlatformActiveAsync(bool active)
@@ -368,31 +388,31 @@ public partial class App : Application, IAsyncDisposable
         try
         {
             ++_generation;
-            if (_opening is not null)
-            {
-                await _opening.DisposeAsync();
-                _opening = null;
-            }
-            _startupSurface = null;
-            if (_player is not null)
-            {
-                if (clearPlayerState) await _player.Session.ClearPlayerStateAsync(_lifetime.Token);
-#if GALNET_GAME_DEBUG
-                _window?.DetachDebugServices();
-#endif
-                await _player.DisposeAsync();
-                _player = null;
-#if GALNET_GAME_DEBUG
-                _debugSurface = null;
-#endif
-            }
-            if (_mount is not null) _mount.Content = null;
-            if (_logger is IDisposable disposable) disposable.Dispose();
-            _logger = null;
+            await ReleasePlayerAsync(clearPlayerState);
         }
         finally { _composition.Release(); }
         _startup = StartAsync();
         await _startup;
+    }
+
+    private async Task ReleasePlayerAsync(bool clearPlayerState = false)
+    {
+        var cleanup = new GalNet.GameHost.ResourceCleanup();
+        await cleanup.RunAsync(async () => { if (_opening is not null) await _opening.DisposeAsync(); });
+        _opening = null;
+        _startupSurface = null;
+        if (clearPlayerState && _player is not null)
+            await cleanup.RunAsync(() => new(_player.Session.ClearPlayerStateAsync(_lifetime.Token)));
+#if GALNET_GAME_DEBUG
+        cleanup.Run(() => _window?.DetachDebugServices());
+        _debugSurface = null;
+#endif
+        await cleanup.RunAsync(async () => { if (_player is not null) await _player.DisposeAsync(); });
+        _player = null;
+        cleanup.Run(() => { if (_mount is not null) _mount.Content = null; });
+        cleanup.Run(() => (_logger as IDisposable)?.Dispose());
+        _logger = null;
+        cleanup.ThrowIfFailed();
     }
 
     public Task ShutdownAsync() => _shutdown ??= ShutdownCoreAsync();
@@ -409,29 +429,9 @@ public partial class App : Application, IAsyncDisposable
         ++_generation;
         _lifetime.Cancel();
         await _composition.WaitAsync();
-        try
-        {
-            if (_opening is not null)
-            {
-                try { await _opening.DisposeAsync(); }
-                catch (Exception error) { GameLog.Logger.Error(error, "Opening shutdown failed"); }
-                _opening = null;
-            }
-            _startupSurface = null;
-            if (_player is not null)
-            {
-#if GALNET_GAME_DEBUG
-                _window?.DetachDebugServices();
-#endif
-                try { await _player.DisposeAsync(); }
-                finally { _player = null; }
-            }
-        }
+        try { await ReleasePlayerAsync(); }
         finally
         {
-            if (_mount is not null) _mount.Content = null;
-            if (_logger is IDisposable disposable) disposable.Dispose();
-            _logger = null;
             _composition.Release();
             _lifetime.Dispose();
         }

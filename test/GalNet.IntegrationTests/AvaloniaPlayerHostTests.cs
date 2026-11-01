@@ -22,6 +22,7 @@ using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Media.LibVlc;
 using GalNet.Presentation.Abstractions.Application;
 using Microsoft.Extensions.DependencyInjection;
+using Avalonia.Threading;
 
 namespace GeneralTest.Presentation;
 
@@ -44,13 +45,14 @@ public sealed class AvaloniaPlayerHostTests
 
     internal static AvaloniaGameHostOptions Options(int saveSlots = 60,
         AvaloniaGamePresentationOptions? presentation = null,
-        Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null) => new()
+        Func<GalNet.Runtime.Engine.GameEngine, IDisposable>? attachRun = null, Action? preparing = null) => new()
         {
-            SelectProjectOptions = _ => new() { SaveSlotCount = saveSlots },
+            SelectProjectOptions = _ => { preparing?.Invoke(); return new() { SaveSlotCount = saveSlots }; },
             Presentation = presentation ?? new(),
             AttachRun = attachRun,
             CreateContentCatalogs = () =>
             {
+                preparing?.Invoke();
                 var resources = BuiltinResourceTypes.CreateCatalog();
                 return (resources, BuiltinGalleryTypes.CreateCatalog(resources));
             },
@@ -88,6 +90,72 @@ public sealed class AvaloniaPlayerHostTests
     private static Task Ui(Func<Task> action) =>
         HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly)
             .Dispatch(async () => { await action(); return true; }, TestContext.CurrentContext.CancellationToken);
+
+    [Test]
+    public Task NativePreparationYieldsUiAndCancellationJoinsBeforeDisposingItsScope() => Ui(async () =>
+    {
+        using var release = new ManualResetEventSlim();
+        using var cancellation = new CancellationTokenSource();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var owned = new OwnedService();
+        var preparedOnUi = true;
+        var builtUi = false;
+        var creating = AvaloniaPlayerHost.CreateAsync(Options(), services =>
+        {
+            Configure(services, "Background preparation");
+            services.AddSingleton(_ => owned);
+            services.AddSingleton<LibVlcRuntime>(provider =>
+            {
+                provider.GetRequiredService<OwnedService>();
+                preparedOnUi = Dispatcher.UIThread.CheckAccess();
+                started.TrySetResult();
+                if (!release.Wait(TimeSpan.FromSeconds(10))) throw new TimeoutException("Preparation was never released.");
+                return new LibVlcRuntime(() => throw new PlatformNotSupportedException("No native video required by this test."));
+            });
+            services.AddScoped<IPlayerApplication>(_ => { builtUi = true; return new ApplicationProbe(); });
+        }, cancellation.Token);
+        try
+        {
+            await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background);
+            Assert.That(preparedOnUi, Is.False);
+            cancellation.Cancel();
+            Assert.That(creating.IsCompleted, Is.False, "The native factory must finish before its scope can be released.");
+            Assert.That(owned.Disposals, Is.Zero);
+        }
+        finally { release.Set(); }
+        try { await using var unexpected = await creating; Assert.Fail("Cancelled composition must not publish a host."); }
+        catch (OperationCanceledException) { }
+        Assert.That(owned.Disposals, Is.EqualTo(1));
+        Assert.That(builtUi, Is.False);
+    });
+
+    [Test]
+    public Task ResourcePreparationRunsOffUiAndPublishesSessionStateOnUi() => Ui(async () =>
+    {
+        var checks = 0;
+        var notified = false;
+        var options = Options(preparing: () =>
+        {
+            Assert.That(Dispatcher.UIThread.CheckAccess(), Is.False);
+            Interlocked.Increment(ref checks);
+        });
+        await using var host = await AvaloniaPlayerHost.CreateAsync(options, services =>
+        {
+            Configure(services, "Prepared content");
+            services.AddSingleton(_ => new LibVlcRuntime(() => throw new PlatformNotSupportedException("No native video required by this test.")));
+            services.AddScoped<IPlayerApplication>(_ => new ApplicationProbe());
+        });
+        host.Session.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName != nameof(AvaloniaGameSession.IsReady)) return;
+            Assert.That(Dispatcher.UIThread.CheckAccess(), Is.True);
+            notified = true;
+        };
+        Assert.That(await host.InitializeAsync(Path.Combine(_root, "content"), Path.Combine(_root, "background-profile")), Is.True);
+        Assert.That(checks, Is.EqualTo(2));
+        Assert.That(notified, Is.True);
+    });
 
     [Test]
     public Task HostCanUseApplicationUiWithoutResolvingDefaultPagesOrPlayerView() => Ui(async () =>

@@ -82,9 +82,9 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private async Task<bool> InitializeGameResourcesAsync(string? gameDirectory, string? profileDirectory,
         Func<string, CancellationToken, Task<string?>> selectLanguage, CancellationToken cancellationToken)
     {
-        _options.LaunchPolicy.ValidateContent(gameDirectory);
         if (string.IsNullOrWhiteSpace(gameDirectory))
         {
+            await Task.Run(() => _options.LaunchPolicy.ValidateContent(gameDirectory), cancellationToken);
             StatusMessage = _options.NoGameMessage;
             GameLog.Logger.Warning("Session initialized without a game directory");
             return true;
@@ -92,44 +92,13 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
 
         try
         {
-            var catalogs = _options.CreateContentCatalogs();
-            var resources = await GameResourceScope.OpenAsync(gameDirectory,
-                catalogs.Resources, catalogs.Gallery, _options.Content, cancellationToken);
-            resources.Assets.Diagnostic += diagnostic => GameLog.Logger.Warning(diagnostic.Exception,
-                "Asset {AssetStage} failed ({AssetFailure}): ID={AssetId}, Path={AssetPath}, Provider={AssetProvider}, SourceID={SourceAssetId}, Target={AssetTargetType}",
-                diagnostic.Stage, diagnostic.Kind, diagnostic.AssetId, diagnostic.Path, diagnostic.Provider, diagnostic.SourceAssetId, diagnostic.TargetType?.FullName);
-            AvaloniaProjectOptions projectOptions;
-            profileDirectory ??= Path.Combine(resources.GameDirectory, ".galnet");
-            PlayerSession? saveSession = null;
-            AvaloniaGameResources? visuals = null;
-            IGalleryResourceResolver? galleryResources = null;
-            try
-            {
-                projectOptions = _options.SelectProjectOptions(resources.Content.Configuration);
-                _options.ConfigureDecoders(resources.Assets);
-                visuals = await AvaloniaGameResources.CreateAsync(resources.Assets,
-                    _options.SelectTexturePreloads, _options.SelectEffectPrograms, cancellationToken);
-                saveSession = await FilePlayerSession.OpenAsync(profileDirectory, resources.Content.Gallery,
-                    projectOptions.SaveSlotCount, cancellationToken);
-                galleryResources = await AssetGalleryResourceResolver.CreateAsync(resources.Assets,
-                    resources.Content.Gallery, cancellationToken, resources.MediaFiles);
-            }
-            catch (Exception error)
-            {
-                var cleanup = new ResourceCleanup();
-                cleanup.Run(() => (galleryResources as IDisposable)?.Dispose());
-                cleanup.Run(() => saveSession?.Dispose());
-                cleanup.Run(() => visuals?.Dispose());
-                cleanup.Run(resources.Dispose);
-                cleanup.ThrowIfFailed(error);
-                throw;
-            }
-
+            var (resources, projectOptions, visuals, saveSession, galleryResources, profile) =
+                await PrepareResourcesAsync(gameDirectory, profileDirectory, cancellationToken);
             _resources = resources;
             _projectOptions = projectOptions;
             _visualResources = visuals;
             _saveSession = saveSession;
-            _resumeStore = new FileSaveService(Path.Combine(profileDirectory, "resume"), 1);
+            _resumeStore = new FileSaveService(Path.Combine(profile, "resume"), 1);
             var resume = await _resumeStore.GetSlotInfoAsync(0, cancellationToken);
             _hasResumeCheckpoint = resume.Timestamp != default && !resume.IsCorrupt;
             _galleryResources = galleryResources;
@@ -156,7 +125,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
                 projectOptions.Audio, _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
 
-            _playerBinding = _options.AttachPlayer?.Invoke(new(saveSession, resources.Content, profileDirectory));
+            _playerBinding = _options.AttachPlayer?.Invoke(new(saveSession, resources.Content, profile));
             IsReady = true;
             StatusMessage = $"Loaded game data: {resources.GameDirectory}";
             _gameplay.StatusMessage = "Ready";

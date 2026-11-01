@@ -32,9 +32,9 @@ namespace GalNet.Sample.CrossPlatform;
 public static class SampleCustomization
 {
     /// <summary>Ordered factories create fresh pages for each application startup.</summary>
-    public static Opening.OpeningSequence CreateOpeningSequence(Func<string, string> text) => new(
+    public static Opening.OpeningSequence CreateOpeningSequence(IPlayerLocalization text) => new(
         [() => new Opening.EngineLogoPageViewModel(),
-         () => new Opening.DisclaimerPageViewModel(text("Opening.NoticeTitle"), text("Opening.FictionNotice"), text("Opening.FlashingNotice"))]);
+         () => new Opening.DisclaimerPageViewModel(text)]);
 
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
     public static TimeSpan MinimumLoadingDwell { get; } = TimeSpan.FromMilliseconds(350);

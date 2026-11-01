@@ -7,6 +7,7 @@ using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Avalonia.GameHost.Views;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using GalNet.Media.LibVlc;
 
 namespace GalNet.Avalonia.GameHost;
 
@@ -36,19 +37,26 @@ public sealed class AvaloniaPlayerHost : IAsyncDisposable
 
     /// <summary>The caller registers project pages, localization, settings and platform services.</summary>
     public static async Task<AvaloniaPlayerHost> CreateAsync(AvaloniaGameHostOptions options,
-        Action<IServiceCollection> configure)
+        Action<IServiceCollection> configure, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(configure);
+        cancellationToken.ThrowIfCancellationRequested();
         var result = new AvaloniaPlayerHost(options, configure);
         try
         {
+            // Resolve only the native media dependency here. Controls and application services stay on the UI thread.
+            // Await the actual factory completion, even after cancellation, before disposing its owning scope.
+            await Task.Run(() => result.Services.GetRequiredService<LibVlcRuntime>(), cancellationToken);
+            cancellationToken.ThrowIfCancellationRequested();
             result.Settings = result.Services.GetRequiredService<IAvaloniaPlayerSettings>();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, cancellationToken);
             var localization = result.Services.GetRequiredService<IPlayerLocalization>();
             result._previousResolver = GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve;
             result._resolver = localization.GetString;
             GalNet.Avalonia.GameView.MarkupExtensions.PlayerTextExtension.Resolve = result._resolver;
             result.Session = result.Services.GetRequiredService<AvaloniaGameSession>();
+            await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, cancellationToken);
             result._application = result.Services.GetRequiredService<IPlayerApplication>();
             result.View = result._application.View;
             result._application.Attach();

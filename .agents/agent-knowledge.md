@@ -1,4 +1,6 @@
 # GalNet Agent Knowledge
+- [开场 UI 同步重活](lessons/L-20261101-06-startup-ui-synchronous-work.md)：已迁移配置/LibVLC 与会话准备到后台串行流程，UI 分阶段创建并发布；取消等待 native 工厂收束再释放 scope。SDL 保留 UI 线程契约并延后到开场结束，57 项回归及三次原生启动通过。
+- [启动 UI 语言快照](lessons/L-20261101-05-startup-ui-culture-snapshot.md)：CultureService.SetCulture 会改写线程 UI 语言；初始化前捕获系统值，早读保存偏好，声明绑定观察值，首次选择沿用初始化后的文化。
 - [已加载构建任务与部分 NuGet 缓存](lessons/L-20261101-03-loaded-build-task-partial-cache.md)：先定位文件锁；VS 中已加载的 BuildServices 不随 build-server shutdown 卸载。可信同版本包分别核验原始归档/内容 hash 与现存 DLL 后，只补缺失文件，不能伪造完整标记。
 - [Ursa 标题栏首帧留白](lessons/L-20261101-04-ursa-caption-before-first-measure.md)：当前 Ursa 在 Loaded 才预留 caption 宽度；Sample 在首次 Measure 前测量 Overlay 的可见系统按钮，不能依赖延时或 Headless 类型断言。
 - 2026-11-01 Sample 接线与独立复制已完成：GameLaunchFlow 统一启动协议，项目选择视觉时长；正常/重播沿用页面映射并隔离状态。export-template.py 原样复制唯一应用和构建附件，GalNetUsePackages/GalNetPackageVersion 选择包依赖；无引擎 C# 工程。已移除无用 VideoView UI 包。Windows 原生/双 flavor 发布通过，CI 三个既有 Editor 失败及 Browser workload hash、延期平台保留，见 [总结](../features/F-20261101-01-sample-template-polish/summary.md)。

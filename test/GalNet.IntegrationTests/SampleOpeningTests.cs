@@ -11,6 +11,7 @@ using GalNet.Sample.CrossPlatform;
 using GalNet.Sample.CrossPlatform.Opening;
 using GalNet.Sample.CrossPlatform.Views;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace GalNet.IntegrationTests;
 
@@ -159,7 +160,7 @@ public sealed class SampleOpeningTests
     {
         using var localization = SampleCustomization.CreateLocalizationService();
         localization.ApplyCulture("zh-CN");
-        await using var sequence = SampleCustomization.CreateOpeningSequence(key => localization[key]);
+        await using var sequence = SampleCustomization.CreateOpeningSequence(localization);
         var view = new OpeningSequenceView { DataContext = sequence };
         view.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
         view.Styles.Add(SampleCustomization.CreateStyles());
@@ -200,7 +201,7 @@ public sealed class SampleOpeningTests
     public Task BothSamplePagesFinishNaturallyInOrder() => SampleUiTests.RunAsync(async () =>
     {
         using var localization = SampleCustomization.CreateLocalizationService();
-        await using var sequence = SampleCustomization.CreateOpeningSequence(key => localization[key]);
+        await using var sequence = SampleCustomization.CreateOpeningSequence(localization);
         var view = new OpeningSequenceView { DataContext = sequence };
         view.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
         view.Styles.Add(SampleCustomization.CreateStyles());
@@ -253,6 +254,44 @@ public sealed class SampleOpeningTests
         finally { window.Close(); App.PrepareLaunchAsync = previous; }
     });
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public Task RestartAndShutdownReleaseSurfaceAndLoggerAfterOpeningCleanupFails(bool restart) => SampleUiTests.RunAsync(async () =>
+    {
+        var app = new App();
+        var page = new Probe("cleanup-failure") { FailCleanup = true };
+        var sequence = new OpeningSequence([() => page]);
+        _ = sequence.RunAsync(Present);
+        await page.Started.Task.WaitAsync(Deadline);
+        var sink = new DisposalSink();
+        using var logger = new LoggerConfiguration().WriteTo.Sink(sink).CreateLogger();
+        var mount = new ContentControl { Content = new TextBlock() };
+        var fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        typeof(App).GetField("_opening", fields)!.SetValue(app, sequence);
+        typeof(App).GetField("_logger", fields)!.SetValue(app, logger);
+        typeof(App).GetField("_mount", fields)!.SetValue(app, mount);
+        try
+        {
+            AggregateException? failure = null;
+            try { await (restart ? app.RestartAsync() : app.ShutdownAsync()); }
+            catch (AggregateException error) { failure = error; }
+            Assert.That(failure, Is.Not.Null);
+            Assert.That(failure!.Flatten().InnerExceptions.Any(error => error.Message == "Page cleanup failed."), Is.True);
+            Assert.That(page.Stops, Is.EqualTo(1));
+            Assert.That(sink.Disposed, Is.True);
+            Assert.That(mount.Content, Is.Null);
+            Assert.That(typeof(App).GetField("_opening", fields)!.GetValue(app), Is.Null);
+        }
+        finally { try { await app.ShutdownAsync(); } catch (AggregateException) { } }
+    });
+
+    private sealed class DisposalSink : Serilog.Core.ILogEventSink, IDisposable
+    {
+        public bool Disposed { get; private set; }
+        public void Emit(Serilog.Events.LogEvent logEvent) { }
+        public void Dispose() => Disposed = true;
+    }
+
     private static void Capture(Window window, string name)
     {
         if (Environment.GetEnvironmentVariable("GALNET_THEME_CAPTURE_DIR") is not { } directory) return;
@@ -272,6 +311,7 @@ public sealed class SampleOpeningTests
         public Task Cleanup { get; init; } = Task.CompletedTask;
         public bool AutoFinish { get; init; }
         public bool Fail { get; init; }
+        public bool FailCleanup { get; init; }
         public bool WorkCancelled { get; private set; }
         public int Stops { get; private set; }
         public void End() => Finish();
@@ -288,6 +328,7 @@ public sealed class SampleOpeningTests
             Stops++;
             Stopping.TrySetResult();
             await Cleanup;
+            if (FailCleanup) throw new IOException("Page cleanup failed.");
         }
     }
 }

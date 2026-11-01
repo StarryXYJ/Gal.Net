@@ -16,6 +16,8 @@ Sample 的应用开场由项目 `OpeningSequence` 持有有序页面工厂，页
 
 `AvaloniaPlayerHost` 在 UI 线程创建和操作，建立 DI 根与玩家 scope，挂载视图；初始化可等待用户选择语言。释放先取消初始化并等待结束，再停止会话、解绑窗口/视图、恢复借用的本地化解析器、释放 scope 与服务根。构造失败同样清理已创建的异步服务。暂停停止 Gallery/剧情媒体并落盘检查点，回到标题；标题页根据退出能力返回宿主或显示确认，不把 Activity 重建等同于新建剧情运行。
 
+宿主创建期间先等待后台完成 LibVLC 实例构造，再分阶段回到 UI 解析设置、会话和页面。`CreateAsync` 的取消必须等待原生工厂实际返回后才释放 scope。会话的内容检查、catalog 创建、解码注册、纹理预载及玩家/鉴赏资源准备在一个串行后台流程中完成，成功后一次性交接所有权并在 UI 发布状态；失败或取消在准备侧清理已取得的资源。相关项目回调不得访问 UI。SDL 的初始化、轮询和释放仍受同一 UI 线程约束；Sample 在开场和会话均完成后才启用它，显示设置提前绑定。
+
 `Storage.FileSystem.BundledGameInstaller` 接受宿主拥有的内容流，将其复制、计算 hash 并交给正式安装器校验到分版缓存；不会关闭调用方的流。`GameProfilePaths.GetProfileDirectory(content, profileRoot)` 根据项目身份计算稳定目录，应用名与操作系统默认根由宿主决定。`SceneScreenshotWriter.SaveAsync` 捕获借用的 GamePage 并以不覆盖的方式发布 PNG，拒绝路径穿越/目录链接；项目 entry schema 和文件名业务约束由项目执行适配提供。
 
 当前维护的 CrossPlatform Sample 在单个应用项目内通过 `SampleCustomization` 注册页面、项目契约/执行模块及目录策略，平台项目提供最小入口。全部应用页面及其 VM、截图、语言和确认/公告布局位于 Sample 的 Views/ViewModels；游戏 VM 组合 scoped GamePresentationState，不继承内置页面 VM。PlayerApplication 决定默认页面、平台返回和退出；宿主继续负责 scope、初始化取消与释放。复杂存档行、预览和媒体/重播状态留在内置层，场景重播组合项目游戏布局与独立呈现状态。旧主题及页面适配已删除，应用样式只在 Sample 源码中维护。

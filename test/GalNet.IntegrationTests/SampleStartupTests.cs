@@ -9,6 +9,9 @@ using GalNet.Runtime.Variables;
 using GalNet.Avalonia.GameHost.ViewModels;
 using GalNet.Avalonia.GameHost.Views;
 using GalNet.Storage.FileSystem;
+using GalNet.GameHost;
+using GalNet.Sample.CrossPlatform;
+using GalNet.Sample.CrossPlatform.Opening;
 
 namespace GalNet.IntegrationTests;
 
@@ -21,6 +24,66 @@ public sealed class SampleStartupTests
 
     [TearDown]
     public void TearDown() { if (Directory.Exists(_root)) Directory.Delete(_root, true); }
+
+    [TestCase("zh-CN", "zh-CN")]
+    [TestCase("zh-SG", "zh-CN")]
+    [TestCase("en-GB", "en-US")]
+    [TestCase("fr-FR", "en-US")]
+    public void UnselectedLanguageMatchesSystemWithProjectFallback(string system, string expected)
+    {
+        using var localization = SampleCustomization.CreateLocalizationService();
+        StartupLocalization.ApplySystemCulture(localization, system);
+        Assert.That(localization.CultureService.CurrentCulture.Name, Is.EqualTo(expected));
+    }
+
+    [Test]
+    [SetUICulture("zh-CN")]
+    public async Task FirstPickerUsesSystemLanguageAndLocalizedTextBeforeConfirmation()
+    {
+        // CultureService.SetCulture changes the ambient culture, so capture the OS value before creating it.
+        var systemCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
+        using var localization = CreateLocalization();
+        StartupLocalization.ApplySystemCulture(localization, systemCulture);
+        using var variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(_root));
+        Assert.That(await new AvaloniaPlayerStartup(localization).InitializeAsync(variables, "en-US", (preferred, _) =>
+        {
+            Assert.That(preferred, Is.EqualTo("zh-CN"));
+            Assert.That(localization.CultureService.CurrentCulture.Name, Is.EqualTo("zh-CN"));
+            Assert.That(variables.GetSnapshot(VariableScope.Player), Is.Empty);
+            return Task.FromResult<string?>(preferred);
+        }), Is.True);
+    }
+
+    [Test]
+    public async Task OpeningTextUpdatesWhenSavedLanguageArrivesBeforeGameLoading()
+    {
+        using var localization = SampleCustomization.CreateLocalizationService();
+        StartupLocalization.ApplySystemCulture(localization, "en-US");
+        await using var page = new DisclaimerPageViewModel(localization);
+        Assert.That(page.FictionNotice.Value, Does.Not.Contain("虚构"));
+        var locale = new Variable { Name = PlayerPreferences.LocaleVariable };
+        locale.SetValue("zh-CN");
+        using var store = new FilePlayerVariableStore(_root);
+        await store.SaveAsync(new Dictionary<string, Variable> { [locale.Name] = locale });
+        await StartupLocalization.ApplyProfileAsync(localization, _root, "en-US");
+        Assert.That(localization.CultureService.CurrentCulture.Name, Is.EqualTo("zh-CN"));
+        Assert.That(page.FictionNotice.Value, Does.Contain("虚构"));
+        var stored = await store.LoadAsync();
+        Assert.That(stored.ContainsKey(PlayerStartup.LaunchCountVariable), Is.False, "Reading the opening locale must not complete onboarding.");
+    }
+
+    [Test]
+    public async Task UnavailableSavedLanguageFallsBackToSystemWithoutWritingProfile()
+    {
+        using var localization = SampleCustomization.CreateLocalizationService();
+        var locale = new Variable { Name = PlayerPreferences.LocaleVariable };
+        locale.SetValue("missing");
+        using var store = new FilePlayerVariableStore(_root);
+        await store.SaveAsync(new Dictionary<string, Variable> { [locale.Name] = locale });
+        await StartupLocalization.ApplyProfileAsync(localization, _root, "zh-CN");
+        Assert.That(localization.CultureService.CurrentCulture.Name, Is.EqualTo("zh-CN"));
+        Assert.That((await store.LoadAsync())[locale.Name].AsString(), Is.EqualTo("missing"));
+    }
 
     [Test]
     public async Task ConfirmRestartAndResetPersistLocaleAndIncrementEachStartup()

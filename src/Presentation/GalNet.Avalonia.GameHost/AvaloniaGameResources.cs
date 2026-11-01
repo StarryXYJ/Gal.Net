@@ -20,19 +20,17 @@ public sealed class AvaloniaGameResources : IDisposable
         var result = new AvaloniaGameResources();
         try
         {
-            var files = await selectTextures(assets, cancellationToken);
+            var files = await selectTextures(assets, cancellationToken).ConfigureAwait(false);
             result.SpriteFileCount = files.Count;
             // Record each acquired lease immediately so partial failures cannot leak successful acquisitions.
-            await Task.WhenAll(files.Select(async file =>
+            foreach (var file in files)
             {
-                var handle = await assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken);
-                if (handle is null) return;
-                lock (result._textures)
-                {
-                    if (!result._textures.TryAdd(handle.AssetId, handle)) handle.Dispose();
-                }
-            }));
-            result.EffectPrograms = await selectEffects(assets, cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                var handle = await assets.AcquireAsync<SceneTexture>(file.Id, cancellationToken).ConfigureAwait(false);
+                if (handle is null) continue;
+                if (!result._textures.TryAdd(handle.AssetId, handle)) handle.Dispose();
+            }
+            result.EffectPrograms = await selectEffects(assets, cancellationToken).ConfigureAwait(false);
             return result;
         }
         catch (Exception error)

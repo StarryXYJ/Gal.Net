@@ -46,6 +46,8 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     public PlayerInputSettings Input { get; } = new();
     private readonly CustomSetting<PlayerInputConfiguration> _inputSetting;
     private readonly AvaloniaGamepadInput _gamepadInput;
+    private global::Avalonia.Controls.Window? _boundWindow;
+    private bool _gamepadEnabled = true;
 
     public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePresentationState gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
     {
@@ -153,8 +155,17 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
 
     public void BindWindow(global::Avalonia.Controls.Window? window)
     {
-        _gamepadInput.Bind(window);
+        _boundWindow = window;
+        _gamepadInput.Bind(_gamepadEnabled ? window : null);
         if (_display is AvaloniaWindowDisplayService desktop) desktop.Bind(window);
+    }
+
+    public void SetGamepadEnabled(bool enabled)
+    {
+        Dispatcher.UIThread.VerifyAccess();
+        if (_gamepadEnabled == enabled) return;
+        _gamepadEnabled = enabled;
+        _gamepadInput.Bind(enabled ? _boundWindow : null);
     }
 
     public async Task RestoreDisplayAsync(CancellationToken cancellationToken = default)
@@ -314,6 +325,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     public void Dispose()
     {
         _gamepadInput.Dispose();
+        _boundWindow = null;
         Input.Dispose();
         _audioPreviewTimer.Stop();
         _audioPreviewTimer.Tick -= OnAudioPreviewTimerTick;

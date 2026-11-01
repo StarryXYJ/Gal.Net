@@ -80,10 +80,10 @@ public sealed class EngineLogoPageViewModel : FadingOpeningPageViewModel
     public override string Id => "galnet-logo";
 }
 
-public sealed class DisclaimerPageViewModel(string title, string fictionNotice, string flashingNotice) : FadingOpeningPageViewModel
+public sealed class DisclaimerPageViewModel(GalNet.Avalonia.GameHost.IPlayerLocalization localization) : FadingOpeningPageViewModel
 {
     public override string Id => "play-notice";
-    public string Title { get; } = title;
-    public string FictionNotice { get; } = fictionNotice;
-    public string FlashingNotice { get; } = flashingNotice;
+    public DynamicLocalization.Core.LocalizedString Title { get; } = localization.GetString("Opening.NoticeTitle");
+    public DynamicLocalization.Core.LocalizedString FictionNotice { get; } = localization.GetString("Opening.FictionNotice");
+    public DynamicLocalization.Core.LocalizedString FlashingNotice { get; } = localization.GetString("Opening.FlashingNotice");
 }
