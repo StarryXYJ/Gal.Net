@@ -38,6 +38,21 @@ namespace GalNet.IntegrationTests;
 public sealed class SampleTemplatePagesTests
 {
     [Test]
+    public Task RuntimeSurfaceStillUsesTheProjectsScopedPageFactory() => SampleUiTests.RunAsync(async () =>
+    {
+        var collection = new ServiceCollection();
+        collection.AddSingleton<IGameSessionService>(new Session());
+        SampleCustomization.ConfigureServices(collection);
+        collection.AddScoped<IPageViewFactory, DecoratingPageFactory>();
+        await using var provider = collection.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var page = scope.ServiceProvider.GetRequiredService<GamePage>();
+        Assert.That(page.Tag, Is.EqualTo("project-factory"));
+        Assert.That(page, Is.SameAs(scope.ServiceProvider.GetRequiredService<IPageViewFactory>()
+            .Create(scope.ServiceProvider.GetRequiredService<SampleGame>())));
+    });
+
+    [Test]
     public Task RegisteredGameLayoutIsUsedForBothPlayerAndIndependentReplay() => SampleUiTests.RunAsync(async () =>
     {
         var session = new Session();
@@ -392,6 +407,16 @@ public sealed class SampleTemplatePagesTests
     }
 
     public sealed class Notebook : PageViewModelBase;
+    private sealed class DecoratingPageFactory(IServiceProvider services, IPageViewRegistry registry) : IPageViewFactory
+    {
+        private readonly PageViewFactory _pages = new(services, registry);
+        public Control Create(PageViewModelBase model)
+        {
+            var page = _pages.Create(model);
+            page.Tag = "project-factory";
+            return page;
+        }
+    }
     public sealed class ReplacementGameView(GamePresentationState state, SampleGame model, IGameNavigationService navigation) : SampleGameView(state)
     {
         public GamePresentationState InjectedState { get; } = state;

@@ -2,6 +2,8 @@
 
 2026-11-01，只读分析当前工作树，未修改工程引用、包版本或业务代码，未重新运行构建/测试。并行窗口/Branding 修改仅纳入依赖观察，不作为本 feature 成果。
 
+以下保留分析时结论。P3 实际完成明确清单交付、条件包引用、无用 VideoView UI 包/Markdown 版本残留清理及闭包门禁；没有升级依赖或调整公开拆包。最终验证、环境差异与延期项见 [执行记录](execution.md) 和 [总结](summary.md)。
+
 ## 结构与证据边界
 
 扫描 src 中 33 个 csproj 的显式 ProjectReference：排除 ReferenceOutputAssembly=false 的构建/分析器边后，共 102 条潜在运行引用边，无循环。保留但不求值 Condition，所以这是各条件分支的并集，不是任一 RID/Player 配置的最终闭包。测试 props/targets 的包引用一并检查，避免把继承的 NUnit 等误判为未使用。

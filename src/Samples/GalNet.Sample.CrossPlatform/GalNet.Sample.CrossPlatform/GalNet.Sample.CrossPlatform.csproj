@@ -8,13 +8,18 @@
   </PropertyGroup>
   
   <ItemGroup>
-    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" />
-    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Themes/GalNet.Avalonia.Themes.csproj" />
+    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.GameHost/GalNet.Avalonia.GameHost.csproj" Condition="'$(GalNetUsePackages)' != 'true'" />
+    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Themes/GalNet.Avalonia.Themes.csproj" Condition="'$(GalNetUsePackages)' != 'true'" />
     <ProjectReference Include="../../GalNet.Sample.Contracts/GalNet.Sample.Contracts.csproj" />
-    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true'" />
+    <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true' And '$(GalNetUsePackages)' != 'true'" />
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="..\..\..\Branding\galnet.ico" Link="Assets\galnet.ico" />
     <EmbeddedResource Include="Localization/*.json" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(GalNetUsePackages)' == 'true'">
+    <PackageReference Include="GalNet.Avalonia" />
+    <PackageReference Include="GalNet.Avalonia.Debugging" Condition="'$(EnableGameDebugging)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>

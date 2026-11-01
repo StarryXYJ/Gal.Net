@@ -152,7 +152,7 @@ public static class SampleCustomization
     private static GamePage CreateGameView(IServiceProvider services, ViewModels.GamePageViewModel model, bool scoped)
     {
         var type = services.GetRequiredService<IPageViewRegistry>().GetViewType(typeof(ViewModels.GamePageViewModel));
-        var page = (GamePage)(scoped && type != typeof(GamePage) ? services.GetRequiredService(type)
+        var page = (GamePage)(scoped && type != typeof(GamePage) ? services.GetRequiredService<IPageViewFactory>().Create(model)
             : ActivatorUtilities.CreateInstance(new ReplayViewServices(services, model), type));
         page.Presentation = model.State;
         page.DataContext = model;

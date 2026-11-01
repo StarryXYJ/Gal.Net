@@ -1,6 +1,6 @@
 # 精简设计
 
-状态：implementation。四项优化共享同一目标：项目只表达自己的选择，固定机制与构建接线不要求开发者反复理解。下面区分已选接口与尚待验证方案，不提前写为正式规范。
+状态：implemented。四项优化共享同一目标：项目只表达自己的选择，固定机制与构建接线不要求开发者反复理解。下文保留设计决策与取舍，实际结果和限制见 summary.md。
 
 ## 模板交付
 
@@ -9,6 +9,10 @@
 优先复用现有包交付和 MSBuild 能力，为同一份源码提供明确的独立包消费入口及随项目交付的最小配置。版本有单一来源，可选 Debugging 与玩家版依赖保持隔离。仓库开发使用源码引用，交付消费者使用包引用；差异仅为依赖来源，不形成两套应用 UI 或运行机制。
 
 不复制整个仓库构建系统到消费者，不以代码生成脚本逐个重写 csproj 掩盖交付不足。具体引用选择方式在实现前以现有发布/锁图验证确定；若需要重新设计全局打包规则，退出快速通道。
+
+P3 选择保留最小源码目录布局的文件复制清单：唯一应用/平台项目、项目契约、Branding、移动 native 源码及必要构建附件。新的交付根 props 显式设置 GalNetUsePackages；Sample/项目契约已有 csproj 用条件选择源码/包依赖，保持 XML 原样复制。交付根中央版本从原中央版本文件导入，并为四个 GalNet 包使用调用者提供的 GalNetPackageVersion。复制既有根构建 props/targets 和 Player 附件，保留严格契约路径规范化、R2R 例外与 apphost 接线，不重新发明构建系统。
+
+复制命令只按清单复制文件并记录来源/哈希，不生成第二份应用实现、不替换命名空间、不重写工程 XML；仓库内开发默认仍使用源码项目引用。平台项目保留原相对资源/native 路径，避免再增加一套路径开关。交付验证实际构建 Desktop 外壳，不能仅编译共享应用库。
 
 ## 启动协议与视觉策略
 
@@ -33,7 +37,7 @@ Sample 的命令仍决定何时开始新游戏、继续或读档，以及前后�
 
 优先用项目内小型创建函数/现有映射能力完成，避免新的公开工厂体系。不能直接解析主游戏的 scoped state 给重播，也不能仅统一类名而继续绕过开发者配置的视图选择。自定义视图构造所需依赖与独立状态传入方式须在定向测试中体现。
 
-P2 实现选择项目私有 CreateGameView：普通游戏解析映射的 scoped 控件，重播通过 ActivatorUtilities 新建同一映射类型；项目私有服务视图只替换构造函数中的 GamePresentationState/GamePageViewModel，其他服务继续借用所属 scope。两者均显式设置 Presentation/DataContext。映射到基础 GamePage 时直接构造，避免 scoped 运行别名解析自身；不增加公开工厂 API。
+P2 实现选择项目私有 CreateGameView：普通游戏通过 IPageViewFactory 解析映射的 scoped 控件，保留项目装饰页面工厂的扩展入口；重播通过 ActivatorUtilities 新建同一映射类型，项目私有服务视图只替换构造函数中的 GamePresentationState/GamePageViewModel，其他服务继续借用所属 scope。两者均显式设置 Presentation/DataContext。映射到基础 GamePage 时直接构造，避免 scoped 运行别名解析自身；不增加公开工厂 API。P3 兼容性复核补充了项目装饰工厂的回归测试。
 
 ## 取舍与风险
 

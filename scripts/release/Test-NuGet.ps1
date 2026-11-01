@@ -109,6 +109,7 @@ public partial class ConsumerOptions
         $names = @($assets.libraries.Keys | ForEach-Object { $_.Split('/')[0] })
         if ($packageId -eq 'GalNet.Contracts' -and ($names -contains 'GalNet.Engine' -or $names -contains 'CoreCLR-NCalc')) { throw 'Contracts leaked runtime dependencies.' }
         if ($packageId -eq 'GalNet.Engine' -and ($names -contains 'GalNet.Desktop' -or $names -contains 'Avalonia' -or $names -contains 'LibVLCSharp')) { throw 'Engine leaked backend dependencies.' }
+        if ($packageId -in @('GalNet.Avalonia', 'GalNet.Avalonia.Debugging') -and $names -contains 'LibVLCSharp.Avalonia') { throw 'Unused VideoView integration leaked into the Avalonia package.' }
         if ($packageId -in @('GalNet.Desktop', 'GalNet.Avalonia', 'GalNet.Avalonia.Debugging')) {
             if (!(Test-Path (Join-Path $consumer 'bin/Release/net10.0/runtimes/win-x64/native/galnet_miniaudio.dll'))) { throw "Native audio did not flow to $packageId consumer." }
             $sdl = Join-Path $consumer 'bin/Release/net10.0/runtimes/win-x64/native/SDL3.dll'

@@ -1,0 +1,9 @@
+<Project>
+  <Import Project="packaging/Repository.Packages.props" />
+  <ItemGroup>
+    <PackageVersion Include="GalNet.Avalonia" Version="$(GalNetPackageVersion)" />
+    <PackageVersion Include="GalNet.Avalonia.Debugging" Version="$(GalNetPackageVersion)" />
+    <PackageVersion Include="GalNet.Contracts" Version="$(GalNetPackageVersion)" />
+    <PackageVersion Include="GalNet.SchemaGenerator" Version="$(GalNetPackageVersion)" />
+  </ItemGroup>
+</Project>

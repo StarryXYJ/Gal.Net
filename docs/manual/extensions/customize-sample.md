@@ -48,7 +48,9 @@ dotnet build src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform
 
 ## 推荐改造顺序
 
-如果从源码建立独立产品，复制共享应用项目及所需平台入口；项目契约保留为独立交付物。脱离仓库时，将应用对内置 GameHost/Themes 等工程引用换成同版本 `GalNet.Avalonia` 包；启用调试时再引用可选 `GalNet.Avalonia.Debugging`。自建契约项目引用 `GalNet.Contracts` 和构建期 `GalNet.SchemaGenerator`。同时迁移中央包版本、编译属性及平台原生依赖，不能只复制一个 csproj 并期待仓库级配置自动存在。
+从源码建立独立产品时，在仓库根执行 `python scripts/samples/export-template.py --output C:/work/MyGame`，选择尚不存在的输出目录。脚本按 Sample 的 `Template/files.json` 原样复制共享应用、平台入口、自有契约、Branding、移动 native 源码和必要构建附件，并记录文件来源与哈希；不复制引擎 C# 工程、测试和 CI，也不重写工程 XML。
+
+进入输出目录，配置可取得所选 GalNet 版本的 NuGet 源，再按根 README 在 restore/build/publish 时传入 `-p:GalNetPackageVersion=<version>`。交付根设置 `GalNetUsePackages=true`，应用使用同版本 `GalNet.Avalonia` 和可选 `GalNet.Avalonia.Debugging`，契约使用 `GalNet.Contracts` 和构建期 `GalNet.SchemaGenerator`；仓库内默认仍使用源码引用。保留交付目录层级以复用 Import、资源和 native 相对路径。模板不附游戏内容，也不负责重命名和自动升级合并。
 
 只改标题按钮通常只需修改一份 XAML；新增行为再修改对应 VM。新增普通页面需要 View/XAML、VM、组合映射和调用入口。换配色修改 `SampleCustomization.PlayerPalette`，单按钮完全自定义可直接写局部 `ControlTheme`。修改这些文件不会要求复制播放、取消、媒体或存档机制。
 

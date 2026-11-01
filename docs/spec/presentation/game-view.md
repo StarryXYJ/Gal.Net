@@ -40,6 +40,8 @@ Sample 使用配色库的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.Font
 
 Sample 的标题、加载、游戏、设置、存读档、Gallery/详情/诊断及关于页全部位于项目 Views/ViewModels。项目 VM 定义业务命令和明确路由，复用内置呈现、存档行、缩略图、媒体和重播状态。
 
+同一份 Sample 工程通过 GalNetUsePackages 条件切换内置源码与包依赖。独立复制清单包含平台入口、自有契约及必要构建附件，交付根用 GalNetPackageVersion 选择四个同版本 GalNet 包，不复制引擎 C# 工程或重写 csproj。具体复制、包源和构建步骤见[定制手册](../../manual/extensions/customize-sample.md)。
+
 `AddAvaloniaGameView(configureViews, configureGalleryPages)` 为显式映射的普通 VM/View 注册 Scoped 服务，不要求固定全量页面。注册表不可变，映射按实际 VM 类型查找；导航到没有映射的类型会报告其全名。启用游戏/截图能力时分别要求 GamePage/ScreenshotDialog 行为控件，截图窗口每次构造并释放。Gallery 只按显式内容类型匹配，缺失类型由应用的回调显示诊断。
 
 ### 项目样式与配色

@@ -220,6 +220,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia.Controls.ColorPicker": "[12.0.5, )",
+          "CommunityToolkit.Mvvm": "[8.4.1, )",
           "DynamicLocalization.Core": "[2.1.2, )",
           "GalNet.Assets": "[1.0.0, )",
           "GalNet.Avalonia.Controls": "[1.0.0, )",
@@ -234,7 +235,8 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "GalNet.Primitives.Builtins": "[1.0.0, )",
           "GalNet.Runtime": "[1.0.0, )",
-          "GalNet.Storage.FileSystem": "[1.0.0, )"
+          "GalNet.Storage.FileSystem": "[1.0.0, )",
+          "Microsoft.Extensions.DependencyInjection": "[10.0.0, )"
         }
       },
       "galnet.avalonia.gameview": {
@@ -251,7 +253,6 @@
           "GalNet.Presentation.Abstractions": "[1.0.0, )",
           "Irihi.Ursa": "[2.1.0, )",
           "LibVLCSharp": "[3.10.0, )",
-          "LibVLCSharp.Avalonia": "[3.10.0, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.0, )",
           "Serilog": "[4.2.0, )"
         }
@@ -429,14 +430,13 @@
         "resolved": "3.10.0",
         "contentHash": "VHuOfq8Xtb/lNz0asvCm5qDjgTmfB3m3lC40Dz9iH9oL3DM0fSXHjZaLxdtYVr5nsldJoh5BTeG8MtODprhC9Q=="
       },
-      "LibVLCSharp.Avalonia": {
+      "Microsoft.Extensions.DependencyInjection": {
         "type": "CentralTransitive",
-        "requested": "[3.10.0, )",
-        "resolved": "3.10.0",
-        "contentHash": "juoBLjh37+07kWDblbHLaWTQx1HsXOIJHU7aeH5/95xjN6dXfZMVE8ltg8NyaNL6vr2B4QgR3EiRBsEa+fPvlQ==",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "f0RBabswJq+gRu5a+hWIobrLWiUYPKMhCD9WO3sYBAdSy3FFH14LMvLVFZc2kPSCimBLxSuitUhsd6tb0TAY6A==",
         "dependencies": {
-          "Avalonia": "11.3.13",
-          "LibVLCSharp": "3.10.0"
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.0"
         }
       },
       "Microsoft.Extensions.DependencyInjection.Abstractions": {

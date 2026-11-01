@@ -17,7 +17,19 @@
 | iOS | Bundle 内容、静态音频/VLC、AVAudioSession 与生命周期已接入；尚未在 Mac 构建/运行 |
 | Browser | 保留原工程，不在本 feature 支持范围内 |
 
-SDK 固定 `10.0.401`，Avalonia `12.0.5`；子解决方案导入根目录的中央包版本，避免复制一份依赖版本表。当前工程仍依赖仓库中的共享库/契约工程；可独立生成的模板是剩余工作，不能直接把这个子目录复制出去当作完整模板。
+SDK 固定 `10.0.401`，Avalonia `12.0.5`；仓库开发默认引用内置源码工程。独立交付仍使用同一份 Sample，按明确清单复制必要构建附件，由交付根配置切换为同版本包引用，无需手改工程 XML。
+
+## 复制为独立项目
+
+在仓库根执行以下命令，输出目录必须尚不存在：
+
+```powershell
+python scripts/samples/export-template.py --output C:/work/MyGame
+```
+
+进入输出目录，按根 README 配置包源，并在 restore/build/publish 时传入 `-p:GalNetPackageVersion=<version>`。该版本必须已在所选包源中可取得；复制命令不会发布包。文件清单位于 `Template/files.json`，输出 `template-manifest.json` 记录文件来源和哈希。
+
+交付包含共享应用、平台入口、自有契约、Branding、移动 native 源码及必要 MSBuild 附件，不包含引擎 C# 工程、仓库测试和 CI。保留最小目录层级以复用已有相对路径。应用页面和 VM 仍只有一份；标题按钮、命令、新页面、局部 ControlTheme 和配色均在项目中定制。模板不附游戏内容，内容导出必须使用目标应用实际构建的完整契约集合。
 
 ## 桌面开发
 
@@ -39,9 +51,9 @@ Debug 默认开启 `EnableGameDebugging`，Release 默认关闭，`EnableLaunchA
 
 可选 `GalNet.Avalonia.Debugging` 提供通用菜单、日志、调试存档及外部会话适配，普通宿主没有反向依赖。`SampleCustomization.CreateDebugOptions` 配置项目 replay 策略；App 提供原进程内的 scope 重建和桌面打开日志目录动作。桌面与 Avalonia Sample 一样将菜单挂到 `UrsaWindow.LeftContent`，日志使用独立 Ursa 窗口；不会在游戏内容顶部插入整行菜单覆盖拖动区或窗口按钮。开发版启动前或内容加载失败后仍可查看日志，游戏就绪后才启用清空数据和调试存档。重建 scope 前解绑旧菜单、事件及日志窗口。
 
-移动端使用 `DebugToolsOverlay`，无需额外窗口，且隐藏打开目录入口；系统返回先取消确认/关闭日志。Activity 重建迁移整个容器。关闭调试后不包含调试模块、协议和资源，普通日志继续写入 profile。
+移动端使用 `DebugToolsOverlay`，无需额外窗口，且隐藏打开目录入口；系统返回先取消确认/关闭日志。Activity 重建迁移整个容器。关闭调试后排除可选 Avalonia 调试 UI，普通日志继续写入 profile；基础 Engine 包仍包含调试核心程序集，不能据此声称整个调试核心已从包中移除。
 
-移动端调试 UI 的自动化验证不代表 Android/iOS 外部连接、邀请传输或设备验收已经完成。独立模板生成仍延期。
+移动端调试 UI 的自动化验证不代表 Android/iOS 外部连接、邀请传输或设备验收已经完成。独立复制入口也不提供重命名或自动升级合并功能。
 
 ## 移动内容与 Mono AOT
 
