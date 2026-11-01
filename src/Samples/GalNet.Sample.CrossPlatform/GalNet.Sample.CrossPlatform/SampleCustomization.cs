@@ -31,6 +31,11 @@ namespace GalNet.Sample.CrossPlatform;
 /// <summary>Project choices. The host owns services and resources; modules borrow platform ports.</summary>
 public static class SampleCustomization
 {
+    /// <summary>Ordered factories create fresh pages for each application startup.</summary>
+    public static Opening.OpeningSequence CreateOpeningSequence(Func<string, string> text) => new(
+        [() => new Opening.EngineLogoPageViewModel(),
+         () => new Opening.DisclaimerPageViewModel(text("Opening.NoticeTitle"), text("Opening.FictionNotice"), text("Opening.FlashingNotice"))]);
+
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
     public static TimeSpan MinimumLoadingDwell { get; } = TimeSpan.FromMilliseconds(350);
     // The project toast spends 0.8 seconds entering, then leaves two seconds to read.

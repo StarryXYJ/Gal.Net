@@ -11,7 +11,8 @@ namespace GalNet.Sample.CrossPlatform;
 
 /// <summary>Project startup and back/exit policy; the host retains asynchronous scope ownership.</summary>
 public sealed class PlayerApplication(PlayerView view, GameShell shell, LanguageSelectionViewModel language,
-    GamePresentationState state, IGameNavigationService navigation, TitlePageViewModel title) : IPlayerApplication
+    GamePresentationState state, IGameNavigationService navigation, TitlePageViewModel title,
+    Opening.OpeningSequence? opening = null) : IPlayerApplication
 {
     public Control View => view;
     public void Attach() { view.Attach(shell, language); view.BindAudioAnnouncements(state); }
@@ -19,7 +20,11 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
     public void ShowTitle() => navigation.ResetTo<TitlePageViewModel>(NavigationTransition.None);
     public Task StartNewGameAsync() => title.StartNewGameCommand.ExecuteAsync(null);
     public Task<bool> ConfirmExitAsync() => view.ConfirmExitAsync();
-    public Task<string?> SelectLanguageAsync(string preferred, CancellationToken cancellationToken) => view.SelectLanguageAsync(preferred, cancellationToken);
+    public async Task<string?> SelectLanguageAsync(string preferred, CancellationToken cancellationToken)
+    {
+        if (opening is not null) await opening.Completion.WaitAsync(cancellationToken);
+        return await view.SelectLanguageAsync(preferred, cancellationToken);
+    }
     public void CompleteStartup(string? errorMessage) => view.CompleteStartup(errorMessage);
 
     public async Task<bool> HandleBackAsync()

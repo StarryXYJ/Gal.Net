@@ -13,7 +13,7 @@
     <Grid Margin="80,64" ColumnDefinitions="440,*" RowDefinitions="Auto,*">
       <StackPanel Grid.ColumnSpan="2" Spacing="12">
         <TextBlock Text="{Binding GameTitle}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap"/>
-        <TextBlock Text="{Binding StatusMessage}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" TextWrapping="Wrap" MaxWidth="840" HorizontalAlignment="Left"/>
+        <ProgressBar IsIndeterminate="True" IsVisible="{Binding !IsReady}" Width="120" Height="2" HorizontalAlignment="Left" />
       </StackPanel>
       <ScrollViewer Grid.Row="1" VerticalAlignment="Bottom" HorizontalScrollBarVisibility="Disabled" Margin="0,32,0,0">
         <StackPanel Spacing="10" Margin="0,0,40,0">
@@ -22,8 +22,8 @@
           <Button Classes="player-menu" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" IsEnabled="{Binding IsNavigationEnabled}"/>
           <Button Classes="player-menu" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" IsEnabled="{Binding IsNavigationEnabled}"/>
           <Button Classes="player-menu" Content="{text:PlayerText Title.Gallery, Gallery}" Command="{Binding OpenGalleryCommand}" IsEnabled="{Binding CanOpenGallery}" IsVisible="{Binding HasGallery}"/>
-          <Button Classes="player-menu" Content="{text:PlayerText Title.About, About}" Command="{Binding OpenAboutCommand}" IsEnabled="{Binding IsNavigationEnabled}"/>
-          <Button Classes="player-menu" Content="{text:PlayerText Title.Exit, Exit}" Command="{Binding ExitCommand}" IsEnabled="{Binding IsNavigationEnabled}" IsVisible="{Binding CanExit}"/>
+          <Button Classes="player-menu" Content="{text:PlayerText Title.About, About}" Command="{Binding OpenAboutCommand}"/>
+          <Button Classes="player-menu" Content="{text:PlayerText Title.Exit, Exit}" Command="{Binding ExitCommand}" IsVisible="{Binding CanExit}"/>
         </StackPanel>
       </ScrollViewer>
     </Grid>

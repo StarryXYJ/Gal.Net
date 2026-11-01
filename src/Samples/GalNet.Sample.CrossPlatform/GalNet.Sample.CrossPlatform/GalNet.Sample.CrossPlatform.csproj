@@ -14,6 +14,7 @@
     <ProjectReference Include="../../../Presentation/GalNet.Avalonia.Debugging/GalNet.Avalonia.Debugging.csproj" Condition="'$(EnableGameDebugging)' == 'true' And '$(GalNetUsePackages)' != 'true'" />
     <AvaloniaResource Include="Assets\**" />
     <AvaloniaResource Include="..\..\..\Branding\galnet.ico" Link="Assets\galnet.ico" />
+    <AvaloniaResource Include="..\..\..\Branding\galnet.png" Link="Assets\galnet.png" />
     <EmbeddedResource Include="Localization/*.json" />
   </ItemGroup>
 
@@ -35,5 +36,17 @@
     <PackageReference Include="Semi.Avalonia" />
     <PackageReference Include="Serilog.Sinks.Console" />
     <PackageReference Include="Serilog.Sinks.File" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\MainWindow.Debug.cs">
+      <DependentUpon>MainWindow.axaml.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.Fullscreen.cs">
+      <DependentUpon>MainWindow.axaml.cs</DependentUpon>
+    </Compile>
+    <Compile Update="Views\MainWindow.Chrome.cs">
+      <DependentUpon>MainWindow.axaml.cs</DependentUpon>
+    </Compile>
   </ItemGroup>
 </Project>

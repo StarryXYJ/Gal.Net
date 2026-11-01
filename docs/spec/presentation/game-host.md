@@ -10,6 +10,8 @@
 
 ## Avalonia 玩家宿主
 
+Sample 的应用开场由项目 `OpeningSequence` 持有有序页面工厂，页面继承 `OpeningPageViewModel` 并异步释放；服务负责顺序、跳过及展示实例隔离，具体页面负责演出，View 负责纯视觉动画。App 在平台内容准备前挂载开场，与会话初始化并行；首次语言选择等待开场结束。首页可在会话就绪前显示，依赖会话的入口必须同时检查就绪状态。演出跳过不取消内容准备；关闭、重启或演出结束会取消并等待页面工作收束。通用宿主及 Runtime 不认识具体 Logo 或提示页。
+
 `Avalonia.GameHost` 提供 `AvaloniaPlayerHost`、无页面布局的 `Views.PlayerSurface` 行为基类和首次语言选择机制。Sample 使用自己的 PlayerView/LanguageSelectionView XAML。`AvaloniaPlayerHost.CreateAsync(options, configure)` 由调用方注册应用 UI、本地化、设置、启动服务及平台后端。`IPlayerApplication` 提供 Control 表面、挂载/解绑、语言选择、启动状态及返回/退出策略；宿主不解析具体标题或游戏页面 VM，`View` 返回 Control，退出确认通过 `ConfirmExitAsync` 委托给应用。外部调试启动同样通过该应用的 `StartNewGameAsync`，不会绕过项目自己的开始命令。项目可以接入自己的表面而不解析内置 PlayerView/GameShell/TitlePageViewModel；应用必须显式注册 IPlayerApplication，不再提供固定页面回退。
 
 `AvaloniaPlayerHost` 在 UI 线程创建和操作，建立 DI 根与玩家 scope，挂载视图；初始化可等待用户选择语言。释放先取消初始化并等待结束，再停止会话、解绑窗口/视图、恢复借用的本地化解析器、释放 scope 与服务根。构造失败同样清理已创建的异步服务。暂停停止 Gallery/剧情媒体并落盘检查点，回到标题；标题页根据退出能力返回宿主或显示确认，不把 Activity 重建等同于新建剧情运行。

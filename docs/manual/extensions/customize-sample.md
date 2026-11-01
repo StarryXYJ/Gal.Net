@@ -1,5 +1,19 @@
 # 定制跨平台 Sample
 
+## 应用开场
+
+`SampleCustomization.CreateOpeningSequence` 的有序工厂列表定义开场，默认两页均为每次启动显示且可跳过：内置 PNG、`Gal.Net` 和 `made with`，以及虚构声明与闪烁画面提示。每页 0.5 秒淡入、0.8 秒停留、0.6 秒淡出；布局在 `Views/EngineLogoPage.axaml` 和 `Views/DisclaimerPage.axaml`，文案在项目 Localization。最早的开场使用应用内置资源，在平台内容安装和玩家宿主创建前挂载，不依赖游戏 PAK。
+
+开场 VM 位于 Sample 的 `Opening/`，继承 `OpeningPageViewModel`，只读配置为 `Id`、`CanSkip`、`ShowPolicy`（EveryLaunch/OncePerProfile/Disabled）。`OpeningSequenceView` 的 DataTemplates 提供 VM→View 映射。普通图片可复用页面和构造参数；特殊视频或控件演出提供自己的 VM/View。服务显示页面并等待视图布局后调用 `StartAsync(token)`；该方法返回不等于结束，页面通过受保护的 `Finish()` 报告完成。`FadingOpeningPageViewModel` 示例等待 View 提供的可取消动画后完成；项目自定义页也可等待视频事件或 `Task.Delay(duration, token)`。
+
+开场不显示跳过按钮；鼠标左键或 Esc 跳过当前可跳过页。平台返回或服务的 SkipRemainingCommand 可跳过剩余可跳过页，不越过不可跳过页。正常完成、跳过、失败、重启及关闭均由服务幂等释放页面：取消 token、等待 StartAsync 收束，再调用 StopAsync 释放媒体、计时器和事件。页面自己的全部异步工作必须跟随 token 并被等待；不能启动无人持有的计时任务。Finish 只作用于当前展示实例，旧页回调不能结束新页。切页等待清理，不向下一页传递长按键重复输入。
+
+OncePerProfile 使用 profile 下 `opening-pages.txt` 保存已处理 ID，展示后正常结束或允许跳过才记录；未展示便略过和取消不记录。更换 ID 可重新展示。默认 Sample 没有首次限定的演出；首次语言选择仍使用现有玩家偏好机制，在整个开场结束后单独出现，不属于可跳过列表。
+
+开场和游戏准备独立运行。开场结束后，已有宿主可先显示首页，开始/继续/读档/设置/鉴赏等待会话就绪；关于和退出可用。平台准备尚未完成时保留纯背景与小型进度动效。准备失败会中止开场并显示错误，不等待演出播完。进入剧情所用 LoadingPage 与应用开场分开，返回标题和 Activity 重建不重新启动开场。
+
+## 项目页面与宿主
+
 `GalNet.Sample.CrossPlatform` 是正式维护的示例，共享主项目通过 `SampleCustomization` 注册页面、文案、契约和执行模块，Desktop/Android/iOS 项目提供平台入口。旧 Avalonia 桌面示例已退出版本控制，本机副本位于 Git 忽略的 `local-only/`，不再维护。
 
 全部应用页面及其 VM 已位于主项目的 `Views/` 和 `ViewModels/`。改标题菜单编辑 `Views/TitlePage.axaml`；改开始/继续前的业务编辑 `ViewModels/TitlePageViewModel.cs`；改工具栏和承载布局编辑 `Views/GamePage.axaml`。设置、存读档、鉴赏及其详情同样直接编辑对应页面与 VM。语言、退出/返回确认及音乐公告布局在项目的 `LanguageSelectionView.axaml`、`PlayerView.axaml`；截图布局在 `ScreenshotDialog.axaml`。

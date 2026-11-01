@@ -1,0 +1,18 @@
+<opening:FadingOpeningPage xmlns="https://github.com/avaloniaui"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                          xmlns:opening="using:GalNet.Sample.CrossPlatform.Opening"
+                          x:Class="GalNet.Sample.CrossPlatform.Views.DisclaimerPage"
+                          x:DataType="opening:DisclaimerPageViewModel">
+  <Viewbox Stretch="Uniform" Margin="32">
+    <Grid Width="1280" Height="720">
+      <StackPanel Width="780" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="28">
+        <TextBlock Text="{Binding Title}" FontSize="30" FontWeight="SemiBold" HorizontalAlignment="Center"
+                   Foreground="{DynamicResource GalNet.Brush.TextPrimary}" />
+        <TextBlock Text="{Binding FictionNotice}" FontSize="21" LineHeight="34" TextWrapping="Wrap" TextAlignment="Center"
+                   Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
+        <TextBlock Text="{Binding FlashingNotice}" FontSize="21" LineHeight="34" TextWrapping="Wrap" TextAlignment="Center"
+                   Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
+      </StackPanel>
+    </Grid>
+  </Viewbox>
+</opening:FadingOpeningPage>

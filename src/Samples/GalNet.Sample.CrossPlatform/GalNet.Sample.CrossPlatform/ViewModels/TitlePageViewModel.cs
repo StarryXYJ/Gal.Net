@@ -34,9 +34,9 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
     public string StatusMessage => _session.StatusMessage;
     public bool IsReady => _session.IsReady;
     public bool CanContinue => _session.CanContinue;
-    public bool IsNavigationEnabled => !IsLoading;
+    public bool IsNavigationEnabled => IsReady && !IsLoading;
     public bool CanStartNewGame => IsReady && !IsLoading;
-    public bool CanContinueGame => CanContinue && !IsLoading;
+    public bool CanContinueGame => IsReady && CanContinue && !IsLoading;
     public bool HasGallery => GetGalleryTypes().Count > 0;
     public bool CanOpenGallery => HasGallery && IsNavigationEnabled;
     [ObservableProperty] private bool _canExit = true;
@@ -78,12 +78,13 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
 
     [RelayCommand]
     protected virtual Task OpenLoadSlotsAsync(CancellationToken cancellationToken) =>
-        _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken);
+        IsNavigationEnabled ? _navigation.NavigateAsync<SaveSlotsPageViewModel, SaveSlotsMode>(SaveSlotsMode.Load, cancellationToken) : Task.CompletedTask;
 
-    [RelayCommand] protected virtual void OpenSettings() => _navigation.Navigate<SettingsPageViewModel>();
+    [RelayCommand] protected virtual void OpenSettings() { if (IsNavigationEnabled) _navigation.Navigate<SettingsPageViewModel>(); }
     [RelayCommand]
     protected virtual async Task OpenGalleryAsync(CancellationToken cancellationToken)
     {
+        if (!IsNavigationEnabled) return;
         var types = GetGalleryTypes();
         if (types.Count == 0) return;
         if (types.Count == 1)
@@ -107,6 +108,9 @@ public partial class TitlePageViewModel : PageViewModelBase, IDisposable
         {
             OnPropertyChanged(nameof(IsReady));
             OnPropertyChanged(nameof(CanStartNewGame));
+            OnPropertyChanged(nameof(CanContinueGame));
+            OnPropertyChanged(nameof(IsNavigationEnabled));
+            OnPropertyChanged(nameof(CanOpenGallery));
         }
         if (e.PropertyName is nameof(IGameSessionService.CanContinue))
         {

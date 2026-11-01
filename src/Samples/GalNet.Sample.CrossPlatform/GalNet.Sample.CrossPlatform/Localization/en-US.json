@@ -1,4 +1,7 @@
 {
   "App.Title": "GalNet CrossPlatform Sample Player",
-  "About.Description": "This sample hosts the same game content on desktop and mobile."
+  "About.Description": "This sample hosts the same game content on desktop and mobile.",
+  "Opening.NoticeTitle": "Before you play",
+  "Opening.FictionNotice": "The characters, organizations, places and events in this work are fictional.\nAny resemblance to actual persons or events is coincidental.",
+  "Opening.FlashingNotice": "This work may contain flashing lights or rapidly changing images.\nViewer discretion is advised for players sensitive to flashing lights\nor with a history of photosensitive epilepsy. Stop playing if you feel unwell."
 }

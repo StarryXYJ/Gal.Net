@@ -35,6 +35,9 @@ public partial class MainWindow : UrsaWindow
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
+        if (change.Property == IsMinimizeButtonVisibleProperty || change.Property == IsRestoreButtonVisibleProperty ||
+            change.Property == IsCloseButtonVisibleProperty || change.Property == IsFullScreenButtonVisibleProperty)
+            InvalidateMeasure();
         if (change.Property != WindowStateProperty) return;
         var fullscreen = WindowState == WindowState.FullScreen;
         if (fullscreen == _fullscreen) return;

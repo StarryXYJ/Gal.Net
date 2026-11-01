@@ -1,4 +1,6 @@
 # GalNet Agent Knowledge
+- [已加载构建任务与部分 NuGet 缓存](lessons/L-20261101-03-loaded-build-task-partial-cache.md)：先定位文件锁；VS 中已加载的 BuildServices 不随 build-server shutdown 卸载。可信同版本包分别核验原始归档/内容 hash 与现存 DLL 后，只补缺失文件，不能伪造完整标记。
+- [Ursa 标题栏首帧留白](lessons/L-20261101-04-ursa-caption-before-first-measure.md)：当前 Ursa 在 Loaded 才预留 caption 宽度；Sample 在首次 Measure 前测量 Overlay 的可见系统按钮，不能依赖延时或 Headless 类型断言。
 - 2026-11-01 Sample 接线与独立复制已完成：GameLaunchFlow 统一启动协议，项目选择视觉时长；正常/重播沿用页面映射并隔离状态。export-template.py 原样复制唯一应用和构建附件，GalNetUsePackages/GalNetPackageVersion 选择包依赖；无引擎 C# 工程。已移除无用 VideoView UI 包。Windows 原生/双 flavor 发布通过，CI 三个既有 Editor 失败及 Browser workload hash、延期平台保留，见 [总结](../features/F-20261101-01-sample-template-polish/summary.md)。
 - [Sample 首次显示窗口尺寸](lessons/L-20261101-02-sample-window-placement-before-first-show.md)：桌面入口在启动 lifetime 前已知 profile，应在赋值 MainWindow 前加载窗口记录并设置保存尺寸，Opened 仍负责屏幕适配；移动端不接入。
 - 2026-11-01 单项目模板：Sample 独占全部应用页面/VM/全局布局；内置 GamePresentationState、存档行及 Gallery 状态拥有复杂机制。整套主题/旧页面删除，Themes 只留配色字体，新增页用普通 VM→View 映射。P1–P5/P6a 已验证，Android 本轮真机按用户决定延期、保留未验证，不能沿用旧 UI 验收；参见 [总结](../features/F-20261031-02-sample-ui-template/summary.md)。

@@ -61,7 +61,7 @@
                                DesignHeight="1080" />
       <project:LanguageSelectionView x:Name="LanguageSelection" IsVisible="False" />
       <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
-                 Foreground="{DynamicResource GalNet.Brush.TextPrimary}" Text="{loc:Localize Onboarding.Loading}" TextWrapping="Wrap" MaxWidth="600" />
+                 Foreground="{DynamicResource GalNet.Brush.TextPrimary}" IsVisible="False" TextWrapping="Wrap" MaxWidth="600" />
     </Grid>
     <ursa:WindowToastManager x:Name="AudioToast" HorizontalAlignment="Left" VerticalAlignment="Bottom"
                             Margin="24,24,24,88" MaxItems="1" IsHitTestVisible="False">

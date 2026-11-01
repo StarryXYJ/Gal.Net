@@ -1,0 +1,17 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:opening="using:GalNet.Sample.CrossPlatform.Opening"
+             xmlns:views="using:GalNet.Sample.CrossPlatform.Views"
+             x:Class="GalNet.Sample.CrossPlatform.Views.OpeningSequenceView"
+             x:DataType="opening:OpeningSequence" Focusable="True"
+             IsVisible="{Binding IsRunning}" Background="{DynamicResource GalNet.Brush.Background}">
+  <UserControl.DataTemplates>
+    <DataTemplate DataType="{x:Type opening:EngineLogoPageViewModel}"><views:EngineLogoPage /></DataTemplate>
+    <DataTemplate DataType="{x:Type opening:DisclaimerPageViewModel}"><views:DisclaimerPage /></DataTemplate>
+  </UserControl.DataTemplates>
+  <Grid>
+    <ProgressBar IsIndeterminate="True" IsVisible="{Binding !HasCurrentPage}" Width="100" Height="2"
+                 HorizontalAlignment="Center" VerticalAlignment="Center" />
+    <ContentControl Content="{Binding CurrentPage}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+  </Grid>
+</UserControl>

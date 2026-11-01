@@ -1,0 +1,17 @@
+<opening:FadingOpeningPage xmlns="https://github.com/avaloniaui"
+                          xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                          xmlns:opening="using:GalNet.Sample.CrossPlatform.Opening"
+                          x:Class="GalNet.Sample.CrossPlatform.Views.EngineLogoPage"
+                          x:DataType="opening:EngineLogoPageViewModel">
+  <Viewbox Stretch="Uniform" Margin="32">
+    <Grid Width="1280" Height="720">
+      <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+        <Image Source="/Assets/galnet.png" Width="200" Height="200" Stretch="Uniform" />
+        <TextBlock Text="Gal.Net" FontSize="56" FontWeight="SemiBold" HorizontalAlignment="Center"
+                   Foreground="{DynamicResource GalNet.Brush.TextPrimary}" />
+        <TextBlock Text="made with" FontSize="18" LetterSpacing="3" HorizontalAlignment="Center"
+                   Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
+      </StackPanel>
+    </Grid>
+  </Viewbox>
+</opening:FadingOpeningPage>
