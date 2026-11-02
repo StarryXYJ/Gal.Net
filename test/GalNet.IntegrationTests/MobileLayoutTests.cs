@@ -195,9 +195,10 @@ public sealed class MobileLayoutTests
                 var visual = button.GetVisualDescendants().OfType<global::Avalonia.Controls.Presenters.ContentPresenter>().Single(item => item.Name == "ToolbarContentPresenter");
                 Assert.That(button.FontSize, Is.LessThanOrEqualTo(18));
                 Assert.That(visual.Bounds.Height, Is.LessThanOrEqualTo(30));
-                Assert.That(button.Bounds.Height - visual.Bounds.Height, Is.GreaterThanOrEqualTo(12));
+                Assert.That(button.Bounds.Height - visual.Bounds.Height, Is.GreaterThanOrEqualTo(4));
+                Assert.That(((global::Avalonia.Media.ISolidColorBrush)visual.Background!).Color.A, Is.Zero);
             }
-            Assert.That(buttons.All(button => button.Bounds.Width >= 48 && button.Bounds.Height >= 48), Is.True);
+            Assert.That(buttons.All(button => button.Bounds.Width >= 48 && button.Bounds.Height >= 32 && button.Bounds.Height <= 36), Is.True);
             foreach (var button in buttons)
             {
                 var left = button.TranslatePoint(default, page)!.Value.X;
@@ -208,7 +209,9 @@ public sealed class MobileLayoutTests
             Assert.That(((global::Avalonia.Media.ISolidColorBrush)frame.Background!).Color.A, Is.Zero, "Touch targets must not become a large visible toolbar plate.");
             Assert.That(frame.Bounds.Width, Is.LessThanOrEqualTo(width - 16));
             var dialogueBottom = page.Dialogue.TranslatePoint(new Point(0, page.Dialogue.Bounds.Height), page)!.Value.Y;
-            Assert.That(dialogueBottom, Is.LessThanOrEqualTo(frame.Bounds.Top - 7));
+            Assert.That(dialogueBottom, Is.LessThanOrEqualTo(frame.Bounds.Top - 3));
+            Assert.That(height - frame.Bounds.Bottom, Is.InRange(0, 1));
+            if (width >= height) Assert.That(frame.Bounds.Top - dialogueBottom, Is.InRange(3, 5));
             using (var scene = page.SceneHost.CaptureControl(page.Scene)) Assert.That(scene.PixelSize, Is.EqualTo(new PixelSize(1920, 1080)));
             using (var screen = page.SceneHost.CaptureControl(host.Services.GetRequiredService<GameShell>())) Assert.That(screen.PixelSize, Is.EqualTo(new PixelSize(width, height)));
             Capture(window, $"game-{width}x{height}");

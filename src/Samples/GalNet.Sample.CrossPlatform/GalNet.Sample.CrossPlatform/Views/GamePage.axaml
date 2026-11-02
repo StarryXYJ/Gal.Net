@@ -108,11 +108,30 @@
       <Setter Property="Padding" Value="2" />
     </Style>
     <Style Selector=":is(Button).player-link.mobile-target">
-      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="MinHeight" Value="32" />
       <Setter Property="MinWidth" Value="48" />
       <Setter Property="Padding" Value="2" />
       <Setter Property="CornerRadius" Value="3" />
-      <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Overlay}" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="#F1F3F5" />
+    </Style>
+    <Style Selector=":is(Button).player-link.mobile-target /template/ ContentPresenter#ToolbarContentPresenter">
+      <Setter Property="Effect">
+        <DropShadowEffect Color="Black" BlurRadius="2" OffsetX="0" OffsetY="1" Opacity="0.9" />
+      </Setter>
+    </Style>
+    <Style Selector=":is(Button).player-link.mobile-target:pointerover">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="#F1F3F5" />
+    </Style>
+    <Style Selector=":is(Button).player-link.mobile-target:pressed">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+    </Style>
+    <Style Selector="ToggleButton.player-link.mobile-target:checked">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
   </page:GamePage.Styles>
 </page:GamePage>

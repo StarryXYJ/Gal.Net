@@ -53,8 +53,16 @@ public partial class GamePage : GalNet.Avalonia.GameView.Page.GamePage
             {
                 var wasMobile = button.Classes.Contains("mobile-target");
                 button.Classes.Set("mobile-target", mobile);
-                if (mobile) button.SetCurrentValue(TemplatedControl.FontSizeProperty, mobileFont);
-                else if (wasMobile) button.ClearValue(TemplatedControl.FontSizeProperty);
+                if (mobile)
+                {
+                    button.SetCurrentValue(TemplatedControl.FontSizeProperty, mobileFont);
+                    button.Margin = new Thickness(4, 0);
+                }
+                else if (wasMobile)
+                {
+                    button.ClearValue(TemplatedControl.FontSizeProperty);
+                    button.Margin = new Thickness(4);
+                }
             }
             if (mobile && _more is not null)
                 foreach (var item in _more.Items.OfType<MenuItem>())
@@ -82,13 +90,13 @@ public partial class GamePage : GalNet.Avalonia.GameView.Page.GamePage
                         requiredWidth = showHistory ? expandedWidth : expandedWidth - historyWidth;
                     }
                 }
-                _toolbar.Margin = new Thickness(8);
+                _toolbar.Margin = new Thickness(8, 0);
                 _toolbar.Width = Math.Min(width, Math.Max(Math.Min(320, 1920 * scale), requiredWidth));
                 Panel activeToolbar = compact ? _compactToolbar : _fullToolbar;
                 var toolbarHeight = activeToolbar.Children.Where(child => child.IsVisible)
-                    .Select(child => child.DesiredSize.Height).DefaultIfEmpty(56).Max();
+                    .Select(child => child.DesiredSize.Height).DefaultIfEmpty(32).Max();
                 var sceneBottom = (availableSize.Height + 1080 * scale) / 2;
-                var clearance = _toolbar.IsVisible ? sceneBottom - (availableSize.Height - 8 - toolbarHeight) + 8 : 0;
+                var clearance = _toolbar.IsVisible ? sceneBottom - (availableSize.Height - toolbarHeight) + 4 : 0;
                 if (_dialogue is not null && scale > 0)
                     _dialogue.Margin = new Thickness(64, 0, 64, Math.Max(70, clearance / scale));
             }

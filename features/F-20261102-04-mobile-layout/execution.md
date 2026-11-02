@@ -11,3 +11,5 @@
 - Presentation 最终 255 passed，TRX total 263 / executed 255；8 项 Explicit 未运行。相关 Integration 129 passed；用户反馈后的专项 21 passed。记录位于 output/mobile-layout/{presentation-final,verified-revision,revised-final}/。
 - 最终样本 PNG 与基线 SHA256 同为 98ef3b947f3a128a523f2852ff371c4d44b61c0cf0ca0ee8395c7bde26e7b4bb，几何一致。
 - 未进行原生移动构建/安装、真实刘海/手势区域、完整竖屏阅读或全解决方案 CI。现有 AVLN3001 提示保留，不当作平台验收通过。
+
+- 用户进一步指出文字底色难看、对白与底部间距偏大：删除文字底色，浅色文字加轻微黑影；命中高度 48→32，按钮纵向 margin 与工具栏底部 margin 归零，对白净空收紧到 4。新增文字透明、贴底和横屏净空断言。最新专项 21 passed / 0 failed，证据 output/mobile-layout/plain-tests/，截图 output/mobile-layout/plain/；桌面 PNG 与 before 基线逐字节相同。
