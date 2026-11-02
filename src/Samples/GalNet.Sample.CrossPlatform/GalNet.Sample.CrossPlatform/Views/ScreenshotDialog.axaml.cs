@@ -8,7 +8,6 @@ public partial class ScreenshotDialog : GalNet.Avalonia.GameView.Page.Screenshot
     {
         Styles.Add(SampleCustomization.CreateStyles());
         InitializeComponent();
-        Classes.Set("mobile-player", PlayerLayout.GetIsMobile(this));
         PlayerTypography.Apply(Resources, settings?.RuntimeSettings.FontSize ?? PlayerTypography.Default);
         InitializeDialog();
     }

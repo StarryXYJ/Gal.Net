@@ -509,16 +509,19 @@ public sealed partial class GameThemeTests
                 var skipPoint = BoundsInWindow(skip, window).Center;
                 window.MouseMove(skipPoint);
                 var hover = (ISolidColorBrush)skip.Background!;
-                Assert.That(hover.Opacity, Is.EqualTo(0.08));
+                Assert.That(hover.Color.A, Is.Zero);
+                var normalForeground = skip.Foreground;
                 window.MouseDown(skipPoint, MouseButton.Left);
-                Assert.That(((ISolidColorBrush)skip.Background!).Opacity, Is.GreaterThan(hover.Opacity));
-                Assert.That(skip.GetVisualDescendants().OfType<ContentPresenter>().First().Background, Is.SameAs(skip.Background));
+                Assert.That(((ISolidColorBrush)skip.Background!).Color.A, Is.Zero);
+                Assert.That(skip.Foreground, Is.Not.EqualTo(normalForeground));
+                Assert.That(((ISolidColorBrush)skip.GetVisualDescendants().OfType<ContentPresenter>().Single(item => item.Name == "ToolbarContentPresenter").Background!).Color.A, Is.Zero);
                 window.MouseUp(skipPoint, MouseButton.Left);
                 state.CancelSkipCommand.Execute(null);
                 Click(window, quick);
                 Assert.That(state.IsQuickMode, Is.True);
                 Assert.That(quick.IsChecked, Is.True);
-                Assert.That(((ISolidColorBrush)quick.Background!).Opacity, Is.EqualTo(0.24));
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
+                Assert.That(quick.FontWeight, Is.EqualTo(FontWeight.SemiBold));
                 Click(window, quick);
                 Assert.That(state.IsQuickMode, Is.False, "Tunnel cancellation must not turn an off-toggle into an on-toggle.");
                 Assert.That(quick.IsChecked, Is.False, "The button must also clear its own toggled visual state.");
@@ -1074,8 +1077,10 @@ public sealed partial class GameThemeTests
     private static void Click(Window window, Control target)
     {
         window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         var point = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)
             ?? throw new InvalidOperationException("The interactive control is not attached to the test window.");
+        window.MouseMove(point);
         window.MouseDown(point, MouseButton.Left);
         window.MouseUp(point, MouseButton.Left);
     }

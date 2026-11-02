@@ -13,3 +13,9 @@
 - 未进行原生移动构建/安装、真实刘海/手势区域、完整竖屏阅读或全解决方案 CI。现有 AVLN3001 提示保留，不当作平台验收通过。
 
 - 用户进一步指出文字底色难看、对白与底部间距偏大：删除文字底色，浅色文字加轻微黑影；命中高度 48→32，按钮纵向 margin 与工具栏底部 margin 归零，对白净空收紧到 4。新增文字透明、贴底和横屏净空断言。最新专项 21 passed / 0 failed，证据 output/mobile-layout/plain-tests/，截图 output/mobile-layout/plain/；桌面 PNG 与 before 基线逐字节相同。
+
+- P4 用户要求桌面共用自适应：移除 IsMobile，统一实际视口 shell 与宽/高紧凑断点。新增无平台标记的桌面窄→宽→窄→宽测试，验证同一 shell、标题按钮、局部资源恢复以及完整工具栏恢复时关闭更多。
+- 首轮跨平台专项发现 SaveColumns 资源缺失返回 UnsetValue，改用类型判断回退；原桌面状态背景断言同步为统一无底色/前景反馈。截图弹窗原专用尺寸预算不能再套普通控件 48 高，保留原有专用适配。
+- 扩展回归中的点击失败经真实鼠标事件定位：工具栏测量后字号资源可覆盖 SetCurrentValue，WrapPanel 临时换行使坐标改变。按钮字号改由 GamePage 直接拥有，样式类与 margin 提前在 XAML 声明，完整栏改为单行 StackPanel，统一由宽度测量决定收纳；没有用直接调用命令代替真实点击回归。
+- 最终相关 Integration 143 passed / 0 failed，证据 output/responsive-layout/regression/，日志 output/responsive-layout-regression.log。桌面 1280×720 与连续宽度变化截图保存在 output/responsive-layout/，已检查桌面标题画面。docs check 72 页/316 仓库引用通过；git diff --check 通过。
+- 初版桌面整页像素一致要求已由用户的统一自适应方向取代，场景设计尺寸与对白横向构图仍保持。最新统一布局未重新打 Android 包；output/android-mobile-20261102/ 是此次跨平台改动前、与上一版证书一致的包。

@@ -13,22 +13,16 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
 
     private GameShell? _responsiveShell;
     private IDisposable? _shellVisibility;
+    private bool? _compactLayout;
     private readonly List<(Button Button, double Height)> _modalTargets = [];
     private readonly List<(string Key, bool Exists, object? Value)> _layoutResources = [];
 
     public void AttachResponsiveShell(GameShell shell)
     {
-        if (!PlayerLayout.GetIsMobile(this)) return;
         var canvas = this.FindControl<GameCanvasHost>("GameCanvas")!;
         var content = this.FindControl<Grid>("PlayerContent")!;
         canvas.GameContent = null;
         _responsiveShell = shell;
-        Classes.Add("mobile-player");
-        shell.Classes.Add("mobile-player");
-        SetLayoutResource(shell, "PageHeaderMinHeight", 52d);
-        SetLayoutResource(shell, "PageHeaderSpacing", 12d);
-        SetLayoutResource(shell, "ContentMargin", new Thickness(0, 12, 0, 0));
-        SetLayoutResource(shell, "RuleMargin", new Thickness(0, 8, 0, 0));
         content.Children.Insert(1, shell);
         _shellVisibility = shell.Bind(IsVisibleProperty, new Binding(nameof(IsVisible)) { Source = canvas });
         foreach (var name in new[] { "CancelExitButton", "ConfirmExitButton", "ConfirmReturnToTitleButton" })
@@ -47,15 +41,44 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
         _modalTargets.Clear();
         if (_responsiveShell is not { } shell) return;
         this.FindControl<Grid>("PlayerContent")!.Children.Remove(shell);
-        shell.Classes.Remove("mobile-player");
+        shell.Classes.Remove("compact-player");
+        RestoreLayoutResources(shell);
+        Classes.Remove("compact-player");
+        _compactLayout = null;
+        _responsiveShell = null;
+    }
+
+    private void RestoreLayoutResources(GameShell shell)
+    {
         foreach (var (key, exists, value) in _layoutResources)
         {
             if (exists) shell.Resources[key] = value;
             else shell.Resources.Remove(key);
         }
         _layoutResources.Clear();
-        Classes.Remove("mobile-player");
-        _responsiveShell = null;
+    }
+
+    protected override Size MeasureOverride(Size availableSize)
+    {
+        if (_responsiveShell is { } shell && double.IsFinite(availableSize.Width) && double.IsFinite(availableSize.Height))
+        {
+            var compact = PlayerLayout.IsCompact(availableSize);
+            if (_compactLayout != compact)
+            {
+                _compactLayout = compact;
+                Classes.Set("compact-player", compact);
+                shell.Classes.Set("compact-player", compact);
+                RestoreLayoutResources(shell);
+                if (compact)
+                {
+                    SetLayoutResource(shell, "PageHeaderMinHeight", 52d);
+                    SetLayoutResource(shell, "PageHeaderSpacing", 12d);
+                    SetLayoutResource(shell, "ContentMargin", new Thickness(0, 12, 0, 0));
+                    SetLayoutResource(shell, "RuleMargin", new Thickness(0, 8, 0, 0));
+                }
+            }
+        }
+        return base.MeasureOverride(availableSize);
     }
 
     private void SetLayoutResource(GameShell shell, string key, object value)

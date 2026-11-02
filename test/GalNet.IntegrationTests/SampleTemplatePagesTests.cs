@@ -222,7 +222,9 @@ public sealed class SampleTemplatePagesTests
             window.UpdateLayout();
             var button = window.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "SettingsButton");
             Assert.That(button.Command, Is.SameAs(services.GetRequiredService<SampleGame>().OpenSettingsCommand));
+            global::Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(point);
             window.MouseDown(point, MouseButton.Left);
             window.MouseUp(point, MouseButton.Left);
             Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>());

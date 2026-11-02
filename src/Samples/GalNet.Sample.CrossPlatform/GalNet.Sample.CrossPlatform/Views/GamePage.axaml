@@ -8,9 +8,6 @@
     x:Class="GalNet.Sample.CrossPlatform.Views.GamePage"
     x:DataType="vm:GamePageViewModel">
   <page:GamePage.Resources>
-    <SolidColorBrush x:Key="Toolbar.Hover" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.08"/>
-    <SolidColorBrush x:Key="Toolbar.Pressed" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.18"/>
-    <SolidColorBrush x:Key="Toolbar.Selected" Color="{DynamicResource GalNet.Palette.PrimaryColor}" Opacity="0.24"/>
     <ControlTheme x:Key="SampleGameLayout" TargetType="page:GamePage">
       <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}"/>
       <Setter Property="Template">
@@ -28,25 +25,25 @@
             </controls:GameCanvasHost>
             <Border Name="ToolbarFrame" IsVisible="{Binding State.IsGameToolbarVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" page:GamePage.IsPlayerInteraction="True">
               <Grid>
-              <WrapPanel Name="FullToolbar" Orientation="Horizontal" HorizontalAlignment="Center">
-              <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>
-              <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Auto, Auto}" IsChecked="{Binding State.IsAutoMode, Mode=OneWay}" Command="{Binding State.ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Skip, Skip}" Command="{Binding State.RequestSkipCommand}"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" IsVisible="{Binding State.HasHistory}"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}"/>
-              <Button x:Name="SettingsButton" Classes="player-link" Margin="4" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Title, Title}" Command="{Binding State.ReturnToTitleCommand}"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding State.RequestScreenshotCommand}"/>
-              <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding State.HideUiCommand}"/>
-              </WrapPanel>
+              <StackPanel Name="FullToolbar" Orientation="Horizontal" HorizontalAlignment="Center">
+              <ToggleButton Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>
+              <ToggleButton Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Playback.Auto, Auto}" IsChecked="{Binding State.IsAutoMode, Mode=OneWay}" Command="{Binding State.ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Playback.Skip, Skip}" Command="{Binding State.RequestSkipCommand}"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" IsVisible="{Binding State.HasHistory}"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}"/>
+              <Button x:Name="SettingsButton" Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Common.Title, Title}" Command="{Binding State.ReturnToTitleCommand}"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding State.RequestScreenshotCommand}"/>
+              <Button Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding State.HideUiCommand}"/>
+              </StackPanel>
               <StackPanel Name="CompactToolbar" Orientation="Horizontal" HorizontalAlignment="Center" IsVisible="False">
-                <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>
-                <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Auto, Auto}" IsChecked="{Binding State.IsAutoMode, Mode=OneWay}" Command="{Binding State.ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto"/>
+                <ToggleButton Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>
+                <ToggleButton Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Playback.Auto, Auto}" IsChecked="{Binding State.IsAutoMode, Mode=OneWay}" Command="{Binding State.ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto"/>
                 <Border Name="CompactHistorySlot">
-                <Button Name="CompactHistory" Classes="player-link" Margin="4" Content="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" IsVisible="{Binding State.HasHistory}"/>
+                <Button Name="CompactHistory" Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" IsVisible="{Binding State.HasHistory}"/>
                 </Border>
-                <Button Name="MoreButton" Classes="player-link" Margin="4" Content="{text:PlayerText Common.More, More}">
+                <Button Name="MoreButton" Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Common.More, More}">
                   <Button.Flyout>
                     <MenuFlyout Placement="Top">
                       <MenuItem Name="CompactHistoryMenu" IsVisible="False" MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" />
@@ -88,26 +85,11 @@
         </ControlTemplate>
       </Setter>
     </Style>
-    <Style Selector="Button.player-link:pointerover">
-      <Setter Property="Background" Value="{StaticResource Toolbar.Hover}"/>
-      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}"/>
-    </Style>
-    <Style Selector="Button.player-link:pressed">
-      <Setter Property="Background" Value="{StaticResource Toolbar.Pressed}"/>
-      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}"/>
-    </Style>
-    <Style Selector="ToggleButton.player-link:checked">
-      <Setter Property="Background" Value="{StaticResource Toolbar.Selected}"/>
-      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}"/>
-    </Style>
     <Style Selector=":is(Button).player-link:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}"/>
       <Setter Property="BorderThickness" Value="1"/>
     </Style>
-    <Style Selector="StackPanel#CompactToolbar :is(Button).player-link">
-      <Setter Property="Padding" Value="2" />
-    </Style>
-    <Style Selector=":is(Button).player-link.mobile-target">
+    <Style Selector=":is(Button).player-link.adaptive-target">
       <Setter Property="MinHeight" Value="32" />
       <Setter Property="MinWidth" Value="48" />
       <Setter Property="Padding" Value="2" />
@@ -115,20 +97,20 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="#F1F3F5" />
     </Style>
-    <Style Selector=":is(Button).player-link.mobile-target /template/ ContentPresenter#ToolbarContentPresenter">
+    <Style Selector=":is(Button).player-link.adaptive-target /template/ ContentPresenter#ToolbarContentPresenter">
       <Setter Property="Effect">
         <DropShadowEffect Color="Black" BlurRadius="2" OffsetX="0" OffsetY="1" Opacity="0.9" />
       </Setter>
     </Style>
-    <Style Selector=":is(Button).player-link.mobile-target:pointerover">
+    <Style Selector=":is(Button).player-link.adaptive-target:pointerover">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="#F1F3F5" />
     </Style>
-    <Style Selector=":is(Button).player-link.mobile-target:pressed">
+    <Style Selector=":is(Button).player-link.adaptive-target:pressed">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
     </Style>
-    <Style Selector="ToggleButton.player-link.mobile-target:checked">
+    <Style Selector="ToggleButton.player-link.adaptive-target:checked">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
       <Setter Property="FontWeight" Value="SemiBold" />

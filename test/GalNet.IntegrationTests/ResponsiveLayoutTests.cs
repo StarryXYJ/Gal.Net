@@ -21,17 +21,16 @@ using Microsoft.Extensions.DependencyInjection;
 namespace GalNet.IntegrationTests;
 
 [NonParallelizable]
-public sealed class MobileLayoutTests
+public sealed class ResponsiveLayoutTests
 {
     [Test]
-    public Task MobileReplayKeepsItsOwnStateAndDoesNotReserveHiddenToolbarSpace() => SampleUiTests.RunAsync(async () =>
+    public Task ReplayKeepsItsOwnStateAndDoesNotReserveHiddenToolbarSpace() => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await MobileHost();
+        await using var host = await ResponsiveHost();
         var replay = host.Services.GetRequiredService<GalleryScenePlayback>();
         replay.Gameplay.IsDialogueVisible = true;
         var page = replay.Surface;
-        var root = new Border { Child = page, Classes = { "galnet-player", "mobile-player" } };
-        PlayerLayout.SetIsMobile(root, true);
+        var root = new Border { Child = page, Classes = { "galnet-player", "compact-player" } };
         root.Styles.Add(SampleCustomization.CreateStyles());
         var window = new Window { Width = 800, Height = 360, Content = root };
         window.Show();
@@ -47,9 +46,9 @@ public sealed class MobileLayoutTests
     });
 
     [Test]
-    public Task MobileShellCanDetachAndReattachWithoutDuplicateParentsOrSubscriptions() => SampleUiTests.RunAsync(async () =>
+    public Task ResponsiveShellCanDetachAndReattachWithoutDuplicateParentsOrSubscriptions() => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await MobileHost();
+        await using var host = await ResponsiveHost();
         var application = host.Services.GetRequiredService<IPlayerApplication>();
         var shell = host.Services.GetRequiredService<GameShell>();
         var content = host.View.FindControl<Grid>("PlayerContent")!;
@@ -66,9 +65,9 @@ public sealed class MobileLayoutTests
 
     [TestCase(1600, 900, false)]
     [TestCase(1200, 240, true)]
-    public Task WideMobileToolbarKeepsAllActionsAndUsesBlackBordersOnlyWhenNeeded(int width, int height, bool expands) => SampleUiTests.RunAsync(async () =>
+    public Task WideToolbarKeepsAllActionsAndUsesBlackBordersOnlyWhenNeeded(int width, int height, bool expands) => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await MobileHost();
+        await using var host = await ResponsiveHost();
         host.Services.GetRequiredService<IGameNavigationService>().ResetTo<GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel>(NavigationTransition.None);
         host.Services.GetRequiredService<GamePresentationState>().CompleteOpeningPresentation();
         var page = host.Services.GetRequiredService<GamePage>();
@@ -93,7 +92,7 @@ public sealed class MobileLayoutTests
     {
         using var settings = new PlayerInputSettings();
         using var panel = new InputBindingsPanel(settings);
-        var root = new Border { Child = panel, Width = 340, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left, Classes = { "galnet-player", "mobile-player" } };
+        var root = new Border { Child = panel, Width = 340, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left, Classes = { "galnet-player", "compact-player" } };
         root.Styles.Add(SampleCustomization.CreateStyles());
         var window = new Window { Width = 900, Height = 600, Content = root };
         window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
@@ -123,9 +122,9 @@ public sealed class MobileLayoutTests
 
     [TestCase(360, 800)]
     [TestCase(800, 360)]
-    public Task OrdinaryPagesAndConfirmationStayInsideTheMobileViewport(int width, int height) => SampleUiTests.RunAsync(async () =>
+    public Task OrdinaryPagesAndConfirmationStayInsideTheViewport(int width, int height) => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await MobileHost();
+        await using var host = await ResponsiveHost();
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         var window = new Window { Width = width, Height = height, Content = host.View };
         window.Show();
@@ -158,14 +157,16 @@ public sealed class MobileLayoutTests
         finally { window.Close(); }
     });
 
+    [TestCase(800, 360, FontSizePreset.Smaller)]
+    [TestCase(1280, 720, FontSizePreset.Smaller)]
     [TestCase(800, 360, FontSizePreset.Larger)]
     [TestCase(960, 432, FontSizePreset.Larger)]
     [TestCase(360, 800, FontSizePreset.Larger)]
     [TestCase(360, 800, FontSizePreset.Large)]
     [TestCase(320, 800, FontSizePreset.Large)]
-    public Task MobileGameKeepsFixedCanvasAndTouchableCenteredToolbar(int width, int height, FontSizePreset preset) => SampleUiTests.RunAsync(async () =>
+    public Task GameKeepsFixedCanvasAndTouchableCenteredToolbar(int width, int height, FontSizePreset preset) => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await MobileHost(preset);
+        await using var host = await ResponsiveHost(preset);
         var navigation = host.Services.GetRequiredService<IGameNavigationService>();
         navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel>(NavigationTransition.None);
         var state = host.Services.GetRequiredService<GamePresentationState>();
@@ -211,7 +212,8 @@ public sealed class MobileLayoutTests
             var dialogueBottom = page.Dialogue.TranslatePoint(new Point(0, page.Dialogue.Bounds.Height), page)!.Value.Y;
             Assert.That(dialogueBottom, Is.LessThanOrEqualTo(frame.Bounds.Top - 3));
             Assert.That(height - frame.Bounds.Bottom, Is.InRange(0, 1));
-            if (width >= height) Assert.That(frame.Bounds.Top - dialogueBottom, Is.InRange(3, 5));
+            if (width >= height)
+                Assert.That(frame.Bounds.Top - dialogueBottom, Is.EqualTo(Math.Max(4, 70 * Math.Min(width / 1920d, height / 1080d) - frame.Bounds.Height)).Within(1));
             using (var scene = page.SceneHost.CaptureControl(page.Scene)) Assert.That(scene.PixelSize, Is.EqualTo(new PixelSize(1920, 1080)));
             using (var screen = page.SceneHost.CaptureControl(host.Services.GetRequiredService<GameShell>())) Assert.That(screen.PixelSize, Is.EqualTo(new PixelSize(width, height)));
             Capture(window, $"game-{width}x{height}");
@@ -239,7 +241,7 @@ public sealed class MobileLayoutTests
     [Test]
     public Task NarrowSettingsReflowWithoutRecreatingEditorsOrLosingValues() => SampleUiTests.RunAsync(async () =>
     {
-        await using var host = await MobileHost();
+        await using var host = await ResponsiveHost();
         host.Services.GetRequiredService<IGameNavigationService>().ResetTo<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
         var window = new Window { Width = 800, Height = 400, Content = host.View };
         window.Show();
@@ -272,12 +274,10 @@ public sealed class MobileLayoutTests
     [TestCase(320, 1)]
     [TestCase(760, 3)]
     [TestCase(1100, 4)]
-    public Task MobileTilesUseAvailableWidth(int width, int columns) => SampleUiTests.RunAsync(() =>
+    public Task TilesUseAvailableWidth(int width, int columns) => SampleUiTests.RunAsync(() =>
     {
         var slots = new GalNet.Sample.CrossPlatform.Views.AdaptiveSaveGrid();
         var gallery = new GalNet.Sample.CrossPlatform.Views.AdaptiveGalleryPanel();
-        PlayerLayout.SetIsMobile(slots, true);
-        PlayerLayout.SetIsMobile(gallery, true);
         for (var index = 0; index < 8; index++)
         { slots.Children.Add(new Border { Height = 180 }); gallery.Children.Add(new Border()); }
         slots.Measure(new Size(width, double.PositiveInfinity));
@@ -318,7 +318,76 @@ public sealed class MobileLayoutTests
         finally { window.Close(); }
     });
 
-    private static async Task<AvaloniaPlayerHost> MobileHost(FontSizePreset preset = FontSizePreset.Larger)
+    [Test]
+    public Task DesktopResizeReflowsTheSameShellAndRestoresWideTitleLayout() => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(), services => SampleCustomization.ConfigureServices(services));
+        host.Services.GetRequiredService<IPlayerApplication>().CompleteStartup(null);
+        var shell = host.Services.GetRequiredService<GameShell>();
+        var window = new Window { Width = 1280, Height = 720, Content = host.View };
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var title = window.GetVisualDescendants().OfType<GalNet.Sample.CrossPlatform.Views.TitlePage>().Single();
+            var layout = title.FindControl<Grid>("TitleLayout")!;
+            var button = title.FindControl<Button>("NewGameButton")!;
+            Assert.That(layout.ColumnDefinitions[0].Width.Value, Is.EqualTo(440));
+            Assert.That(shell.Classes.Contains("compact-player"), Is.False);
+            foreach (var width in new[] { 360, 1280, 800, 1280 })
+            {
+                host.View.Width = width;
+                host.View.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
+                window.UpdateLayout();
+                Assert.That(host.Services.GetRequiredService<GameShell>(), Is.SameAs(shell));
+                Assert.That(shell.Bounds.Width, Is.EqualTo(width));
+                Assert.That(shell.Classes.Contains("compact-player"), Is.EqualTo(width < 1000));
+                Assert.That(layout.ColumnDefinitions[1].Width.Value, width < 1000 ? Is.Zero : Is.EqualTo(1));
+                Assert.That(title.FindControl<Button>("NewGameButton"), Is.SameAs(button));
+                Assert.That(button.TranslatePoint(default, host.View)!.Value.X + button.Bounds.Width, Is.LessThanOrEqualTo(width));
+                Assert.That(shell.Resources.ContainsKey("GalNet.Theme.PageHeaderMinHeight"), Is.EqualTo(width < 1000));
+                Capture(window, $"desktop-title-{width}");
+            }
+            host.Services.GetRequiredService<IPlayerApplication>().Detach();
+            Assert.That(shell.Classes.Contains("compact-player"), Is.False);
+            Assert.That(shell.Resources.ContainsKey("GalNet.Theme.PageHeaderMinHeight"), Is.False);
+        }
+        finally { window.Close(); }
+    });
+
+    [Test]
+    public Task DesktopToolbarClosesMoreWhenResizeRestoresFullActions() => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await ResponsiveHost(FontSizePreset.Smaller);
+        host.Services.GetRequiredService<IGameNavigationService>().ResetTo<GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel>(NavigationTransition.None);
+        var state = host.Services.GetRequiredService<GamePresentationState>();
+        state.CompleteOpeningPresentation();
+        var page = host.Services.GetRequiredService<GamePage>();
+        var window = new Window { Width = 1280, Height = 720, Content = host.View };
+        window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
+        host.View.Width = 360;
+        host.View.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var more = page.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "MoreButton");
+            Assert.That(more.IsEffectivelyVisible, Is.True);
+            more.Flyout!.ShowAt(more);
+            window.UpdateLayout();
+            Assert.That(((MenuFlyout)more.Flyout).IsOpen, Is.True);
+            host.View.Width = 1280;
+            window.UpdateLayout();
+            Assert.That(((MenuFlyout)more.Flyout).IsOpen, Is.False);
+            Assert.That(more.IsEffectivelyVisible, Is.False);
+            Assert.That(host.Services.GetRequiredService<GamePage>(), Is.SameAs(page));
+            Assert.That(page.GetVisualDescendants().OfType<Button>().Count(button => button.Classes.Contains("player-link") && button.IsEffectivelyVisible), Is.EqualTo(9));
+            Capture(window, "desktop-toolbar-expanded");
+        }
+        finally { window.Close(); }
+    });
+
+    private static async Task<AvaloniaPlayerHost> ResponsiveHost(FontSizePreset preset = FontSizePreset.Larger)
     {
         var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(), services =>
         {
@@ -326,7 +395,6 @@ public sealed class MobileLayoutTests
             services.AddScoped(_ =>
             {
                 var view = SampleCustomization.CreateView();
-                PlayerLayout.SetIsMobile(view, true);
                 return view;
             });
             services.AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
@@ -347,7 +415,7 @@ public sealed class MobileLayoutTests
     }
 
     [Test]
-    public Task DesktopGameBaseline() => SampleUiTests.RunAsync(async () =>
+    public Task DesktopGameUsesActualViewportAndKeepsSceneComposition() => SampleUiTests.RunAsync(async () =>
     {
         await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(), services => SampleCustomization.ConfigureServices(services));
         host.Services.GetRequiredService<IPlayerApplication>().CompleteStartup(null);
@@ -369,7 +437,8 @@ public sealed class MobileLayoutTests
             var toolbarButtons = page.GetVisualDescendants().OfType<Button>().Where(button => button.Classes.Contains("player-link") && button.IsEffectivelyVisible).ToArray();
             Assert.That(toolbarButtons.Length, Is.EqualTo(9), "History is unavailable in this fixture.");
             var canvas = host.View.FindControl<GameCanvasHost>("GameCanvas")!;
-            Assert.That(canvas.GameContent, Is.SameAs(host.Services.GetRequiredService<GameShell>()));
+            Assert.That(canvas.GameContent, Is.Null);
+            Assert.That(host.Services.GetRequiredService<GameShell>().Bounds.Size, Is.EqualTo(new Size(1280, 720)));
             Assert.That(page.Scene.Bounds.Size, Is.EqualTo(new Size(1920, 1080)));
             Assert.That(page.Dialogue.Bounds.Width, Is.EqualTo(1792));
             var directory = Environment.GetEnvironmentVariable("GALNET_MOBILE_CAPTURE_DIR");
