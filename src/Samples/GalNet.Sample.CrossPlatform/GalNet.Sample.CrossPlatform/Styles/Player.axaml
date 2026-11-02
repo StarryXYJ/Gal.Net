@@ -3,6 +3,7 @@
         xmlns:input="using:GalNet.Avalonia.GameView.Input"
         xmlns:controls="using:GalNet.Game.Controls"
         xmlns:page="using:GalNet.Avalonia.GameView.Page"
+        xmlns:settings="using:GalNet.Avalonia.GameView.Settings"
         xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
         xmlns:layout="using:GalNet.Sample.CrossPlatform.Views"
         xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels">
@@ -141,12 +142,37 @@
     <Setter Property="Padding" Value="0,8" />
     <Setter Property="Margin" Value="0,0,24,0" />
   </Style>
+  <Style Selector=".galnet-player TabControl.settings-categories">
+    <Setter Property="ItemTemplate">
+      <DataTemplate DataType="settings:SettingCategory">
+        <Grid>
+          <ContentControl Content="{Binding Label}" HorizontalAlignment="Left" />
+          <!-- Reserve the selected weight's width without measuring or caching it in code. -->
+          <ContentControl Content="{Binding Label}" FontWeight="SemiBold" Opacity="0" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+        </Grid>
+      </DataTemplate>
+    </Setter>
+  </Style>
+  <Style Selector=".galnet-player TabControl.input-device-tabs">
+    <Setter Property="Padding" Value="0" />
+  </Style>
+  <Style Selector=".galnet-player TabControl.input-device-tabs > TabItem">
+    <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.ActionFontSize}" />
+    <Setter Property="Padding" Value="12,6" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+  </Style>
+  <Style Selector=".galnet-player TabControl.settings-categories > TabItem:selected">
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
   <Style Selector=".galnet-player TabItem:selected /template/ Border#PART_SelectedPipe">
     <Setter Property="IsVisible" Value="False" />
   </Style>
   <Style Selector=".galnet-player TabItem:selected /template/ Border#PART_LayoutRoot">
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.ControlPressed}" />
     <Setter Property="TextElement.Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
+  </Style>
+  <Style Selector=".galnet-player TabControl.settings-categories > TabItem:selected:not(:pointerover):not(:pressed) /template/ Border#PART_LayoutRoot">
+    <Setter Property="Background" Value="Transparent" />
   </Style>
   <Style Selector=".galnet-player TabItem:pointerover /template/ Border#PART_LayoutRoot">
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.ControlHover}" />

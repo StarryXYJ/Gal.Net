@@ -5,7 +5,8 @@
              xmlns:views="using:GalNet.Avalonia.GameHost.Views"
              xmlns:project="using:GalNet.Sample.CrossPlatform.Views"
              xmlns:ursa="https://irihi.tech/ursa"
-             x:Class="GalNet.Sample.CrossPlatform.Views.PlayerView">
+             x:Class="GalNet.Sample.CrossPlatform.Views.PlayerView"
+             DisableContentDuringConfirmation="False">
   <UserControl.Resources>
     <ControlTheme x:Key="TextCardTheme.default" TargetType="ContentControl">
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />

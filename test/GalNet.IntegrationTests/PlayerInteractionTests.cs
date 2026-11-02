@@ -44,7 +44,7 @@ public sealed class PlayerInteractionTests
             var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
             game.ReturnToTitleCommand.Execute(null);
             var confirmation = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().ConfirmReturnToTitleAsync();
-            Assert.That(host.View.FindControl<Grid>("PlayerContent")!.IsEnabled, Is.False);
+            Assert.That(host.View.FindControl<Grid>("PlayerContent")!.IsEnabled, Is.True);
             Assert.That(game.IsInteractionBlocked, Is.True);
             Assert.That(navigation.CurrentViewModel, Is.SameAs(host.Services.GetRequiredService<GamePageViewModel>()));
             Capture(window, "return-to-title");

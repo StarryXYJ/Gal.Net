@@ -20,7 +20,7 @@
       </StackPanel>
     </DataTemplate>
   </UserControl.Resources>
-  <TabControl x:Name="CategoryTabs" ItemsSource="{Binding VisibleCategories, RelativeSource={RelativeSource AncestorType=UserControl}}">
+  <TabControl x:Name="CategoryTabs" Classes="settings-categories" ItemsSource="{Binding VisibleCategories, RelativeSource={RelativeSource AncestorType=UserControl}}">
     <TabControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></TabControl.ItemsPanel>
     <TabControl.Template>
       <ControlTemplate>
@@ -32,9 +32,9 @@
         </Grid>
       </ControlTemplate>
     </TabControl.Template>
-    <TabControl.ItemTemplate>
+    <TabControl.DataTemplates>
       <DataTemplate DataType="settings:SettingCategory"><ContentControl Content="{Binding Label}" /></DataTemplate>
-    </TabControl.ItemTemplate>
+    </TabControl.DataTemplates>
     <TabControl.ContentTemplate>
       <DataTemplate DataType="settings:SettingCategory">
         <ScrollViewer Name="CategoryContentScroll" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" PropertyChanged="ContentPropertyChanged" AttachedToVisualTree="ContentAttached">

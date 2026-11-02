@@ -9,6 +9,7 @@ using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Avalonia.GameView.Controls;
 using GalNet.Avalonia.GameView.Navigation;
+using GalNet.Avalonia.GameView.Input;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Sample.CrossPlatform;
 using Microsoft.Extensions.DependencyInjection;
@@ -257,7 +258,7 @@ public sealed class PlayerLayoutPolishTests
                         Is.EqualTo(width / 2d).Within(1), "The heading and form share one centered frame, allowing layout pixel rounding.");
                     var tab = (TabItem)tabs.ContainerFromIndex(0)!;
                     Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontSize, Is.EqualTo(sizes.Heading * 22 / 34));
-                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.Normal));
+                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.SemiBold));
                     Assert.That(tab.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_SelectedPipe").IsVisible, Is.False);
                     Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().TranslatePoint(default, host.View)!.Value.X,
                         Is.EqualTo(heading.TranslatePoint(default, host.View)!.Value.X).Within(1),
@@ -273,6 +274,75 @@ public sealed class PlayerLayoutPolishTests
                 }
                 Capture(window, $"{type.Name}-{culture}-{width}x{height}-{preset}");
             }
+        }
+        finally { window.Close(); }
+    });
+
+    [TestCase("en-US", 1280, 720, FontSizePreset.Smaller)]
+    [TestCase("zh-CN", 360, 800, FontSizePreset.Large)]
+    [TestCase("en-US", 800, 360, FontSizePreset.Larger)]
+    [TestCase("zh-CN", 1920, 1080, FontSizePreset.Large)]
+    public Task SettingsNavigationKeepsTwoDistinctLevelsAndStablePositions(string culture, int width, int height, FontSizePreset preset)
+        => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await CreateHost();
+        host.Services.GetRequiredService<AvaloniaPlayerLocalization>().ApplyCulture(culture);
+        var settings = host.Services.GetRequiredService<AvaloniaPlayerSettingsService>();
+        await settings.Categories.SelectMany(category => category.Items).OfType<ChoiceSetting<FontSizePreset>>().Single().TrySetValueAsync(preset);
+        settings.Input.SelectedDevice = PlayerInputDevice.KeyboardMouse;
+        host.Services.GetRequiredService<IGameNavigationService>().ResetTo<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>(NavigationTransition.None);
+        var window = new Window { Width = width, Height = height, Content = host.View };
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var categories = window.GetVisualDescendants().OfType<TabControl>().Single(tabs => tabs.Name == "CategoryTabs");
+            var headers = Enumerable.Range(0, categories.ItemCount).Select(index => (TabItem)categories.ContainerFromIndex(index)!).ToArray();
+            var positions = headers.Select(tab => tab.TranslatePoint(default, categories)!.Value.X).ToArray();
+            for (var index = 0; index < headers.Length; index++)
+            {
+                categories.SelectedIndex = index;
+                window.UpdateLayout();
+                for (var other = 0; other < headers.Length; other++)
+                {
+                    Assert.That(headers[other].TranslatePoint(default, categories)!.Value.X, Is.EqualTo(positions[other]).Within(1),
+                        "Changing the selected weight must not move neighboring category labels.");
+                    Assert.That(headers[other].FontWeight, Is.EqualTo(other == index ? global::Avalonia.Media.FontWeight.SemiBold : global::Avalonia.Media.FontWeight.Normal));
+                }
+            }
+            categories.SelectedIndex = 1;
+            window.UpdateLayout();
+            var primary = headers[1];
+            var primaryBackground = primary.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_LayoutRoot");
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)primaryBackground.Background!).Color.A, Is.Zero);
+            var pointer = primary.TranslatePoint(new Point(primary.Bounds.Width / 2, primary.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(pointer);
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)primaryBackground.Background!).Color.A, Is.GreaterThan(0),
+                "A selected category still provides hover feedback.");
+            window.MouseMove(default);
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)primaryBackground.Background!).Color.A, Is.Zero);
+            var panel = window.GetVisualDescendants().OfType<InputBindingsPanel>().Single();
+            var devices = panel.GetVisualDescendants().OfType<TabControl>().Single();
+            var keyboard = (TabItem)devices.ContainerFromIndex(0)!;
+            var label = keyboard.GetVisualDescendants().OfType<TextBlock>().First();
+            Assert.That(label.FontSize, Is.EqualTo(PlayerTypography.Presets[preset].Action));
+            Assert.That(label.FontSize, Is.LessThan(primary.FontSize));
+            Assert.That(label.FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.Normal));
+            Assert.That(keyboard.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_SelectedPipe").IsVisible, Is.False);
+            var background = keyboard.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_LayoutRoot");
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)background.Background!).Color.A, Is.GreaterThan(0));
+            Assert.That(panel.TranslatePoint(default, categories)!.Value.X, Is.EqualTo(0).Within(1));
+            var editor = panel.GetVisualDescendants().OfType<InputBindingCapture>().First();
+            Capture(window, $"operation-{culture}-{width}x{height}-{preset}");
+            keyboard.Focus();
+            window.KeyPress(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
+            window.KeyRelease(Key.Right, RawInputModifiers.None, PhysicalKey.ArrowRight, null);
+            Assert.That(devices.SelectedIndex, Is.EqualTo(1));
+            Assert.That(settings.Input.SelectedDevice, Is.EqualTo(PlayerInputDevice.Gamepad));
+            devices.SelectedIndex = 0;
+            window.UpdateLayout();
+            Assert.That(panel.GetVisualDescendants().OfType<InputBindingCapture>().First(), Is.SameAs(editor));
+            Assert.That(label.FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.Normal));
         }
         finally { window.Close(); }
     });

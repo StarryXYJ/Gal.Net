@@ -9,9 +9,9 @@
     x:Class="GalNet.Sample.CrossPlatform.Views.GamePage"
     x:DataType="vm:GamePageViewModel">
   <page:GamePage.Resources>
-    <SolidColorBrush x:Key="ToolbarHover" Color="#565D66" />
-    <SolidColorBrush x:Key="ToolbarPressed" Color="#454C55" />
-    <SolidColorBrush x:Key="ToolbarSelected" Color="#656D78" />
+    <SolidColorBrush x:Key="ToolbarHover" Color="#A678818C" />
+    <SolidColorBrush x:Key="ToolbarPressed" Color="#A666707B" />
+    <SolidColorBrush x:Key="ToolbarSelected" Color="#A6818A96" />
     <ControlTheme x:Key="SampleGameLayout" TargetType="page:GamePage">
       <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Background}"/>
       <Setter Property="Template">

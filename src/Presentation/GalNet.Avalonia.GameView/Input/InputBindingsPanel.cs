@@ -18,6 +18,7 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
     public InputBindingsPanel(PlayerInputSettings settings)
     {
         _settings = settings;
+        _tabs.Classes.Add("input-device-tabs");
         _tabs.ItemsPanel = new FuncTemplate<Panel>(() => new WrapPanel());
         var tabs = new List<TabItem>();
         foreach (var device in Enum.GetValues<PlayerInputDevice>())

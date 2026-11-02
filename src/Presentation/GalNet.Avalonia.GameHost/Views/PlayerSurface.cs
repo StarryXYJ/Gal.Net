@@ -12,9 +12,19 @@ namespace GalNet.Avalonia.GameHost.Views;
 /// <summary>Reusable modal, focus and announcement behavior. The application supplies the named surface controls.</summary>
 public abstract class PlayerSurface : UserControl
 {
+    public static readonly StyledProperty<bool> DisableContentDuringConfirmationProperty =
+        AvaloniaProperty.Register<PlayerSurface, bool>(nameof(DisableContentDuringConfirmation), defaultValue: true);
+
     public static readonly StyledProperty<TimeSpan> AudioAnnouncementDurationProperty =
         AvaloniaProperty.Register<PlayerSurface, TimeSpan>(nameof(AudioAnnouncementDuration), TimeSpan.FromSeconds(3),
             validate: value => value > TimeSpan.Zero);
+
+    /// <summary>Whether the underlying player content is disabled while an exit or return confirmation is open.</summary>
+    public bool DisableContentDuringConfirmation
+    {
+        get => GetValue(DisableContentDuringConfirmationProperty);
+        set => SetValue(DisableContentDuringConfirmationProperty, value);
+    }
 
     /// <summary>Announcement lifetime, including the application's entry animation.</summary>
     public TimeSpan AudioAnnouncementDuration
@@ -29,6 +39,8 @@ public abstract class PlayerSurface : UserControl
     private LanguageSelectionViewModel? _languageSelection;
     private TaskCompletionSource<bool>? _exitConfirmation;
     private IInputElement? _exitPreviousFocus;
+    private bool _contentWasEnabledBeforeConfirmation;
+    private bool _contentDisabledForConfirmation;
 
     private GalNet.Game.Controls.GameCanvasHost GameCanvas = null!;
     private Control LanguageSelection = null!;
@@ -130,7 +142,12 @@ public abstract class PlayerSurface : UserControl
         _shell?.SetConfirmationOpen(true);
         _textCards.ClearTextCards();
         PlayerContent.Classes.Add("modal-background");
-        PlayerContent.IsEnabled = false;
+        if (DisableContentDuringConfirmation)
+        {
+            _contentWasEnabledBeforeConfirmation = PlayerContent.IsEnabled;
+            PlayerContent.IsEnabled = false;
+            _contentDisabledForConfirmation = true;
+        }
         ExitConfirmation.IsVisible = true;
         _shell?.SetNavigationScope(ExitConfirmation, () => CancelExitConfirmation());
         CancelExitButton.Focus();
@@ -162,7 +179,11 @@ public abstract class PlayerSurface : UserControl
             _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
         }
         ExitConfirmation.IsVisible = false;
-        PlayerContent.IsEnabled = true;
+        if (_contentDisabledForConfirmation)
+        {
+            PlayerContent.IsEnabled = _contentWasEnabledBeforeConfirmation;
+            _contentDisabledForConfirmation = false;
+        }
         PlayerContent.Classes.Remove("modal-background");
         _exitPreviousFocus?.Focus();
         _exitPreviousFocus = null;

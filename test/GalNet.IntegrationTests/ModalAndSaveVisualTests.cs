@@ -76,7 +76,7 @@ public sealed class ModalAndSaveVisualTests
             var confirmation = host.ConfirmExitAsync();
             window.UpdateLayout();
             Assert.That(((ISolidColorBrush)about.Foreground!).Color, Is.EqualTo(original));
-            Assert.That(about.IsEffectivelyEnabled, Is.False, "Input blocking remains in force while colors are preserved.");
+            Assert.That(about.IsEffectivelyEnabled, Is.True, "The modal overlay blocks pointer input without disabling the background controls.");
             var center = about.TranslatePoint(new Point(about.Bounds.Width / 2, about.Bounds.Height / 2), window)!.Value;
             window.MouseDown(center, MouseButton.Left);
             window.MouseUp(center, MouseButton.Left);
