@@ -462,3 +462,4 @@
 - [LibVLC Parse 回调释放](lessons/L-20261031-02-libvlc-parse-native-callback.md)：3.10.0 Parse 的默认完成源可内联回调；解析后释放 Media 前用异步完成转发，避免原生回调内释放事件源。
 
 - [ToolTip.IsEnabled 禁用目标](lessons/L-20261031-03-tooltip-enabled-target.md)：它是继承的 InputElement.IsEnabled，空提示用 Tip=null，不能绑定 HasName 来开关 tooltip；检查真实控件启用与点击状态。
+- [控制台输入取消与读取所有权](lessons/L-20261102-13-console-input-ownership.md)：WaitAsync 只取消等待，不取消底层 ReadLine；单会话串行拥有读取，取消后交接待完成结果。
