@@ -50,7 +50,7 @@ public sealed class PresentationLibraryTests
         Assert.That(fadeIn * definition.InitialModule.Lifetime.Max, Is.LessThan(.25f));
         if (weather == "Rain")
         {
-            Assert.That(definition.InitialModule.Size.Max * 28, Is.LessThanOrEqualTo(3));
+            Assert.That(definition.InitialModule.Size.Max * 28, Is.LessThanOrEqualTo(3.2));
             Assert.That(definition.InitialModule.Color.Max, Is.EqualTo("#9FC6DF78"));
         }
         if (weather == "Petals")

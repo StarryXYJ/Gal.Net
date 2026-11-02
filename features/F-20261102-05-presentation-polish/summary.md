@@ -59,3 +59,6 @@
 证据在 output/weather-polish：Builtins 452、Presentation 普通全量 269、后加预算回归单独 1 项、完整项目集成 13、显式天气预览 1 项全部通过（共 736 项不同测试）。预览已目视检查斜雨/径向雨/雪/花瓣。Host.Render 回归需运行在既有 Headless 平台上；DrawingGroup 不支持末尾自定义 Skia 操作，测试只容许该特定 NotSupportedException 并检查其之前的实际宿主更新。未宣称原生 GPU 验收。
 
 Headless 构建、完整项目 complete=true/零诊断校验、目录导出通过；三份契约与 Sample 输出 hash 一致。最新最终内容为 `output/weather-polish/content-p5`，对应日志均带 p5。本轮仍未提交 Git，既有其他工作区修改保留。
+
+## 后续外观微调
+用户要求雨稍粗、萤火虫稍黄：斜雨尺寸范围调整为 0.044–0.11，径向雨同步增加约 10%；Fireflies 的 RGBA 调为 #FFF0A088–#FFF7C0FF，保持原 alpha 范围和运动参数。5 项天气编译、11 项实际天气渲染回归通过；Sample Desktop/Headless 构建和完整项目零诊断校验通过，本地项目契约已同步。本次微调尚未提交 Git。

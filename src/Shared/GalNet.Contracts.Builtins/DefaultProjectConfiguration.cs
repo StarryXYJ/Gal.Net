@@ -36,5 +36,6 @@ public static class DefaultProjectConfiguration
     private static FieldDescriptor Field(string id, Type type, int? minimum = null) => new(id,
         new ValueDescriptor(type, allowNull: false,
             constraints: minimum is { } bound ? JsonCodec.SerializeToElement(new Dictionary<string, int> { ["minimum"] = bound }) : null,
-            jsonOptions: JsonOptions), editor: new EditorHints(EditorId: type == typeof(int) ? ValueEditorIds.Numeric : ValueEditorIds.Json));
+            jsonOptions: JsonOptions), editor: new EditorHints(EditorId: type == typeof(int) ? ValueEditorIds.Numeric
+                : type.IsEnum ? ValueEditorIds.Choice : ValueEditorIds.Json));
 }

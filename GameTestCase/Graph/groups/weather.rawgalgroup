@@ -138,8 +138,8 @@
               "max": 0
             },
             "size": {
-              "min": 0.06,
-              "max": 0.16
+              "min": 0.066,
+              "max": 0.176
             },
             "alignToVelocity": true,
             "color": {

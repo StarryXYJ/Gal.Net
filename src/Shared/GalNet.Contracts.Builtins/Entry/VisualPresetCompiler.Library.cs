@@ -99,8 +99,8 @@ internal static partial class VisualPresetCompiler
         var floating = options.Weather is WeatherKind.Dust or WeatherKind.Fireflies;
         var rain = options.Weather == WeatherKind.Rain;
         var speed = rain ? 1000f : options.Weather == WeatherKind.Snow ? 100f : 70f;
-        var minSize = options.Weather switch { WeatherKind.Rain => .04f, WeatherKind.Snow => .15f, WeatherKind.Petals => .45f, WeatherKind.Dust => .07f, _ => .12f };
-        var maxSize = options.Weather switch { WeatherKind.Rain => .1f, WeatherKind.Snow => .45f, WeatherKind.Petals => 1f, WeatherKind.Dust => .18f, _ => .35f };
+        var minSize = options.Weather switch { WeatherKind.Rain => .044f, WeatherKind.Snow => .15f, WeatherKind.Petals => .45f, WeatherKind.Dust => .07f, _ => .12f };
+        var maxSize = options.Weather switch { WeatherKind.Rain => .11f, WeatherKind.Snow => .45f, WeatherKind.Petals => 1f, WeatherKind.Dust => .18f, _ => .35f };
         var minLife = floating ? 3f : options.Height / speed + 1;
         var maxLife = floating ? 6f : options.Height / speed + 2;
         var rate = Math.Min(options.Rate, options.MaxParticles / (maxLife + .1f));
@@ -112,8 +112,8 @@ internal static partial class VisualPresetCompiler
             alignToVelocity = rain, size = new { min = minSize, max = maxSize }, rotationDegrees = new { min = rain ? 0 : -180, max = rain ? 0 : 180 },
             angularVelocityDegrees = new { min = options.Weather == WeatherKind.Petals ? -90 : 0, max = options.Weather == WeatherKind.Petals ? 90 : 0 },
             color = new {
-                min = rain ? "#7FA9C730" : options.Weather == WeatherKind.Petals ? "#ED4786CC" : options.Weather == WeatherKind.Fireflies ? "#FFFFFF88" : "#FFFFFFFF",
-                max = rain ? "#9FC6DF78" : options.Weather == WeatherKind.Petals ? "#FFB1D1F2" : "#FFFFFFFF" } };
+                min = rain ? "#7FA9C730" : options.Weather == WeatherKind.Petals ? "#ED4786CC" : options.Weather == WeatherKind.Fireflies ? "#FFF0A088" : "#FFFFFFFF",
+                max = rain ? "#9FC6DF78" : options.Weather == WeatherKind.Petals ? "#FFB1D1F2" : options.Weather == WeatherKind.Fireflies ? "#FFF7C0FF" : "#FFFFFFFF" } };
         var emitter = Id(clip, "weather");
         clip.Events.Add(Event(0, BuiltinEntryIds.PlayParticleEmitter, new { instanceId = emitter, z = options.Z, parameters = new {
             particleTexture = options.Texture, rate, maxParticles = options.MaxParticles, seed = options.Seed, initial,
