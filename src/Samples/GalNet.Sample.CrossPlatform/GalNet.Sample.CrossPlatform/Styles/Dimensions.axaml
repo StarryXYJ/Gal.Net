@@ -13,4 +13,7 @@
   <Thickness x:Key="GalNet.Theme.ChoicePadding">24,16</Thickness>
   <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,7</Thickness>
   <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
+  <x:Double x:Key="GalNet.Theme.PageHeaderSpacing">24</x:Double>
+  <Thickness x:Key="GalNet.Theme.ContentMargin">0,24,0,0</Thickness>
+  <Thickness x:Key="GalNet.Theme.RuleMargin">0,20,0,0</Thickness>
 </ResourceDictionary>

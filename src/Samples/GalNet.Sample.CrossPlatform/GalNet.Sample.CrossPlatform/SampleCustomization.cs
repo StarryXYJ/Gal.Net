@@ -51,7 +51,8 @@ public static class SampleCustomization
         {
             fluent,
             new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Controls.axaml") },
-            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Player.axaml") }
+            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Player.axaml") },
+            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Mobile.axaml") }
         };
         styles.Resources["GalNet.Theme.FontFamily"] = GameTypography.UiFontFamily;
         styles.Resources.MergedDictionaries.Add(palette.CreateResources());

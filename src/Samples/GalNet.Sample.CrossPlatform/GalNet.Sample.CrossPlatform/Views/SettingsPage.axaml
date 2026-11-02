@@ -11,15 +11,15 @@
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
-        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
           <StackPanel Spacing="3">
             <TextBlock Text="{text:PlayerText Settings.Title, Settings}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
             <TextBlock Text="{text:PlayerText Settings.Description, 'Playback preferences'}" Opacity="0.64" />
           </StackPanel>
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, Back}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
         </Grid>
-        <Border Grid.Row="1" Margin="0,20,0,0" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
-        <ScrollViewer Grid.Row="2" Margin="0,24,0,0" HorizontalScrollBarVisibility="Disabled">
+        <Border Grid.Row="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <ScrollViewer Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}" HorizontalScrollBarVisibility="Disabled">
           <Border Classes="player-settings-card">
             <StackPanel Spacing="28">
               <common:SettingsCategories Categories="{Binding Categories}" Editors="{Binding Editors}" />

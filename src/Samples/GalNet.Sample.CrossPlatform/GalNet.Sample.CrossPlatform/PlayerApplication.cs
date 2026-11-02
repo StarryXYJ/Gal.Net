@@ -20,6 +20,7 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
     public void Attach()
     {
         view.Attach(shell, language);
+        view.AttachResponsiveShell(shell);
         view.BindAudioAnnouncements(state);
         settings.SettingsChanged += ApplyTypography;
         _appliedFontSize = null;
@@ -28,6 +29,7 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
     public void Detach()
     {
         settings.SettingsChanged -= ApplyTypography;
+        view.DetachResponsiveShell();
         view.Detach();
     }
     private void ApplyTypography()
@@ -50,6 +52,7 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
     public async Task<bool> HandleBackAsync()
     {
         if (view.CancelExitConfirmation()) return false;
+        if (view.CloseToolbarMenu()) return false;
         if (navigation.CurrentViewModel is BackNavigablePageViewModel page && navigation.CanGoBack)
             page.BackCommand.Execute(null);
         else if (navigation.CurrentViewModel is GamePageViewModel game)

@@ -1,0 +1,47 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Style Selector=".mobile-player Border.player-page-frame">
+    <Setter Property="Margin" Value="12" />
+    <Setter Property="Padding" Value="8" />
+  </Style>
+  <Style Selector=".mobile-player Grid#PageHeader">
+    <Setter Property="MinHeight" Value="52" />
+    <Setter Property="ColumnSpacing" Value="12" />
+  </Style>
+  <Style Selector=".mobile-player Grid#PageHeader TextBlock">
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+  </Style>
+  <Style Selector=".mobile-player Border#PageFrame > Grid > Border">
+    <Setter Property="Margin" Value="0,8,0,0" />
+  </Style>
+  <Style Selector=".mobile-player Border#PageFrame > Grid > ScrollViewer">
+    <Setter Property="Margin" Value="0,12,0,0" />
+  </Style>
+  <Style Selector=".mobile-player Button.player-back">
+    <Setter Property="MinWidth" Value="80" />
+    <Setter Property="MinHeight" Value="48" />
+    <Setter Property="Padding" Value="16,8" />
+  </Style>
+  <Style Selector=".mobile-player Border.player-settings-card">
+    <Setter Property="Padding" Value="12" />
+  </Style>
+  <Style Selector=".mobile-player Button.player-menu">
+    <Setter Property="MinHeight" Value="48" />
+  </Style>
+  <Style Selector=".mobile-player Button.player-input-binding, .mobile-player ComboBox">
+    <Setter Property="MinHeight" Value="48" />
+  </Style>
+  <Style Selector=".mobile-player Button, .mobile-player ToggleButton, .mobile-player CheckBox, .mobile-player Slider, .mobile-player ComboBoxItem">
+    <Setter Property="MinHeight" Value="48" />
+  </Style>
+  <Style Selector=".mobile-player Button, .mobile-player ToggleButton">
+    <Setter Property="MinWidth" Value="48" />
+  </Style>
+  <Style Selector=".mobile-player ScrollViewer#TitleMenu">
+    <Setter Property="Margin" Value="0,12,0,0" />
+    <Setter Property="MaxWidth" Value="340" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
+  <Style Selector=".mobile-player StackPanel#TitleButtons">
+    <Setter Property="Margin" Value="0" />
+  </Style>
+</Styles>

@@ -498,8 +498,8 @@ public sealed partial class GameThemeTests
             try
             {
                 window.UpdateLayout();
-                var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Command == state.ToggleQuickCommand);
-                var auto = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Command == state.ToggleAutoCommand);
+                var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.IsEffectivelyVisible && button.Command == state.ToggleQuickCommand);
+                var auto = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.IsEffectivelyVisible && button.Command == state.ToggleAutoCommand);
                 var skip = page.GetVisualDescendants().OfType<Button>().Single(button => button.Command == state.RequestSkipCommand);
                 Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
                 Assert.That(((ISolidColorBrush)auto.Background!).Color.A, Is.Zero);

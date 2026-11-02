@@ -51,3 +51,11 @@ PlayerTypography.DesktopDefault = FontSizePreset.Smaller;
 `FontSizePreset` 位于 `GalNet.Avalonia.GameHost.Settings`。这里是项目源码配置，不是 Editor 的项目配置字段；玩家设置只选择档位。应用通过局部 DynamicResource 更新字号，不改写剧情内容或重新挂载 presenter。新增页面优先使用现有 `GalNet.Theme.*` 字号资源。截图弹窗通过 DI 读取当前玩家档位，独立创建时使用平台默认。
 
 剧情局部强调可以写 `<size=1.25em>大一点</size>`、`<size=+4>加四个单位</size>` 或 `<size=-2>小声</size>`；嵌套相对于父级字号。优先使用相对值，裸数字绝对字号不会跟随玩家偏好。完整语义与限制见[游戏页面规范](../../spec/presentation/game-view.md#玩家字号与富文本字号)。字号属于设计空间，真机检查时应同时看最终缩放和长文本布局。
+
+## 定制移动布局
+
+平台模式由 Sample 的 `PlayerLayout.IsMobile` 控制，默认仅 Android/iOS 启用。需要在桌面预览手机布局时，在应用 Attach 前调用 `PlayerLayout.SetIsMobile(view, true)`；单纯缩小桌面窗口不会切换模式。`PlayerView.AttachResponsiveShell` 借用原 shell，Detach 时解除可见性绑定并恢复局部资源，不应额外创建一套导航或 presenter。
+
+`Styles/Mobile.axaml` 定义普通页面间距与触摸高度；`GamePage.axaml` 和 code-behind 定义独立工具栏的测量/收纳与对白净空。设置 `SettingRow`/`InputBindingRow` 仅移动原有子控件；新增编辑器避免按断点重建控件，否则会丢失草稿或录入状态。`AdaptiveSaveGrid` 和 `AdaptiveGalleryPanel` 只负责卡片布局，原存档/Gallery 命令和资源归属不变。
+
+自定义游戏模板时保留内层固定画布及所需 PART_*，历史覆盖层位于工具栏之上；独立工具栏继续设置 GamePage.IsPlayerInteraction。只捕获场景与含 UI 截图的范围不同，见[移动页面规范](../../spec/presentation/game-view.md#移动页面与工具栏)。平台安全区交给原 TopLevel/InsetsManager，不叠加另一份刘海边距。

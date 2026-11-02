@@ -31,7 +31,7 @@ public sealed class PlayerInputRouter : IDisposable
     {
         _root = root; _settings = settings; _activeGame = activeGame; _back = back;
         _actions = new GameActionDispatcher(settings, activeGame, session, applicationAction);
-        _keyboardMouse = new KeyboardMouseShortcutListener(root, settings, () => _actions.CanReceive,
+        _keyboardMouse = new KeyboardMouseShortcutListener(root, settings, () => _actions.CanReceive && !HasOpenFlyout(),
             _actions.DispatchAsync, _actions.ReleaseHold);
         settings.GamepadChanged += Gamepad;
         settings.GamepadCancelled += ResetInput;
@@ -40,6 +40,7 @@ public sealed class PlayerInputRouter : IDisposable
     }
     private async void Gamepad(IReadOnlySet<string> buttons)
     {
+        if (HasOpenFlyout()) { ResetInput(); return; }
         if (!_root.IsEffectivelyEnabled || !_root.IsEffectivelyVisible) { ResetInput(); return; }
         if (_settings.IsCapturing) { _gamepadDraft = null; _gamepadPeak = 0; StopNavigationRepeat(); return; }
         var navigation = _activeGame() is null or { IsChoiceVisible: true } or { IsSkipConfirmationOpen: true } or { IsHistoryOpen: true };
@@ -153,7 +154,8 @@ public sealed class PlayerInputRouter : IDisposable
         next ??= candidates.FirstOrDefault();
         if (next?.Focus() == true) next.BringIntoView();
     }
-    public Task DispatchAsync(string action) => _actions.DispatchAsync(action);
+    private bool HasOpenFlyout() => _root.GetVisualDescendants().OfType<Button>().Any(button => button.Flyout?.IsOpen == true);
+    public Task DispatchAsync(string action) => HasOpenFlyout() ? Task.CompletedTask : _actions.DispatchAsync(action);
     public void ReleaseHold() => _actions.ReleaseHold();
     public void ResetInput()
     {

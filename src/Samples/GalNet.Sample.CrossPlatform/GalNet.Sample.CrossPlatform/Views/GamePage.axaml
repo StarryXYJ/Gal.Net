@@ -3,6 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:page="using:GalNet.Avalonia.GameView.Page"
     xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
+    xmlns:controls="using:GalNet.Game.Controls"
     xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
     x:Class="GalNet.Sample.CrossPlatform.Views.GamePage"
     x:DataType="vm:GamePageViewModel">
@@ -15,11 +16,19 @@
       <Setter Property="Template">
         <ControlTemplate>
           <Grid Background="{TemplateBinding Background}">
+            <controls:GameCanvasHost Name="SceneCanvas">
+              <controls:GameCanvasHost.GameContent>
+                <Grid>
             <ContentPresenter Name="PART_Scene" Content="{TemplateBinding Scene}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch"/>
             <ContentPresenter Name="PART_Nvl" Content="{TemplateBinding Nvl}" Width="840" MaxHeight="540" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="12"/>
             <ContentPresenter Name="PART_Dialogue" Content="{TemplateBinding Dialogue}" Margin="64,0,64,70" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" ZIndex="13"/>
             <ContentPresenter Name="PART_Choice" Content="{TemplateBinding Choice}" Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" ZIndex="50"/>
-            <WrapPanel Orientation="Horizontal" IsVisible="{Binding State.IsGameToolbarVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" page:GamePage.IsPlayerInteraction="True">
+                </Grid>
+              </controls:GameCanvasHost.GameContent>
+            </controls:GameCanvasHost>
+            <Border Name="ToolbarFrame" IsVisible="{Binding State.IsGameToolbarVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" page:GamePage.IsPlayerInteraction="True">
+              <Grid>
+              <WrapPanel Name="FullToolbar" Orientation="Horizontal" HorizontalAlignment="Center">
               <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>
               <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Auto, Auto}" IsChecked="{Binding State.IsAutoMode, Mode=OneWay}" Command="{Binding State.ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto"/>
               <Button Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Skip, Skip}" Command="{Binding State.RequestSkipCommand}"/>
@@ -30,7 +39,30 @@
               <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Title, Title}" Command="{Binding State.ReturnToTitleCommand}"/>
               <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding State.RequestScreenshotCommand}"/>
               <Button Classes="player-link" Margin="4" Content="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding State.HideUiCommand}"/>
-            </WrapPanel>
+              </WrapPanel>
+              <StackPanel Name="CompactToolbar" Orientation="Horizontal" HorizontalAlignment="Center" IsVisible="False">
+                <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>
+                <ToggleButton Classes="player-link" Margin="4" Content="{text:PlayerText Playback.Auto, Auto}" IsChecked="{Binding State.IsAutoMode, Mode=OneWay}" Command="{Binding State.ToggleAutoCommand}" page:GamePage.PlaybackToggle="Auto"/>
+                <Border Name="CompactHistorySlot">
+                <Button Name="CompactHistory" Classes="player-link" Margin="4" Content="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" IsVisible="{Binding State.HasHistory}"/>
+                </Border>
+                <Button Name="MoreButton" Classes="player-link" Margin="4" Content="{text:PlayerText Common.More, More}">
+                  <Button.Flyout>
+                    <MenuFlyout Placement="Top">
+                      <MenuItem Name="CompactHistoryMenu" IsVisible="False" MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Playback.Skip, Skip}" Command="{Binding State.RequestSkipCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding State.RequestScreenshotCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding State.HideUiCommand}" />
+                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Title, Title}" Command="{Binding State.ReturnToTitleCommand}" />
+                    </MenuFlyout>
+                  </Button.Flyout>
+                </Button>
+              </StackPanel>
+              </Grid>
+            </Border>
             <ContentPresenter Name="PART_History" Content="{TemplateBinding History}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" ZIndex="100"/>
           </Grid>
         </ControlTemplate>
@@ -38,6 +70,9 @@
     </ControlTheme>
   </page:GamePage.Resources>
   <page:GamePage.Styles>
+    <Style Selector="Border#ToolbarFrame">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
     <Style Selector=":is(Button).player-link">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}"/>
@@ -47,7 +82,9 @@
       <Setter Property="CornerRadius" Value="6"/>
       <Setter Property="Template">
         <ControlTemplate>
-          <ContentPresenter Name="ToolbarContentPresenter" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+          <Border Background="Transparent">
+            <ContentPresenter Name="ToolbarContentPresenter" HorizontalAlignment="Center" VerticalAlignment="Center" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+          </Border>
         </ControlTemplate>
       </Setter>
     </Style>
@@ -66,6 +103,16 @@
     <Style Selector=":is(Button).player-link:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}"/>
       <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+    <Style Selector="StackPanel#CompactToolbar :is(Button).player-link">
+      <Setter Property="Padding" Value="2" />
+    </Style>
+    <Style Selector=":is(Button).player-link.mobile-target">
+      <Setter Property="MinHeight" Value="48" />
+      <Setter Property="MinWidth" Value="48" />
+      <Setter Property="Padding" Value="2" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Overlay}" />
     </Style>
   </page:GamePage.Styles>
 </page:GamePage>
