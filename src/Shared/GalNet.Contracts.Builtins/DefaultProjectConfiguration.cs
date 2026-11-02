@@ -17,9 +17,11 @@ public static class DefaultProjectConfiguration
     [
         Field("targetLocale", typeof(I18nLocale)), Field("availableLocales", typeof(List<I18nLocale>)),
         Field("defaultWidth", typeof(int), minimum: 1), Field("defaultHeight", typeof(int), minimum: 1),
+        Field("orientationPolicy", typeof(ProjectOrientationPolicy)), Field("defaultOrientation", typeof(ProjectDefaultOrientation)),
         Field("saveSlotCount", typeof(int), minimum: 0),
         Field("audioBuses", typeof(List<AudioBusDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>)),
-        Field("defaultVisualPrograms", typeof(Dictionary<string, string>))
+        Field("defaultVisualPrograms", typeof(Dictionary<string, string>)),
+        Field("defaultWeatherTextures", typeof(Dictionary<string, string>))
     ], value => _ = new AudioConfiguration(value.AudioTracks, value.AudioBuses), version: 2, jsonResolver: BuiltinJson.Resolver);
     public static ProjectConfigurationSchema Schema { get; } = new([Section, ContentPackagingOptions.Section, ResourceOverrideOptions.Section]);
 
@@ -34,5 +36,6 @@ public static class DefaultProjectConfiguration
     private static FieldDescriptor Field(string id, Type type, int? minimum = null) => new(id,
         new ValueDescriptor(type, allowNull: false,
             constraints: minimum is { } bound ? JsonCodec.SerializeToElement(new Dictionary<string, int> { ["minimum"] = bound }) : null,
-            jsonOptions: JsonOptions), editor: new EditorHints(EditorId: type == typeof(int) ? ValueEditorIds.Numeric : ValueEditorIds.Json));
+            jsonOptions: JsonOptions), editor: new EditorHints(EditorId: type == typeof(int) ? ValueEditorIds.Numeric
+                : type.IsEnum ? ValueEditorIds.Choice : ValueEditorIds.Json));
 }

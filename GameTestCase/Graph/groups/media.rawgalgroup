@@ -1,0 +1,160 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "chapter-media",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.chapter-media",
+        "position": "Center",
+        "styleName": "chapter",
+        "blocking": true,
+        "holdSeconds": 1.2
+      }
+    },
+    {
+      "id": "clear-library-bg",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg"
+      }
+    },
+    {
+      "id": "clear-library-alice",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice"
+      }
+    },
+    {
+      "id": "clear-library-bob",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob"
+      }
+    },
+    {
+      "id": "stage-background",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000021",
+        "displayMode": "Fill",
+        "handleId": "background",
+        "opacity": 1,
+        "transform": {
+          "x": 0,
+          "y": 0,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 0
+      }
+    },
+    {
+      "id": "stage-teacher",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "displayMode": "Native",
+        "handleId": "teacher",
+        "opacity": 1,
+        "selection": {
+          "expression": "shock"
+        },
+        "transform": {
+          "x": 420,
+          "y": 80,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "video-lead",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "demo.video-lead"
+      }
+    },
+    {
+      "id": "hide-dialogue-for-video",
+      "type": "dialogue.hide",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "video-blocking",
+      "type": "video.play",
+      "condition": "",
+      "parameters": {
+        "asset": "a1000000000000000000000000000011",
+        "blocking": "true",
+        "displayMode": "Uniform",
+        "handleId": "sample-video",
+        "opacity": 0.85,
+        "skipPoints": [
+          3,
+          6,
+          9,
+          999999
+        ],
+        "z": 5
+      }
+    },
+    {
+      "id": "show-dialogue-after-video",
+      "type": "dialogue.show",
+      "condition": "",
+      "parameters": {}
+    },
+    {
+      "id": "video-background",
+      "type": "video.play",
+      "condition": "",
+      "parameters": {
+        "asset": "a1000000000000000000000000000011",
+        "blocking": "false",
+        "displayMode": "Uniform",
+        "handleId": "sample-video",
+        "opacity": 0.7,
+        "transform": {
+          "x": -160,
+          "y": 60,
+          "scaleX": 0.5,
+          "scaleY": 0.5,
+          "rotationDegrees": 10
+        },
+        "z": 5
+      }
+    },
+    {
+      "id": "intro-video-background",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-video-background.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "video-stop",
+      "type": "video.stop",
+      "condition": "",
+      "parameters": {
+        "handleId": "sample-video"
+      }
+    }
+  ]
+}

@@ -4,7 +4,7 @@ using GalNet.Presentation.Abstractions.View;
 
 namespace GalNet.Avalonia.GameView.Presentation;
 
-public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresenter, IChoicePresenter, ICatchUpTextRecorder, IDisposable
+public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresenter, IChoicePresenter, ICatchUpTextRecorder, ITextCardPresenter, IDisposable
 {
     private readonly TaskCompletionSource _initialPresentationReady = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private readonly GamePresentationState _state;
@@ -26,6 +26,10 @@ public sealed class AvaloniaDialoguePresenter : IDialoguePresenter, INvlPresente
         _dispatcher = dispatcher;
         _state.NvlClearRequested += OnNvlClearRequested;
     }
+
+    public Task ShowTextCardAsync(GalNet.Contracts.Builtins.Scene.TextCardRequest request, CancellationToken token) =>
+        _state.TextCards?.ShowTextCardAsync(request, token) ?? Task.CompletedTask;
+    public void ClearTextCards() => _state.TextCards?.ClearTextCards();
 
     public Task InitialPresentationReady => _initialPresentationReady.Task;
 

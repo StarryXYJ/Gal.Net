@@ -150,6 +150,46 @@ public sealed class AvaloniaPresenterTests
             Is.EquivalentTo(new[] { request.InstanceId }), "A late drain must not remove a replacement emitter with the same ID.");
     }
 
+    [Test]
+    public async Task ClearParticleStopRemovesTheOldRoundImmediatelyWithoutWaitingForLifetime()
+    {
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
+        var dispatcher = new QueuedDispatcher();
+        using var presenter = new AvaloniaParticlePresenter(state, new NullTextureLayerFactory(), dispatcher);
+        await presenter.StartParticleEmitterAsync(new("old-weather", new ParticleEmitterDefinition("snow"), 0), CancellationToken.None);
+        var old = state.SceneRenderables.OfType<ParticleEmitter>().Single();
+        old.Update(new SceneFrameContext(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), new SkiaSharp.SKSize(1920, 1080)));
+        Assert.That(old.ActiveParticleCount, Is.GreaterThan(0));
+        await presenter.StopParticleEmitterAsync("old-weather", true, CancellationToken.None);
+        Assert.That(old.ActiveParticleCount, Is.Zero);
+        Assert.That(state.SceneRenderables, Is.Empty);
+        await presenter.StartParticleEmitterAsync(new("new-weather", new ParticleEmitterDefinition("petal"), 0), CancellationToken.None);
+        dispatcher.RunPosted();
+        Assert.That(state.SceneRenderables.OfType<ParticleEmitter>().Select(emitter => emitter.HandleId), Is.EqualTo(new[] { "new-weather" }));
+    }
+
+    [Test]
+    public async Task NextWeatherStartsWhilePreviousParticlesDrainAndReleaseIndependently()
+    {
+        var state = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
+        var dispatcher = new QueuedDispatcher();
+        using var presenter = new AvaloniaParticlePresenter(state, new NullTextureLayerFactory(), dispatcher);
+        await presenter.StartParticleEmitterAsync(new("old-weather", new ParticleEmitterDefinition("snow"), 0), CancellationToken.None);
+        var old = state.SceneRenderables.OfType<ParticleEmitter>().Single();
+        old.Update(new SceneFrameContext(TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1), new SkiaSharp.SKSize(1920, 1080)));
+        await presenter.StopParticleEmitterAsync("old-weather", false, CancellationToken.None);
+        await presenter.StartParticleEmitterAsync(new("new-weather", new ParticleEmitterDefinition("petal"), 0), CancellationToken.None);
+        Assert.That(state.SceneRenderables, Has.Count.EqualTo(2));
+        Assert.That(old.ActiveParticleCount, Is.GreaterThan(0));
+        Assert.That(old.EmissionRate, Is.Zero);
+        var next = state.SceneRenderables.OfType<ParticleEmitter>().Single(emitter => emitter.HandleId == "new-weather");
+        next.Update(new SceneFrameContext(TimeSpan.FromSeconds(.1), TimeSpan.FromSeconds(.1), new SkiaSharp.SKSize(1920, 1080)));
+        Assert.That(next.ActiveParticleCount, Is.GreaterThan(0));
+        old.Update(new SceneFrameContext(TimeSpan.FromSeconds(4), TimeSpan.FromSeconds(3), new SkiaSharp.SKSize(1920, 1080)));
+        dispatcher.RunPosted();
+        Assert.That(state.SceneRenderables.OfType<ParticleEmitter>().Select(emitter => emitter.HandleId), Is.EqualTo(new[] { "new-weather" }));
+    }
+
     private sealed class ImmediateDispatcher : IAvaloniaUiDispatcher
     {
         public int DispatchCount { get; private set; }

@@ -6,7 +6,7 @@ using GalNet.Core.Serialization;
 namespace GalNet.Contracts.Builtins;
 
 /// <summary>Pure composition. Shader locators are always supplied by the author entry.</summary>
-internal static class VisualPresetCompiler
+internal static partial class VisualPresetCompiler
 {
     private static JsonElement Json<T>(T value) => JsonCodec.SerializeToElement(value, TransitionEntrySupport.TimelineJsonOptions);
     private static string Require(string? value, string name) => TransitionEntrySupport.Require(value, name, "visual preset");

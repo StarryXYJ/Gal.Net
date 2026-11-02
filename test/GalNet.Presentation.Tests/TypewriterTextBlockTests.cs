@@ -7,6 +7,41 @@ namespace GeneralTest.Presentation;
 public sealed class TypewriterTextBlockTests
 {
     [Test]
+    public async Task FontSizeChangesUpdateRelativeRunsWithoutRestarting()
+    {
+        var control = new TypewriterTextBlock
+        {
+            CharactersPerSecond = 0, FontSize = 20,
+            SourceText = "A<size=+4>B<size=1.5em>C</size></size><size=16>D</size>"
+        };
+        await control.Completion;
+        var completion = control.Completion;
+        var runs = control.Inlines!.OfType<Run>().ToArray();
+        Assert.That(runs.Select(run => run.FontSize), Is.EqualTo(new[] { 20d, 24, 36, 16 }));
+        var completed = 0;
+        control.Completed += (_, _) => completed++;
+        control.FontSize = 30;
+        Assert.Multiple(() =>
+        {
+            Assert.That(runs.Select(run => run.FontSize), Is.EqualTo(new[] { 30d, 34, 51, 16 }));
+            Assert.That(control.Inlines!.OfType<Run>().First(), Is.SameAs(runs[0]));
+            Assert.That(control.Completion, Is.SameAs(completion));
+            Assert.That(control.IsCompleted, Is.True);
+            Assert.That(completed, Is.Zero);
+            Assert.That(RenderedText(control), Is.EqualTo("ABCD"));
+        });
+    }
+
+    [Test]
+    public async Task ExtremeSizeOffsetsAreClampedToValidRenderSizes()
+    {
+        var control = new TypewriterTextBlock { CharactersPerSecond = 0, FontSize = 20,
+            SourceText = "<size=-100>A</size><size=10000>B</size>" };
+        await control.Completion;
+        Assert.That(control.Inlines!.OfType<Run>().Select(run => run.FontSize), Is.EqualTo(new[] { 1d, 512 }));
+    }
+
+    [Test]
     public async Task SourceText_UsesTheSharedPortableMarkupParser()
     {
         var control = new TypewriterTextBlock { CharactersPerSecond = 0 };

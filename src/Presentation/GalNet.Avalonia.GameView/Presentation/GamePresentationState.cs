@@ -16,6 +16,11 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
     private readonly Dictionary<string, EffectAnimationBinding> _effectAnimations = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EffectAnimationBinding> _particleAnimations = new(StringComparer.Ordinal);
 
+    public GalNet.Presentation.Abstractions.View.ITextCardPresenter? TextCards { get; set; }
+    public ObservableCollection<SceneLayerItem> OverlayLayers { get; } = [];
+    public ObservableCollection<SceneEffectInstance> OverlayEffects { get; } = [];
+    private IEnumerable<SceneLayerItem> AllLayers => Layers.Concat(OverlayLayers);
+
     public ObservableCollection<SceneLayerItem> Layers { get; } = [];
     public ObservableCollection<SceneEffectInstance> TextureEffects { get; } = [];
     /// <summary>GPU scene objects composited with Layers before ScenePost and GameShell UI.</summary>
@@ -123,10 +128,13 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
         InteractionObserved?.Invoke($"choice.selected:{selectedIndex}");
         _choiceWaiter?.TrySetResult(selectedIndex);
     }
-    public void SetLayer(string id, SceneLayerItem item)
+    public void SetLayer(string id, SceneLayerItem item) => SetLayer(id, item, false);
+    public void SetLayer(string id, SceneLayerItem item, bool overlay)
     {
-        var existing = Layers.FirstOrDefault(layer => layer.HandleId == id);
-        if (existing is null) Layers.Add(item);
+        var collection = overlay ? OverlayLayers : Layers;
+        var existing = AllLayers.FirstOrDefault(layer => layer.HandleId == id);
+        if (existing is null) collection.Add(item);
+        else if (!collection.Contains(existing)) { HideLayer(id); collection.Add(item); }
         else
         {
             if (!ReferenceEquals(existing.FrameSource, item.FrameSource)) existing.FrameSource?.Dispose();
@@ -148,11 +156,11 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
 
     public void HideLayer(string id)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        var layer = AllLayers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is not null)
         {
             layer.FrameSource?.Dispose();
-            Layers.Remove(layer);
+            Layers.Remove(layer); OverlayLayers.Remove(layer);
         }
     }
 
@@ -171,7 +179,9 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
     /// <summary>Clears visual resources without discarding dialogue, NVL or interaction state.</summary>
     public void ResetSceneVisuals()
     {
-        foreach (var layer in Layers) layer.FrameSource?.Dispose();
+        TextCards?.ClearTextCards();
+        foreach (var layer in AllLayers) layer.FrameSource?.Dispose();
+        OverlayLayers.Clear(); OverlayEffects.Clear();
         Layers.Clear();
         TextureEffects.Clear();
         foreach (var renderable in SceneRenderables.OfType<IDisposable>()) renderable.Dispose();
@@ -185,7 +195,7 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
 
     public void ReplaceLayer(string id, SceneTexture? texture)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        var layer = AllLayers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
         layer.FrameSource?.Dispose();
         layer.FrameSource = null;
@@ -195,7 +205,7 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
 
     public void MoveLayer(string id, LayerTransform transform, float z)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        var layer = AllLayers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return;
         layer.X = transform.X;
         layer.Y = transform.Y;
@@ -207,7 +217,7 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
 
     public bool TryGetLayerAnimationValue(string id, string property, out double value)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        var layer = AllLayers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) { value = 0; return false; }
         value = property switch
         {
@@ -226,7 +236,7 @@ public partial class GamePresentationState : CommunityToolkit.Mvvm.ComponentMode
 
     public bool SetLayerAnimationValue(string id, string property, double value)
     {
-        var layer = Layers.FirstOrDefault(candidate => candidate.HandleId == id);
+        var layer = AllLayers.FirstOrDefault(candidate => candidate.HandleId == id);
         if (layer is null) return false;
         switch (property)
         {

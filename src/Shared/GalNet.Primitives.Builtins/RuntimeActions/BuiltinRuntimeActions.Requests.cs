@@ -36,7 +36,7 @@ internal static partial class BuiltinRuntimeActions
 
     public static EffectRequest CreateEffectRequest(EffectApplyOptions options) => new(
         options.Id ?? "", options.InstanceId ?? "", options.TargetHandleId ?? "", options.Order,
-        Arguments.RawJson(options.Parameters), options.Program ?? "");
+        Arguments.RawJson(options.Parameters), options.Program ?? "") { EnsureOnly = options.EnsureOnly };
 
     public static ParticleEmitterRequest CreateParticleRequest(ParticlePlayOptions options)
     {

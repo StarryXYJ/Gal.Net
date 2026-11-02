@@ -62,11 +62,12 @@ public static class BuiltinRegistration
         AudioConfiguration? audioConfiguration = null)
     {
         ArgumentNullException.ThrowIfNull(catalog);
+        var audio = audioModule ?? new BuiltinAudioModule(audioHost, configuration: audioConfiguration);
         IPrimitiveModule[] modules =
         [
             new BuiltinDialogueModule(dialoguePresenter, characters), new BuiltinNvlModule(nvlPresenter),
-            new BuiltinLayerModule(layerPresenter, imageVariants), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter),
-            audioModule ?? new BuiltinAudioModule(audioHost, configuration: audioConfiguration), new BuiltinVideoModule(videoPresenter),
+            new BuiltinLayerModule(layerPresenter, imageVariants), new BuiltinAnimationModule(animationPresenter, layerPresenter, effectPresenter, particlePresenter, audio),
+            audio, new BuiltinVideoModule(videoPresenter),
             new BuiltinEffectModule(effectPresenter), new BuiltinParticleModule(particlePresenter),
             new BuiltinFlowModule(), new BuiltinVariableModule(), new BuiltinGalleryModule(gallery),
             customActions ?? new BuiltinCustomActionModule()

@@ -10,6 +10,8 @@ public sealed class BuiltinDialogueModule(IDialoguePresenter? presenter = null, 
     {
         registry.Register<DialogueTextOptions>(BuiltinEntryIds.Text, (context, options) =>
             new DialoguePrimitiveInstance(presenter, characters ?? CharacterCatalog.Empty, context, options));
+        registry.Register<TextCardOptions>(BuiltinEntryIds.TextCard, (context, options) =>
+            new TextCardPrimitiveInstance(presenter as ITextCardPresenter, context, options));
         Visibility(registry, BuiltinEntryIds.ShowDialogue, presenter, true);
         Visibility(registry, BuiltinEntryIds.HideDialogue, presenter, false);
     })

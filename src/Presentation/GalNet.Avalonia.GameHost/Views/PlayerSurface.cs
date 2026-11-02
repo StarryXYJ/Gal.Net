@@ -12,9 +12,19 @@ namespace GalNet.Avalonia.GameHost.Views;
 /// <summary>Reusable modal, focus and announcement behavior. The application supplies the named surface controls.</summary>
 public abstract class PlayerSurface : UserControl
 {
+    public static readonly StyledProperty<bool> DisableContentDuringConfirmationProperty =
+        AvaloniaProperty.Register<PlayerSurface, bool>(nameof(DisableContentDuringConfirmation), defaultValue: true);
+
     public static readonly StyledProperty<TimeSpan> AudioAnnouncementDurationProperty =
         AvaloniaProperty.Register<PlayerSurface, TimeSpan>(nameof(AudioAnnouncementDuration), TimeSpan.FromSeconds(3),
             validate: value => value > TimeSpan.Zero);
+
+    /// <summary>Whether the underlying player content is disabled while an exit or return confirmation is open.</summary>
+    public bool DisableContentDuringConfirmation
+    {
+        get => GetValue(DisableContentDuringConfirmationProperty);
+        set => SetValue(DisableContentDuringConfirmationProperty, value);
+    }
 
     /// <summary>Announcement lifetime, including the application's entry animation.</summary>
     public TimeSpan AudioAnnouncementDuration
@@ -29,11 +39,15 @@ public abstract class PlayerSurface : UserControl
     private LanguageSelectionViewModel? _languageSelection;
     private TaskCompletionSource<bool>? _exitConfirmation;
     private IInputElement? _exitPreviousFocus;
+    private bool _contentWasEnabledBeforeConfirmation;
+    private bool _contentDisabledForConfirmation;
 
     private GalNet.Game.Controls.GameCanvasHost GameCanvas = null!;
     private Control LanguageSelection = null!;
     private TextBlock StartupStatus = null!;
-    private Ursa.Controls.WindowToastManager AudioToast = null!;
+    private readonly GalNet.Avalonia.GameView.Controls.TextCardHost _textCards = new();
+    public GalNet.Avalonia.GameView.Controls.TextCardHost TextCards => _textCards;
+    private GalNet.Rendering.Scene.SceneLayerHost _overlay = new() { IsHitTestVisible = false, TransparentBackground = true };
     private Control PlayerContent = null!;
     private Control ExitConfirmation = null!;
     private Control ExitCopy = null!;
@@ -49,7 +63,9 @@ public abstract class PlayerSurface : UserControl
         GameCanvas = Require<GalNet.Game.Controls.GameCanvasHost>(nameof(GameCanvas));
         LanguageSelection = Require<Control>(nameof(LanguageSelection));
         StartupStatus = Require<TextBlock>(nameof(StartupStatus));
-        AudioToast = Require<Ursa.Controls.WindowToastManager>(nameof(AudioToast));
+        var root = Require<Grid>("PlayerRoot");
+        root.Children.Insert(root.Children.Count - 1, _textCards);
+        root.Children.Insert(root.Children.Count - 1, _overlay);
         PlayerContent = Require<Control>(nameof(PlayerContent));
         ExitConfirmation = Require<Control>(nameof(ExitConfirmation));
         ExitCopy = Require<Control>(nameof(ExitCopy));
@@ -80,9 +96,10 @@ public abstract class PlayerSurface : UserControl
     public void Detach()
     {
         CompleteExitConfirmation(false, restorePlayback: false);
-        AudioToast.CloseAll();
-        if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
+        _textCards.ClearTextCards();
+        if (_audioGame is not null) { _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement; _audioGame.TextCards = null; }
         _audioGame = null;
+        _overlay.ItemsSource = null; _overlay.EffectsSource = null;
         if (_shell is not null) _shell.ConfirmReturnToTitleAsync = null;
         _shell = null;
         GameCanvas.GameContent = null;
@@ -92,17 +109,19 @@ public abstract class PlayerSurface : UserControl
 
     public void BindAudioAnnouncements(GamePresentationState gameplay)
     {
-        if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
+        if (_audioGame is not null) { _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement; _audioGame.TextCards = null; }
         _audioGame = gameplay;
         gameplay.AudioAnnouncementRequested += OnAudioAnnouncement;
+        gameplay.TextCards = _textCards;
+        _overlay.ItemsSource = gameplay.OverlayLayers;
+        _overlay.EffectsSource = gameplay.OverlayEffects;
     }
 
     private void OnAudioAnnouncement(string name)
     {
-        AudioToast.CloseAll();
         if (!string.IsNullOrWhiteSpace(name) && _exitConfirmation is null)
-            AudioToast.Show(name, NotificationType.Information,
-                AudioAnnouncementDuration, showIcon: false, showClose: false);
+            _ = _textCards.ShowTextCardAsync(new(name, GalNet.Contracts.Builtins.Scene.TextCardPosition.BottomLeft, "music",
+                (float)Math.Max(0, AudioAnnouncementDuration.TotalSeconds - _textCards.EnterDuration.TotalSeconds)), CancellationToken.None);
     }
 
     public Task<bool> ConfirmExitAsync() => ConfirmAsync(returnToTitle: false);
@@ -121,9 +140,16 @@ public abstract class PlayerSurface : UserControl
         _exitConfirmation = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _exitPreviousFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
         _shell?.SetConfirmationOpen(true);
-        AudioToast.CloseAll();
-        PlayerContent.IsEnabled = false;
+        _textCards.ClearTextCards();
+        PlayerContent.Classes.Add("modal-background");
+        if (DisableContentDuringConfirmation)
+        {
+            _contentWasEnabledBeforeConfirmation = PlayerContent.IsEnabled;
+            PlayerContent.IsEnabled = false;
+            _contentDisabledForConfirmation = true;
+        }
         ExitConfirmation.IsVisible = true;
+        _shell?.SetNavigationScope(ExitConfirmation, () => CancelExitConfirmation());
         CancelExitButton.Focus();
         return _exitConfirmation.Task;
     }
@@ -147,9 +173,18 @@ public abstract class PlayerSurface : UserControl
     {
         var completion = _exitConfirmation;
         _exitConfirmation = null;
-        if (completion is not null) _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
+        if (completion is not null)
+        {
+            _shell?.SetNavigationScope(null);
+            _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
+        }
         ExitConfirmation.IsVisible = false;
-        PlayerContent.IsEnabled = true;
+        if (_contentDisabledForConfirmation)
+        {
+            PlayerContent.IsEnabled = _contentWasEnabledBeforeConfirmation;
+            _contentDisabledForConfirmation = false;
+        }
+        PlayerContent.Classes.Remove("modal-background");
         _exitPreviousFocus?.Focus();
         _exitPreviousFocus = null;
         completion?.TrySetResult(confirmed);
@@ -160,8 +195,9 @@ public abstract class PlayerSurface : UserControl
         var selection = _languageSelection ?? throw new InvalidOperationException("The player view is not attached.");
         StartupStatus.IsVisible = false;
         LanguageSelection.IsVisible = true;
+        _shell?.SetNavigationScope(LanguageSelection);
         try { return await selection.ChooseAsync(preferred, cancellationToken); }
-        finally { LanguageSelection.IsVisible = false; }
+        finally { _shell?.SetNavigationScope(null); LanguageSelection.IsVisible = false; }
     }
 
     public void CompleteStartup(string? error = null)

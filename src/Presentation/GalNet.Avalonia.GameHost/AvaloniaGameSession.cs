@@ -124,6 +124,8 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
             await _settings.AttachAsync(saveSession.Variables,
                 projectOptions.Audio, _options.ShowTrackAudioControls, cancellationToken);
             await _settings.RestoreDisplayAsync(cancellationToken);
+            await _options.ApplyProjectOrientationAsync(projectOptions.OrientationPolicy,
+                projectOptions.DefaultOrientation, cancellationToken);
 
             _playerBinding = _options.AttachPlayer?.Invoke(new(saveSession, resources.Content, profile));
             IsReady = true;

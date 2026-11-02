@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.Text.Json;
+using GalNet.Contracts.Builtins;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Core.Configuration;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
@@ -15,6 +18,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
     private readonly JsonElement _resolved;
     private readonly Func<bool> _isCurrent;
     private readonly Action _changed;
+    private readonly IEditorLocalizationService _localization;
     private readonly Dictionary<string, Field> _fields;
     private bool _disposed;
     public string Id => _section.Id;
@@ -23,13 +27,13 @@ public sealed class ConfigurationSectionEditor : IDisposable
     public bool HasChanges => _fields.Values.Any(item => item.Draft.IsDirty || item.Pending is { } value && !Equal(item.Source(_baseline), value));
 
     public ConfigurationSectionEditor(ConfigurationSection section, ProjectConfiguration configuration, EditorRegistry registry,
-        Func<bool> isCurrent, Action changed, Func<FieldDescriptor, bool> canEdit)
+        IEditorLocalizationService localization, Func<bool> isCurrent, Action changed, Func<FieldDescriptor, bool> canEdit)
     {
         _section = section; _configuration = configuration; _baseline = configuration.Sections.GetValueOrDefault(section.Id);
         try { _resolved = section.Resolve(_baseline); }
         catch (Exception error) when (error is System.IO.InvalidDataException or JsonException or ArgumentException)
         { _resolved = JsonSerializer.SerializeToElement(new { }); }
-        _isCurrent = isCurrent; _changed = changed; Registry = registry;
+        _isCurrent = isCurrent; _changed = changed; _localization = localization; Registry = registry;
         // Ordinary object/list DTOs use the shared JSON editor; no second reflection-based configuration form.
         var fields = section.Fields.Where(field => section.Id != "galnet.project" || field.Id is not ("targetLocale" or "availableLocales"))
             .Select(Decorate).Select(field => field.Editor is null && !IsScalar(field.Value.ValueType)
@@ -50,6 +54,8 @@ public sealed class ConfigurationSectionEditor : IDisposable
         {
             "defaultWidth" => "Settings.Project.DefaultWidth",
             "defaultHeight" => "Settings.Project.DefaultHeight",
+            "orientationPolicy" => "Settings.Project.OrientationPolicy",
+            "defaultOrientation" => "Settings.Project.DefaultOrientation",
             "defaultVisualPrograms" => "Settings.Project.DefaultVisualPrograms",
             "saveSlotCount" => "Settings.Project.SaveSlotCount",
             "audioBuses" => "Settings.Project.AudioBuses",
@@ -85,6 +91,35 @@ public sealed class ConfigurationSectionEditor : IDisposable
     }
     private static bool IsScalar(Type type) => type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal);
     public IFieldBinding Binding(FieldDescriptor field) => _fields[field.Id];
+    public void RefreshLocalization()
+    {
+        foreach (var field in _fields.Values) field.RefreshLocalization();
+    }
+    private bool ShowDefaultOrientation => !_fields.TryGetValue("orientationPolicy", out var orientationField)
+        || orientationField.Read().Json is not { ValueKind: JsonValueKind.String } value
+        || value.GetString() == nameof(ProjectOrientationPolicy.Unforced);
+    private void RefreshDefaultOrientationVisibility()
+    {
+        if (_fields.TryGetValue("defaultOrientation", out var field)) field.NotifyChanged();
+    }
+    private IReadOnlyList<FieldEditorOption>? Options(FieldDescriptor descriptor)
+    {
+        if (_section.Id != DefaultProjectConfiguration.Section.Id) return null;
+        return descriptor.Id switch
+        {
+            "orientationPolicy" => Choices(
+                (nameof(ProjectOrientationPolicy.ForceLandscape), "Settings.Project.Orientation.ForceLandscape"),
+                (nameof(ProjectOrientationPolicy.ForcePortrait), "Settings.Project.Orientation.ForcePortrait"),
+                (nameof(ProjectOrientationPolicy.Unforced), "Settings.Project.Orientation.Unforced")),
+            "defaultOrientation" => Choices(
+                (nameof(ProjectDefaultOrientation.Landscape), "Settings.Project.Orientation.Landscape"),
+                (nameof(ProjectDefaultOrientation.Portrait), "Settings.Project.Orientation.Portrait")),
+            _ => null
+        };
+    }
+    private IReadOnlyList<FieldEditorOption> Choices(params (string Value, string Label)[] values) =>
+        Array.AsReadOnly(values.Select((choice, index) => new FieldEditorOption(index.ToString(CultureInfo.InvariantCulture), _localization[choice.Label],
+            JsonSerializer.SerializeToElement(choice.Value))).ToArray());
     public async Task FlushAsync()
     {
         foreach (var field in _fields.Values.Where(field => field.Draft.IsDirty))
@@ -112,15 +147,18 @@ public sealed class ConfigurationSectionEditor : IDisposable
     {
         private readonly ConfigurationSectionEditor _owner;
         private readonly bool _canEdit;
+        private IReadOnlyList<FieldEditorOption>? _options;
         public FieldDescriptor Descriptor { get; }
         public FieldValue? Pending { get; private set; }
         public FieldDraftState Draft { get; }
         public bool IsEnabled => _canEdit && !_owner._disposed && _owner._isCurrent();
+        public bool IsVisible => Descriptor.Id != "defaultOrientation" || _owner.ShowDefaultOrientation;
         public object? Label => Descriptor.LabelKey ?? Descriptor.Id;
+        public IReadOnlyList<FieldEditorOption>? Options => _options;
         public event EventHandler? Changed;
         public Field(ConfigurationSectionEditor owner, FieldDescriptor descriptor, bool canEdit)
         {
-            _owner = owner; Descriptor = descriptor; _canEdit = canEdit;
+            _owner = owner; Descriptor = descriptor; _canEdit = canEdit; _options = owner.Options(descriptor);
             Draft = new(() => Source(owner._configuration.Sections.GetValueOrDefault(owner.Id)).Json?.GetRawText() ?? "<absent>");
             Draft.Changed += owner._changed;
         }
@@ -132,8 +170,15 @@ public sealed class ConfigurationSectionEditor : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             if (!IsEnabled) return Task.FromResult<ValueIssue?>(new("settings.obsolete", "Configuration field is unavailable."));
             Pending = value; _owner._changed(); Changed?.Invoke(this, EventArgs.Empty);
+            if (Descriptor.Id == "orientationPolicy") _owner.RefreshDefaultOrientationVisibility();
             return Task.FromResult<ValueIssue?>(null);
         }
+        public void RefreshLocalization()
+        {
+            _options = _owner.Options(Descriptor);
+            NotifyChanged();
+        }
+        public void NotifyChanged() => Changed?.Invoke(this, EventArgs.Empty);
         public void Dispose() { Draft.Changed -= _owner._changed; Changed = null; }
     }
 }

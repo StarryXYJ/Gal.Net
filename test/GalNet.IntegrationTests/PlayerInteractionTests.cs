@@ -44,7 +44,7 @@ public sealed class PlayerInteractionTests
             var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
             game.ReturnToTitleCommand.Execute(null);
             var confirmation = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.Views.PlayerView>().ConfirmReturnToTitleAsync();
-            Assert.That(host.View.FindControl<Grid>("PlayerContent")!.IsEnabled, Is.False);
+            Assert.That(host.View.FindControl<Grid>("PlayerContent")!.IsEnabled, Is.True);
             Assert.That(game.IsInteractionBlocked, Is.True);
             Assert.That(navigation.CurrentViewModel, Is.SameAs(host.Services.GetRequiredService<GamePageViewModel>()));
             Capture(window, "return-to-title");
@@ -176,35 +176,30 @@ public sealed class PlayerInteractionTests
         try
         {
             var game = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Presentation.GamePresentationState>();
-            var manager = host.View.FindControl<WindowToastManager>("AudioToast")!;
+            var manager = ((GalNet.Avalonia.GameHost.Views.PlayerSurface)host.View).TextCards;
             game.AnnounceAudio("Track one");
             await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
             Assert.That(manager.IsHitTestVisible, Is.False);
-            Assert.That(manager.GetVisualDescendants().OfType<ToastCard>(), Is.Not.Empty);
+            Assert.That(manager.Children, Is.Not.Empty);
             game.AnnounceAudio("Track two");
             await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
-            var cards = manager.GetVisualDescendants().OfType<ToastCard>().Where(card => !card.IsClosing).ToArray();
-            Assert.That(cards, Has.Length.EqualTo(1));
-            Assert.That(cards[0].Content, Is.EqualTo("Track two"));
+            var card = manager.Children.OfType<ContentControl>().Single(card => Equals(card.Content, "Track two"));
             await Task.Delay(250);
-            Assert.That(cards[0].Bounds.Width, Is.GreaterThanOrEqualTo(280));
-            Assert.That(((ISolidColorBrush)cards[0].Background!).Opacity, Is.EqualTo(.84));
-            Assert.That(((ISolidColorBrush)cards[0].Foreground!).Color, Is.EqualTo(((ISolidColorBrush)host.View.FindResource("GalNet.Brush.TextPrimary")!).Color));
-            Assert.That(cards[0].IsEffectivelyVisible, Is.True);
+            Assert.That(card.Bounds.Width, Is.GreaterThanOrEqualTo(280));
+            var surface = card.GetVisualDescendants().OfType<Border>().First();
+            Assert.That(((ISolidColorBrush)surface.Background!).Opacity, Is.EqualTo(.84));
+            Assert.That(((ISolidColorBrush)card.Foreground!).Color, Is.EqualTo(((ISolidColorBrush)host.View.FindResource("GalNet.Brush.TextPrimary")!).Color));
+            Assert.That(card.IsEffectivelyVisible, Is.True);
             Capture(window, $"music-toast-{paletteName}-entering");
             await Task.Delay(750);
             Capture(window, $"music-toast-{paletteName}-settled");
-            Assert.That(cards[0].IsEffectivelyVisible, Is.True);
-            for (var attempt = 0; attempt < 100 && !cards[0].IsClosing; attempt++) await Task.Delay(30);
-            Assert.That(cards[0].IsClosing, Is.True);
-            await Task.Delay(250);
-            AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Assert.That(cards[0].IsClosed, Is.False, "The card stays attached during its exit animation.");
-            Assert.That(cards[0].RenderTransform!.Value.M31, Is.LessThan(0));
+            Assert.That(card.IsEffectivelyVisible, Is.True);
+            for (var attempt = 0; attempt < 100 && card.RenderTransform!.Value.M31 >= -1; attempt++) await Task.Delay(30);
+            Assert.That(card.RenderTransform!.Value.M31, Is.LessThan(0));
             Capture(window, $"music-toast-{paletteName}-leaving");
-            await Task.Delay(850);
+            await Task.Delay(900);
             AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-            Assert.That(manager.GetVisualDescendants().OfType<ToastCard>(), Is.Empty);
+            Assert.That(manager.Children, Is.Empty);
         }
         finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
     });

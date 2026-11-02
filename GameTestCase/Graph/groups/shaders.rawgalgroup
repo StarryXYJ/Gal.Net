@@ -1,0 +1,971 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "chapter-shaders",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.chapter-shaders",
+        "position": "Center",
+        "styleName": "chapter",
+        "blocking": true,
+        "holdSeconds": 1.2
+      }
+    },
+    {
+      "id": "clear-background",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "background"
+      }
+    },
+    {
+      "id": "clear-teacher",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "teacher"
+      }
+    },
+    {
+      "id": "stage-background",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000021",
+        "displayMode": "Fill",
+        "handleId": "background",
+        "opacity": 1,
+        "transform": {
+          "x": 0,
+          "y": 0,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 0
+      }
+    },
+    {
+      "id": "stage-teacher",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "displayMode": "Native",
+        "handleId": "teacher",
+        "opacity": 1,
+        "selection": {
+          "expression": "shock"
+        },
+        "transform": {
+          "x": 420,
+          "y": 80,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "shader-intro",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.shader-intro.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "shader-bloom",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-scene-bloom",
+        "parameters": {
+          "strength": 3,
+          "radius": 40
+        },
+        "program": "a1000000000000000000000000000012"
+      }
+    },
+    {
+      "id": "shader-bloom-line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.shader-bloom.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "shader-bloom-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-scene-bloom"
+      }
+    },
+    {
+      "id": "shader-blur-horizontal",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-scene-blur-horizontal",
+        "parameters": {
+          "radius": 28,
+          "direction": [
+            1,
+            0
+          ]
+        },
+        "program": "a1000000000000000000000000000013"
+      }
+    },
+    {
+      "id": "shader-blur-vertical",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-scene-blur-vertical",
+        "parameters": {
+          "radius": 28,
+          "direction": [
+            0,
+            1
+          ]
+        },
+        "program": "a1000000000000000000000000000013"
+      }
+    },
+    {
+      "id": "shader-blur-line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.shader-blur.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "shader-blur-vertical-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-scene-blur-vertical"
+      }
+    },
+    {
+      "id": "shader-blur-horizontal-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-scene-blur-horizontal"
+      }
+    },
+    {
+      "id": "shader-toy-solid-background",
+      "type": "layer.showColor",
+      "condition": "",
+      "parameters": {
+        "color": "#0C1524",
+        "handleId": "shader-toy-background",
+        "opacity": 1,
+        "z": 1000
+      }
+    },
+    {
+      "id": "shader-toy-hide-route-background",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "route-background"
+      }
+    },
+    {
+      "id": "shader-toy-hide-portrait",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "teacher"
+      }
+    },
+    {
+      "id": "shader-toy-stop-snow",
+      "type": "particle.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "route-particles"
+      }
+    },
+    {
+      "id": "shader-toy-tunnel",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-shader-toy-tunnel",
+        "parameters": {
+          "time": 0,
+          "mixAmount": 1
+        },
+        "program": "a1000000000000000000000000000014"
+      }
+    },
+    {
+      "id": "shader-toy-tunnel-time",
+      "type": "animation.animate",
+      "condition": "",
+      "parameters": {
+        "blocking": "false",
+        "curve": "Linear",
+        "duration": 30,
+        "from": 0,
+        "handleId": "sample-shader-toy-tunnel",
+        "loopMode": "Loop",
+        "playbackHandleId": "sample-shader-toy-tunnel-time",
+        "property": "time",
+        "skippable": "false",
+        "to": 30
+      }
+    },
+    {
+      "id": "shader-toy-tunnel-line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.shader-toy-tunnel.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "shader-toy-tunnel-time-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "sample-shader-toy-tunnel-time"
+      }
+    },
+    {
+      "id": "shader-toy-tunnel-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-shader-toy-tunnel"
+      }
+    },
+    {
+      "id": "shader-toy-grid",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-shader-toy-grid",
+        "parameters": {
+          "time": 0,
+          "mixAmount": 1
+        },
+        "program": "a1000000000000000000000000000015"
+      }
+    },
+    {
+      "id": "shader-toy-grid-time",
+      "type": "animation.animate",
+      "condition": "",
+      "parameters": {
+        "blocking": "false",
+        "curve": "Linear",
+        "duration": 30,
+        "from": 0,
+        "handleId": "sample-shader-toy-grid",
+        "loopMode": "Loop",
+        "playbackHandleId": "sample-shader-toy-grid-time",
+        "property": "time",
+        "skippable": "false",
+        "to": 30
+      }
+    },
+    {
+      "id": "shader-toy-grid-line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.shader-toy-grid.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "shader-toy-grid-time-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "sample-shader-toy-grid-time"
+      }
+    },
+    {
+      "id": "shader-toy-grid-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-shader-toy-grid"
+      }
+    },
+    {
+      "id": "shader-toy-rain",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-shader-toy-rain",
+        "parameters": {
+          "time": 0,
+          "mixAmount": 1
+        },
+        "program": "a1000000000000000000000000000016"
+      }
+    },
+    {
+      "id": "shader-toy-rain-time",
+      "type": "animation.animate",
+      "condition": "",
+      "parameters": {
+        "blocking": "false",
+        "curve": "Linear",
+        "duration": 30,
+        "from": 0,
+        "handleId": "sample-shader-toy-rain",
+        "loopMode": "Loop",
+        "playbackHandleId": "sample-shader-toy-rain-time",
+        "property": "time",
+        "skippable": "false",
+        "to": 30
+      }
+    },
+    {
+      "id": "shader-toy-rain-line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.shader-toy-rain.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "shader-toy-rain-time-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "sample-shader-toy-rain-time"
+      }
+    },
+    {
+      "id": "shader-toy-rain-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-shader-toy-rain"
+      }
+    },
+    {
+      "id": "hide-portrait",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "teacher"
+      }
+    },
+    {
+      "id": "hide-toy-backdrop",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "shader-toy-background"
+      }
+    },
+    {
+      "id": "visual-background",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000001",
+        "displayMode": "Fill",
+        "handleId": "visual-bg",
+        "z": 0
+      }
+    },
+    {
+      "id": "visual-portrait",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "handleId": "visual-hero",
+        "selection": {
+          "expression": "shy"
+        },
+        "transform": {
+          "x": 420,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "visual-intro",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.ending.entry.visual-intro.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "visual-bloom",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "visual-bloom",
+        "parameters": {
+          "strength": 2,
+          "radius": 24
+        },
+        "program": "b1000000000000000000000000000001"
+      }
+    },
+    {
+      "id": "visual-vignette",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "visual-vignette",
+        "parameters": {
+          "strength": 0.8,
+          "radius": 0.2
+        },
+        "program": "b1000000000000000000000000000003"
+      }
+    },
+    {
+      "id": "visual-grade",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "visual-grade",
+        "parameters": {
+          "temperature": 0.4,
+          "saturation": 0.8
+        },
+        "program": "b1000000000000000000000000000004"
+      }
+    },
+    {
+      "id": "visual-grade-line",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.ending.entry.visual-grade.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "stop-visual-bloom",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "visual-bloom"
+      }
+    },
+    {
+      "id": "stop-visual-vignette",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "visual-vignette"
+      }
+    },
+    {
+      "id": "stop-visual-grade",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "visual-grade"
+      }
+    },
+    {
+      "id": "depth-bg",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "depth-bg",
+        "parameters": {
+          "focusZ": 10,
+          "falloff": 2,
+          "maxRadius": 24
+        },
+        "program": "b1000000000000000000000000000005",
+        "targetHandleId": "visual-bg"
+      }
+    },
+    {
+      "id": "depth-hero",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "depth-hero",
+        "parameters": {
+          "focusZ": 10,
+          "falloff": 2,
+          "maxRadius": 24
+        },
+        "program": "b1000000000000000000000000000005",
+        "targetHandleId": "visual-hero"
+      }
+    },
+    {
+      "id": "visual-depth",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.ending.entry.visual-depth.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "rack-focus",
+      "type": "timeline.play",
+      "condition": "",
+      "parameters": {
+        "timeline": {
+          "playbackHandleId": "visual-rack-focus",
+          "frameRate": 60,
+          "durationFrames": 60,
+          "blocking": true,
+          "skippable": true,
+          "tracks": [
+            {
+              "handleId": "depth-bg",
+              "property": "focusZ",
+              "keys": [
+                {
+                  "frame": 0,
+                  "value": 10
+                },
+                {
+                  "frame": 60,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "handleId": "depth-hero",
+              "property": "focusZ",
+              "keys": [
+                {
+                  "frame": 0,
+                  "value": 10
+                },
+                {
+                  "frame": 60,
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "visual-focus",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.ending.entry.visual-focus.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "stop-depth-bg",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "depth-bg"
+      }
+    },
+    {
+      "id": "stop-depth-hero",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "depth-hero"
+      }
+    },
+    {
+      "id": "clear-background-2",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "background"
+      }
+    },
+    {
+      "id": "clear-visual-bg-2",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "visual-bg"
+      }
+    },
+    {
+      "id": "clear-visual-hero-2",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "visual-hero"
+      }
+    },
+    {
+      "id": "stage-library-bg",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg",
+        "assetId": "a1000000000000000000000000000001",
+        "displayMode": "Fill"
+      }
+    },
+    {
+      "id": "stage-library-alice",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice",
+        "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "transform": {
+          "x": -400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "stage-library-bob",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob",
+        "assetId": "a1000000000000000000000000000004",
+        "transform": {
+          "x": 400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "distortion",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-distortion",
+        "program": "a498f8b0221355e69ea7bf32b9028400",
+        "parameters": {
+          "strength": 12,
+          "mode": "Ripple"
+        }
+      }
+    },
+    {
+      "id": "distortion-time",
+      "type": "timeline.play",
+      "condition": "",
+      "parameters": {
+        "timeline": {
+          "playbackHandleId": "library-distortion-time",
+          "frameRate": 60,
+          "durationFrames": 240,
+          "blocking": false,
+          "skippable": false,
+          "loopMode": "Loop",
+          "tracks": [
+            {
+              "handleId": "library-distortion",
+              "property": "time",
+              "keys": [
+                {
+                  "frame": 0,
+                  "value": 0
+                },
+                {
+                  "frame": 240,
+                  "value": 4
+                }
+              ]
+            }
+          ],
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "distortion-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.distortion-note.content"
+      }
+    },
+    {
+      "id": "distortion-stop-time",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-distortion-time",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "distortion-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-distortion"
+      }
+    },
+    {
+      "id": "radialBlur",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-radialBlur",
+        "program": "17be677c2c2c5795b0ac8f4400065545",
+        "parameters": {
+          "strength": 0.3
+        }
+      }
+    },
+    {
+      "id": "radialBlur-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.radialBlur-note.content"
+      }
+    },
+    {
+      "id": "radialBlur-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-radialBlur"
+      }
+    },
+    {
+      "id": "film",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-film",
+        "program": "25bf866f4ab6578ca6646c62f638fb32",
+        "parameters": {
+          "strength": 0.8,
+          "grain": 0.3
+        }
+      }
+    },
+    {
+      "id": "film-time",
+      "type": "timeline.play",
+      "condition": "",
+      "parameters": {
+        "timeline": {
+          "playbackHandleId": "library-film-time",
+          "frameRate": 60,
+          "durationFrames": 240,
+          "blocking": false,
+          "skippable": false,
+          "loopMode": "Loop",
+          "tracks": [
+            {
+              "handleId": "library-film",
+              "property": "time",
+              "keys": [
+                {
+                  "frame": 0,
+                  "value": 0
+                },
+                {
+                  "frame": 240,
+                  "value": 4
+                }
+              ]
+            }
+          ],
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "film-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.film-note.content"
+      }
+    },
+    {
+      "id": "film-stop-time",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-film-time",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "film-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-film"
+      }
+    },
+    {
+      "id": "glitch",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-glitch",
+        "program": "c00b818c04ca593493e52fb96598fa30",
+        "parameters": {
+          "strength": 0.7
+        }
+      }
+    },
+    {
+      "id": "glitch-time",
+      "type": "timeline.play",
+      "condition": "",
+      "parameters": {
+        "timeline": {
+          "playbackHandleId": "library-glitch-time",
+          "frameRate": 60,
+          "durationFrames": 240,
+          "blocking": false,
+          "skippable": false,
+          "loopMode": "Loop",
+          "tracks": [
+            {
+              "handleId": "library-glitch",
+              "property": "time",
+              "keys": [
+                {
+                  "frame": 0,
+                  "value": 0
+                },
+                {
+                  "frame": 240,
+                  "value": 4
+                }
+              ]
+            }
+          ],
+          "events": []
+        }
+      }
+    },
+    {
+      "id": "glitch-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.glitch-note.content"
+      }
+    },
+    {
+      "id": "glitch-stop-time",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-glitch-time",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "glitch-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-glitch"
+      }
+    },
+    {
+      "id": "pixelate",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-pixelate",
+        "program": "8a4f9dead06a50deaa7a806e549ab4c6",
+        "parameters": {
+          "blockSize": 24
+        }
+      }
+    },
+    {
+      "id": "pixelate-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.pixelate-note.content"
+      }
+    },
+    {
+      "id": "pixelate-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-pixelate"
+      }
+    },
+    {
+      "id": "spotlight",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-spotlight",
+        "program": "9ee6516aa64155bdbf9ac66c0e5197b2",
+        "parameters": {
+          "strength": 0.8,
+          "radius": 0.25,
+          "feather": 0.12
+        }
+      }
+    },
+    {
+      "id": "spotlight-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.spotlight-note.content"
+      }
+    },
+    {
+      "id": "spotlight-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-spotlight"
+      }
+    }
+  ]
+}

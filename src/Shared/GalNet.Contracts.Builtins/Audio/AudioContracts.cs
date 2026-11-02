@@ -29,7 +29,8 @@ public enum AudioBackendAction
     Configure,
     SetMix,
     ResetMixer,
-    SetLevel
+    SetLevel,
+    SetDucking
 }
 
 public enum AudioBackendEventKind
@@ -64,7 +65,10 @@ public sealed record AudioBackendRequest(
     AudioConfiguration? Configuration = null,
     AudioMixOptions? Mix = null,
     float FadeOutSeconds = 0,
-    bool Muted = false);
+    bool Muted = false)
+{
+    public AudioDuckingState[]? DuckingRules { get; init; }
+}
 
 public sealed record AudioBackendEvent(
     AudioBackendEventKind Kind,

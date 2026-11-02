@@ -11,7 +11,7 @@
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto"
           RowSpacing="14">
       <TextBlock Text="{text:PlayerText Screenshot.Title, 'Save screenshot'}"
-                 FontSize="22"
+                 FontSize="{DynamicResource GalNet.Theme.GroupHeadingSize}"
                  FontWeight="Bold" />
 
       <Border Grid.Row="1"

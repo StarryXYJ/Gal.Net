@@ -38,7 +38,7 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null, ImageV
         registry.Register<LayerColorOptions>(BuiltinEntryIds.ShowColorLayer, (context, options) => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.ShowLayer(context.Runtime, target, new LayerRenderRequest(
                 options.HandleId ?? "", "", Arguments.Json<LayerTransform>(options.Transform) ?? new LayerTransform(),
-                options.Z, LayerDisplayMode.Native, options.Opacity, options.Color ?? ""))));
+                options.Z, LayerDisplayMode.Native, options.Opacity, options.Color ?? "") { Overlay = options.Overlay })));
         registry.Register<LayerHandleOptions>(BuiltinEntryIds.HideLayer, (context, options) => Immediate(context, presenter, target =>
             BuiltinRuntimeActions.HideLayer(context.Runtime, target, options.HandleId ?? "")));
         registry.Register<LayerMoveOptions>(BuiltinEntryIds.MoveLayer, (context, options) => Immediate(context, presenter, target =>
@@ -58,7 +58,7 @@ public sealed class BuiltinLayerModule(ILayerPresenter? presenter = null, ImageV
     })
 {
     internal static LayerRenderRequest Request(Layer layer) => new(layer.Id, layer.AssetId, layer.Transform.Clone(), layer.Z,
-        layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone());
+        layer.DisplayMode, layer.Opacity, layer.Color, layer.Flipbook?.Clone()) { Overlay = layer.Overlay };
 
     private static ImmediatePrimitiveInstance Immediate(PrimitiveCreateContext context, ILayerPresenter? presenter,
         Action<ILayerPresenter?> action) => new(() => action(presenter), batchId: context.BatchId, catchUp: () => action(null));

@@ -1,0 +1,123 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param mode
+  uniform: mode
+  type: enum
+  default: Rectangle
+  options: Rectangle,RoundedRectangle,Ellipse,Eyelid,Image,Letterbox
+  animatable: false
+
+@param progress
+  uniform: progress
+  type: float
+  default: 1
+  range: 0..1
+  animatable: true
+
+@param centerX
+  uniform: centerX
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param centerY
+  uniform: centerY
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param width
+  uniform: width
+  type: float
+  default: 1
+  range: 0..2
+  animatable: true
+
+@param height
+  uniform: height
+  type: float
+  default: 1
+  range: 0..2
+  animatable: true
+
+@param rotation
+  uniform: rotation
+  type: float
+  default: 0
+  range: -360..360
+  animatable: true
+
+@param cornerRadius
+  uniform: cornerRadius
+  type: float
+  default: 0.05
+  range: 0..1
+  animatable: true
+
+@param feather
+  uniform: feather
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param invert
+  uniform: invert
+  type: boolean
+  default: false
+  animatable: false
+
+@param overlay
+  uniform: overlay
+  type: boolean
+  default: false
+  animatable: false
+
+@param color
+  uniform: color
+  type: color
+  default: #000000
+  animatable: false
+
+@texture mask
+  uniform: mask
+  required: false
+*/
+uniform shader source;
+uniform float2 size;
+uniform shader mask;
+uniform float mode,progress,centerX,centerY,width,height,rotation,cornerRadius,feather,invert,overlay;
+uniform half4 color;
+
+half4 main(float2 p) {
+ float unit=max(min(size.x,size.y),1.0); float2 q=(p-float2(centerX,centerY)*size)/unit;
+ float a=rotation*0.01745329252; q=float2(q.x*cos(a)+q.y*sin(a),-q.x*sin(a)+q.y*cos(a));
+ float2 extent=max(float2(width,height)*size/unit*0.5,float2(0.00001)); float d;
+ if(mode>4.5) d=abs((p.y/ max(size.y,1.0))-0.5)-(0.5-progress*height*0.5);
+ else if(mode>3.5) d=progress-dot(float3(mask.eval(p).rgb),float3(0.2126,0.7152,0.0722));
+ else if(mode>2.5) {
+  // Enlarge the opening, keeping two texture pixels of coverage beyond its edge.
+  float guard=2.0/unit;
+  float opening=progress*(extent.y+guard)*1.65*max(0.0,1.0-pow(q.x/(extent.x*1.25+guard),2.0));
+  d=max(abs(q.y)-opening+guard,abs(q.x)-extent.x+guard);
+ }
+ else if(mode>1.5) d=(length(q/max(extent*progress,float2(0.00001)))-1.0)*min(extent.x,extent.y);
+ else { float radius=mode>0.5?min(cornerRadius,min(extent.x,extent.y)*progress):0.0; float2 v=abs(q)-extent*progress+radius; d=length(max(v,float2(0)))+min(max(v.x,v.y),0.0)-radius; }
+ float inside=feather<=0.0 ? 1.0-step(0.0,d) : 1.0-smoothstep(-feather,feather,d);
+ if(mode<2.5 && progress<=0.0) inside=0.0;
+ if(mode>2.5 && mode<3.5) {
+  // Feather must converge continuously to solid closed and transparent open states.
+  inside*=smoothstep(0.0,0.08,progress);
+  inside=mix(inside,1.0,smoothstep(0.65,1.0,progress));
+ }
+ if(mode>3.5 && mode<4.5) { if(progress<=0.0) inside=1.0; if(progress>=1.0) inside=0.0; }
+ if(mode>4.5 && progress<=0.0) inside=1.0;
+ if(invert>0.5) inside=1.0-inside;
+ if(overlay>0.5) { half alpha=color.a*half(1.0-inside); return half4(color.rgb*alpha,alpha)+source.eval(p)*(1.0-alpha); }
+ return source.eval(p)*half(inside);
+}

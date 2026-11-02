@@ -22,6 +22,34 @@ namespace GeneralTest.Presentation;
 public sealed class PlayerInputTests
 {
     [Test]
+    public Task OpenPlayerFlyoutBlocksStoryActionsWithoutChangingSharedInteractionState() => Ui(async () =>
+    {
+        using var settings = Settings();
+        var game = new GalNet.Avalonia.GameView.Presentation.GamePresentationState();
+        var requests = new List<string>();
+        var button = new Button { Content = "More", Flyout = new MenuFlyout { Items = { new MenuItem { Header = "Settings" } } } };
+        var root = new Border { Child = button, Classes = { "galnet-player" } };
+        root.Styles.Add(new TemplateAppearance().CreateStyles());
+        var window = new Window { Width = 600, Height = 400, Content = root };
+        window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
+        using var router = new PlayerInputRouter(root, settings, () => game, new Session(), () => { },
+            action => { requests.Add(action); return Task.CompletedTask; });
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            button.Flyout.ShowAt(button);
+            await router.DispatchAsync("open.settings");
+            Assert.That(requests, Is.Empty);
+            Assert.That(game.IsInteractionBlocked, Is.False);
+            button.Flyout.Hide();
+            await router.DispatchAsync("open.settings");
+            Assert.That(requests, Is.EqualTo(new[] { "open.settings" }));
+        }
+        finally { window.Close(); }
+    });
+
+    [Test]
     public async Task ApplicationActionsUseHostCallbackWithStandalonePresentationState()
     {
         using var settings = Settings();

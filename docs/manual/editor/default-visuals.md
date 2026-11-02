@@ -1,8 +1,8 @@
 # 默认视觉资源与演出预设
 
-新建默认契约项目时，编辑器将 8 个 SkSL 模板复制到 `Assets/Effects/Default/`，为每个项目生成资源 GUID。预览、运行和导出读取项目资产；升级编辑器不覆盖已有 shader。
+新建默认契约项目时，编辑器将 16 个 SkSL 模板和 5 个天气粒子纹理复制到 `Assets/Effects/Default/`，为每个项目生成资源 GUID。预览、运行和导出读取项目资产；升级编辑器不覆盖已有 shader。
 
-`galnet.project.defaultVisualPrograms` 保存 bloom、blur、vignette、colorGrade、depthBlur、speedLines、reveal、maskReveal 用途绑定。编辑器插入预设或切换类型时填入实际 GUID；修改用途绑定不会追改已有 Entry。CLI / 外部作者需要显式填写资源引用。
+`galnet.project.defaultVisualPrograms` 保存默认 shader 用途绑定；`defaultWeatherTextures` 保存 Rain、Snow、Petals、Dust、Fireflies 的纹理绑定。编辑器插入预设或切换类型时填入实际 GUID；修改用途绑定不会追改已有 Entry。CLI / 外部作者需要显式填写资源引用。
 
 ## 旧项目补入
 
@@ -118,6 +118,58 @@ Push 的 anchorX/anchorY 为相对画布中心的逻辑坐标。锚点缩放与 
 
 ## 展示与范围
 
-GameTestCase 两条路线的 ending 组均展示调色、Bloom、暗角、Z 切焦、人物动作、多层震动、两种动态集中线、冲击、柔边擦除、模糊转场和图片遮罩溶解，附中英文说明。遮罩示例使用普通背景图片的亮度。
+GameTestCase 按主题分组比较基础与扩展视觉库：`shaders` 集中展示 shader/景深，`masks` 展示遮罩，`characters` 展示人物与情绪，`weather` 展示天气，`transitions` 展示转场。两条路线均可体验完整案例；详见 [演示项目](../../../GameTestCase/README.md)。
 
-真实相机/深度图景深、散景、镜头跟随、胶片/故障/水波 shader、翻页、天气配方和章节标题仍是候选，不属于本批交付。
+真实相机/深度图景深、散景、自动镜头跟随、描边和翻页尚未实现。下面的扩展库提供显式视差、胶片/故障/波纹、天气和文本卡。
+
+
+## 扩展效果与演出
+
+新增项目 shader 用途：`distortion`、`radialBlur`、`film`、`glitch`、`pixelate`、`spotlight`、`shapeMask`、`mood`。旧项目仍用显式 `project visuals install` 补入。天气绑定与 shader 绑定一样只用于创作填充，Entry 保存显式资源 GUID，已有作者文件不自动升级。
+
+| Shader | 主要参数 |
+|---|---|
+| Distortion | strength（像素）、frequency、time、speed、mode=Wave/Ripple/Heat、centerX/centerY |
+| RadialBlur | strength、mode=Zoom/Spin、centerX/centerY；固定 12 次采样 |
+| Film | strength、time、grain、flicker、scratches |
+| Glitch | strength、time、aberration、displacement、scanlines |
+| Pixelate | blockSize，1 为原图 |
+| Spotlight | strength、centerX/centerY、radius、feather |
+| ShapeMask | mode=Rectangle/RoundedRectangle/Ellipse/Eyelid/Image/Letterbox、progress、centerX/centerY、width/height、rotation、cornerRadius、feather、invert、overlay、color、可选 mask 图片 |
+| Mood | strength、mode=Memory/Dream/Tension/Injury |
+
+动态 shader 的 time 仍需 Timeline 驱动。shader 与粒子颜色为 `#RRGGBB` / `#RRGGBBAA`；颜色图层沿用 `#RRGGBB` / `#AARRGGBB`，不能混用八位颜色顺序。
+
+ShapeMask 的中心、宽高相对画布归一化，feather/cornerRadius 相对画布短边，rotation 为度。feather=0 表示硬边。overlay=false 时裁切目标图层透明度；overlay=true 时在独立颜色图层上绘制遮挡色。Image 模式按图片亮度渐进遮挡，progress=0 完全显露、1 完全遮挡；Eyelid 为 0 完全闭合、1 完全打开。
+
+| Entry | 行为 |
+|---|---|
+| preset.mask | program、instanceId、motion、parameters、overlay、z；motion=Blink/Open/Close/LetterboxIn/LetterboxOut/Show/Hide；Blink 的 holdRatio 控制闭眼停留比例 |
+| preset.flash | color、strength、count、overlay、z；闪光与多次闪电 |
+| preset.idle | handleId、motion=Breathe/Sway、scaleAmount、rotationDegrees、distance、playbackMode |
+| preset.weather | texture、weather=Rain/Snow/Petals/Dust/Fireflies、rate、maxParticles、width/height、wind、seed、z、playbackMode |
+| preset.mood | program、instanceId、mood、strength、targetHandleId（空为场景）、exit；进入保留自身效果，exit=true 渐退并清理 |
+| preset.heartbeat | program（Vignette）、可选 handleId、strength、playbackMode、可选 sound/trackId；双脉冲暗角与相对缩放 |
+| preset.parallax | targets=[{handleId,transform,factor}]、distanceX/Y、scale、anchorX/Y；作者显式指定每层基准 |
+| preset.emphasis | program（ColorGrade）、instanceId、handleIds、activeHandleId、dimExposure、clear |
+| dialogue.emphasis | 强调参数加 speaker/content、可选 voice/trackId；强调动画非阻塞并与既有对白/语音组合 |
+
+所有视觉 clip 沿用 playbackHandleId、frameRate、durationFrames、blocking、skippable、batchId。持续 idle/weather/heartbeat 用 `animation.stop` 停止，复用指定时长与 UntilStopped 规则。停止时只收回各自资源/相对偏移。天气发射区域使用左上角原点的像素坐标。雨、雪、花瓣从画面上方 16 像素的全宽发射带落入；尘埃和萤火虫在 width×height 范围浮动。停止天气 Timeline 使用 `particle.stop.clear=false`，仅停止旧轮发射；已有粒子自然淡出并在排空后释放，不阻塞下一轮开始。要让新旧天气短暂共存，使用不同的 playbackHandleId；同 ID 仍表示替换。手动需要立即清除时可使用 `particle.stop.clear=true`。雨滴默认细长半透明，并叠加 250 px/s 的水平风速形成斜雨；`wind` 可进一步调整。发射带向上风侧扩展，保持下游覆盖。雨丝朝向跟随速度，花瓣颜色为桃红至粉红。为避免数量上限导致成批断档，天气实际发射速率取 `min(rate, maxParticles/(最大寿命+0.1))`；需要更高密度时相应提高 maxParticles。GameTestCase 在斜雨之后加入径向雨：用普通粒子 circle/radialVelocity 和 `initial.alignToVelocity=true` 从中心向外发射。天气纹理是可编辑项目资源，不表示高级粒子碰撞或真实发光。新雨滴模板为 4×64 的透明渐隐线条；模板升级不会覆盖既有项目纹理，既有项目要得到相同外观需替换 Rain 绑定的纹理，保留其资源 GUID。
+
+遮罩默认只在场景内按 z 排序。`overlay=true` 的遮罩颜色层在默认 PlayerSurface 的透明覆盖面合成，覆盖场景、对白和文本卡；系统退出/返回确认始终更高。Close/LetterboxIn/Show 保留遮罩，Open/LetterboxOut/Hide/Blink 完成后清理；跨条目开关同一遮罩须使用相同 instanceId。
+
+Blink/Open/Close 默认羽化为 `0.025`，可由 `parameters.feather` 覆写（含 `0` 硬边）。眼睑开口会扩大，`progress=0.65..1` 平滑淡出剩余角落遮挡，完全睁开不再切换可见性。闭合端连续收束羽化；边界预留两个 shader 像素。遮罩预设使用零切线三次 Hermite 缓动，Blink 在闭合保持段两端平滑衔接。
+
+说话人强调要求显式给出完整参与图层和当前活动图层。相同 instanceId/参与图层沿用自己的调色实例，从当前显示值继续变化；下一次切换前不自动恢复。clear=true 渐变回中性后只移除自己的效果。`effect.apply.ensureOnly=true` 可确保同 program/target 的现有实例不被重建；身份已被不同 program/target 占用时拒绝。强调不自动映射角色和立绘，不修改其他调色实例。
+
+新转场为 `transition.flash`、`transition.zoom`、`transition.pixelate`、`transition.glitch`，沿用交叉淡化的旧/新图层、资源、变换和时间参数。pixelate/glitch 还需显式 program；strength 控制强度，zoom 可指定 anchorX/Y。
+
+GameTestCase 的 `presentation-library` 现在集中展示文本卡，与 `intro` 的文本/图集案例相邻；音效集中在 `audio`，视频集中在 `media`。每章有中英文标题和引导，并显式准备、清理布景。
+
+## 通用文本卡
+
+`text.card` 的 content 走剧情本地化；position 支持 TopLeft/Left/BottomLeft、TopCenter/Center/BottomCenter、TopRight/Right/BottomRight。styleName 是 App 的样式名，holdSeconds 可覆写样式停留时长；blocking=true 等待完整入场、停留、退场，默认非阻塞。快速播放/追赶不补弹提示；会话取消与重置清理，文本卡不写入存档。
+
+左侧从左进入并向左退出，右侧反向，中间默认淡入；同位置新卡替换旧卡、旧退新进，不同位置独立。缺失样式回退到 default。默认呈现服务为 `TextCardHost` / `ITextCardPresenter`，App 可用 `TextCardTheme.<styleName>` ControlTheme 自定义 ContentControl 模板、字体和装饰；`PlayerSurface.TextCards.ResolveStyle` 可为样式名返回 `TextCardStyle(enter, hold, exit, distance)`。
+
+Sample 在 PlayerView.axaml 提供 default/music/location/chapter 主题。音乐仍在真实 Started 后解析曲名，再使用同一服务的 BottomLeft/music；循环、读档和鉴赏不因此重复提示。

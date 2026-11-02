@@ -54,7 +54,7 @@ public static class SceneAuthoringIdentities
             if (!string.IsNullOrWhiteSpace(slot.Handle) && (slot.Domain != SceneIdentityDomain.AudioEffect || slot.Qualifier is not null))
                 replacements.TryAdd((slot.Domain, slot.Qualifier, slot.Handle), Guid.NewGuid().ToString("N"));
         foreach (var slot in slots)
-            if (slot.Handle is { } handle && replacements.TryGetValue((slot.Domain, slot.Qualifier, handle), out var replacement)) slot.Owner[slot.Field] = replacement;
+            if (slot.Handle is { } handle && replacements.TryGetValue((slot.Domain, slot.Qualifier, handle), out var replacement)) slot.Rewrite(replacement);
         foreach (var root in roots) root.Entry.Parameters = root.Parameters.ToDictionary(pair => pair.Key, pair => JsonSerializer.SerializeToElement(pair.Value));
     }
 }

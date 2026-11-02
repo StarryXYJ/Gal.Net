@@ -119,6 +119,20 @@ public class ParticleEmitterDefinitionTests
 public class ParticleEmitterSimulationTests
 {
     [Test]
+    public void Full_particle_budget_does_not_bank_missed_emissions_for_a_future_burst()
+    {
+        var definition = new ParticleEmitterDefinition("rain", EmissionRate: 200, MaxParticles: 10,
+            Initial: new ParticleInitialDefinition { Lifetime = new(1, 1) });
+        using var emitter = new RenderParticleEmitter("rain", null, definition, 0);
+        emitter.Update(new(TimeSpan.FromSeconds(.05), TimeSpan.FromSeconds(.05), new SKSize(100, 100)));
+        Assert.That(emitter.ActiveParticleCount, Is.EqualTo(10));
+        emitter.Update(new(TimeSpan.FromSeconds(1.05), TimeSpan.FromSeconds(1), new SKSize(100, 100)));
+        Assert.That(emitter.ActiveParticleCount, Is.Zero);
+        emitter.Update(new(TimeSpan.FromSeconds(1.051), TimeSpan.FromSeconds(.001), new SKSize(100, 100)));
+        Assert.That(emitter.ActiveParticleCount, Is.Zero, "No overdue particles should burst into a newly freed budget.");
+    }
+
+    [Test]
     public void BurstFiresOnceOnFirstUpdateAndHonorsMaximum()
     {
         using var emitter = new RenderParticleEmitter("burst", null, Definition(maximum: 2), 0, initialBurstCount: 8);

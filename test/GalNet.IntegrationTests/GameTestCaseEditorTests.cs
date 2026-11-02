@@ -56,6 +56,11 @@ public sealed class GameTestCaseEditorTests
                 var documents = project.Services.GetRequiredService<IEditorDocumentService>();
                 var session = project.Services.GetRequiredService<IProjectContentSession>();
                 Assert.That(session.IsDirty, Is.False);
+                var replay = documents.CurrentDocument.Nodes.Single(node => node.Id == "gallery-classroom").Metadata!;
+                Assert.That(replay.DisplayNameKey, Is.EqualTo("asset.gallery-classroom.name"));
+                Assert.That(replay.GalleryUnlockId, Is.EqualTo(400));
+                Assert.That(replay.ExtensionData!.ContainsKey("displayNameKey"), Is.False);
+                Assert.That(replay.ExtensionData["galleryPreviewAssetId"].GetString(), Is.EqualTo("a1000000000000000000000000000001"));
                 Assert.That(documents.CurrentDocument.Nodes.Single(node => node.Type == "Entry").Id,
                     Is.EqualTo(documents.CurrentDocument.RootNodeId));
                 Assert.That(documents.CurrentDocument.Edges, Has.One.Matches<GalNet.Editor.Abstraction.Documents.EditorGraphEdgeDto>(
@@ -84,7 +89,7 @@ public sealed class GameTestCaseEditorTests
                 Assert.That(validation.Success, Is.True, JsonSerializer.Serialize(validation.Diagnostics));
                 var built = await new ProjectContentBuilder(reopened.Services.GetRequiredService<IEntryCatalog>())
                     .BuildAsync(root, Path.Combine(root, "Output"));
-                Assert.That(built.CompiledGroupCount, Is.EqualTo(6));
+                Assert.That(built.CompiledGroupCount, Is.EqualTo(15));
             }
             finally { await projects.CloseAsync(); }
         }

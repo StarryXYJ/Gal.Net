@@ -26,7 +26,7 @@ public sealed class BuiltinSchemaComponentsTests
         Assert.That(schema.GetProperty("minimum").GetInt32(), Is.EqualTo(minimum));
     }
 
-    private static readonly string[] SelectedTypes = ["dialogue.text", "dialogue.show", "dialogue.hide", "flow.wait"];
+    private static readonly string[] SelectedTypes = ["dialogue.text", "text.card", "dialogue.show", "dialogue.hide", "flow.wait"];
     private static readonly string[] ContractDependencies = ["GalNet.Core"];
 
     [Test]
@@ -38,9 +38,9 @@ public sealed class BuiltinSchemaComponentsTests
         {
             Assert.That(modules, Has.Count.EqualTo(14));
             Assert.That(modules.Select(module => module.Id).Distinct().Count(), Is.EqualTo(14));
-            Assert.That(catalog.Definitions, Has.Count.EqualTo(53));
-            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(39));
-            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Composite), Is.EqualTo(14));
+            Assert.That(catalog.Definitions, Has.Count.EqualTo(68));
+            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Primitive), Is.EqualTo(41));
+            Assert.That(catalog.Definitions.Count(entry => entry.Kind == EntryKind.Composite), Is.EqualTo(27));
             Assert.That(() => ((IList<IEntryModule>)modules).Clear(), Throws.TypeOf<NotSupportedException>());
         });
     }

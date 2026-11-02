@@ -8,10 +8,11 @@ using GalNet.Runtime.Logging;
 
 namespace GalNet.Primitives.Builtins;
 
-public sealed class BuiltinAudioModule : PrimitiveModule
+public sealed partial class BuiltinAudioModule : PrimitiveModule
 {
     private readonly AudioRuntime _runtime;
     private readonly AudioScope _scope;
+    private readonly AudioConfiguration _configuration;
     public event Action<string>? PlaybackStarted
     {
         add => _runtime.PlaybackStarted += value;
@@ -31,6 +32,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     {
         _runtime = runtime;
         _scope = scope;
+        _configuration = configuration;
         _runtime.Diagnostic += OnDiagnostic;
     }
     public override void Dispose()
@@ -55,6 +57,7 @@ public sealed class BuiltinAudioModule : PrimitiveModule
     private static void RegisterPrimitives(PrimitiveRegistry registry, AudioRuntime runtime, AudioScope scope,
         AudioConfiguration tracks)
     {
+        registry.State<AudioDuckingState>(BuiltinJson.StateTypeInfo<AudioDuckingState>(), "builtin.audio.ducking", value => value.Id);
         registry.State<AudioTrackState>(BuiltinJson.StateTypeInfo<AudioTrackState>(), "builtin.audio.tracks", value => value.Id, validate: AudioRuntime.ValidateTrack, version: 2);
         registry.State<AudioSEffectState>(BuiltinJson.StateTypeInfo<AudioSEffectState>(), "builtin.audio.seffects", value => value.Key(), version: 2);
         registry.State<AudioChannelState>(BuiltinJson.StateTypeInfo<AudioChannelState>(), "builtin.audio.channels", value => value.Key(), validate: AudioRuntime.ValidateChannel);
@@ -66,6 +69,8 @@ public sealed class BuiltinAudioModule : PrimitiveModule
             await runtime.RestoreAsync(context.Runtime.State, tracks,
                 context.CancellationToken).ConfigureAwait(false);
         });
+        registry.Register<AudioDuckingOptions>(BuiltinEntryIds.DuckAudio, (context, options) => Audio(context, scope, () =>
+            runtime.SetDucking(tracks, new(options.InstanceId, options.SourceTrackId, options.TargetId, options.Scope, options.Gain, options.AttackMs, options.ReleaseMs), options.Enabled)));
         registry.Register<AudioPlayOptions>(BuiltinEntryIds.PlayAudio, (context, options) => Playback(context, runtime, scope, tracks,
             options, options.Placement ?? AudioPlacement.Enqueue));
         registry.Register<AudioStopOptions>(BuiltinEntryIds.StopAudio, (context, options) => Audio(context, scope, () =>

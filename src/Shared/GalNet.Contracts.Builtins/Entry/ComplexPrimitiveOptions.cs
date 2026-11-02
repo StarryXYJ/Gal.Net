@@ -22,6 +22,7 @@ public partial class LayerShowOptions
 [GenerateFieldSchema]
 public partial class LayerColorOptions
 {
+    [Field(5)] public bool Overlay { get; set; }
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Color { get; set; }
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
@@ -132,6 +133,7 @@ public partial class VideoPlayOptions
 [GenerateFieldSchema]
 public partial class EffectApplyOptions
 {
+    [Field(6)] public bool EnsureOnly { get; set; }
     [Common, Field(0, AllowNull = true, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string? Program { get; set; } = "";
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; } = "";
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
@@ -154,4 +156,12 @@ public partial class ParticleBurstOptions
     [Field(0, Minimum = 1, EditorId = ValueEditorIds.Numeric)] public int Count { get; set; } = 1;
     [Field(1, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 100;
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
+}
+
+[GenerateFieldSchema]
+public partial class ParticleStopOptions
+{
+    [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
+    /// <summary>Remove existing particles immediately instead of allowing them to drain.</summary>
+    [Field(1)] public bool Clear { get; set; }
 }

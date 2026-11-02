@@ -21,7 +21,8 @@ internal sealed class VisualPresetResourceValidator(string root)
         var parsed = ShaderEffectMetadataParser.Parse(new(program.GetString()!), File.ReadAllText(_reader.Resolve(asset.Path)));
         if (!parsed.Success) throw new InvalidDataException(string.Join("; ", parsed.Diagnostics));
         var descriptor = parsed.Descriptor!;
-        if (!descriptor.Supports(EffectStage.Layer)) throw new InvalidDataException("This preset requires a layer shader.");
+        var stage = type == BuiltinEntryIds.HeartbeatPreset || type == BuiltinEntryIds.MoodPreset && (!parameters.TryGetValue("targetHandleId", out var target) || string.IsNullOrWhiteSpace(target.GetString())) ? EffectStage.ScenePost : EffectStage.Layer;
+        if (!descriptor.Supports(stage)) throw new InvalidDataException($"This preset requires a {stage} shader.");
         void Need(string name, ShaderEffectParameterKind kind, bool animate = false)
         {
             var parameter = descriptor.Parameters.SingleOrDefault(parameter => parameter.Name == name);
@@ -35,7 +36,18 @@ internal sealed class VisualPresetResourceValidator(string root)
             if (parameter.Minimum is { } lower && minimum < lower || parameter.Maximum is { } upper && maximum > upper)
                 throw new InvalidDataException($"Preset values exceed shader parameter '{name}' range.");
         }
-        if (type is BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
+        if (type is BuiltinEntryIds.MaskPreset or BuiltinEntryIds.MoodPreset or BuiltinEntryIds.HeartbeatPreset or BuiltinEntryIds.EmphasisPreset or BuiltinEntryIds.EmphasisText or BuiltinEntryIds.PixelateTransition or BuiltinEntryIds.GlitchTransition)
+        {
+            var property = type == BuiltinEntryIds.MaskPreset ? "progress" : type is BuiltinEntryIds.EmphasisPreset or BuiltinEntryIds.EmphasisText ? "exposure" : type == BuiltinEntryIds.PixelateTransition ? "blockSize" : "strength";
+            Need(property, ShaderEffectParameterKind.Float, true);
+            var peak = type == BuiltinEntryIds.PixelateTransition ? Math.Clamp(Number("strength", 1) * 48, 1, 256) : Number("strength", type == BuiltinEntryIds.HeartbeatPreset ? .65f : .7f);
+            Range(property, type == BuiltinEntryIds.PixelateTransition ? 1 : type is BuiltinEntryIds.EmphasisPreset or BuiltinEntryIds.EmphasisText ? Number("dimExposure", -1) : 0,
+                type == BuiltinEntryIds.MaskPreset ? 1 : type is BuiltinEntryIds.EmphasisPreset or BuiltinEntryIds.EmphasisText ? 0 : type == BuiltinEntryIds.GlitchTransition ? Math.Min(1, Number("strength", 1)) : peak);
+            if (type == BuiltinEntryIds.MaskPreset) { Need("overlay", ShaderEffectParameterKind.Boolean); Need("mode", ShaderEffectParameterKind.Enum); }
+            if (type == BuiltinEntryIds.MoodPreset) Need("mode", ShaderEffectParameterKind.Enum);
+            if (type == BuiltinEntryIds.GlitchTransition) { Need("time", ShaderEffectParameterKind.Float, true); Range("time", 0, Number("durationFrames", 48) / Number("frameRate", 60)); }
+        }
+        else if (type is BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
         {
             Need("time", ShaderEffectParameterKind.Float, true);
             Need("speed", ShaderEffectParameterKind.Float);

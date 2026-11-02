@@ -34,6 +34,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         _host = host;
         _effects = effects ?? host?.SEffects ?? SEffectCatalog.Builtins;
         var builder = new StateCatalogBuilder();
+        builder.Register<AudioDuckingState>("builtin.audio.ducking", value => value.Id, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioDuckingState>());
         builder.Register<AudioTrackState>("builtin.audio.tracks", value => value.Id, ValidateTrack, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioTrackState>());
         builder.Register<AudioSEffectState>("builtin.audio.seffects", value => value.Key(), ValidateEffect, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioSEffectState>());
         builder.Register<AudioChannelState>("builtin.audio.channels", value => value.Key(), ValidateChannel, jsonTypeInfo: BuiltinJson.StateTypeInfo<AudioChannelState>());
@@ -72,6 +73,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             _state.Table<AudioTrackState>().Clear();
             _state.Table<AudioSEffectState>().Clear();
             _state.Table<AudioChannelState>().Clear();
+            if (_state.Catalog.Ids.Contains("builtin.audio.ducking")) _state.Table<AudioDuckingState>().Clear();
             ResetMixer();
             _tracks.Clear();
             _catchUp = false;
@@ -79,6 +81,8 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
     }
     public void Validate(GameState state, AudioConfiguration configuration)
     {
+        if (state.Catalog.Ids.Contains("builtin.audio.ducking"))
+            foreach (var rule in state.Table<AudioDuckingState>().Values) rule.Validate(configuration);
         var identities = new HashSet<string>(StringComparer.Ordinal);
         foreach (var track in state.Table<AudioTrackState>().Values)
         {
@@ -420,6 +424,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         _dispatcher.Enqueue(new(AudioBackendAction.Configure, "", "", 0, Configuration: configuration));
         _dispatcher.Enqueue(new(AudioBackendAction.SetMix, "", "", 0, Mix: _mix));
         foreach (var channel in _state.Table<AudioChannelState>().Values) SendLevel(channel);
+        SendDucking();
         foreach (var effect in _state.Table<AudioSEffectState>().Values) SendTargetEffect(effect, AudioBackendAction.ApplySEffect);
     }
     private void SendTargetEffect(AudioSEffectState effect, AudioBackendAction action)
@@ -438,6 +443,21 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
             _state.Table<AudioChannelState>().Set(channel);
             if (!_catchUp) SendLevel(channel);
         });
+    }
+    public void SetDucking(AudioConfiguration configuration, AudioDuckingState rule, bool enabled)
+    {
+        lock (_gate) _state.Update(() =>
+        {
+            Configure(configuration);
+            if (enabled) { rule.Validate(configuration); _state.Table<AudioDuckingState>().Set(rule); }
+            else _state.Table<AudioDuckingState>().Remove(rule.Id);
+            SendDucking();
+        });
+    }
+    private void SendDucking()
+    {
+        if (_host?.Capabilities.SupportsMixer == true && _state.Catalog.Ids.Contains("builtin.audio.ducking"))
+            _dispatcher.Enqueue(new(AudioBackendAction.SetDucking, "", "", 0) { DuckingRules = _state.Table<AudioDuckingState>().Values.ToArray() });
     }
     private void SendLevel(AudioChannelState channel) => _dispatcher.Enqueue(new(AudioBackendAction.SetLevel,
         channel.TargetId, "", 0, Gain: channel.Gain, Muted: channel.Muted, Scope: channel.Scope));

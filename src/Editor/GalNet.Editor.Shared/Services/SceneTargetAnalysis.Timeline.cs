@@ -81,6 +81,8 @@ public sealed partial class SceneTargetAnalysis
             catch (Exception error) when (error is JsonException or InvalidOperationException or ArgumentException or InvalidDataException or OverflowException) { merged.Complete = false; }
         }
         if (requireValidExpansion && !merged.Complete) throw new InvalidDataException("Incomplete transition expansion.");
+        state.AudioEffects.Clear(); foreach (var pair in merged.AudioEffects) state.AudioEffects.Add(pair.Key, pair.Value);
+        state.AudioComplete &= merged.AudioComplete;
         state.Targets.Clear(); foreach (var pair in merged.Targets) state.Targets.Add(pair.Key, pair.Value);
         state.Playbacks.Clear(); foreach (var pair in merged.Playbacks) state.Playbacks.Add(pair.Key, pair.Value);
         state.Uncertain();
@@ -138,7 +140,9 @@ public sealed partial class SceneTargetAnalysis
     }
     private void ApplyEvent(State state, string group, EditorEntryData owner, TimelineEventDefinition item, int index, JsonElement raw, JsonElement parameters)
     {
-        Transfer(state, group, new EditorEntryData { StableId = owner.StableId, Type = item.Type, Parameters = parameters.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone()) });
+        var eventEntry = new EditorEntryData { StableId = owner.StableId, Type = item.Type, Parameters = parameters.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone()) };
+        Transfer(state, group, eventEntry);
+        TransferAudio(state, group, eventEntry);
         if (TimelineEventCapabilities.CreationSlot(item.Type) is not { } slot || !parameters.TryGetProperty(slot, out var output) || output.GetString() is not { } handle || !state.Targets.TryGetValue(handle, out var target)) return;
         var identity = Member(Member(raw, "events")!.Value[index], "editorId")?.GetString() ?? slot + ":" + handle;
         state.Targets[handle] = target with { Locator = new(group, owner.StableId, slot, identity), CreatedAtFrame = item.Frame, IsFuture = false };

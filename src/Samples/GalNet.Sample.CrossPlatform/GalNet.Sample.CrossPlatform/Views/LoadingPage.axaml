@@ -5,6 +5,6 @@
     x:Class="GalNet.Sample.CrossPlatform.Views.LoadingPage"
     x:DataType="vm:LoadingPageViewModel">
   <Grid Background="{DynamicResource GalNet.Brush.Background}" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-    <TextBlock Margin="16" Text="{Binding Message}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" FontSize="16"/>
+    <TextBlock Margin="16" Text="{Binding Message}" HorizontalAlignment="Right" VerticalAlignment="Bottom" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" FontSize="{DynamicResource GalNet.Theme.LoadingFontSize}"/>
   </Grid>
 </UserControl>

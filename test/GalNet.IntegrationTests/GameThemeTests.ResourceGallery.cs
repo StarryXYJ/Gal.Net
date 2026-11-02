@@ -22,6 +22,70 @@ namespace GeneralTest.Presentation;
 
 public sealed partial class GameThemeTests
 {
+    [TestCase(360)]
+    [TestCase(1000)]
+    [TestCase(1920)]
+    public async Task VisualGalleryCardsMatchSaveCardsAndKeepTheirPreviewAndClickTargets(int width)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch(async () =>
+        {
+            var theme = CreateTheme("Classic", "Ocean");
+            await using var provider = CreateServices(theme).BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var factory = services.GetRequiredService<IPageViewFactory>();
+            var saves = services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel>();
+            saves.Slots.Clear();
+            for (var index = 0; index < 8; index++)
+                saves.Slots.Add(new(new(index, default, "Save", true, false), false, _ => Task.CompletedTask, _ => Task.CompletedTask));
+            var root = new Border { Classes = { "galnet-player" }, Child = factory.Create(saves) };
+            root.Styles.Add(theme.CreateStyles());
+            var window = new Window { Width = width, Height = 800, Content = root };
+            Rect Bounds(Control control) => new(control.TranslatePoint(default, root)!.Value, control.Bounds.Size);
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var expected = root.GetVisualDescendants().OfType<GalNet.Game.Controls.SaveSlotCard>()
+                    .Where(card => card.IsVisible).Select(Bounds).ToArray();
+                Assert.That(expected, Has.Length.EqualTo(8));
+                Capture(window, $"cards-save-{width}");
+                GalNet.Sample.CrossPlatform.ViewModels.GalleryGridPageViewModel[] pages =
+                    [services.GetRequiredService<CgGalleryPageViewModel>(), services.GetRequiredService<VideoGalleryPageViewModel>(), services.GetRequiredService<SceneGalleryPageViewModel>()];
+                foreach (var page in pages)
+                {
+                    for (var index = 0; index < 8; index++)
+                        page.Thumbnails.Items.Add(new(new(new GalleryItem { Id = index }, index != 1), $"Memory {index}")
+                            { Thumbnail = index == 0 ? CreateGalleryArtwork() : null });
+                    root.Child = factory.Create(page);
+                    window.UpdateLayout();
+                    var cards = root.GetVisualDescendants().OfType<Border>().Where(card => card.Name == "GalleryCard").ToArray();
+                    Assert.That(cards.Select(Bounds), Is.EqualTo(expected), "Card size, columns, spacing and page inset must all match saves.");
+                    var first = cards[0];
+                    var preview = first.GetVisualDescendants().OfType<Image>().Single();
+                    Assert.That(preview.Source, Is.Not.Null);
+                    Assert.That(preview.Bounds.Height, Is.EqualTo(first.Bounds.Height - 2));
+                    var button = first.GetVisualDescendants().OfType<Button>().Single();
+                    Assert.That(button.Command, Is.SameAs(page.OpenItemCommand));
+                    Assert.That(button.CommandParameter, Is.SameAs(page.Thumbnails.Items[0]));
+                    var activations = 0;
+                    button.Command = new CommunityToolkit.Mvvm.Input.RelayCommand(() => activations++);
+                    var caption = first.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Name == "CardTitle");
+                    foreach (var target in new Control[] { preview, caption })
+                    {
+                        var point = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)!.Value;
+                        window.MouseDown(point, global::Avalonia.Input.MouseButton.Left);
+                        window.MouseUp(point, global::Avalonia.Input.MouseButton.Left);
+                    }
+                    Assert.That(activations, Is.EqualTo(2), "Both the picture and caption open the card.");
+                    Capture(window, $"cards-{page.GetType().Name}-{width}");
+                }
+            }
+            finally { window.Close(); }
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     [TestCase("Classic")]
 
 

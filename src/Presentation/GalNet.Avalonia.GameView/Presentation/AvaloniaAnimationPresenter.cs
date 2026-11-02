@@ -130,7 +130,7 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
         try
         {
             var started = Stopwatch.StartNew();
-            var tracks = RegisterTimelineTracks(active, timeline.Tracks);
+            var tracks = await _dispatcher.InvokeAsync(() => Task.FromResult(RegisterTimelineTracks(active, timeline.Tracks)));
             AnimationOutcome outcome;
             while (true)
             {
@@ -215,7 +215,14 @@ public sealed class AvaloniaAnimationPresenter : IAnimationPresenter, IDisposabl
         {
             foreach (var track in tracks)
             {
-                var activeTrack = new ActiveTimelineTrack(track);
+                var sampled = track;
+                if (track.StartFromCurrent && track.BlendMode == AnimationBlendMode.Replace && TryGetAnimationValue(track.HandleId, track.Property, out var current))
+                {
+                    sampled = new TimelineTrackDefinition { HandleId = track.HandleId, Property = track.Property, BlendMode = track.BlendMode,
+                        Keys = track.Keys.Select((key, index) => new TimelineKeyframeDefinition { Frame = key.Frame, Value = index == 0 ? (float)current : key.Value,
+                            InTangent = key.InTangent, OutTangent = key.OutTangent, InterpolationToNext = key.InterpolationToNext }).ToList() };
+                }
+                var activeTrack = new ActiveTimelineTrack(sampled);
                 if (track.BlendMode == AnimationBlendMode.Additive)
                     _activeAdditiveTimelineTracks.Add(activeTrack);
                 else

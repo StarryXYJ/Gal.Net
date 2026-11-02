@@ -11,4 +11,7 @@ public sealed record LayerRenderRequest(
     LayerDisplayMode DisplayMode,
     float Opacity,
     string? Color = null,
-    FlipbookDefinition? Flipbook = null);
+    FlipbookDefinition? Flipbook = null)
+{
+    public bool Overlay { get; init; }
+}

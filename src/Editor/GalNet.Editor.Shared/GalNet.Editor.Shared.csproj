@@ -21,6 +21,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Visuals/Particles/*.png" LogicalName="GalNet.Visuals.Particles.%(Filename)%(Extension)" />
         <EmbeddedResource Include="Visuals/Shaders/*.sksl" LogicalName="GalNet.Visuals.%(Filename)%(Extension)" />
         <InternalsVisibleTo Include="GalNet.Editor.Shared.Tests" />
         <InternalsVisibleTo Include="GalNet.Editor.Benchmarks" />

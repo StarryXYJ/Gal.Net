@@ -29,6 +29,7 @@ public static class BuiltinSchemas
     public static IEntryModule CreateDialogueModule() => new DefaultEntryModule("dialogue",
     [
         Reading<DialogueTextOptions>(BuiltinEntryIds.Text),
+        DefaultPrimitiveEntryBase.ForDto<TextCardOptions>(BuiltinEntryIds.TextCard),
         new DefaultPrimitiveEntryBase(BuiltinEntryIds.ShowDialogue, DynamicParameterTable.Empty),
         new DefaultPrimitiveEntryBase(BuiltinEntryIds.HideDialogue, DynamicParameterTable.Empty)
     ]);
@@ -59,6 +60,15 @@ public static class BuiltinSchemas
         DefaultPrimitiveEntryBase.ForDto<AnimationStopOptions>(BuiltinEntryIds.StopAnimation)
     ], compositeEntries:
     [
+                DefaultCompositeEntryBase.ForDto<MaskPresetOptions>(BuiltinEntryIds.MaskPreset, VisualPresetCompiler.Mask, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<FlashPresetOptions>(BuiltinEntryIds.FlashPreset, VisualPresetCompiler.Flash, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<IdlePresetOptions>(BuiltinEntryIds.IdlePreset, VisualPresetCompiler.Idle, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<WeatherPresetOptions>(BuiltinEntryIds.WeatherPreset, VisualPresetCompiler.Weather, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<MoodPresetOptions>(BuiltinEntryIds.MoodPreset, VisualPresetCompiler.Mood, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<HeartbeatPresetOptions>(BuiltinEntryIds.HeartbeatPreset, VisualPresetCompiler.Heartbeat, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<ParallaxPresetOptions>(BuiltinEntryIds.ParallaxPreset, VisualPresetCompiler.Parallax, category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<EmphasisPresetOptions>(BuiltinEntryIds.EmphasisPreset, (context, options) => VisualPresetCompiler.Emphasis(context, options, false), category: "Preset"),
+        DefaultCompositeEntryBase.ForDto<EmphasisPresetOptions>(BuiltinEntryIds.EmphasisText, (context, options) => VisualPresetCompiler.Emphasis(context, options, true), category: "Preset"),
         DefaultCompositeEntryBase.ForDto<MotionPresetOptions>(BuiltinEntryIds.MotionPreset, VisualPresetCompiler.Motion, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<ShakePresetOptions>(BuiltinEntryIds.ShakePreset, VisualPresetCompiler.Shake, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<SpeedLinesPresetOptions>(BuiltinEntryIds.SpeedLinesPreset, VisualPresetCompiler.SpeedLines, category: "Preset"),
@@ -67,6 +77,7 @@ public static class BuiltinSchemas
 
     public static IEntryModule CreateAudioModule() => new DefaultEntryModule("audio",
     [
+        DefaultPrimitiveEntryBase.ForDto<AudioDuckingOptions>(BuiltinEntryIds.DuckAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioPlayOptions>(BuiltinEntryIds.PlayAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioStopOptions>(BuiltinEntryIds.StopAudio),
         DefaultPrimitiveEntryBase.ForDto<AudioTrackOptions>(BuiltinEntryIds.PauseAudio),
@@ -95,7 +106,7 @@ public static class BuiltinSchemas
     public static IEntryModule CreateParticlesModule() => new DefaultEntryModule("particles",
     [
         DefaultPrimitiveEntryBase.ForDto<ParticlePlayOptions>(BuiltinEntryIds.PlayParticleEmitter, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayParticleEmitter, arguments), validatePartialArguments: static _ => { }),
-        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(BuiltinEntryIds.StopParticleEmitter),
+        DefaultPrimitiveEntryBase.ForDto<ParticleStopOptions>(BuiltinEntryIds.StopParticleEmitter),
         DefaultPrimitiveEntryBase.ForDto<ParticleBurstOptions>(BuiltinEntryIds.BurstParticles, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.BurstParticles, arguments), validatePartialArguments: static _ => { })
     ]);
 

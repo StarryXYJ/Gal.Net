@@ -10,6 +10,7 @@ namespace GalNet.Primitives.Builtins;
 
 public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
 {
+    public BuiltinAudioModule? AudioModule { get; init; }
     private readonly object _gate = new();
     private readonly bool _restoring;
     private readonly IGameContext _runtime;
@@ -82,11 +83,13 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
 
     protected override void OnDispatch()
     {
+        AudioModule?.BindTimeline(_runtime, _timeline, _scopeCancellation);
         if (!_restoring) BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
         _playback = _runtime.Scene().GetOrAddTransient(_timeline.PlaybackHandleId,
             id => new AnimationPlaybackInstance { Id = id, LoopMode = _timeline.LoopMode });
         if (_animationPresenter is null)
         {
+            AudioModule?.CompleteTimeline(_runtime, _timeline, catchUp: true, initialLoop: _timeline.LoopMode != AnimationLoopMode.Once);
             if (_timeline.LoopMode == AnimationLoopMode.Once)
                 BuiltinRuntimeActions.StopAnimationState(_runtime, _timeline.PlaybackHandleId);
             Dispose();
@@ -131,7 +134,9 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
     protected override void OnCatchUpDispatch()
     {
         if (!_timeline.Skippable && _timeline.Blocking) { OnDispatch(); return; }
+        AudioModule?.BindTimeline(_runtime, _timeline, _scopeCancellation);
         BuiltinRuntimeActions.ApplyTimelineStableState(_runtime, _timeline);
+        AudioModule?.CompleteTimeline(_runtime, _timeline, catchUp: true, initialLoop: _timeline.LoopMode != AnimationLoopMode.Once);
         Dispose();
         _completion.TrySetResult();
         TryComplete();
@@ -192,6 +197,8 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
 
     private void FinishPlayback()
     {
+        if (!_scopeCancellation.IsCancellationRequested && !_catchUpDetached) AudioModule?.CompleteTimeline(_runtime, _timeline, catchUp: false);
+        AudioModule?.ReleaseTimeline(_timeline);
         _runtime.State.Update(() =>
         {
             if (!_catchUpDetached && _playback is not null && _runtime.Scene().TryGet<AnimationPlaybackInstance>(_timeline.PlaybackHandleId, out var current) && ReferenceEquals(current, _playback))
@@ -229,13 +236,15 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
         var frame = _timeline.LoopMode == AnimationLoopMode.Once || cycleFrames <= 0
             ? elapsedFrames : elapsedFrames % cycleFrames;
         await NotifyEventsThroughFrameAsync((int)Math.Min(_timeline.DurationFrames, frame), cancellationToken).ConfigureAwait(false);
+        var sampleFrame = _timeline.LoopMode == AnimationLoopMode.PingPong && frame > _timeline.DurationFrames ? 2 * _timeline.DurationFrames - frame : Math.Min(_timeline.DurationFrames, frame);
+        AudioModule?.SampleTimeline(_runtime, _timeline, sampleFrame);
     }
 
     private async Task NotifyRemainingEventsAsync(CancellationToken cancellationToken)
     {
         foreach (var item in _events)
         {
-            if (item.Event.Type == BuiltinEntryIds.BurstParticles)
+            if (item.Event.Type is BuiltinEntryIds.BurstParticles or BuiltinEntryIds.PlayAudio)
                 continue;
             await NotifyEventAsync(item, cancellationToken).ConfigureAwait(false);
         }
@@ -254,6 +263,8 @@ public sealed class TimelinePrimitiveInstance : PrimitiveInstance, IDisposable
             }
             try
             {
+                if (item.Event.Type != BuiltinEntryIds.PlayAudio || InvocationMode == PrimitiveInvocationMode.Normal)
+                    AudioModule?.ExecuteTimelineEvent(item.Event);
                 await BuiltinRuntimeActions.NotifyTimelineEventAsync(
                     item.Event, _layerPresenter, _effectPresenter, _particlePresenter,
                     cancellationToken).ConfigureAwait(false);

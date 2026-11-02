@@ -12,22 +12,14 @@
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
-        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
-          <StackPanel Spacing="3">
-            <text:PlayerTextBlock Key="{Binding HeadingKey}" Fallback="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-            <TextBlock Text="{text:PlayerText SaveSlots.Choose, 'Choose a slot'}" Opacity="0.64" />
-          </StackPanel>
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
+          <text:PlayerTextBlock Key="{Binding HeadingKey}" Fallback="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
         </Grid>
-        <Border Grid.Row="1" Height="1" Margin="0,20,0,0" Background="{DynamicResource GalNet.Brush.Divider}" />
-        <Grid RowDefinitions="*,Auto" RowSpacing="18" Grid.Row="2" Margin="0,24,0,0">
+        <Border Grid.Row="1" Height="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <Grid RowDefinitions="*,Auto" RowSpacing="18" Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Slots}" VerticalAlignment="Top">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <UniformGrid Columns="{DynamicResource GalNet.Theme.SaveColumns}" ColumnSpacing="6" RowSpacing="8" VerticalAlignment="Top" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
+            <ItemsControl Classes="player-card-grid" ItemsSource="{Binding Slots}" VerticalAlignment="Top">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="sharedvm:GameSaveSlotRowViewModel">
                   <Panel Margin="7">
@@ -38,7 +30,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
-          <TextBlock Grid.Row="1" Text="{text:PlayerText SaveSlots.Hint, 'Saves are managed by the current game host.'}" Opacity="0.45" FontSize="12" />
+          <TextBlock Grid.Row="1" Text="{text:PlayerText SaveSlots.Hint, 'Saves are managed by the current game host.'}" Opacity="0.45" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" />
         </Grid>
       </Grid>
     </Border>

@@ -67,16 +67,16 @@
       <ControlTheme x:Key="{x:Type local:SaveSlotCard}" TargetType="local:SaveSlotCard">
         <Setter Property="Template">
           <ControlTemplate>
-            <Border Name="PART_Frame" Height="210" Background="{DynamicResource GalNet.Brush.Surface}"
+            <Border Name="PART_Frame" Height="{DynamicResource GalNet.Theme.CardHeight}" Background="{DynamicResource GalNet.Brush.Surface}"
                     BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1"
                     CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}" ClipToBounds="True">
               <Grid>
-                <Image Name="PART_Preview" Source="{TemplateBinding Preview}" Stretch="UniformToFill" />
                 <Button Name="PART_Activate" Command="{TemplateBinding Command}" CommandParameter="{TemplateBinding CommandParameter}"
                         Background="Transparent" BorderThickness="0" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                         AutomationProperties.Name="{TemplateBinding Description}">
                   <Button.Template><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Button.Template>
                 </Button>
+                <Image Name="PART_Preview" Source="{TemplateBinding Preview}" Stretch="UniformToFill" IsHitTestVisible="False" />
                 <Grid VerticalAlignment="Bottom" MinHeight="84">
                   <Border Background="{DynamicResource GalNet.Brush.SaveCaption}" IsHitTestVisible="False" />
                   <StackPanel Spacing="4" Margin="16,12">
@@ -84,7 +84,7 @@
                              IsReadOnly="{Binding !CanRename, RelativeSource={RelativeSource TemplatedParent}}"
                              Focusable="{TemplateBinding CanRename}" IsHitTestVisible="{TemplateBinding CanRename}" MaxLength="120" AcceptsReturn="False"
                              Background="Transparent" BorderThickness="0" Padding="0" MinHeight="26"
-                             FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                             FontSize="{DynamicResource GalNet.Theme.SaveTitleFontSize}" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
                              ToolTip.Tip="{TemplateBinding RenameError}">
                       <TextBox.Template>
                         <ControlTemplate TargetType="TextBox">
@@ -97,8 +97,8 @@
                         </ControlTemplate>
                       </TextBox.Template>
                     </TextBox>
-                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" IsHitTestVisible="False" />
-                    <TextBlock Text="{TemplateBinding RenameError}" IsVisible="{Binding RenameError, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" IsHitTestVisible="False" />
+                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" IsHitTestVisible="False" />
+                    <TextBlock Text="{TemplateBinding RenameError}" IsVisible="{Binding RenameError, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" IsHitTestVisible="False" />
                   </StackPanel>
                 </Grid>
                 <Border Name="PART_Highlight" Background="{DynamicResource GalNet.Brush.Selection}" Opacity="0" IsHitTestVisible="False" />

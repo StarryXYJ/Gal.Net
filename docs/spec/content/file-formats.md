@@ -49,7 +49,7 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 {
   "version": 1,
   "sections": {
-    "galnet.project": { "version": 2, "data": { "defaultWidth": 1920 } },
+    "galnet.project": { "version": 2, "data": { "defaultWidth": 1920, "orientationPolicy": "Unforced", "defaultOrientation": "Landscape" } },
     "developer.options": { "version": 1, "data": { "enabled": true } }
   }
 }
@@ -58,6 +58,8 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 根信封固定为 version/sections；section 信封固定为正整数 version 和对象 data。重复 JSON 属性拒绝。未知 section 的版本和 data 原样保留；已声明 section 的未知字段在类型化修改时保留。缺省 section 按调用方声明读取新的默认 DTO，不写入文件。类型化读取是隔离快照，修改后须调用 `configuration.Set(section, dto)` 显式发布。项目契约可公开静态 `ProjectConfigurationSchema Configurations`，缺省为空；schema 复用 FieldDescriptor/ValueValidation，负责已声明字段和领域规则。默认模板显式选择可选 `DefaultProjectConfiguration.Schema`，不由 Core/Storage 自动注入。
 
 通用作者表单通过 section.Resolve 读取隔离的有效值快照（含默认值），不会把默认值写回原始配置；原始 section 仍是唯一持久源。项目设置窗口的字段草稿通过所选 schema 校验后批量进入项目历史，Undo/Redo 保留 section 的缺省状态及无关 section。
+
+默认 `galnet.project` 配置含 `orientationPolicy`（`Unforced`、`ForceLandscape`、`ForcePortrait`）和 `defaultOrientation`（`Landscape`、`Portrait`）。缺省为不强制、默认横屏；Editor 只在不强制时显示默认方向。它们随项目内容进入游戏包，由宿主在运行时应用，不属于可由玩家修改的玩家偏好。
 
 配置补丁命令为 `project.configuration.patch`，接收 `sectionId`、必需的 `values` 对象及可选 `remove` 字段 ID 列表。先删除、后覆盖，显式 null 与缺省分开；仅允许修改声明的字段，完整候选验证成功才替换 section，其他字段/section 保留。构建与导出使用调用方所选 schema，在发布产物前验证已存储配置。
 

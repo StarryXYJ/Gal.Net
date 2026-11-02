@@ -1,0 +1,299 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "chapter-masks",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.chapter-masks",
+        "position": "Center",
+        "styleName": "chapter",
+        "blocking": true,
+        "holdSeconds": 1.2
+      }
+    },
+    {
+      "id": "clear-library-bg",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg"
+      }
+    },
+    {
+      "id": "clear-library-alice",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice"
+      }
+    },
+    {
+      "id": "clear-library-bob",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob"
+      }
+    },
+    {
+      "id": "stage-library-bg",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg",
+        "assetId": "a1000000000000000000000000000001",
+        "displayMode": "Fill"
+      }
+    },
+    {
+      "id": "stage-library-alice",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice",
+        "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "transform": {
+          "x": -400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "stage-library-bob",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob",
+        "assetId": "a1000000000000000000000000000004",
+        "transform": {
+          "x": 400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "mask-lead",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "demo.mask-lead"
+      }
+    },
+    {
+      "id": "clip-mask",
+      "type": "effect.apply",
+      "condition": "",
+      "parameters": {
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "portrait-clip",
+        "targetHandleId": "library-alice",
+        "parameters": {
+          "mode": "Ellipse",
+          "centerX": 0.29,
+          "centerY": 0.57,
+          "width": 0.3,
+          "height": 0.8,
+          "feather": 0.04,
+          "progress": 1
+        }
+      }
+    },
+    {
+      "id": "clip-mask-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.clip-mask.content"
+      }
+    },
+    {
+      "id": "clip-mask-stop",
+      "type": "effect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "portrait-clip"
+      }
+    },
+    {
+      "id": "mask-LetterboxIn",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mask-LetterboxIn",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-mask",
+        "motion": "LetterboxIn",
+        "durationFrames": 60,
+        "parameters": {
+          "feather": 0.025
+        }
+      }
+    },
+    {
+      "id": "mask-LetterboxIn-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mask-LetterboxIn-note.content"
+      }
+    },
+    {
+      "id": "mask-LetterboxOut",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mask-LetterboxOut",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-mask",
+        "motion": "LetterboxOut",
+        "durationFrames": 60,
+        "parameters": {
+          "feather": 0.025
+        }
+      }
+    },
+    {
+      "id": "mask-LetterboxOut-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mask-LetterboxOut-note.content"
+      }
+    },
+    {
+      "id": "mask-Blink",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mask-Blink",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-mask",
+        "motion": "Blink",
+        "durationFrames": 120,
+        "parameters": {
+          "feather": 0.025
+        }
+      }
+    },
+    {
+      "id": "mask-Blink-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mask-Blink-note.content"
+      }
+    },
+    {
+      "id": "mask-Close",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mask-Close",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-mask",
+        "motion": "Close",
+        "durationFrames": 60,
+        "parameters": {
+          "feather": 0.025
+        }
+      }
+    },
+    {
+      "id": "scene-closed-hold",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.5
+      }
+    },
+    {
+      "id": "mask-Open",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mask-Open",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-mask",
+        "motion": "Open",
+        "durationFrames": 60,
+        "parameters": {
+          "feather": 0.025
+        }
+      }
+    },
+    {
+      "id": "mask-Open-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mask-Open-note.content"
+      }
+    },
+    {
+      "id": "overlay-card",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "group.presentation-library.entry.overlay-card.content",
+        "position": "TopRight",
+        "styleName": "location",
+        "blocking": false,
+        "holdSeconds": 5
+      }
+    },
+    {
+      "id": "overlay-Close",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "overlay-Close",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-overlay",
+        "motion": "Close",
+        "overlay": true,
+        "durationFrames": 60
+      }
+    },
+    {
+      "id": "closed-hold",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.5
+      }
+    },
+    {
+      "id": "overlay-Open",
+      "type": "preset.mask",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "overlay-Open",
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "instanceId": "library-overlay",
+        "motion": "Open",
+        "overlay": true,
+        "durationFrames": 60
+      }
+    },
+    {
+      "id": "overlay-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.overlay-note.content"
+      }
+    }
+  ]
+}

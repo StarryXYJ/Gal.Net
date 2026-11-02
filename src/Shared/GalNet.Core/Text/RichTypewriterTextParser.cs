@@ -9,7 +9,12 @@ public readonly record struct RichTypewriterToken(
     bool IsBold = false,
     bool IsItalic = false,
     string? Color = null,
-    int DelayMilliseconds = 0);
+    int DelayMilliseconds = 0)
+{
+    /// <summary>Run size = control base size * scale + offset. Defaults preserve inherited size.</summary>
+    public double FontSizeScale { get; init; } = 1;
+    public double FontSizeOffset { get; init; }
+}
 
 /// <summary>
 /// Parses portable typewriter directives plus lightweight dialogue tags. Unknown
@@ -26,11 +31,14 @@ public static class RichTypewriterTextParser
         var italic = false;
         string? color = null;
         var colors = new Stack<string?>();
+        var size = (Scale: 1d, Offset: 0d);
+        var sizes = new Stack<(double Scale, double Offset)>();
 
         void FlushText()
         {
             if (text.Length == 0) return;
-            result.Add(new(RichTypewriterTokenKind.Text, text.ToString(), bold, italic, color));
+            result.Add(new(RichTypewriterTokenKind.Text, text.ToString(), bold, italic, color)
+                { FontSizeScale = size.Scale, FontSizeOffset = size.Offset });
             text.Clear();
         }
 
@@ -64,6 +72,15 @@ public static class RichTypewriterTextParser
                 continue;
             }
 
+            if (source[index] == '<' && TryReadSizeTag(source, index, size, sizes.Count > 0, out var sizeLength, out var nextSize, out var closing))
+            {
+                FlushText();
+                if (closing) size = sizes.Pop();
+                else { sizes.Push(size); size = nextSize; }
+                index += sizeLength - 1;
+                continue;
+            }
+
             if (source[index] == '<' && TryReadTag(source, index, out var length, out var tag, out var tagColor))
             {
                 FlushText();
@@ -93,6 +110,51 @@ public static class RichTypewriterTextParser
 
         FlushText();
         return result;
+    }
+
+    private static bool TryReadSizeTag(string source, int start, (double Scale, double Offset) parent,
+        bool canClose, out int length, out (double Scale, double Offset) size, out bool closing)
+    {
+        length = 0;
+        size = parent;
+        closing = false;
+        var end = source.IndexOf('>', start);
+        if (end < 0) return false;
+        var raw = source[(start + 1)..end].Trim();
+        if (raw.Equals("/size", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!canClose) return false;
+            closing = true;
+        }
+        else
+        {
+            var match = System.Text.RegularExpressions.Regex.Match(raw,
+                "^size\\s*=\\s*(?:\"(?<value>[^\"]+)\"|'(?<value>[^']+)'|(?<value>[^\\s\"']+))$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            if (!match.Success) return false;
+            var value = match.Groups["value"].Value.Trim();
+            var em = value.EndsWith("em", StringComparison.OrdinalIgnoreCase);
+            var percent = value.EndsWith('%');
+            var relative = value.StartsWith('+') || value.StartsWith('-');
+            var number = em ? value[..^2] : percent ? value[..^1] : value;
+            if (!double.TryParse(number, System.Globalization.NumberStyles.AllowLeadingSign | System.Globalization.NumberStyles.AllowDecimalPoint,
+                    System.Globalization.CultureInfo.InvariantCulture, out var amount) || !double.IsFinite(amount)) return false;
+            if (em || percent)
+            {
+                if (amount <= 0) return false;
+                var factor = percent ? amount / 100 : amount;
+                size = (parent.Scale * factor, parent.Offset * factor);
+            }
+            else if (relative) size = (parent.Scale, parent.Offset + amount);
+            else
+            {
+                if (amount <= 0) return false;
+                size = (0, amount);
+            }
+            if (!double.IsFinite(size.Scale) || !double.IsFinite(size.Offset)) return false;
+        }
+        length = end - start + 1;
+        return true;
     }
 
     private static bool TryReadTag(string source, int start, out int length, out string tag, out string? color)

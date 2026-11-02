@@ -16,7 +16,7 @@ public sealed record EntryParameterMetadata(IEffectCatalog? Effects = null, ISEf
         .SelectMany(ReferencedPrograms).Where(id => !string.IsNullOrWhiteSpace(id)).Distinct(StringComparer.Ordinal);
     private static IEnumerable<string> ReferencedPrograms(EditorEntryData entry)
     {
-        if (entry.Type is BuiltinEntryIds.ApplyEffect or BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
+        if (entry.Type is BuiltinEntryIds.ApplyEffect or BuiltinEntryIds.MaskPreset or BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
             yield return EntryParameterStructures.Text(entry, "program");
         if (entry.Type != BuiltinEntryIds.PlayTimeline || entry.Parameters.GetValueOrDefault("timeline") is not { ValueKind: JsonValueKind.Object } timeline) yield break;
         foreach (var events in timeline.EnumerateObject().Where(property => property.Name.Equals("events", StringComparison.OrdinalIgnoreCase) && property.Value.ValueKind == JsonValueKind.Array))
@@ -65,7 +65,7 @@ internal sealed class EntryParameterStructures(EditorProjectDocument document, E
 
     private ValueStructure? ParameterStructure(string group, EditorEntryData entry)
     {
-        if (entry.Type is BuiltinEntryIds.ApplyEffect or BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
+        if (entry.Type is BuiltinEntryIds.ApplyEffect or BuiltinEntryIds.MaskPreset or BuiltinEntryIds.SpeedLinesPreset or BuiltinEntryIds.ImpactPreset)
         {
             var program = Text(entry, "program");
             if (!string.IsNullOrWhiteSpace(program))

@@ -89,3 +89,6 @@ CLI/Editor、应用和内容必须使用同一套冻结契约产物。跨机器�
 - 退出、切换项目和读档均由会话链路释放旧的 presentation、媒体与资源。
 
 配色和字体入口见[Themes README](../../../src/Presentation/GalNet.Avalonia.Themes/README.md)；运行与页面的精确约束见[Avalonia 游戏页面规范](../../spec/presentation/game-view.md)。
+
+
+通用文本卡与音乐公告共用 `PlayerSurface.TextCards`。App 在 PlayerView 的 `TextCardTheme.default/music/location/chapter` 中定制 ContentControl 模板；可以增加任意 `TextCardTheme.<styleName>`，缺失时回退 default。构造 PlayerView 后可设置 `TextCards.ResolveStyle` 返回各样式的入场、停留、退场时长和移动距离。根容器需保留 PlayerRoot 名称，内置表面在系统确认层前放入文本卡及透明遮罩面。剧情原语与九宫格位置见[默认视觉库](../editor/default-visuals.md#通用文本卡)。

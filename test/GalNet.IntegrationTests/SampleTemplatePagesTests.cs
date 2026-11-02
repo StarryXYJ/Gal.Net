@@ -100,7 +100,7 @@ public sealed class SampleTemplatePagesTests
     });
 
     [Test]
-    public Task CustomAnnouncementLifetimeClosesTheActualToast() => SampleUiTests.RunAsync(async () =>
+    public Task CustomAnnouncementLifetimeClosesTheActualCard() => SampleUiTests.RunAsync(async () =>
     {
         await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(),
             services => SampleCustomization.ConfigureServices(services));
@@ -111,14 +111,16 @@ public sealed class SampleTemplatePagesTests
         var window = new Window { Width = 800, Height = 450, Content = host.View };
         try
         {
-            ((GalNet.Avalonia.GameHost.Views.PlayerSurface)host.View).AudioAnnouncementDuration = TimeSpan.FromMilliseconds(50);
+            var surface = (GalNet.Avalonia.GameHost.Views.PlayerSurface)host.View;
+            surface.AudioAnnouncementDuration = TimeSpan.FromMilliseconds(400);
+            surface.TextCards.EnterDuration = TimeSpan.Zero;
+            surface.TextCards.ExitDuration = TimeSpan.Zero;
             window.Show();
             host.Services.GetRequiredService<GamePresentationState>().AnnounceAudio("Short project announcement");
             await Dispatcher.UIThread.InvokeAsync(window.UpdateLayout, DispatcherPriority.Background);
-            var card = host.View.FindControl<WindowToastManager>("AudioToast")!.GetVisualDescendants().OfType<ToastCard>().Single();
-            Assert.That(card.IsClosing, Is.False);
-            await Task.Delay(300);
-            Assert.That(card.IsClosing, Is.True, "The project lifetime must be used instead of the generic three-second default.");
+            Assert.That(surface.TextCards.Children.OfType<ContentControl>().Single().Content, Is.EqualTo("Short project announcement"));
+            await Task.Delay(700);
+            Assert.That(surface.TextCards.Children, Is.Empty, "The configured lifetime must be used instead of the generic hold duration.");
         }
         finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
     });
@@ -220,7 +222,9 @@ public sealed class SampleTemplatePagesTests
             window.UpdateLayout();
             var button = window.GetVisualDescendants().OfType<Button>().Single(control => control.Name == "SettingsButton");
             Assert.That(button.Command, Is.SameAs(services.GetRequiredService<SampleGame>().OpenSettingsCommand));
+            global::Avalonia.Headless.AvaloniaHeadlessPlatform.ForceRenderTimerTick();
             var point = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(point);
             window.MouseDown(point, MouseButton.Left);
             window.MouseUp(point, MouseButton.Left);
             Assert.That(navigation.CurrentViewModel, Is.TypeOf<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>());

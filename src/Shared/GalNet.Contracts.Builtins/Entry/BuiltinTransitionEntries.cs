@@ -6,6 +6,10 @@ internal static class BuiltinTransitionEntries
 {
     public static IReadOnlyList<CompositeEntryBase> Definitions { get; } =
     [
+                DefaultCompositeEntryBase.ForDto<StylizedTransitionOptions>(BuiltinEntryIds.FlashTransition, (context, options) => VisualPresetCompiler.StylizedTransition(context, options, "flash"), category: "Transition"),
+        DefaultCompositeEntryBase.ForDto<StylizedTransitionOptions>(BuiltinEntryIds.ZoomTransition, (context, options) => VisualPresetCompiler.StylizedTransition(context, options, "zoom"), category: "Transition"),
+        DefaultCompositeEntryBase.ForDto<StylizedTransitionOptions>(BuiltinEntryIds.PixelateTransition, (context, options) => VisualPresetCompiler.StylizedTransition(context, options, "pixelate"), category: "Transition"),
+        DefaultCompositeEntryBase.ForDto<StylizedTransitionOptions>(BuiltinEntryIds.GlitchTransition, (context, options) => VisualPresetCompiler.StylizedTransition(context, options, "glitch"), category: "Transition"),
         DefaultCompositeEntryBase.ForDto<RevealTransitionOptions>(BuiltinEntryIds.RevealTransition, VisualPresetCompiler.Reveal, category: "Transition"),
         DefaultCompositeEntryBase.ForDto<BlurTransitionOptions>(BuiltinEntryIds.BlurTransition, VisualPresetCompiler.Blur, category: "Transition"),
         DefaultCompositeEntryBase.ForDto<CrossFadeOptions>(BuiltinEntryIds.CrossFadeTransition, CrossFadeTransition.Compile, category: "Transition"),

@@ -12,5 +12,6 @@ public sealed record EffectRequest(
     string ProgramResource = "")
 {
     /// <summary>Stable animation values to apply after an active effect is recreated.</summary>
+    public bool EnsureOnly { get; init; }
     public IReadOnlyDictionary<string, float> AnimationValues { get; init; } = new Dictionary<string, float>(StringComparer.Ordinal);
 }

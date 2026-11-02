@@ -3,6 +3,7 @@ using GalNet.Avalonia.GameView.Page;
 using GalNet.Contracts.Builtins.Audio;
 using GalNet.Contracts.Builtins.Gallery;
 using GalNet.Contracts.Builtins.Scene;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Configuration;
 using GalNet.GameHost.Content;
@@ -17,6 +18,9 @@ public sealed class AvaloniaGameHostOptions
         GalNet.Storage.FileSystem.GameLaunchPolicy.FromAssembly(System.Reflection.Assembly.GetEntryAssembly() ?? typeof(AvaloniaGameHostOptions).Assembly);
     public GameContentLoadOptions Content { get; init; } = new();
     public Func<ProjectConfiguration, AvaloniaProjectOptions> SelectProjectOptions { get; init; } = _ => new();
+    /// <summary>Applies project orientation after player display preferences have been restored.</summary>
+    public Func<ProjectOrientationPolicy, ProjectDefaultOrientation, CancellationToken, Task> ApplyProjectOrientationAsync { get; init; } =
+        (_, _, token) => { token.ThrowIfCancellationRequested(); return Task.CompletedTask; };
     public AvaloniaGamePresentationOptions Presentation { get; init; } = new();
     public bool ShowTrackAudioControls { get; init; }
     public string GameTitle { get; init; } = "GalNet";
@@ -44,6 +48,8 @@ public sealed record AvaloniaProjectOptions
     public int SaveSlotCount { get; init; } = 60;
     public string DefaultCulture { get; init; } = "en-US";
     public AudioConfiguration Audio { get; init; } = AudioConfiguration.Empty;
+    public ProjectOrientationPolicy OrientationPolicy { get; init; } = ProjectOrientationPolicy.Unforced;
+    public ProjectDefaultOrientation DefaultOrientation { get; init; } = ProjectDefaultOrientation.Landscape;
 }
 
 /// <summary>Borrowed profile resources for project services. The session retains ownership.</summary>

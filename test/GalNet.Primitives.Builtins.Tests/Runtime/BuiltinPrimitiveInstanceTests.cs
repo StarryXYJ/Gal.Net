@@ -387,7 +387,7 @@ public class BuiltinPrimitiveInstanceTests
                 },
                 new TimelineEventDefinition { Frame = 0, Type = BuiltinEntryIds.BurstParticles, Parameters = Parameters(("count", 8), ("z", 90), ("parameters", burstParameters)) },
                 new TimelineEventDefinition { Frame = 1, Type = BuiltinEntryIds.BurstParticles, Parameters = Parameters(("count", 12), ("z", 95), ("parameters", burstParameters)) },
-                new TimelineEventDefinition { Frame = 1, Type = BuiltinEntryIds.StopParticleEmitter, Parameters = Parameters(("instanceId", "timed-snow")) }
+                new TimelineEventDefinition { Frame = 1, Type = BuiltinEntryIds.StopParticleEmitter, Parameters = Parameters(("instanceId", "timed-snow"), ("clear", true)) }
             }
         };
 
@@ -399,6 +399,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(particles.Started.Single().InstanceId, Is.EqualTo("timed-snow"));
             Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(TimedBurstCounts));
             Assert.That(particles.Stopped, Is.EqualTo(TimedSnowStopped));
+            Assert.That(particles.Cleared, Is.EqualTo(TimedSnowStopped));
             Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values, Is.Empty);
         });
     }
@@ -542,7 +543,7 @@ public class BuiltinPrimitiveInstanceTests
                 From = 1.5f,
                 To = 2,
                 DurationSeconds = .75,
-                CurveKind = BuiltinAnimationCurve.EaseInOut,
+                CurveKind = BuiltinAnimationCurve.QuadEaseInOut,
                 LoopMode = AnimationLoopMode.PingPong
             }
         });
@@ -587,7 +588,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(animationRequest.From, Is.EqualTo(1.5f));
             Assert.That(animationRequest.To, Is.EqualTo(2));
             Assert.That(animationRequest.DurationSeconds, Is.EqualTo(0.75));
-            Assert.That(animationRequest.CurveKind, Is.EqualTo(BuiltinAnimationCurve.EaseInOut));
+            Assert.That(animationRequest.CurveKind, Is.EqualTo(BuiltinAnimationCurve.QuadEaseInOut));
             Assert.That(animationRequest.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
             Assert.That(timeline.PlaybackHandleId, Is.EqualTo("snow-timeline"));
             Assert.That(timeline.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
@@ -620,7 +621,7 @@ public class BuiltinPrimitiveInstanceTests
             property = "emissionRate",
             to = 18,
             duration = 1.25,
-            curve = "EaseInOut",
+            curve = "QuadEaseInOut",
             blocking = "false",
             skippable = "false",
             loopMode = "PingPong",
@@ -638,7 +639,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(active.Request!.From, Is.EqualTo(72));
             Assert.That(active.Request!.To, Is.EqualTo(18));
             Assert.That(active.Request!.DurationSeconds, Is.EqualTo(1.25));
-            Assert.That(active.Request!.CurveKind, Is.EqualTo(BuiltinAnimationCurve.EaseInOut));
+            Assert.That(active.Request!.CurveKind, Is.EqualTo(BuiltinAnimationCurve.QuadEaseInOut));
             Assert.That(active.Request!.BlendMode, Is.EqualTo(AnimationBlendMode.Replace));
         });
     }
@@ -908,6 +909,12 @@ public class BuiltinPrimitiveInstanceTests
         public List<ParticleEmitterRequest> Started { get; } = [];
         public List<ParticleBurstRequest> Bursts { get; } = [];
         public List<string> Stopped { get; } = [];
+        public List<string> Cleared { get; } = [];
+        public Task StopParticleEmitterAsync(string instanceId, bool clear, CancellationToken cancellationToken)
+        {
+            if (clear) Cleared.Add(instanceId);
+            return StopParticleEmitterAsync(instanceId, cancellationToken);
+        }
 
         public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken cancellationToken)
         {

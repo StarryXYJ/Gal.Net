@@ -4,7 +4,7 @@
   <SolidColorBrush x:Key="GalNet.Brush.Primary" Color="{DynamicResource GalNet.Palette.PrimaryColor}" />
   <StaticResource x:Key="GalNet.Palette.PrimaryHoverColor" ResourceKey="GalNet.Color.Neutral.600" />
   <SolidColorBrush x:Key="GalNet.Brush.PrimaryHover" Color="{DynamicResource GalNet.Palette.PrimaryHoverColor}" />
-  <StaticResource x:Key="GalNet.Palette.PrimaryPressedColor" ResourceKey="GalNet.Color.Neutral.950" />
+  <Color x:Key="GalNet.Palette.PrimaryPressedColor">#4B5058</Color>
   <SolidColorBrush x:Key="GalNet.Brush.PrimaryPressed" Color="{DynamicResource GalNet.Palette.PrimaryPressedColor}" />
   <StaticResource x:Key="GalNet.Palette.OnPrimaryColor" ResourceKey="GalNet.Color.Neutral.50" />
   <SolidColorBrush x:Key="GalNet.Brush.OnPrimary" Color="{DynamicResource GalNet.Palette.OnPrimaryColor}" />

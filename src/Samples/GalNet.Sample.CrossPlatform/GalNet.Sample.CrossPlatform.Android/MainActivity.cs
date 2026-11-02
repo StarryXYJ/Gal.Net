@@ -2,10 +2,12 @@
 using Android.Content.PM;
 using Avalonia;
 using Avalonia.Android;
+using Avalonia.Threading;
 using Android.Content;
 using Android.Media;
 using Android.OS;
 using GalNet.Runtime.Logging;
+using GalNet.Contracts.Builtins;
 
 namespace GalNet.Sample.CrossPlatform.Android;
 
@@ -21,9 +23,12 @@ public partial class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioF
     private AudioFocusRequestClass? _focus;
     private NoisyReceiver? _noisy;
     private static App? Player => global::Avalonia.Application.Current as App;
+    private bool _releaseDefaultOrientationAfterChange;
+    private global::Android.Content.Res.Orientation _pendingDefaultOrientation;
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
+        App.ProjectOrientationHandler = ApplyProjectOrientationAsync;
         base.OnCreate(savedInstanceState);
         _current = new(this);
         _audio = (AudioManager?)GetSystemService(AudioService);
@@ -32,6 +37,53 @@ public partial class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioF
         var filter = new IntentFilter(AudioManager.ActionAudioBecomingNoisy);
         if (OperatingSystem.IsAndroidVersionAtLeast(33)) RegisterReceiver(_noisy, filter, ReceiverFlags.NotExported);
         else RegisterReceiver(_noisy, filter);
+        Observe(() => App.ApplyProjectOrientationAsync(App.CurrentOrientationPolicy, App.CurrentDefaultOrientation, CancellationToken.None));
+    }
+
+    private static async Task ApplyProjectOrientationAsync(ProjectOrientationPolicy policy,
+        ProjectDefaultOrientation defaultOrientation, CancellationToken cancellationToken)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            if (_current is { } reference && reference.TryGetTarget(out var activity))
+                activity.ApplyOrientation(policy, defaultOrientation);
+        }, DispatcherPriority.Normal, cancellationToken);
+    }
+
+    private void ApplyOrientation(ProjectOrientationPolicy policy, ProjectDefaultOrientation defaultOrientation)
+    {
+        _releaseDefaultOrientationAfterChange = false;
+        if (policy == ProjectOrientationPolicy.ForceLandscape)
+        {
+            RequestedOrientation = ScreenOrientation.SensorLandscape;
+            return;
+        }
+        if (policy == ProjectOrientationPolicy.ForcePortrait)
+        {
+            RequestedOrientation = ScreenOrientation.SensorPortrait;
+            return;
+        }
+
+        _pendingDefaultOrientation = defaultOrientation == ProjectDefaultOrientation.Landscape
+            ? global::Android.Content.Res.Orientation.Landscape
+            : global::Android.Content.Res.Orientation.Portrait;
+        if (Resources?.Configuration?.Orientation == _pendingDefaultOrientation)
+        {
+            RequestedOrientation = ScreenOrientation.Unspecified;
+            return;
+        }
+
+        _releaseDefaultOrientationAfterChange = true;
+        RequestedOrientation = defaultOrientation == ProjectDefaultOrientation.Landscape
+            ? ScreenOrientation.Landscape : ScreenOrientation.Portrait;
+    }
+
+    public override void OnConfigurationChanged(global::Android.Content.Res.Configuration newConfig)
+    {
+        base.OnConfigurationChanged(newConfig);
+        if (!_releaseDefaultOrientationAfterChange || newConfig.Orientation != _pendingDefaultOrientation) return;
+        _releaseDefaultOrientationAfterChange = false;
+        RequestedOrientation = ScreenOrientation.Unspecified;
     }
 
     protected override void OnResume()

@@ -13,6 +13,55 @@ public sealed class TypewriterTextParserTests
     private static readonly string[] ExpectedPlainText = ["A", "<b>B</b>\\skip\\skipper"];
 
     [Test]
+    public void Rich_sizes_compose_relative_to_parent_and_restore_after_closing()
+    {
+        var tokens = RichTypewriterTextParser.Parse("A<size=+4>B<size=150%>C</size>D</size>E<size=24>F<size=-2>G</size></size>");
+        Assert.That(tokens.Select(token => (token.Text, token.FontSizeScale, token.FontSizeOffset)), Is.EqualTo(new[]
+        {
+            ("A", 1d, 0d), ("B", 1d, 4d), ("C", 1.5d, 6d), ("D", 1d, 4d),
+            ("E", 1d, 0d), ("F", 0d, 24d), ("G", 0d, 22d)
+        }));
+    }
+
+    [TestCase("1.25em", 1.25, 0)]
+    [TestCase("'0.8EM'", 0.8, 0)]
+    [TestCase("\"+2.5\"", 1, 2.5)]
+    [TestCase("-2", 1, -2)]
+    [TestCase("32", 0, 32)]
+    public void Rich_sizes_accept_invariant_units_and_quotes(string value, double scale, double offset)
+    {
+        var token = RichTypewriterTextParser.Parse($"<SIZE = {value}>字</SIZE>").Single();
+        Assert.That((token.Text, token.FontSizeScale, token.FontSizeOffset), Is.EqualTo(("字", scale, offset)));
+    }
+
+    [TestCase("0")]
+    [TestCase("-1em")]
+    [TestCase("NaN")]
+    [TestCase("Infinity")]
+    [TestCase("1e999")]
+    [TestCase("+oops")]
+    [TestCase("1,5em")]
+    [TestCase("12px")]
+    [TestCase("'12\"")]
+    [TestCase("12 extra")]
+    public void Invalid_size_tags_remain_literal(string value)
+    {
+        var source = $"<size={value}>字</size>";
+        Assert.That(string.Concat(RichTypewriterTextParser.Parse(source).Select(token => token.Text)), Is.EqualTo(source));
+    }
+
+    [Test]
+    public void Size_preserves_other_styles_and_control_directives()
+    {
+        var tokens = RichTypewriterTextParser.Parse("<size=1.25em><b><i><color=red>A\\d{5}B\\skip C</color></i></b></size>D");
+        Assert.That(tokens.Where(token => token.Kind == RichTypewriterTokenKind.Text).Take(3)
+            .All(token => token.IsBold && token.IsItalic && token.Color == "red" && token.FontSizeScale == 1.25), Is.True);
+        Assert.That(tokens.Single(token => token.Kind == RichTypewriterTokenKind.Delay).DelayMilliseconds, Is.EqualTo(5));
+        Assert.That(tokens.Count(token => token.Kind == RichTypewriterTokenKind.SkipBoundary), Is.EqualTo(1));
+        Assert.That(tokens[^1].FontSizeScale, Is.EqualTo(1));
+    }
+
+    [Test]
     public void Parse_Recognizes_Delay_Instant_And_Newline()
     {
         var tokens = TypewriterTextParser.Parse("A\\d{120}B\\d-C\\nD");

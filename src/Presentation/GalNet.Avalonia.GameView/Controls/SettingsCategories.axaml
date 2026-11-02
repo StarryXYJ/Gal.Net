@@ -20,22 +20,33 @@
       </StackPanel>
     </DataTemplate>
   </UserControl.Resources>
-  <TabControl x:Name="CategoryTabs" ItemsSource="{Binding VisibleCategories, RelativeSource={RelativeSource AncestorType=UserControl}}">
-    <TabControl.ItemTemplate>
+  <TabControl x:Name="CategoryTabs" Classes="settings-categories" ItemsSource="{Binding VisibleCategories, RelativeSource={RelativeSource AncestorType=UserControl}}">
+    <TabControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></TabControl.ItemsPanel>
+    <TabControl.Template>
+      <ControlTemplate>
+        <Grid RowDefinitions="Auto,*">
+          <ScrollViewer Name="CategoryHeaderScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+          </ScrollViewer>
+          <ContentPresenter Name="PART_SelectedContentHost" Grid.Row="1" Content="{TemplateBinding SelectedContent}" ContentTemplate="{TemplateBinding SelectedContentTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+        </Grid>
+      </ControlTemplate>
+    </TabControl.Template>
+    <TabControl.DataTemplates>
       <DataTemplate DataType="settings:SettingCategory"><ContentControl Content="{Binding Label}" /></DataTemplate>
-    </TabControl.ItemTemplate>
+    </TabControl.DataTemplates>
     <TabControl.ContentTemplate>
       <DataTemplate DataType="settings:SettingCategory">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,20,0,0">
+        <ScrollViewer Name="CategoryContentScroll" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" PropertyChanged="ContentPropertyChanged" AttachedToVisualTree="ContentAttached">
+          <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,16,0,0" HorizontalAlignment="Stretch">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="settings:SettingItem">
-                <Grid ColumnDefinitions="180,*" ColumnSpacing="22" Margin="0,0,0,24" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
-                  <StackPanel Spacing="4" IsVisible="{Binding !IsFullWidth}">
+                <common:SettingRow MinHeight="44" Margin="0,0,0,16" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
+                  <StackPanel Spacing="4" VerticalAlignment="Center" IsVisible="{Binding !IsFullWidth}">
                     <ContentControl Classes="setting-label" Content="{Binding Label}" />
                     <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
                   </StackPanel>
-                  <StackPanel Grid.Column="{Binding EditorColumn}" Grid.ColumnSpan="{Binding EditorColumnSpan}" Spacing="4">
+                  <StackPanel Spacing="4" VerticalAlignment="Center">
                     <ContentControl Content="{Binding}" IsEnabled="{Binding IsEnabled}" VerticalAlignment="Center">
                       <ContentControl.DataTemplates>
                         <DataTemplate DataType="settings:ActionSetting"><Button Content="{Binding Label}" Command="{Binding ExecuteCommand}" /></DataTemplate>
@@ -55,7 +66,7 @@
                                             <ContentControl Grid.Column="1" Content="{Binding DataContext.InlineToggle, RelativeSource={RelativeSource AncestorType={x:Type forms:DtoEditorHost}}}" ContentTemplate="{StaticResource MuteEditor}" VerticalAlignment="Center" />
                                           </Grid>
                                           <text:PlayerTextBlock Key="{Binding Context.Field.Editor.UnitKey}" Opacity="0.64" />
-                                          <TextBlock Text="{Binding Context.Issue.Message}" IsVisible="{Binding Context.Issue.Message, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                                          <TextBlock Text="{Binding Context.Issue.Message}" IsVisible="{Binding Context.Issue.Message, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" TextWrapping="Wrap" />
                                         </StackPanel>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>
@@ -73,7 +84,7 @@
                     <text:PlayerTextBlock Key="{Binding Availability.ReasonKey}" TextWrapping="Wrap" Opacity="0.64" />
                     <text:PlayerTextBlock Key="{Binding ErrorKey}" TextWrapping="Wrap" />
                   </StackPanel>
-                </Grid>
+                </common:SettingRow>
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>

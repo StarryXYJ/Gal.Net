@@ -1,6 +1,8 @@
 using System.Windows.Input;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.VisualTree;
 
 namespace GalNet.Game.Controls;
 
@@ -18,14 +20,43 @@ public class ChoiceList : ListBox
 
     public event EventHandler<int>? ChoiceSelected;
 
-    public ChoiceList() => SelectionChanged += OnSelectionChanged;
+    /// <summary>Move the highlight without committing a story branch.</summary>
+    public void PreviewSelection(int index)
+    {
+        SelectedIndex = index;
+        if (index >= 0) ScrollIntoView(index);
+    }
 
-    private void OnSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    public void CommitSelection()
     {
         if (SelectedIndex < 0) return;
-
         if (SelectionCommand?.CanExecute(SelectedIndex) == true)
             SelectionCommand.Execute(SelectedIndex);
         ChoiceSelected?.Invoke(this, SelectedIndex);
+    }
+
+    public ChoiceList()
+    {
+        Focusable = true;
+        AddHandler(KeyDownEvent, ConfirmKey, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        AddHandler(TappedEvent, ConfirmTap, handledEventsToo: true);
+    }
+
+    private void ConfirmKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is not (Key.Enter or Key.Space)) return;
+        CommitSelection();
+        e.Handled = true;
+    }
+
+    private void ConfirmTap(object? sender, TappedEventArgs e)
+    {
+        if ((e.Source as Visual)?.GetSelfAndVisualAncestors().OfType<ListBoxItem>().FirstOrDefault() is { IsEffectivelyEnabled: true } item &&
+            ReferenceEquals(item.GetVisualAncestors().OfType<ChoiceList>().FirstOrDefault(), this))
+        {
+            SelectedIndex = IndexFromContainer(item);
+            CommitSelection();
+            e.Handled = true;
+        }
     }
 }

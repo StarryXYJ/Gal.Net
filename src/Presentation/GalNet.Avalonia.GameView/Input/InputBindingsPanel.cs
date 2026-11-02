@@ -18,6 +18,8 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
     public InputBindingsPanel(PlayerInputSettings settings)
     {
         _settings = settings;
+        _tabs.Classes.Add("input-device-tabs");
+        _tabs.ItemsPanel = new FuncTemplate<Panel>(() => new WrapPanel());
         var tabs = new List<TabItem>();
         foreach (var device in Enum.GetValues<PlayerInputDevice>())
         {
@@ -46,7 +48,7 @@ public sealed class InputBindingsPanel : UserControl, IDisposable
             _refresh.Add(() => unavailable.IsVisible = !Supported());
             foreach (var action in PlayerInputSettings.Actions)
             {
-                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("180,*,*,Auto"), ColumnSpacing = 12 };
+                var row = new InputBindingRow { ColumnDefinitions = new ColumnDefinitions("180,*,*,Auto"), ColumnSpacing = 12 };
                 row.Children.Add(Text(action.NameKey));
                 bool Available() => Supported() && settings.IsActionAvailable(action.Id) && !(device == PlayerInputDevice.Touch && action.IsHold);
                 for (var index = 0; index < 2; index++)

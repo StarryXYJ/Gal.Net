@@ -32,6 +32,7 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
     private readonly ParticleShapeDefinition? _shape;
     private readonly ParticleFlipbookDefinition? _flipbook;
     private readonly ParticleColorRange _initialColor;
+    private readonly bool _alignToVelocity;
     private readonly ParticleFloatRange _rotation;
     private readonly ParticleFloatRange _angularVelocity;
     private readonly IReadOnlyList<ParticleCurveKey> _sizeCurve;
@@ -64,6 +65,7 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         _gravityX = motion.GravityX; _gravityY = motion.GravityY; _drag = motion.Drag; _radialVelocity = motion.RadialVelocity;
         _orbitRadiansPerSecond = motion.OrbitDegreesPerSecond * MathF.PI / 180f; _attractor = motion.Attractor; _z = z;
         _shape = definition.Shape; _flipbook = definition.Flipbook is { IsValid: true } ? definition.Flipbook : null;
+        _alignToVelocity = initial.AlignToVelocity;
         _initialColor = initial.Color; _rotation = initial.RotationDegrees; _angularVelocity = initial.AngularVelocityDegrees;
         _pendingBurstCount = Math.Max(0, initialBurstCount);
         _sizeCurve = Sorted(lifetime.Size);
@@ -102,10 +104,11 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
         if (!_stopping)
         {
             _emissionCarry += _rate * delta;
-            var continuousCount = Math.Min((int)Math.Floor(_emissionCarry), _maximum - _active.Count);
+            var due = MathF.Floor(_emissionCarry);
+            _emissionCarry -= due; // Full batches drop missed spawns instead of banking a future burst.
+            var continuousCount = (int)Math.Min(due, _maximum - _active.Count);
             if (continuousCount > 0)
             {
-                _emissionCarry -= continuousCount;
                 Spawn(frame.Size, continuousCount);
             }
         }
@@ -162,7 +165,8 @@ public sealed class ParticleEmitter : IFrameUpdatableSceneRenderable, INotifyPro
             var size = 28f * particle.Scale * Math.Max(0, Sample(_sizeCurve, progress, 1));
             var source = GetSource(image, particle);
             var scale = size / Math.Max(1, source.Width);
-            var rotation = (particle.Rotation + particle.AngularVelocity * particle.Age + Sample(_rotationCurve, progress, 0)) * MathF.PI / 180f;
+            var heading = _alignToVelocity ? MathF.Atan2(particle.Vy, particle.Vx) - MathF.PI / 2 : 0;
+            var rotation = heading + (particle.Rotation + particle.AngularVelocity * particle.Age + Sample(_rotationCurve, progress, 0)) * MathF.PI / 180f;
             var cosine = MathF.Cos(rotation) * scale;
             var sine = MathF.Sin(rotation) * scale;
             // DrawAtlas applies RSXform to source-local coordinates, not the atlas-space rect.

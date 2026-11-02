@@ -42,6 +42,7 @@ public sealed class AvaloniaEffectRuntime : IDisposable, IEffectPresenter
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         if (string.IsNullOrWhiteSpace(request.InstanceId)) return;
+        if (request.EnsureOnly && await AvaloniaUiDispatcher.Instance.InvokeAsync(() => Task.FromResult(_textureInstances.ContainsKey(request.InstanceId)))) return;
         var generation = _preparations.AddOrUpdate(request.InstanceId, 1, static (_, value) => value + 1);
         if (!string.IsNullOrWhiteSpace(request.ProgramResource))
         {
@@ -106,7 +107,7 @@ public sealed class AvaloniaEffectRuntime : IDisposable, IEffectPresenter
         StopTextureEffect(request.InstanceId);
         var instance = new SceneEffectInstance(request.InstanceId, factory, request.TargetHandleId, request.Order, request.Parameters, Interlocked.Increment(ref _nextTextureEffectInsertionOrder), textures);
         _textureInstances.Add(instance.InstanceId, instance);
-        _page.TextureEffects.Add(instance);
+        (_page.OverlayLayers.Any(layer => layer.HandleId == request.TargetHandleId) ? _page.OverlayEffects : _page.TextureEffects).Add(instance);
         foreach (var property in factory.Definition.AnimatableProperties)
         {
             // Keep a sink ready for a track that starts after effect.apply, but do not
@@ -164,6 +165,7 @@ public sealed class AvaloniaEffectRuntime : IDisposable, IEffectPresenter
         if (!_textureInstances.Remove(instanceId, out var instance)) return;
         _page.UnregisterEffectAnimations(instanceId);
         _page.TextureEffects.Remove(instance);
+        _page.OverlayEffects.Remove(instance);
         instance.Dispose();
     }
 

@@ -14,7 +14,7 @@ internal static class PresetShaderParametersFieldEditor
 {
     private static readonly HashSet<string> Generated = new(StringComparer.Ordinal) { "time", "speed", "flicker" };
 
-    public static FieldEditorLease Create(FieldEditorContext context, ProjectSceneTargets? programs)
+    public static FieldEditorLease Create(FieldEditorContext context, ProjectSceneTargets? programs, IReadOnlySet<string>? generated = null)
     {
         var panel = new StackPanel { Name = "PresetShaderParameters", Spacing = 6 };
         var rows = new StackPanel { Spacing = 6 }; panel.Children.Add(rows);
@@ -42,7 +42,7 @@ internal static class PresetShaderParametersFieldEditor
                 {
                     Clear(); selectedProgram = program; selectedDescriptor = descriptor;
                     if (descriptor is not null)
-                        foreach (var parameter in descriptor.Parameters.Where(parameter => !Generated.Contains(parameter.Name)))
+                        foreach (var parameter in descriptor.Parameters.Where(parameter => !(generated ?? Generated).Contains(parameter.Name)))
                         {
                             var field = ShaderEffectFields.Create(parameter);
                             var boundProgram = program;

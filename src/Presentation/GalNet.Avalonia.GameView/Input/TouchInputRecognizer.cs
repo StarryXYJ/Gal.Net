@@ -34,7 +34,10 @@ public sealed class TouchInputRecognizer : IDisposable
     {
         if (e.Pointer.Type != PointerType.Touch) return;
         _settings.LastDevice = PlayerInputDevice.Touch;
-        if (!_canReceive() || _settings.IsCapturing || (e.Source as Visual)?.GetSelfAndVisualAncestors().Any(item => item is Button or SelectingItemsControl or TextBox) == true) return;
+        if (!_canReceive() || _settings.IsCapturing || (e.Source as Visual)?.GetSelfAndVisualAncestors().Any(item =>
+            item is Button or SelectingItemsControl or TextBox or RangeBase ||
+            item is Control control && Page.GamePage.GetIsPlayerInteraction(control)) == true)
+        { Reset(); return; }
         e.Handled = true;
         var point = e.GetPosition(_root);
         if (_contacts.Count == 0)

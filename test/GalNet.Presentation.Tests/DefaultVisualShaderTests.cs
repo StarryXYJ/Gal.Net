@@ -13,6 +13,14 @@ public sealed class DefaultVisualShaderTests
     [TestCase("SpeedLines")]
     [TestCase("Reveal")]
     [TestCase("MaskReveal")]
+    [TestCase("Distortion")]
+    [TestCase("RadialBlur")]
+    [TestCase("Film")]
+    [TestCase("Glitch")]
+    [TestCase("Pixelate")]
+    [TestCase("Spotlight")]
+    [TestCase("ShapeMask")]
+    [TestCase("Mood")]
     public void Default_shader_metadata_and_sksl_compile(string name)
     {
         var result = Load(name);

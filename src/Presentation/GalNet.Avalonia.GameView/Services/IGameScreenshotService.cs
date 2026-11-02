@@ -23,6 +23,8 @@ public sealed record GameScreenshotRequest(
     Func<bool, Task<byte[]>> CapturePngAsync)
 {
     public Func<bool, Task<byte[]>>? CapturePreviewPngAsync { get; init; }
+    /// <summary>Temporarily hands shell gamepad navigation to a custom modal and its cancel action.</summary>
+    public Action<Control?, Action?>? SetNavigationScope { get; init; }
 }
 
 /// <summary>Optional host integration for capturing the scene associated with a save.</summary>

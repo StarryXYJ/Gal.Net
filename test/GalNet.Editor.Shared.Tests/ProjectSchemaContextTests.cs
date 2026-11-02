@@ -26,7 +26,7 @@ public sealed class ProjectSchemaContextTests
         {
             Assert.That(first.Catalog.TryGet("custom.example", out _), Is.True);
             Assert.That(second.Catalog.TryGet("custom.example", out _), Is.False);
-            Assert.That(first.Catalog.Definitions, Has.Count.EqualTo(5));
+            Assert.That(first.Catalog.Definitions, Has.Count.EqualTo(6));
             Assert.That(second.Catalog.Definitions, Has.Count.EqualTo(2));
             Assert.That(second.Catalog.TryGet("custom.marker", out _), Is.True);
             Assert.That(first.Fingerprint, Is.Not.EqualTo(second.Fingerprint));

@@ -9,12 +9,12 @@
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
-        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="24">
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
           <TextBlock Text="{text:PlayerText Gallery.Unavailable, 'Gallery page unavailable'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
         </Grid>
-        <Border Grid.Row="1" Height="1" Margin="0,20,0,0" Background="{DynamicResource GalNet.Brush.Divider}" />
-        <Border Grid.Row="2" Margin="0,24,0,0" Padding="28" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="0" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
+        <Border Grid.Row="1" Height="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <Border Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}" Padding="28" Background="{DynamicResource GalNet.Brush.Surface}" BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="0" CornerRadius="{DynamicResource GalNet.Theme.CornerRadius}">
           <TextBlock Text="{Binding Message}" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalAlignment="Center" TextAlignment="Center" />
         </Border>
       </Grid>

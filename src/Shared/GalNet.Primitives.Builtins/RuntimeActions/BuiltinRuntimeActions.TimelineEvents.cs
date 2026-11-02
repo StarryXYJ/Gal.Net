@@ -84,7 +84,7 @@ internal static partial class BuiltinRuntimeActions
             case BuiltinEntryIds.PlayParticleEmitter when particlePresenter is not null:
                 return particlePresenter.StartParticleEmitterAsync(ToParticleEmitterRequest(planEvent.Parameters), cancellationToken);
             case BuiltinEntryIds.StopParticleEmitter when particlePresenter is not null:
-                return particlePresenter.StopParticleEmitterAsync(Get(planEvent.Parameters, "instanceId"), cancellationToken);
+                return particlePresenter.StopParticleEmitterAsync(Get(planEvent.Parameters, "instanceId"), planEvent.Parameters.TryGetValue("clear", out var clear) && clear.ValueKind == System.Text.Json.JsonValueKind.True, cancellationToken);
             case BuiltinEntryIds.BurstParticles when particlePresenter is not null:
                 return particlePresenter.BurstParticlesAsync(ToParticleBurstRequest(planEvent.Parameters), cancellationToken);
         }

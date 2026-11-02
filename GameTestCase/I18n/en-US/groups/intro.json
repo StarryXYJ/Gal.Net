@@ -5,7 +5,7 @@
   "group.intro.entry.variants-default.content": "The background request classroom_speech_empty has no match, so the explicit default classroom_idle_empty is shown. Save and load here too.",
   "group.intro.entry.variants-scene.content": "Selecting teacher in the third dimension matches classroom_speech_teacher, retaining the earlier speech request.",
   "group.intro.entry.variants-reset.content": "Hide and re-show resets the portrait to xy_idle. A later selection switches to wink during the loop animation.",
-  "group.intro.entry.intro-line-1.content": "The Runtime sample now builds from Raw authoring content. The test BGM is fading in on the bgm track.",
+  "group.intro.entry.intro-line-1.content": "Start with image variants: exact matches, fallback, remembered selections and resetting on show.",
   "group.intro.entry.intro-video-background.content": "niko.mp4 is a scene layer below the portrait, with rotation, scale and opacity. This non-blocking video lets dialogue advance. Advance to stop it.",
   "group.intro.entry.intro-line-effect-on.content": "A seffect.gain effect is now active, ducking this BGM track while the scene continues.",
   "group.intro.entry.intro-line-effect-off.content": "The track effect has been removed and the BGM volume is restored.",
@@ -17,6 +17,6 @@
   "group.intro.entry.nvl-append-rich.content": "<b>NVL is visible.</b>\\skip <color=#8E8AB8>Rich text</color> and typewriter skip boundaries are active.",
   "group.intro.entry.nvl-append-history.content": "This is the second paragraph in the scrollable NVL history.",
   "group.intro.entry.nvl-append-after-clear.content": "The prior NVL history was cleared, then this paragraph was appended.",
-  "group.intro.entry.intro-line-5.content": "The BGM is now fading out mid-track. Choose a route to see a transition and particles.",
+  "group.intro.entry.intro-line-5.content": "Basic audio complete. Continue this chapter to compare the additional sound effects.",
   "group.intro.entry.audio-save-checkpoint.content": "Save here and load the new save: the scene and gain effect return, and BGM stays paused. Advance to resume it from the beginning."
 }

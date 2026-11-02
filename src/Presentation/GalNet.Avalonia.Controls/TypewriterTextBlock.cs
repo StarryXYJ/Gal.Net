@@ -30,6 +30,7 @@ public sealed class TypewriterTextBlock : TextBlock
     private bool _instantMode;
     private readonly object _skipGate = new();
     private readonly List<Run> _defaultColorRuns = [];
+    private readonly List<(Run Run, double Scale, double Offset)> _sizedRuns = [];
 
     static TypewriterTextBlock()
     {
@@ -37,6 +38,7 @@ public sealed class TypewriterTextBlock : TextBlock
         CharactersPerSecondProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.Restart());
         ReadTextStyle.ForegroundProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.RefreshReadColor());
         ReadTextStyle.WasReadProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.RefreshReadColor());
+        FontSizeProperty.Changed.AddClassHandler<TypewriterTextBlock>((control, _) => control.RefreshFontSizes());
     }
 
     /// <summary>Raw game text, including <c>\d</c> and <c>\n</c> directives.</summary>
@@ -84,6 +86,7 @@ public sealed class TypewriterTextBlock : TextBlock
         IsCompleted = false;
         Text = null;
         _defaultColorRuns.Clear();
+        _sizedRuns.Clear();
         (Inlines ?? throw new InvalidOperationException("TextBlock did not provide an inline collection.")).Clear();
         _ = RenderAsync(SourceText, _completion, _skipSignal, _runCancellation.Token);
         return _completion.Task;
@@ -130,6 +133,11 @@ public sealed class TypewriterTextBlock : TextBlock
                             FontWeight = token.IsBold ? FontWeight.Bold : FontWeight.Normal,
                             FontStyle = token.IsItalic ? FontStyle.Italic : FontStyle.Normal
                         };
+                        if (token.FontSizeScale != 1 || token.FontSizeOffset != 0)
+                        {
+                            _sizedRuns.Add((run, token.FontSizeScale, token.FontSizeOffset));
+                            ApplyFontSize(run, token.FontSizeScale, token.FontSizeOffset);
+                        }
                         if (token.Color is { } color && Color.TryParse(color, out var parsed))
                             run.Foreground = new SolidColorBrush(parsed);
                         else
@@ -206,6 +214,14 @@ public sealed class TypewriterTextBlock : TextBlock
     {
         foreach (var run in _defaultColorRuns) ApplyReadColor(run);
     }
+    private void RefreshFontSizes()
+    {
+        foreach (var (run, scale, offset) in _sizedRuns) ApplyFontSize(run, scale, offset);
+    }
+
+    private void ApplyFontSize(Run run, double scale, double offset) =>
+        run.FontSize = Math.Clamp(FontSize * scale + offset, 1, 512);
+
     private void ApplyReadColor(Run run)
     {
         if (ReadTextStyle.GetWasRead(this) && ReadTextStyle.GetForeground(this) is { } brush) run.Foreground = brush;

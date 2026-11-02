@@ -138,5 +138,10 @@
   "Gallery.Type.video": "Videos",
   "Gallery.Type.audio": "Music",
   "Gallery.Type.scene": "Scenes",
-  "Gallery.Untitled": "Untitled"
+  "Gallery.Untitled": "Untitled",
+  "Settings.FontSize": "Font size",
+  "Settings.FontSize.Small": "Small",
+  "Settings.FontSize.Smaller": "Smaller",
+  "Settings.FontSize.Larger": "Larger",
+  "Settings.FontSize.Large": "Large"
 }

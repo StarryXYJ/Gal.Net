@@ -32,20 +32,26 @@ public static class SceneAuthoringSemantics
         Add(BuiltinEntryIds.StopEffect, [], [Reference("instanceId", SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.Animate, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.StopAnimation, [], [Reference("playbackHandleId", SceneTargetKind.Playback)]);
+        foreach (var type in new[] { BuiltinEntryIds.MaskPreset, BuiltinEntryIds.FlashPreset, BuiltinEntryIds.IdlePreset, BuiltinEntryIds.WeatherPreset, BuiltinEntryIds.MoodPreset, BuiltinEntryIds.HeartbeatPreset, BuiltinEntryIds.ParallaxPreset, BuiltinEntryIds.EmphasisPreset, BuiltinEntryIds.EmphasisText })
+            Add(type, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)],
+                type is BuiltinEntryIds.IdlePreset or BuiltinEntryIds.HeartbeatPreset ? [Reference("handleId", SceneTargetKind.Layer)] :
+                type is BuiltinEntryIds.EmphasisPreset or BuiltinEntryIds.EmphasisText ? [Reference("activeHandleId", SceneTargetKind.Layer), Reference("", SceneTargetKind.Layer) with { Container = "handleIds" }] :
+                type == BuiltinEntryIds.ParallaxPreset ? [Reference("handleId", SceneTargetKind.Layer) with { Container = "targets" }] :
+                type == BuiltinEntryIds.MoodPreset ? [Reference("targetHandleId", SceneTargetKind.Layer) with { AllowsGlobal = true }] : []);
         Add(BuiltinEntryIds.MotionPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
         Add(BuiltinEntryIds.ShakePreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
         Add(BuiltinEntryIds.ImpactPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer)]);
         Add(BuiltinEntryIds.SpeedLinesPreset, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], []);
-        foreach (var type in new[] { BuiltinEntryIds.CrossFadeTransition, BuiltinEntryIds.BlindsTransition, BuiltinEntryIds.SlideTransition, BuiltinEntryIds.BlackFadeTransition, BuiltinEntryIds.WhiteFadeTransition, BuiltinEntryIds.ColorFadeTransition, BuiltinEntryIds.RevealTransition, BuiltinEntryIds.BlurTransition })
+        foreach (var type in new[] { BuiltinEntryIds.CrossFadeTransition, BuiltinEntryIds.BlindsTransition, BuiltinEntryIds.SlideTransition, BuiltinEntryIds.BlackFadeTransition, BuiltinEntryIds.WhiteFadeTransition, BuiltinEntryIds.ColorFadeTransition, BuiltinEntryIds.RevealTransition, BuiltinEntryIds.BlurTransition, BuiltinEntryIds.FlashTransition, BuiltinEntryIds.ZoomTransition, BuiltinEntryIds.PixelateTransition, BuiltinEntryIds.GlitchTransition })
         {
-            var cross = type is BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition or BuiltinEntryIds.RevealTransition or BuiltinEntryIds.BlurTransition;
+            var cross = type is BuiltinEntryIds.CrossFadeTransition or BuiltinEntryIds.BlindsTransition or BuiltinEntryIds.RevealTransition or BuiltinEntryIds.BlurTransition or BuiltinEntryIds.FlashTransition or BuiltinEntryIds.ZoomTransition or BuiltinEntryIds.PixelateTransition or BuiltinEntryIds.GlitchTransition;
             Add(type, [Output(cross ? "newHandleId" : "toLayerHandleId", "primaryLayer", SceneTargetKind.Layer), Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference(cross ? "oldHandleId" : "fromLayerHandleId", SceneTargetKind.Layer)]);
         }
         Add(BuiltinEntryIds.PlayTimeline, [Output("playbackHandleId", "playback", SceneTargetKind.Playback) with { Container = "timeline" }], [], timeline: true);
         entries.Add(BuiltinEntryIds.ApplyAudioSEffect, new([new("instanceId", "audioEffect", SceneIdentityDomain.AudioEffect, SceneTargetKind.AudioEffect)], [], SceneNeutral: true));
         foreach (var type in new[] { BuiltinEntryIds.StopAudioSEffect, BuiltinEntryIds.UpdateAudioSEffect })
             entries.Add(type, new([], [new("instanceId", SceneIdentityDomain.AudioEffect, [SceneTargetKind.AudioEffect])], SceneNeutral: true));
-        foreach (var type in new[] { BuiltinEntryIds.Text, BuiltinEntryIds.ShowDialogue, BuiltinEntryIds.HideDialogue, BuiltinEntryIds.ShowNvl, BuiltinEntryIds.HideNvl, BuiltinEntryIds.ClearNvl, BuiltinEntryIds.AppendNvl, BuiltinEntryIds.TextVoice, BuiltinEntryIds.AppendVoiceNvl, BuiltinEntryIds.Wait, BuiltinEntryIds.SetVariable, BuiltinEntryIds.UnlockGallery, BuiltinEntryIds.PlayAudio, BuiltinEntryIds.StopAudio, BuiltinEntryIds.PauseAudio, BuiltinEntryIds.ResumeAudio, BuiltinEntryIds.NextAudio, BuiltinEntryIds.ClearAudio, BuiltinEntryIds.EnqueueAudio, BuiltinEntryIds.SetAudioLevel, BuiltinEntryIds.BurstParticles }) entries.Add(type, Neutral);
+        foreach (var type in new[] { BuiltinEntryIds.TextCard, BuiltinEntryIds.DuckAudio, BuiltinEntryIds.Text, BuiltinEntryIds.ShowDialogue, BuiltinEntryIds.HideDialogue, BuiltinEntryIds.ShowNvl, BuiltinEntryIds.HideNvl, BuiltinEntryIds.ClearNvl, BuiltinEntryIds.AppendNvl, BuiltinEntryIds.TextVoice, BuiltinEntryIds.AppendVoiceNvl, BuiltinEntryIds.Wait, BuiltinEntryIds.SetVariable, BuiltinEntryIds.UnlockGallery, BuiltinEntryIds.PlayAudio, BuiltinEntryIds.StopAudio, BuiltinEntryIds.PauseAudio, BuiltinEntryIds.ResumeAudio, BuiltinEntryIds.NextAudio, BuiltinEntryIds.ClearAudio, BuiltinEntryIds.EnqueueAudio, BuiltinEntryIds.SetAudioLevel, BuiltinEntryIds.BurstParticles }) entries.Add(type, Neutral);
         return entries;
     }
 }

@@ -15,6 +15,12 @@ namespace GalNet.Game.Controls.Forms;
 /// <summary>Behavior-only controls. Host themes supply their appearance and may replace any factory.</summary>
 public static class DefaultFieldEditors
 {
+    /// <summary>Preview selection visually without committing a field until the interaction is confirmed.</summary>
+    public static readonly AttachedProperty<bool> IsSelectionPreviewProperty =
+        AvaloniaProperty.RegisterAttached<Control, bool>("IsSelectionPreview", typeof(DefaultFieldEditors));
+    public static bool GetIsSelectionPreview(Control control) => control.GetValue(IsSelectionPreviewProperty);
+    public static void SetIsSelectionPreview(Control control, bool value) => control.SetValue(IsSelectionPreviewProperty, value);
+
     internal static readonly Type[] NumericTypes = [typeof(byte), typeof(sbyte), typeof(short), typeof(ushort),
         typeof(int), typeof(uint), typeof(long), typeof(ulong), typeof(float), typeof(double), typeof(decimal)];
 
@@ -79,7 +85,7 @@ public static class DefaultFieldEditors
                 ? context.Options.FirstOrDefault(option => JsonElement.DeepEquals(option.Value, value)) : null;
         }, change =>
         {
-            if (change.Property == ComboBox.SelectedItemProperty && control.SelectedItem is FieldEditorOption option)
+            if (!GetIsSelectionPreview(control) && change.Property == ComboBox.SelectedItemProperty && control.SelectedItem is FieldEditorOption option)
                 _ = context.CommitAsync(new(option.Value));
         });
     }

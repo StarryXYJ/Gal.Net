@@ -12,8 +12,30 @@ dotnet run --project ./src/Editor/GalNet.Editor
 ```
 
 In Editor, open the `GameTestCase` directory, not `Output/`. The graph starts at
-an explicit Entry connected to Classroom (`intro`); both routes converge on
-Ending. Initial node positions are stored in `Graph/graph.json`.
+an explicit Entry connected to Text and variants (`intro`). The showcase follows themed
+chapters, with both transition routes converging before the final comparisons.
+Initial node positions are stored in `Graph/graph.json`.
+
+| Order | Groups | Demonstrations |
+| --- | --- | --- |
+| 1 | `intro`, `presentation-library` | Image variants, dialogue, NVL, text card positions and replacement |
+| 2 | `media` | Blocking video, skip points, video alongside dialogue |
+| 3 | `audio` | Fade, gain, pause/save/resume, filters, room, six additional sound effects, automation and ducking |
+| 4 | `shaders` | Scene-post shaders, ShaderToy, grading, depth/rack focus and additional visual effects |
+| 5 | `masks` | Layer clipping, letterbox, slow feathered blink, scene-only and UI-inclusive coverage |
+| 6 | `characters` | Motion, shake, speed lines, impact, idle, explicit emphasis, mood, heartbeat and parallax |
+| 7 | `weather` | Five weather presets plus radial rain, with overlapping natural tails |
+| 8 | `routes`, `downtown` / `harbor`, `transitions` | Choice/condition, crossfade/blinds and all remaining transitions |
+| 9 | `ending` | Completion |
+
+Each chapter introduces the comparison and explicitly prepares its stage. Transient
+motion examples include a label and a short pause. Shader, particle and audio examples
+keep their observation dialogue; advance to stop or compare the next effect. Weather rounds use independent handles: advancing stops the old emission and starts
+the next round immediately; existing particles fade out and release naturally. Rain,
+snow and petals originate just above the frame. The legacy standalone snow/spark block is superseded by the weather presets;
+all other previous cases remain present, including both gallery replay groups. Shader examples
+now run for either route. Rebuild content after updating; group moves change reading
+identity, so existing GameTestCase saves and read progress are not continuation fixtures.
 
 Edit the existing Graph and Raw Groups, resources, characters, and localization
 through Editor and use Save All before building. Raw Groups remain the sole
@@ -30,7 +52,10 @@ project launch settings. Editor builds to `Output/Debug` and uses a separate
 `.galnet/debug-profile`; see [external debugging](../docs/manual/editor/preview-and-debugging.md).
 The Sample launch scripts below continue to build and run the same author files.
 
-Both routes now finish with the default visual library showcase in `Graph/groups/ending.rawgalgroup`: bloom, vignette, grading, Z-based rack focus, character motion, synchronized shake, animated radial/directional speed lines, impact, wipe, blur and image-mask transitions. The editable default shaders live in `Assets/Effects/Default/`; see [the visual authoring manual](../docs/manual/editor/default-visuals.md).
+The editable default shaders live in `Assets/Effects/Default/`; see
+[the visual authoring manual](../docs/manual/editor/default-visuals.md). The eyelid
+example opens over two seconds, enlarges its aperture and fades remaining corner
+coverage smoothly. Its scene-only and UI-inclusive variants are adjacent.
 
 This Raw-authoring game exercises the compiled runtime slice:
 
@@ -63,7 +88,7 @@ so the picker reappears. Use `--profile <directory>` for an isolated test profil
 - a composite `transition.crossFade` compiled into an animation plan;
 - authored layer and particle-property animations;
 - Runtime-backed particle start/stop with GUID-backed texture resources.
-- Configurable `bgm`, `sfx`, and `vocal` tracks: the intro uses `心.mp3` to demonstrate in-progress BGM fade-in, `seffect.gain` apply/stop, `seffect.lowPass` / `seffect.highPass` apply/stop, and in-progress fade-out.
+- Configurable `bgm`, `sfx`, and `vocal` tracks: the audio chapter uses `心.mp3` to demonstrate in-progress BGM fade-in, `seffect.gain` apply/stop, `seffect.lowPass` / `seffect.highPass` apply/stop, and in-progress fade-out.
 
 The `.rawgalgroup` files are the sole authoring source. Build them with `GalNet.Editor.Headless`;
 the generated `.galgroup` files use the version 3 compiled format (`typeId`, `arguments`, and reading metadata). The raw authoring format remains version 2. Every
@@ -113,15 +138,11 @@ When supplying a custom host, register the image-variants decoder and prepare it
 before constructing execution modules; pass that catalog to `AddBuiltins(imageVariants: ...)`.
 The default Avalonia and Headless Samples already prepare it.
 
-Choosing the second route option demonstrates five scene-post effect programs in sequence: bloom,
-blur, and three adapted Shadertoy samples. Bloom is shown first, before blur; it uses a high-threshold
-bright-pass, a wide Gaussian spread, and bounded LDR highlight roll-off. Blur is one visual demo
-implemented as horizontal and vertical separable Gaussian passes, with five iteration bands and 15 dense taps per axis.
-Before the Shadertoy
-samples, the route background and portrait are hidden, the snow emitter is stopped, and a
-solid-color scene layer is shown. The sequence proceeds directly into the ending on that stage;
-it does not restore the harbor scene. Each visual demonstration stops before the next begins;
-Blur's paired passes are one demonstration. Animated samples also stop their time animation before stopping the shader.
+The shader chapter compares Bloom, two-pass Gaussian Blur and three adapted
+ShaderToy programs on both routes. It then compares grading, Z-based depth and the
+additional library shaders. ShaderToy examples use a plain stage, and animated
+shader time is stopped before the effect is removed. Each demonstration ends before
+the next begins; Blur's horizontal and vertical passes form one demonstration.
 
 Entry IDs must be unique within each group, not across groups. Read progress uses
 the group ID together with the compiled entry ID. The current `progress.json`

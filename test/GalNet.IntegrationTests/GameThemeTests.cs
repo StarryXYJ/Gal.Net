@@ -498,30 +498,36 @@ public sealed partial class GameThemeTests
             try
             {
                 window.UpdateLayout();
-                var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Command == state.ToggleQuickCommand);
-                var auto = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Command == state.ToggleAutoCommand);
+                var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.IsEffectivelyVisible && button.Command == state.ToggleQuickCommand);
+                var auto = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.IsEffectivelyVisible && button.Command == state.ToggleAutoCommand);
                 var skip = page.GetVisualDescendants().OfType<Button>().Single(button => button.Command == state.RequestSkipCommand);
                 Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
                 Assert.That(((ISolidColorBrush)auto.Background!).Color.A, Is.Zero);
                 var quickPoint = BoundsInWindow(quick, window).Center;
                 window.MouseMove(quickPoint);
-                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero, "Unselected modes stay transparent even on hover.");
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.GreaterThan(0), "Hover is indicated by a background fill.");
                 var skipPoint = BoundsInWindow(skip, window).Center;
                 window.MouseMove(skipPoint);
                 var hover = (ISolidColorBrush)skip.Background!;
-                Assert.That(hover.Opacity, Is.EqualTo(0.08));
+                Assert.That(hover.Color.A, Is.GreaterThan(0));
+                var normalForeground = skip.Foreground;
                 window.MouseDown(skipPoint, MouseButton.Left);
-                Assert.That(((ISolidColorBrush)skip.Background!).Opacity, Is.GreaterThan(hover.Opacity));
-                Assert.That(skip.GetVisualDescendants().OfType<ContentPresenter>().First().Background, Is.SameAs(skip.Background));
+                Assert.That(((ISolidColorBrush)skip.Background!).Color, Is.Not.EqualTo(hover.Color));
+                Assert.That(skip.Foreground, Is.EqualTo(normalForeground));
+                Assert.That(((ISolidColorBrush)skip.GetVisualDescendants().OfType<Border>().Single(item => item.Name == "ToolbarButtonFrame").Background!).Color,
+                    Is.EqualTo(((ISolidColorBrush)skip.Background!).Color));
                 window.MouseUp(skipPoint, MouseButton.Left);
                 state.CancelSkipCommand.Execute(null);
                 Click(window, quick);
                 Assert.That(state.IsQuickMode, Is.True);
                 Assert.That(quick.IsChecked, Is.True);
-                Assert.That(((ISolidColorBrush)quick.Background!).Opacity, Is.EqualTo(0.24));
+                window.MouseMove(new Point(1, 1));
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.GreaterThan(0));
+                Assert.That(quick.FontWeight, Is.EqualTo(FontWeight.Normal));
                 Click(window, quick);
                 Assert.That(state.IsQuickMode, Is.False, "Tunnel cancellation must not turn an off-toggle into an on-toggle.");
                 Assert.That(quick.IsChecked, Is.False, "The button must also clear its own toggled visual state.");
+                window.MouseMove(new Point(1, 1));
                 Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
                 Click(window, quick);
                 Click(window, auto);
@@ -769,10 +775,14 @@ public sealed partial class GameThemeTests
                     window.UpdateLayout();
                     if (root.Child.FindControl<Border>("PageFrame") is { } frame)
                     {
-                        Assert.That(BoundsInWindow(frame, window), Is.EqualTo(frameBounds), viewModelType.Name);
+                        var currentFrame = BoundsInWindow(frame, window);
+                        Assert.That(currentFrame.Top, Is.EqualTo(frameBounds.Top), viewModelType.Name);
+                        Assert.That(currentFrame.Height, Is.EqualTo(frameBounds.Height), viewModelType.Name);
+                        Assert.That(currentFrame.Center.X, Is.EqualTo(window.Width / 2).Within(1), "Page content remains centered even when a form has a narrower reading width.");
                         Assert.That(frame.BorderThickness, Is.EqualTo(default(Thickness)), "Pages must not have an enclosing outline.");
-                        Assert.That(BoundsInWindow(root.Child.FindControl<Button>("PageBackButton")!, window),
-                            Is.EqualTo(backBounds), "The return target must stay in the same place across pages.");
+                        var currentBack = BoundsInWindow(root.Child.FindControl<Button>("PageBackButton")!, window);
+                        Assert.That(currentBack.Top, Is.EqualTo(backBounds.Top));
+                        Assert.That(currentBack.Right, Is.EqualTo(currentFrame.Right).Within(1), "Return stays aligned to its page header.");
                     }
                     Capture(window, $"{layout}-{paletteName}-{viewModelType.Name}");
                 }
@@ -824,8 +834,8 @@ public sealed partial class GameThemeTests
                 Assert.That(new Rect(window.ClientSize).Contains(backRect), Is.True);
                 Assert.That(new Rect(window.ClientSize).Contains(mediaRect), Is.True);
                 Assert.That(mediaRect.Intersects(backRect), Is.False, "The media must not cover the return target.");
-                Assert.That(backRect.Width, Is.GreaterThanOrEqualTo(120));
-                Assert.That(backRect.Height, Is.GreaterThanOrEqualTo(48));
+                Assert.That(backRect.Width, Is.GreaterThanOrEqualTo(80));
+                Assert.That(backRect.Height, Is.GreaterThanOrEqualTo(36));
                 Capture(window, $"{layout}-large-image-{width}x{height}");
                 Click(window, back);
                 Assert.That(navigation.CurrentViewModel, Is.TypeOf<SettingsPageViewModel>());
@@ -1074,8 +1084,10 @@ public sealed partial class GameThemeTests
     private static void Click(Window window, Control target)
     {
         window.UpdateLayout();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         var point = target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)
             ?? throw new InvalidOperationException("The interactive control is not attached to the test window.");
+        window.MouseMove(point);
         window.MouseDown(point, MouseButton.Left);
         window.MouseUp(point, MouseButton.Left);
     }

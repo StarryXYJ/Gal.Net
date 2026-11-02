@@ -7,6 +7,7 @@ using GalNet.Sample.CrossPlatform.ViewModels;
 using GalNet.Runtime.Logging;
 using GalNet.Sample.CrossPlatform.Views;
 using GalNet.Avalonia.GameHost;
+using GalNet.Contracts.Builtins;
 using GalNet.Sample.CrossPlatform.Presentation;
 using GalNet.Storage.FileSystem;
 using GalNet.Game.Controls.Windowing;
@@ -38,6 +39,8 @@ public partial class App : Application, IAsyncDisposable
     private Task? _shutdown;
     private bool _platformActive = true;
     private bool _audioAvailable = true;
+    private static ProjectOrientationPolicy _orientationPolicy = ProjectOrientationPolicy.Unforced;
+    private static ProjectDefaultOrientation _defaultOrientation = ProjectDefaultOrientation.Landscape;
     private DesktopWindowPlacement? _windowPlacement;
     private OpeningSequence? _opening;
     private Grid? _startupSurface;
@@ -57,6 +60,18 @@ public partial class App : Application, IAsyncDisposable
 
     public Action? ExitRequested { get; set; }
     public static Action<IServiceCollection>? ConfigurePlatformServices { get; set; }
+    public static Func<ProjectOrientationPolicy, ProjectDefaultOrientation, CancellationToken, Task>? ProjectOrientationHandler { get; set; }
+    public static ProjectOrientationPolicy CurrentOrientationPolicy => _orientationPolicy;
+    public static ProjectDefaultOrientation CurrentDefaultOrientation => _defaultOrientation;
+
+    public static Task ApplyProjectOrientationAsync(ProjectOrientationPolicy policy, ProjectDefaultOrientation defaultOrientation,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        _orientationPolicy = policy;
+        _defaultOrientation = defaultOrientation;
+        return ProjectOrientationHandler?.Invoke(policy, defaultOrientation, cancellationToken) ?? Task.CompletedTask;
+    }
 
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
@@ -66,6 +81,7 @@ public partial class App : Application, IAsyncDisposable
         {
             var window = new MainWindow { Content = CreateHostView() };
             _window = window;
+            ProjectOrientationHandler = ApplyDesktopProjectOrientationAsync;
             if (DesktopWindowPlacementPath is { } placementPath)
                 AttachDesktopWindowPlacement(window, placementPath);
             desktop.MainWindow = window;
@@ -89,6 +105,13 @@ public partial class App : Application, IAsyncDisposable
         else if (ApplicationLifetime is ISingleViewApplicationLifetime single)
             single.MainView = CreateHostView();
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private async Task ApplyDesktopProjectOrientationAsync(ProjectOrientationPolicy policy,
+        ProjectDefaultOrientation defaultOrientation, CancellationToken cancellationToken)
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => _window?.ApplyProjectOrientation(policy, defaultOrientation),
+            DispatcherPriority.Normal, cancellationToken);
     }
 
     private ContentControl CreateHostView()
