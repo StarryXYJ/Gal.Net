@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Threading.Channels;
 using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Audio;
+using GalNet.Contracts.Builtins.Scene;
 using GalNet.Core.Compilation;
 using GalNet.Core.Entry;
 using GalNet.Core.Primitives;
@@ -14,6 +15,25 @@ namespace GeneralTest.Entry;
 
 public sealed class TypedBuiltinAuthoringTests
 {
+    [Test]
+    public void AllAnimationCurvesAppearInChoicesAndSurviveCompilation()
+    {
+        var catalog = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules());
+        var field = AnimationOptions.Schema.Single(field => field.Id == "curve");
+        Assert.That(field.Value.TryGetConstraint("enum", out var values), Is.True);
+        var choices = values.EnumerateArray().Select(value => value.GetString()).ToArray();
+        Assert.That(choices, Is.EquivalentTo(Enum.GetNames<BuiltinAnimationCurve>()));
+        Assert.That(choices, Has.Length.EqualTo(32));
+        foreach (var curve in Enum.GetValues<BuiltinAnimationCurve>())
+        {
+            var compiled = Compile(catalog, BuiltinEntryIds.Animate, new { handleId = "hero", property = "transform.x", to = 100, curve = curve.ToString() });
+            var options = GalNet.Core.Parameters.ValueCodec.DeserializeFields<AnimationOptions>(AnimationOptions.Schema, compiled.Arguments);
+            Assert.That(options.Curve, Is.EqualTo(curve));
+            var json = JsonSerializer.Serialize(options);
+            Assert.That(JsonSerializer.Deserialize<AnimationOptions>(json)!.Curve, Is.EqualTo(curve));
+        }
+    }
+
     [TestCase("audio.play")]
     [TestCase("audio.enqueue")]
     public void AudioAnnouncementOptInSurvivesAuthoringCompilation(string type)

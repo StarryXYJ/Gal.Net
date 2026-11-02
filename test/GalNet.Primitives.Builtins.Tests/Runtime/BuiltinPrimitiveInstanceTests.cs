@@ -542,7 +542,7 @@ public class BuiltinPrimitiveInstanceTests
                 From = 1.5f,
                 To = 2,
                 DurationSeconds = .75,
-                CurveKind = BuiltinAnimationCurve.EaseInOut,
+                CurveKind = BuiltinAnimationCurve.QuadEaseInOut,
                 LoopMode = AnimationLoopMode.PingPong
             }
         });
@@ -587,7 +587,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(animationRequest.From, Is.EqualTo(1.5f));
             Assert.That(animationRequest.To, Is.EqualTo(2));
             Assert.That(animationRequest.DurationSeconds, Is.EqualTo(0.75));
-            Assert.That(animationRequest.CurveKind, Is.EqualTo(BuiltinAnimationCurve.EaseInOut));
+            Assert.That(animationRequest.CurveKind, Is.EqualTo(BuiltinAnimationCurve.QuadEaseInOut));
             Assert.That(animationRequest.LoopMode, Is.EqualTo(AnimationLoopMode.PingPong));
             Assert.That(timeline.PlaybackHandleId, Is.EqualTo("snow-timeline"));
             Assert.That(timeline.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
@@ -620,7 +620,7 @@ public class BuiltinPrimitiveInstanceTests
             property = "emissionRate",
             to = 18,
             duration = 1.25,
-            curve = "EaseInOut",
+            curve = "QuadEaseInOut",
             blocking = "false",
             skippable = "false",
             loopMode = "PingPong",
@@ -638,7 +638,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(active.Request!.From, Is.EqualTo(72));
             Assert.That(active.Request!.To, Is.EqualTo(18));
             Assert.That(active.Request!.DurationSeconds, Is.EqualTo(1.25));
-            Assert.That(active.Request!.CurveKind, Is.EqualTo(BuiltinAnimationCurve.EaseInOut));
+            Assert.That(active.Request!.CurveKind, Is.EqualTo(BuiltinAnimationCurve.QuadEaseInOut));
             Assert.That(active.Request!.BlendMode, Is.EqualTo(AnimationBlendMode.Replace));
         });
     }

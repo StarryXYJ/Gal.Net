@@ -29,7 +29,7 @@
       "condition": "",
       "parameters": {
         "blocking": "false",
-        "curve": "EaseOut",
+        "curve": "QuadEaseOut",
         "duration": 0.5,
         "handleId": "teacher",
         "playbackHandleId": "portrait-settle",

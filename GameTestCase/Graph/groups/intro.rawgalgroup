@@ -493,7 +493,7 @@
       "parameters": {
         "blendMode": "Additive",
         "blocking": "false",
-        "curve": "EaseInOut",
+        "curve": "QuadEaseInOut",
         "duration": 0.06,
         "from": 0,
         "handleId": "teacher",
@@ -530,7 +530,7 @@
       "parameters": {
         "blendMode": "Replace",
         "blocking": "true",
-        "curve": "EaseInOut",
+        "curve": "QuadEaseInOut",
         "duration": 0.7,
         "from": 0,
         "handleId": "teacher",

@@ -70,6 +70,8 @@ dialogue.text、nvl.append、layer.hide/replace、animation.stop、audio.seffect
 
 其余带参数的内置 Primitive 也采用 DTO：layer.show/showColor/move、animation.animate、timeline.play、audio.play/enqueue/seffect.apply、video.play、effect.apply、particle.play/burst。audio.play/enqueue 共用 AudioPlayOptions，enqueue 仍显式选择 Enqueue 策略。嵌套 JSON 字段保留 JsonElement 与原解析规则；固定标量、布尔和枚举使用强类型属性。动画 from 的省略由规范化参数 presence 判断，batchId 仍由编译信封提取；快照/重放与复杂实例生命周期未改变。
 
+`animation.animate.curve` 使用区分大小写的内置名称，默认 `Linear`。可选 `Linear`、`Step`，以及 `Quad`、`Cubic`、`Quart`、`Quint`、`Sine`、`Expo`、`Circ`、`Back`、`Elastic`、`Bounce` 各自的 `EaseIn` / `EaseOut` / `EaseInOut`（例如 `CubicEaseOut`），共 32 种。Quad/Cubic/Quart/Quint 分别为二至五次缓动；Sine/Expo/Circ 为正弦/指数/圆形；Back/Elastic/Bounce 为回退/弹性/弹跳。Out 由 In 时间反转得到，InOut 将 In/Out 各映射到半程。时间输入限制到 `[0,1]`，端点精确为 0/1；Back 和 Elastic 允许插值进度超出该区间，最终属性范围沿用呈现层约束。Step 在终点前保持起始值。旧 `EaseIn` / `EaseOut` / `EaseInOut` 已改名为 `QuadEaseIn` / `QuadEaseOut` / `QuadEaseInOut`，没有别名。此设置不改变 Timeline 的关键帧插值模型。
+
 `animation.animate.property` 的内置选择包含 `time`，供 effect-program 元数据将该逻辑参数映射到 shader 时间 uniform；具体 program 仍需把对应参数标为可动画。
 
 DynamicParameterTable 的 ValidatePartialArguments 用于尚未补默认值的局部作者参数；可选回调省略时沿用完整 validator。ForDto<T> 可显式提供 validatePartialArguments；字段自身校验照常执行，Normalize 的完整业务校验仍使用 ValidateArguments。内置视频/粒子/动画计划将完整业务规则保留在编译/执行边界，逐字段创作不要求其他尚未填写的字段。
