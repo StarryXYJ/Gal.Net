@@ -25,6 +25,13 @@ if (args is ["--verify"])
         benchmark.Verify();
         Console.WriteLine("Verified toolbar breakpoint and recovery.");
     }
+    foreach (var count in new[] { 8, 64 })
+    {
+        using var benchmark = new GalleryLoadingBenchmarks { ItemCount = count };
+        benchmark.Setup();
+        Task.Run(benchmark.VerifyAsync).GetAwaiter().GetResult();
+        Console.WriteLine($"Verified activation waits for {count} controlled thumbnail loads.");
+    }
     return;
 }
 
