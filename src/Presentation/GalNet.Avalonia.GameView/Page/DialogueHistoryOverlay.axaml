@@ -6,7 +6,7 @@
   <Border Background="{DynamicResource GalNet.Brush.Background}" Padding="32">
     <Grid RowDefinitions="Auto,*,Auto" RowSpacing="20" MaxWidth="1080">
       <Grid ColumnDefinitions="*,Auto">
-        <TextBlock Text="{text:PlayerText History.Title, History}" FontSize="30" FontWeight="SemiBold" />
+        <TextBlock Text="{text:PlayerText History.Title, History}" FontSize="{DynamicResource GalNet.Theme.HistoryHeadingSize}" FontWeight="SemiBold" />
         <Button Name="CloseHistory" Grid.Column="1" Content="{text:PlayerText Common.Back, Back}" Command="{Binding CloseHistoryCommand}" />
       </Grid>
       <ItemsControl Name="HistoryList" Grid.Row="1" ItemsSource="{Binding HistoryLines}">
@@ -23,8 +23,8 @@
             <Border Padding="12,16" BorderBrush="{DynamicResource GalNet.Brush.Divider}" BorderThickness="0,0,0,1">
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="20">
                 <StackPanel Spacing="8">
-                  <TextBlock Text="{Binding Speaker}" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.Primary}" />
-                  <controls:TypewriterTextBlock SourceText="{Binding Text}" CharactersPerSecond="0" FontSize="21"
+                  <TextBlock Text="{Binding Speaker}" FontSize="{DynamicResource GalNet.Theme.HistorySpeakerFontSize}" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.Primary}" />
+                  <controls:TypewriterTextBlock SourceText="{Binding Text}" CharactersPerSecond="0" FontSize="{DynamicResource GalNet.Theme.HistoryFontSize}"
                        TextWrapping="Wrap" controls:ReadTextStyle.WasRead="{Binding WasRead}" />
                 </StackPanel>
                 <Button Grid.Column="1" Content="🔊" IsVisible="{Binding HasVoice}" VerticalAlignment="Top"

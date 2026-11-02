@@ -12,11 +12,31 @@ namespace GalNet.Sample.CrossPlatform;
 /// <summary>Project startup and back/exit policy; the host retains asynchronous scope ownership.</summary>
 public sealed class PlayerApplication(PlayerView view, GameShell shell, LanguageSelectionViewModel language,
     GamePresentationState state, IGameNavigationService navigation, TitlePageViewModel title,
+    AvaloniaPlayerSettingsService settings,
     Opening.OpeningSequence? opening = null) : IPlayerApplication
 {
+    private GalNet.Avalonia.GameHost.Settings.FontSizePreset? _appliedFontSize;
     public Control View => view;
-    public void Attach() { view.Attach(shell, language); view.BindAudioAnnouncements(state); }
-    public void Detach() => view.Detach();
+    public void Attach()
+    {
+        view.Attach(shell, language);
+        view.BindAudioAnnouncements(state);
+        settings.SettingsChanged += ApplyTypography;
+        _appliedFontSize = null;
+        ApplyTypography();
+    }
+    public void Detach()
+    {
+        settings.SettingsChanged -= ApplyTypography;
+        view.Detach();
+    }
+    private void ApplyTypography()
+    {
+        if (_appliedFontSize == settings.RuntimeSettings.FontSize) return;
+        PlayerTypography.Apply(view.Resources, settings.RuntimeSettings.FontSize);
+        PlayerTypography.Apply(shell.Resources, settings.RuntimeSettings.FontSize);
+        _appliedFontSize = settings.RuntimeSettings.FontSize;
+    }
     public void ShowTitle() => navigation.ResetTo<TitlePageViewModel>(NavigationTransition.None);
     public Task StartNewGameAsync() => title.StartNewGameCommand.ExecuteAsync(null);
     public Task<bool> ConfirmExitAsync() => view.ConfirmExitAsync();

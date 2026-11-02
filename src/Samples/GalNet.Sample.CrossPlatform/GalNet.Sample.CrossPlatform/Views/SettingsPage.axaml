@@ -23,7 +23,7 @@
           <Border Classes="player-settings-card">
             <StackPanel Spacing="28">
               <common:SettingsCategories Categories="{Binding Categories}" Editors="{Binding Editors}" />
-              <TextBlock Text="{text:PlayerText Settings.Hint, 'Changes apply immediately.'}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
+              <TextBlock Text="{text:PlayerText Settings.Hint, 'Changes apply immediately.'}" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
             </StackPanel>
           </Border>
         </ScrollViewer>

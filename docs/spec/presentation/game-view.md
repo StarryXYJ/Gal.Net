@@ -50,7 +50,27 @@ Sample 的标题、加载、游戏、设置、存读档、Gallery/详情/诊断�
 
 资源分为 GalNet.Palette.*Color、GalNet.Brush.* 语义颜色，以及应用赋值的 GalNet.Theme.* 尺寸/字体键。GamePalette 校验 21 个必需画刷；Fluent 颜色桥接要求对应 Color 或纯色画刷。控件库保留中性默认资源；根资源可覆盖，不能在多个根复用同一个 Styles 实例。
 
-页面容器和返回按钮位置、对白人物名/正文字号等由项目 XAML/资源决定。当前默认页面保持顶部页头右侧返回、独立媒体区域以及人物名/正文 26/22 设计字号。局部按钮可直接写 XAML、样式或 ControlTheme，不要求实现整套主题。
+页面容器和返回按钮位置、对白人物名/正文字号等由项目 XAML/资源决定。当前默认页面保持顶部页头右侧返回、独立媒体区域；桌面默认“较小”档的人物名/正文为 26/22 设计字号。局部按钮可直接写 XAML、样式或 ControlTheme，不要求实现整套主题。
+
+### 玩家字号与富文本字号
+
+Sample 的 `PlayerTypography` 提供 Small/Smaller/Larger/Large 四套 `PlayerFontSizes`，分别配置 Title、Heading、Body、Emphasis、Action、Auxiliary、Dialogue。默认桌面 Smaller、Android/iOS Larger；项目可修改各档数值和平台默认档。资源只应用于项目 surface、shell 及截图弹窗；标题/表单/工具栏/存档和媒体信息使用对应角色，ADV/NVL 使用 Dialogue，姓名使用 Emphasis，历史保留其原有字号层级并跟随对应角色。开场 Logo/公告演出保留独立排版，Editor 和调试工具不接入。每个最终资源值要求有限且在 1–512；一次应用先校验整套值再更新资源。
+
+这些数值属于设计空间，固定画布缩放仍会影响实际显示大小，不代表设备 dp 或最小触摸尺寸。不改变场景坐标、画布比例或页面排布；大字号导致的长文本排版及移动端实际阅读效果须单独检查。
+
+`RichTypewriterTextParser` 支持下列标签，大小写不敏感，可带单/双引号，使用 invariant 小数点：
+
+| 写法 | 语义 |
+| --- | --- |
+| `<size=1.25em>文本</size>` | 父级字号的 1.25 倍 |
+| `<size=125%>文本</size>` | 父级字号的 125% |
+| `<size=+4>文本</size>` | 父级字号加 4 个设计单位 |
+| `<size=-2>文本</size>` | 父级字号减 2 个设计单位 |
+| `<size=24>文本</size>` | 绝对设计字号 24，不跟随玩家基础字号 |
+
+带符号的无单位数字为偏移；em/% 表示比例本身，必须为正。嵌套字号相对于父级计算，结束恢复父级；例如基础 20，`+4` 内嵌 `150%` 得到 36。非法数值、非有限值、不支持的单位及无匹配起始标签的 `</size>` 保留字面文本。不扩展 span 属性语法。与粗体、斜体、颜色、换行、延迟和 skip 指令共存。
+
+Core token 保留原位置构造/解构参数，新增 `FontSizeScale`（默认 1）和 `FontSizeOffset`（默认 0）init 属性；宿主按 `基础字号 × Scale + Offset` 解析。Avalonia 最终 Run 字号限制在 1–512，基础 FontSize 更新只修改当前 runs，不重启打字任务、不重触发完成事件；换行和测量由更新后的文本布局处理。ADV、NVL、历史共用相同解析/渲染路径，持久化正文仍保存原始标记。
 
 ### GamePage 模板契约
 

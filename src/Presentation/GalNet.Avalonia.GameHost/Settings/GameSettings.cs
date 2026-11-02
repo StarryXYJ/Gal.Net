@@ -12,6 +12,7 @@ public sealed class GameSettings
 
     /// <summary>文本显示速度（字符/秒，0 = 即时）</summary>
     public float TextSpeed { get; set; } = 30f;
+    public FontSizePreset FontSize { get; set; } = FontSizePreset.Smaller;
     public bool EnableReadTextColor { get; set; }
     public string ReadTextColor { get; set; } = "#A8B8C8";
 

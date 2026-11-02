@@ -30,7 +30,7 @@
               <DataTemplate x:DataType="gallery:GalleryTypeData">
                 <Button Padding="24,16" MinHeight="64" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Command="{Binding #TypeList.DataContext.OpenTypeCommand}" CommandParameter="{Binding}">
                   <StackPanel Spacing="6">
-                    <text:PlayerTextBlock Key="{Binding Type.DisplayNameKey}" FontSize="22" FontWeight="SemiBold" />
+                    <text:PlayerTextBlock Key="{Binding Type.DisplayNameKey}" FontSize="{DynamicResource GalNet.Theme.GroupHeadingSize}" FontWeight="SemiBold" />
 
                   </StackPanel>
                 </Button>

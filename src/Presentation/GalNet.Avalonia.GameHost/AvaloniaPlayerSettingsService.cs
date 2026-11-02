@@ -49,8 +49,11 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
     private global::Avalonia.Controls.Window? _boundWindow;
     private bool _gamepadEnabled = true;
 
-    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePresentationState gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null)
+    public AvaloniaPlayerSettingsService(IPlayerLocalization localization, GamePresentationState gameplay, IPlayerDisplayService? display = null, EditorRegistry? editors = null,
+        FontSizePreset defaultFontSize = FontSizePreset.Smaller)
     {
+        if (!Enum.IsDefined(defaultFontSize)) throw new ArgumentOutOfRangeException(nameof(defaultFontSize));
+        RuntimeSettings.FontSize = defaultFontSize;
         Editors = editors ?? EditorRegistry.CreateDefault();
         _localization = localization;
         _gameplay = gameplay;
@@ -108,11 +111,22 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
                 global::Avalonia.Media.Color.TryParse(color.AsString(), out _) ? color.AsString() : "#A8B8C8";
             ApplyReadTextColor();
         });
+        const string fontSizeVariable = "player.galnet.settings.fontSize";
+        var fontSizeChoices = Enum.GetValues<FontSizePreset>().Select(value =>
+            new SettingChoice<FontSizePreset>(value.ToString(), "Settings.FontSize." + value, value,
+                localization.GetString("Settings.FontSize." + value))).ToArray();
+        var fontSize = new ChoiceSetting<FontSizePreset>("fontSize", "Settings.FontSize", defaultFontSize, fontSizeChoices,
+            () => RuntimeSettings.FontSize,
+            (value, token) => ApplyRuntimeSettingAsync(fontSizeVariable, () => RuntimeSettings.FontSize = value, value.ToString(), token),
+            localization.GetString("Settings.FontSize"));
+        _restoreValues.Add(stored => RuntimeSettings.FontSize =
+            stored.TryGetValue(fontSizeVariable, out var value) && value.Type == VariableType.String &&
+            fontSizeChoices.FirstOrDefault(choice => choice.Id == value.AsString()) is { } choice ? choice.Value : defaultFontSize);
         _categories = new System.Collections.ObjectModel.ObservableCollection<SettingCategory>(new[]
         {
             new SettingCategory("game", "Settings.Game",
             [
-                _language,
+                _language, fontSize,
                 Number("textSpeed", "Settings.TextSpeed", 30, 120, 1, () => RuntimeSettings.TextSpeed,
                     value => { RuntimeSettings.TextSpeed = (float)value; gameplay.TextSpeed = value; }, NumericEditorKind.Slider),
                 readColor, readColorEnabled,
@@ -220,6 +234,7 @@ public sealed partial class AvaloniaPlayerSettingsService : IAvaloniaPlayerSetti
             foreach (var setting in Categories.SelectMany(category => category.Items)) setting.Refresh();
             _coordinator.RefreshAvailability();
         }
+        SettingsChanged?.Invoke();
     }
 
     private DoubleSetting Number(string id, string key, double defaultValue, double maximum, double step,

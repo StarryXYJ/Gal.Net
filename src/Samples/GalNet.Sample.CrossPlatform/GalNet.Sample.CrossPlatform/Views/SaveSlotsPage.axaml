@@ -38,7 +38,7 @@
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
-          <TextBlock Grid.Row="1" Text="{text:PlayerText SaveSlots.Hint, 'Saves are managed by the current game host.'}" Opacity="0.45" FontSize="12" />
+          <TextBlock Grid.Row="1" Text="{text:PlayerText SaveSlots.Hint, 'Saves are managed by the current game host.'}" Opacity="0.45" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" />
         </Grid>
       </Grid>
     </Border>

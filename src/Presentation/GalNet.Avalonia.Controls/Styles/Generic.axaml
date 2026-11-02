@@ -84,7 +84,7 @@
                              IsReadOnly="{Binding !CanRename, RelativeSource={RelativeSource TemplatedParent}}"
                              Focusable="{TemplateBinding CanRename}" IsHitTestVisible="{TemplateBinding CanRename}" MaxLength="120" AcceptsReturn="False"
                              Background="Transparent" BorderThickness="0" Padding="0" MinHeight="26"
-                             FontSize="17" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
+                             FontSize="{DynamicResource GalNet.Theme.SaveTitleFontSize}" FontWeight="SemiBold" Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
                              ToolTip.Tip="{TemplateBinding RenameError}">
                       <TextBox.Template>
                         <ControlTemplate TargetType="TextBox">
@@ -97,8 +97,8 @@
                         </ControlTemplate>
                       </TextBox.Template>
                     </TextBox>
-                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" IsHitTestVisible="False" />
-                    <TextBlock Text="{TemplateBinding RenameError}" IsVisible="{Binding RenameError, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" FontSize="12" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" IsHitTestVisible="False" />
+                    <TextBlock Text="{TemplateBinding Timestamp}" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" IsHitTestVisible="False" />
+                    <TextBlock Text="{TemplateBinding RenameError}" IsVisible="{Binding RenameError, RelativeSource={RelativeSource TemplatedParent}, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" IsHitTestVisible="False" />
                   </StackPanel>
                 </Grid>
                 <Border Name="PART_Highlight" Background="{DynamicResource GalNet.Brush.Selection}" Opacity="0" IsHitTestVisible="False" />

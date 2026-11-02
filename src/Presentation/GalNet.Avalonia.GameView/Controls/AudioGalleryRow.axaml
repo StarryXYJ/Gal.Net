@@ -5,7 +5,7 @@
   <TextBlock x:Name="TrackName" Text="{Binding Title}" TextAlignment="Left" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding NameTooltip}" />
   <Grid x:Name="Timeline" Grid.Column="1" RowDefinitions="Auto,Auto">
    <Slider x:Name="Seek" Minimum="0" Maximum="100" Value="{Binding Progress, Mode=TwoWay}" IsEnabled="{Binding CanSeek}" ToolTip.Tip="{Binding TimeText}" VerticalAlignment="Center" />
-   <TextBlock x:Name="TrackTime" Grid.Row="1" Text="{Binding TimeText}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" FontSize="11" HorizontalAlignment="Right" />
+   <TextBlock x:Name="TrackTime" Grid.Row="1" Text="{Binding TimeText}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" FontSize="{DynamicResource GalNet.Theme.TrackTimeFontSize}" HorizontalAlignment="Right" />
   </Grid>
   <Grid x:Name="Actions" Grid.Column="2">
    <Button IsVisible="{Binding !IsPlaying}" IsEnabled="{Binding IsUnlocked}" Command="{Binding #RowRoot.ToggleCommand}" CommandParameter="{Binding}" AutomationProperties.Name="{text:PlayerText Gallery.Play, 'Play'}" ToolTip.Tip="{text:PlayerText Gallery.Play, 'Play'}"><PathIcon Width="16" Height="16" Data="M 4,2 L 14,8 L 4,14 Z" /></Button>

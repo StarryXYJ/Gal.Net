@@ -69,9 +69,10 @@
   <Style Selector=":is(Control).galnet-player">
     <Setter Property="(TextElement.Foreground)" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
     <Setter Property="(TextElement.FontFamily)" Value="{DynamicResource GalNet.Theme.FontFamily}" />
-    <Setter Property="(TextElement.FontSize)" Value="18" />
+    <Setter Property="(TextElement.FontSize)" Value="{DynamicResource GalNet.Theme.BodyFontSize}" />
   </Style>
   <Style Selector=".galnet-player Button">
+    <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.ActionFontSize}" />
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
@@ -93,7 +94,7 @@
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
   </Style>
   <Style Selector=".galnet-player Button.player-menu">
-    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.MenuFontSize}" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
   </Style>

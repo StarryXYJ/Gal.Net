@@ -56,6 +56,7 @@ public static class SampleCustomization
         styles.Resources["GalNet.Theme.FontFamily"] = GameTypography.UiFontFamily;
         styles.Resources.MergedDictionaries.Add(palette.CreateResources());
         styles.Resources.MergedDictionaries.Add(new global::Avalonia.Markup.Xaml.Styling.ResourceInclude(origin) { Source = new Uri(origin, "Styles/Dimensions.axaml") });
+        PlayerTypography.Apply(styles.Resources, PlayerTypography.Default);
         return styles;
     }
 
@@ -103,7 +104,7 @@ public static class SampleCustomization
             .AddSingleton<GalNet.Core.Services.ITextResolver>(provider => provider.GetRequiredService<IPlayerLocalization>())
             .AddSingleton<LibVlcRuntime>()
             .AddScoped(provider => new AvaloniaPlayerSettingsService(provider.GetRequiredService<IPlayerLocalization>(),
-                provider.GetRequiredService<GamePresentationState>(), editors: CreateFieldEditors()))
+                provider.GetRequiredService<GamePresentationState>(), editors: CreateFieldEditors(), defaultFontSize: PlayerTypography.Default))
             .AddScoped<IPlayerStartup, AvaloniaPlayerStartup>()
             .AddScoped<LanguageSelectionViewModel>()
             .AddScoped(_ => CreateView())

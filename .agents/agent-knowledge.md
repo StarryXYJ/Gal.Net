@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- 2026-11-02 玩家字号：Sample PlayerTypography.cs 定义四套语义字号与平台默认（桌面 Smaller，Android/iOS Larger），设置服务只持久化档位；局部资源更新不重建页面。Core 富文本 size 支持 em/%、无单位正负偏移及绝对值，token 用 scale/offset 表示嵌套结果；Typewriter 基础字号变化仅更新 runs，不重启打字。479 项相关通过，6 项 Explicit 未执行，移动真机/像素对照未验；见 [总结](../features/F-20261102-01-player-typography/summary.md)。
 - [开场 UI 同步重活](lessons/L-20261101-06-startup-ui-synchronous-work.md)：已迁移配置/LibVLC 与会话准备到后台串行流程，UI 分阶段创建并发布；取消等待 native 工厂收束再释放 scope。SDL 保留 UI 线程契约并延后到开场结束，57 项回归及三次原生启动通过。
 - [启动 UI 语言快照](lessons/L-20261101-05-startup-ui-culture-snapshot.md)：CultureService.SetCulture 会改写线程 UI 语言；初始化前捕获系统值，早读保存偏好，声明绑定观察值，首次选择沿用初始化后的文化。
 - [已加载构建任务与部分 NuGet 缓存](lessons/L-20261101-03-loaded-build-task-partial-cache.md)：先定位文件锁；VS 中已加载的 BuildServices 不随 build-server shutdown 卸载。可信同版本包分别核验原始归档/内容 hash 与现存 DLL 后，只补缺失文件，不能伪造完整标记。

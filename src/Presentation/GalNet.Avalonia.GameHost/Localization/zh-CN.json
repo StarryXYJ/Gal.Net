@@ -138,5 +138,10 @@
   "Gallery.Type.video": "视频鉴赏",
   "Gallery.Type.audio": "音乐鉴赏",
   "Gallery.Type.scene": "场景鉴赏",
-  "Gallery.Untitled": "未命名资源"
+  "Gallery.Untitled": "未命名资源",
+  "Settings.FontSize": "字号",
+  "Settings.FontSize.Small": "小",
+  "Settings.FontSize.Smaller": "较小",
+  "Settings.FontSize.Larger": "较大",
+  "Settings.FontSize.Large": "大"
 }

@@ -26,7 +26,7 @@ SampleCustomization.ConfigureServices(services,
 
 `SampleCustomization.PlayerPalette` 同时供页面与桌面窗口使用，项目 `CreateStyles()` 默认使用该配色。窗口装饰使用独立 CaptionButton/TitleBar 资源；仅修改内容区域的 Button 样式不能覆盖原生关闭按钮。退出确认沿用此配色，在窗口内显示遮罩并暂时禁用背景内容。
 
-退出确认的布局在 `Views/PlayerView.axaml`：使用紧凑桌面确认框比例，18px 标题、14px 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。文字与按钮尺寸只在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由内置 `PlayerSurface` 维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
+退出确认的布局在 `Views/PlayerView.axaml`：使用紧凑桌面确认框比例，默认较小档为 18 设计单位标题、14 正文、靠右的内容宽度按钮，面板/按钮圆角分别为 6/4。字号跟随项目语义资源，按钮尺寸在此弹窗内定义；定制时可独立调整，取消默认焦点、Escape 取消和背景输入屏蔽由内置 `PlayerSurface` 维护。`SampleWindowThemeTests` 支持通过 `GALNET_THEME_CAPTURE_DIR` 输出中英文及最小窗口尺寸的截图。
 
 主页静态标题显式指定 `GalNet.Brush.TextPrimary`，避免退出确认禁用背景时继承容器的半透明禁用文字色。定制主页时保留这个前景色绑定；验证弹窗截图应挂载真实主页，再检查背景标题与取消后的恢复。
 
@@ -34,3 +34,20 @@ SampleCustomization.ConfigureServices(services,
 - 对话与 NVL 的内部部件分别需要 `PART_Typewriter`、`PART_Lines` 和 `PART_ScrollViewer`。不要在剧情播放中重建这些部件。
 - Sample 页面及业务命令在项目源码中；通过组合内置呈现、存档行和 Gallery 状态复用机制，不复制 presenter、媒体或游戏会话逻辑。应用布局与尺寸在项目 Styles/ 和 Views/ 中维护。
 - Palette 使用完整的语义资源字典。宿主若覆写资源，以玩家根的资源为准；不要跨多个根复用同一 `Styles` 实例。
+
+## 定制字号档位
+
+在 Sample 的 `PlayerTypography.cs` 修改 `Presets`。每档是一套字号，字段依次为页面标题、分组标题、正文、强调、操作、辅助、对白正文；不是统一缩放系数。默认较小档为 `new(64, 34, 18, 26, 18, 12, 22)`，保留桌面现有层级。历史、弹窗等细分资源按其语义角色保留原有比例，映射同样位于 Apply 方法，可按项目独立调整。
+
+例如在创建服务/视图前配置：
+
+```csharp
+PlayerTypography.Presets[FontSizePreset.Larger] =
+    PlayerTypography.Presets[FontSizePreset.Larger] with { Dialogue = 28, Emphasis = 30 };
+PlayerTypography.MobileDefault = FontSizePreset.Larger;
+PlayerTypography.DesktopDefault = FontSizePreset.Smaller;
+```
+
+`FontSizePreset` 位于 `GalNet.Avalonia.GameHost.Settings`。这里是项目源码配置，不是 Editor 的项目配置字段；玩家设置只选择档位。应用通过局部 DynamicResource 更新字号，不改写剧情内容或重新挂载 presenter。新增页面优先使用现有 `GalNet.Theme.*` 字号资源。截图弹窗通过 DI 读取当前玩家档位，独立创建时使用平台默认。
+
+剧情局部强调可以写 `<size=1.25em>大一点</size>`、`<size=+4>加四个单位</size>` 或 `<size=-2>小声</size>`；嵌套相对于父级字号。优先使用相对值，裸数字绝对字号不会跟随玩家偏好。完整语义与限制见[游戏页面规范](../../spec/presentation/game-view.md#玩家字号与富文本字号)。字号属于设计空间，真机检查时应同时看最终缩放和长文本布局。

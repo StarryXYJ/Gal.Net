@@ -45,3 +45,5 @@ Sample 的应用开场由项目 `OpeningSequence` 持有有序页面工厂，页
 同源相邻 audio.play 和文本以 rawId#n 的稳定编译身份关联；手写不同源音频不会自动变为对白语音。重播借用后端及原 track 的混音，以独立临时 voice 播放，不重新执行剧情。有效推进包括补全文字都会停止；单纯滚动历史或调整音量不会停止。
 
 默认设置增加 enableReadTextColor 与 readTextColor 玩家偏好，初始关闭、颜色 #A8B8C8。ReadTextStyle 的可继承 Foreground/WasRead 只作用于 TypewriterTextBlock 普通色片段；自定义布局无需改写富文本内容。ColorView 的 Fluent 样式由设置编辑器在自身作用域加载。
+
+默认设置还提供四档 `FontSizePreset`，以稳定枚举名称保存到玩家变量 `player.galnet.settings.fontSize`，沿用设置应用/保存队列。`AvaloniaPlayerSettingsService` 的 `defaultFontSize` 参数决定无有效保存值时的默认档（未指定时 Smaller），不负责具体字体数值。Sample 按平台传入默认档，由项目 `PlayerTypography` 定义各语义字号。恢复仅读取，未知名称、数值型或错误类型回退到平台默认，不写回默认值；恢复结束发出 SettingsChanged，应用更新局部资源。应用卸载时解除字号订阅；无须重建页面或修改剧情状态。
