@@ -17,6 +17,7 @@ public static class DefaultProjectConfiguration
     [
         Field("targetLocale", typeof(I18nLocale)), Field("availableLocales", typeof(List<I18nLocale>)),
         Field("defaultWidth", typeof(int), minimum: 1), Field("defaultHeight", typeof(int), minimum: 1),
+        Field("orientationPolicy", typeof(ProjectOrientationPolicy)), Field("defaultOrientation", typeof(ProjectDefaultOrientation)),
         Field("saveSlotCount", typeof(int), minimum: 0),
         Field("audioBuses", typeof(List<AudioBusDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>)),
         Field("defaultVisualPrograms", typeof(Dictionary<string, string>))

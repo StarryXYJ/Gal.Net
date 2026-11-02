@@ -213,6 +213,7 @@ public static class SampleCustomization
                 Configurations = ProjectSchemas.Configurations,
                 SelectDefaultCulture = configuration => configuration.ReadDefaultOptions().TargetLocale.Code
             },
+            ApplyProjectOrientationAsync = App.ApplyProjectOrientationAsync,
             SelectProjectOptions = configuration =>
             {
                 var options = configuration.ReadDefaultOptions();
@@ -220,7 +221,9 @@ public static class SampleCustomization
                 {
                     SaveSlotCount = options.SaveSlotCount,
                     DefaultCulture = options.TargetLocale.Code,
-                    Audio = new(options.AudioTracks, options.AudioBuses)
+                    Audio = new(options.AudioTracks, options.AudioBuses),
+                    OrientationPolicy = options.OrientationPolicy,
+                    DefaultOrientation = options.DefaultOrientation
                 };
             },
             ConfigureExecution = (registration, presentation, page, content) => ConfigureExecution(registration,

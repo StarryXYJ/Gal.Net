@@ -6,6 +6,7 @@ using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Avalonia.GameHost;
+using GalNet.Contracts.Builtins;
 using Ursa.Controls;
 
 namespace GalNet.Sample.CrossPlatform.Views;
@@ -18,6 +19,9 @@ public partial class MainWindow : UrsaWindow
     private WindowDecorations _windowedDecorations;
     private double _windowedTitleHeight;
     private bool _windowedExtendClientArea;
+    private ProjectOrientationPolicy _orientationPolicy = ProjectOrientationPolicy.Unforced;
+    private ProjectDefaultOrientation _defaultOrientation = ProjectDefaultOrientation.Landscape;
+    private bool _adjustingOrientation;
 
     public MainWindow()
     {
@@ -27,9 +31,11 @@ public partial class MainWindow : UrsaWindow
         if (OperatingSystem.IsWindows()) Win32Properties.AddWndProcHookCallback(this, FilterFullscreenMessages);
         Closed += (_, _) =>
         {
+            SizeChanged -= OnOrientationSizeChanged;
             if (OperatingSystem.IsWindows()) Win32Properties.RemoveWndProcHookCallback(this, FilterFullscreenMessages);
             DetachDebugBindings();
         };
+        SizeChanged += OnOrientationSizeChanged;
     }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
@@ -81,7 +87,9 @@ public partial class MainWindow : UrsaWindow
         var content = Content as Control;
         if (content is null || content.Bounds.Width <= 0 || content.Bounds.Height <= 0) return;
         var canvas = content.GetVisualDescendants().OfType<GalNet.Game.Controls.GameCanvasHost>().FirstOrDefault();
-        var ratio = canvas is { DesignWidth: > 0, DesignHeight: > 0 } ? (double)canvas.DesignWidth / canvas.DesignHeight : 16d / 9;
+        var canvasRatio = canvas is { DesignWidth: > 0, DesignHeight: > 0 } ? (double)canvas.DesignWidth / canvas.DesignHeight : 16d / 9;
+        var landscapeRatio = Math.Max(canvasRatio, 1d / canvasRatio);
+        var ratio = TargetOrientation == ProjectDefaultOrientation.Landscape ? landscapeRatio : 1d / landscapeRatio;
         var chrome = new Size(Math.Max(0, ClientSize.Width - content.Bounds.Width), Math.Max(0, ClientSize.Height - content.Bounds.Height));
         var screen = Screens.ScreenFromWindow(this);
         var frame = FrameSize ?? ClientSize;
@@ -99,6 +107,40 @@ public partial class MainWindow : UrsaWindow
             Position = new PixelPoint(Math.Clamp(Position.X, area.X, Math.Max(area.X, area.Right - (int)Math.Ceiling((size.Width + frameWidth) * RenderScaling))),
                 Math.Clamp(Position.Y, area.Y, Math.Max(area.Y, area.Bottom - (int)Math.Ceiling((size.Height + frameHeight) * RenderScaling))));
         }
+    }
+
+    public void ApplyProjectOrientation(ProjectOrientationPolicy policy, ProjectDefaultOrientation defaultOrientation)
+    {
+        _orientationPolicy = policy;
+        _defaultOrientation = defaultOrientation;
+        var landscape = TargetOrientation == ProjectDefaultOrientation.Landscape;
+        MinWidth = policy == ProjectOrientationPolicy.Unforced ? 500 : landscape ? 800 : 500;
+        MinHeight = policy == ProjectOrientationPolicy.Unforced ? 500 : landscape ? 500 : 800;
+        if (WindowState != WindowState.FullScreen) FitAspect();
+    }
+
+    private ProjectDefaultOrientation TargetOrientation => _orientationPolicy switch
+    {
+        ProjectOrientationPolicy.ForceLandscape => ProjectDefaultOrientation.Landscape,
+        ProjectOrientationPolicy.ForcePortrait => ProjectDefaultOrientation.Portrait,
+        _ => _defaultOrientation
+    };
+
+    private void OnOrientationSizeChanged(object? sender, SizeChangedEventArgs args)
+    {
+        if (_adjustingOrientation || _orientationPolicy == ProjectOrientationPolicy.Unforced || WindowState != WindowState.Normal ||
+            ClientSize.Width <= 0 || ClientSize.Height <= 0) return;
+        var landscape = TargetOrientation == ProjectDefaultOrientation.Landscape;
+        if (landscape == (ClientSize.Width >= ClientSize.Height)) return;
+        _adjustingOrientation = true;
+        try
+        {
+            var chromeWidth = Math.Max(0, Width - ClientSize.Width);
+            var chromeHeight = Math.Max(0, Height - ClientSize.Height);
+            if (landscape) Width = ClientSize.Height + chromeWidth + 1;
+            else Height = ClientSize.Width + chromeHeight + 1;
+        }
+        finally { _adjustingOrientation = false; }
     }
 
     partial void DetachDebugBindings();

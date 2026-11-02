@@ -85,7 +85,11 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
         ? L.Format("Settings.Project.ApplyFailed", EditorText.Error(error).Render(L))
         : HasDraft || _histories.Content.IsDirty ? L["Settings.Project.Unsaved"] : "";
     private void OnLocalizationChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs args)
-    { if (args.PropertyName == "Item[]") UpdateStatus(); }
+    {
+        if (args.PropertyName != "Item[]") return;
+        foreach (var section in Sections) section.RefreshLocalization();
+        UpdateStatus();
+    }
     private void OnProjectChanged(GalProject? _) => LoadFromProject();
     private void OnHistoryChanged() { if (!_histories.Content.IsBusy && !HasDraft) LoadFromProject(); }
     private void LoadFromProject()
@@ -107,7 +111,7 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
                 catch (Exception error) when (error is System.IO.InvalidDataException or JsonException or ArgumentException) { }
             }
             foreach (var section in project.Configurations.Sections)
-                Sections.Add(new(section, project.Configuration, FieldEditors, () => IsCurrent, RefreshDirty,
+                Sections.Add(new(section, project.Configuration, FieldEditors, L, () => IsCurrent, RefreshDirty,
                     field => section.Id != DefaultProjectConfiguration.Section.Id || field.Id is not ("targetLocale" or "availableLocales")));
             try
             {
