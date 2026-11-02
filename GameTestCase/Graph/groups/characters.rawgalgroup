@@ -1,0 +1,694 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "chapter-characters",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.chapter-characters",
+        "position": "Center",
+        "styleName": "chapter",
+        "blocking": true,
+        "holdSeconds": 1.2
+      }
+    },
+    {
+      "id": "clear-library-bg",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg"
+      }
+    },
+    {
+      "id": "clear-library-alice",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice"
+      }
+    },
+    {
+      "id": "clear-library-bob",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob"
+      }
+    },
+    {
+      "id": "stage-visual-bg",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000001",
+        "displayMode": "Fill",
+        "handleId": "visual-bg",
+        "z": 0
+      }
+    },
+    {
+      "id": "stage-visual-hero",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "handleId": "visual-hero",
+        "selection": {
+          "expression": "shy"
+        },
+        "transform": {
+          "x": 420,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "motion-lead",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "demo.motion-lead"
+      }
+    },
+    {
+      "id": "cue-jump",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-jump",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "jump",
+      "type": "preset.motion",
+      "condition": "",
+      "parameters": {
+        "distance": 24,
+        "durationFrames": 24,
+        "handleId": "visual-hero",
+        "motion": "Jump",
+        "playbackHandleId": "visual-jump"
+      }
+    },
+    {
+      "id": "pause-jump",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "cue-nod",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-nod",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "nod",
+      "type": "preset.motion",
+      "condition": "",
+      "parameters": {
+        "durationFrames": 30,
+        "handleId": "visual-hero",
+        "motion": "Nod",
+        "playbackHandleId": "visual-nod",
+        "rotationDegrees": 8
+      }
+    },
+    {
+      "id": "pause-nod",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "cue-shake",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-shake",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "shake",
+      "type": "preset.shake",
+      "condition": "",
+      "parameters": {
+        "amplitude": 12,
+        "angle": 15,
+        "durationFrames": 36,
+        "handleId": "visual-hero",
+        "playbackHandleId": "visual-shake"
+      }
+    },
+    {
+      "id": "pause-shake",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "cue-radial-lines",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-radial-lines",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "radial-lines",
+      "type": "preset.speedLines",
+      "condition": "",
+      "parameters": {
+        "durationFrames": 90,
+        "parameters": {
+          "mode": "Radial",
+          "density": 80,
+          "color": "#FFFFFF"
+        },
+        "playbackHandleId": "visual-radial-lines",
+        "program": "b1000000000000000000000000000006"
+      }
+    },
+    {
+      "id": "pause-radial-lines",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "cue-directional-lines",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-directional-lines",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "directional-lines",
+      "type": "preset.speedLines",
+      "condition": "",
+      "parameters": {
+        "durationFrames": 90,
+        "parameters": {
+          "mode": "Directional",
+          "angle": 0,
+          "color": "#FFFFFF"
+        },
+        "playbackHandleId": "visual-directional-lines",
+        "program": "b1000000000000000000000000000006",
+        "speed": 5
+      }
+    },
+    {
+      "id": "pause-directional-lines",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "cue-impact",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-impact",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "impact",
+      "type": "preset.impact",
+      "condition": "",
+      "parameters": {
+        "amplitude": 18,
+        "durationFrames": 48,
+        "handleId": "visual-hero",
+        "playbackHandleId": "visual-impact",
+        "program": "b1000000000000000000000000000006"
+      }
+    },
+    {
+      "id": "pause-impact",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "visual-impact",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.ending.entry.visual-impact.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "cue-push",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.cue-push",
+        "position": "TopLeft",
+        "styleName": "location",
+        "blocking": true,
+        "holdSeconds": 0.65
+      }
+    },
+    {
+      "id": "push",
+      "type": "preset.motion",
+      "condition": "",
+      "parameters": {
+        "anchorX": 200,
+        "distance": 0,
+        "durationFrames": 60,
+        "handleId": "visual-bg",
+        "motion": "Push",
+        "playbackHandleId": "visual-push",
+        "scale": 1.1
+      }
+    },
+    {
+      "id": "pause-push",
+      "type": "flow.wait",
+      "condition": "",
+      "parameters": {
+        "duration": 0.25
+      }
+    },
+    {
+      "id": "clear-visual-bg-2",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "visual-bg"
+      }
+    },
+    {
+      "id": "clear-visual-hero-2",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "visual-hero"
+      }
+    },
+    {
+      "id": "stage-library-bg",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg",
+        "assetId": "a1000000000000000000000000000001",
+        "displayMode": "Fill"
+      }
+    },
+    {
+      "id": "stage-library-alice",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice",
+        "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "transform": {
+          "x": -400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "stage-library-bob",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob",
+        "assetId": "a1000000000000000000000000000004",
+        "transform": {
+          "x": 400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "flash",
+      "type": "preset.flash",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-lightning",
+        "count": 3,
+        "durationFrames": 90
+      }
+    },
+    {
+      "id": "idle-Breathe",
+      "type": "preset.idle",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-idle",
+        "handleId": "library-alice",
+        "motion": "Breathe",
+        "durationFrames": 180
+      }
+    },
+    {
+      "id": "idle-Breathe-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.idle-Breathe-note.content"
+      }
+    },
+    {
+      "id": "idle-Breathe-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-idle",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "idle-Sway",
+      "type": "preset.idle",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-idle",
+        "handleId": "library-alice",
+        "motion": "Sway",
+        "durationFrames": 180
+      }
+    },
+    {
+      "id": "idle-Sway-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.idle-Sway-note.content"
+      }
+    },
+    {
+      "id": "idle-Sway-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-idle",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "emphasis-0",
+      "type": "dialogue.emphasis",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "speaker-0",
+        "instanceId": "library-speaker",
+        "program": "b1000000000000000000000000000004",
+        "handleIds": [
+          "library-alice",
+          "library-bob"
+        ],
+        "activeHandleId": "library-alice",
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.emphasis-0.content",
+        "voice": "a1000000000000000000000000000010",
+        "trackId": "vocal"
+      }
+    },
+    {
+      "id": "emphasis-1",
+      "type": "dialogue.emphasis",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "speaker-1",
+        "instanceId": "library-speaker",
+        "program": "b1000000000000000000000000000004",
+        "handleIds": [
+          "library-alice",
+          "library-bob"
+        ],
+        "activeHandleId": "library-bob",
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.emphasis-1.content",
+        "voice": "a1000000000000000000000000000010",
+        "trackId": "vocal"
+      }
+    },
+    {
+      "id": "emphasis-clear",
+      "type": "preset.emphasis",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "speaker-clear",
+        "instanceId": "library-speaker",
+        "program": "b1000000000000000000000000000004",
+        "handleIds": [
+          "library-alice",
+          "library-bob"
+        ],
+        "clear": true
+      }
+    },
+    {
+      "id": "mood-Memory",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Memory",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Memory"
+      }
+    },
+    {
+      "id": "mood-Memory-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mood-Memory-note.content"
+      }
+    },
+    {
+      "id": "mood-Memory-exit",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Memory-exit",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Memory",
+        "exit": true
+      }
+    },
+    {
+      "id": "mood-Dream",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Dream",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Dream"
+      }
+    },
+    {
+      "id": "mood-Dream-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mood-Dream-note.content"
+      }
+    },
+    {
+      "id": "mood-Dream-exit",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Dream-exit",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Dream",
+        "exit": true
+      }
+    },
+    {
+      "id": "mood-Tension",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Tension",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Tension"
+      }
+    },
+    {
+      "id": "mood-Tension-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mood-Tension-note.content"
+      }
+    },
+    {
+      "id": "mood-Tension-exit",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Tension-exit",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Tension",
+        "exit": true
+      }
+    },
+    {
+      "id": "mood-Injury",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Injury",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Injury"
+      }
+    },
+    {
+      "id": "mood-Injury-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.mood-Injury-note.content"
+      }
+    },
+    {
+      "id": "mood-Injury-exit",
+      "type": "preset.mood",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "mood-Injury-exit",
+        "instanceId": "library-mood",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
+        "mood": "Injury",
+        "exit": true
+      }
+    },
+    {
+      "id": "heartbeat",
+      "type": "preset.heartbeat",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-heartbeat",
+        "program": "b1000000000000000000000000000003",
+        "handleId": "library-alice",
+        "durationFrames": 90
+      }
+    },
+    {
+      "id": "heartbeat-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.heartbeat-note.content"
+      }
+    },
+    {
+      "id": "heartbeat-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-heartbeat",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "parallax",
+      "type": "preset.parallax",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-parallax",
+        "durationFrames": 120,
+        "targets": [
+          {
+            "handleId": "library-bg",
+            "transform": {},
+            "factor": 0.25
+          },
+          {
+            "handleId": "library-alice",
+            "transform": {
+              "x": -400,
+              "y": 80
+            },
+            "factor": 1
+          },
+          {
+            "handleId": "library-bob",
+            "transform": {
+              "x": 400,
+              "y": 80
+            },
+            "factor": 1.2
+          }
+        ]
+      }
+    },
+    {
+      "id": "parallax-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.parallax-note.content"
+      }
+    }
+  ]
+}

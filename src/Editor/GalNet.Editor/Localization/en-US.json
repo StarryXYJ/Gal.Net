@@ -443,6 +443,7 @@
   "Entry.Parameter.bladeCount": "Blade count",
   "Entry.Parameter.blendMode": "Blend mode",
   "Entry.Parameter.blocking": "Wait for completion",
+  "Entry.Parameter.clear": "Clear",
   "Entry.Parameter.clearQueue": "Clear queue",
   "Entry.Parameter.count": "Count",
   "Entry.Parameter.curve": "Curve",

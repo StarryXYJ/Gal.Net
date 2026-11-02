@@ -5,7 +5,7 @@
   "group.intro.entry.variants-default.content": "背景请求 classroom_speech_empty，没有匹配，显示显式默认图 classroom_idle_empty。此处也可存读档。",
   "group.intro.entry.variants-scene.content": "第三维切换为 teacher，命中 classroom_speech_teacher；先前请求的 speech 得以保留。",
   "group.intro.entry.variants-reset.content": "隐藏后重新显示立绘，选择重置为默认 xy_idle；后续循环动画期间会切换至 wink。",
-  "group.intro.entry.intro-line-1.content": "运行时示例由 raw 作者内容编译而成。测试背景音乐正在 bgm 轨道上淡入。",
+  "group.intro.entry.intro-line-1.content": "从图集选择开始：观察精确命中、回退、选择记忆与重新显示。",
   "group.intro.entry.intro-video-background.content": "niko.mp4 是位于立绘下方的场景图层，带有旋转、缩放和透明度。非阻塞视频允许对话继续推进；推进后将停止视频。",
   "group.intro.entry.intro-line-effect-on.content": "seffect.gain 轨道效果已启用，场景继续时背景音乐音量会降低。",
   "group.intro.entry.intro-line-effect-off.content": "轨道效果已移除，背景音乐音量已恢复。",
@@ -17,6 +17,6 @@
   "group.intro.entry.nvl-append-rich.content": "<b>NVL 已显示。</b>\\skip <color=#8E8AB8>富文本</color>和打字机跳过边界均已启用。",
   "group.intro.entry.nvl-append-history.content": "这是可滚动 NVL 历史中的第二段。",
   "group.intro.entry.nvl-append-after-clear.content": "之前的 NVL 历史已清空，随后追加了这一段。",
-  "group.intro.entry.intro-line-5.content": "背景音乐正在播放途中淡出。选择路线以查看转场和粒子效果。",
+  "group.intro.entry.intro-line-5.content": "基础音频演示完成。接下来在同一章节继续比较新音效。",
   "group.intro.entry.audio-save-checkpoint.content": "在这里新建存档再读档：场景与轨道 gain 效果会恢复，BGM 保持暂停。推进后从头恢复播放。"
 }

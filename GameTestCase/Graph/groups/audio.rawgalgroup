@@ -1,0 +1,643 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "chapter-audio",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.chapter-audio",
+        "position": "Center",
+        "styleName": "chapter",
+        "blocking": true,
+        "holdSeconds": 1.2
+      }
+    },
+    {
+      "id": "clear-background",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "background"
+      }
+    },
+    {
+      "id": "clear-teacher",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "teacher"
+      }
+    },
+    {
+      "id": "stage-background",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000021",
+        "displayMode": "Fill",
+        "handleId": "background",
+        "opacity": 1,
+        "transform": {
+          "x": 0,
+          "y": 0,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 0
+      }
+    },
+    {
+      "id": "stage-teacher",
+      "type": "variants.show",
+      "condition": "",
+      "parameters": {
+        "assetId": "a1000000000000000000000000000020",
+        "displayMode": "Native",
+        "handleId": "teacher",
+        "opacity": 1,
+        "selection": {
+          "expression": "shock"
+        },
+        "transform": {
+          "x": 420,
+          "y": 80,
+          "rotationDegrees": 0,
+          "scaleX": 1,
+          "scaleY": 1
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "bgm-fade-in",
+      "type": "audio.play",
+      "condition": "",
+      "parameters": {
+        "asset": "a1000000000000000000000000000010",
+        "fadeIn": 2,
+        "gain": 1,
+        "placement": "replace",
+        "trackId": "bgm",
+        "announceName": true
+      }
+    },
+    {
+      "id": "audio-lead",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "demo.audio-lead"
+      }
+    },
+    {
+      "id": "bgm-duck",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.gain",
+        "instanceId": "sample-bgm-duck",
+        "parameters": {
+          "gain": 0.35
+        },
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-effect-on",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-effect-on.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-pause-for-save",
+      "type": "audio.pause",
+      "condition": "",
+      "parameters": {
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "audio-save-checkpoint",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.audio-save-checkpoint.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-resume-after-save",
+      "type": "audio.resume",
+      "condition": "",
+      "parameters": {
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-unduck",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-bgm-duck",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-effect-off",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-effect-off.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-room",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.reverb",
+        "instanceId": "sample-room",
+        "parameters": {
+          "roomSize": 0.65,
+          "decaySeconds": 1.8,
+          "damping": 0.4,
+          "mix": 0.25
+        },
+        "scope": "bus",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-low-pass",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.lowPass",
+        "instanceId": "sample-bgm-low-pass",
+        "parameters": {
+          "cutoffHz": 900,
+          "q": 0.7071
+        },
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-low-pass",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-low-pass.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-stop-low-pass",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-bgm-low-pass",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-high-pass",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "id": "seffect.highPass",
+        "instanceId": "sample-bgm-high-pass",
+        "parameters": {
+          "cutoffHz": 1200,
+          "q": 0.7071
+        },
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-high-pass",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-high-pass.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "bgm-stop-high-pass",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-bgm-high-pass",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-room-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "sample-room",
+        "scope": "bus",
+        "targetId": "bgm"
+      }
+    },
+    {
+      "id": "bgm-fade-out",
+      "type": "audio.stop",
+      "condition": "",
+      "parameters": {
+        "clearQueue": "true",
+        "fadeOut": 2,
+        "trackId": "bgm"
+      }
+    },
+    {
+      "id": "intro-line-5",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.intro-line-5.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "music",
+      "type": "audio.play",
+      "condition": "",
+      "parameters": {
+        "trackId": "bgm",
+        "asset": "a1000000000000000000000000000009",
+        "placement": "replaceAll",
+        "loopCount": 0,
+        "announceName": true
+      }
+    },
+    {
+      "id": "audio-dry",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "demo.audio-dry",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "audio-delay",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio",
+        "id": "seffect.delay",
+        "parameters": {
+          "delaySeconds": 0.3,
+          "feedback": 0.35,
+          "mix": 0.4
+        }
+      }
+    },
+    {
+      "id": "audio-delay-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-delay-note.content"
+      }
+    },
+    {
+      "id": "audio-delay-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio"
+      }
+    },
+    {
+      "id": "audio-pan",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio",
+        "id": "seffect.pan",
+        "parameters": {
+          "pan": -1
+        }
+      }
+    },
+    {
+      "id": "audio-pan-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-pan-note.content"
+      }
+    },
+    {
+      "id": "audio-pan-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio"
+      }
+    },
+    {
+      "id": "audio-eq",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio",
+        "id": "seffect.eq",
+        "parameters": {
+          "frequencyHz": 1000,
+          "gainDb": 12,
+          "q": 1
+        }
+      }
+    },
+    {
+      "id": "audio-eq-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-eq-note.content"
+      }
+    },
+    {
+      "id": "audio-eq-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio"
+      }
+    },
+    {
+      "id": "audio-distortion",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio",
+        "id": "seffect.distortion",
+        "parameters": {
+          "drive": 5,
+          "mix": 0.5
+        }
+      }
+    },
+    {
+      "id": "audio-distortion-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-distortion-note.content"
+      }
+    },
+    {
+      "id": "audio-distortion-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio"
+      }
+    },
+    {
+      "id": "audio-bitcrusher",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio",
+        "id": "seffect.bitcrusher",
+        "parameters": {
+          "bits": 5,
+          "downsample": 4,
+          "mix": 0.6
+        }
+      }
+    },
+    {
+      "id": "audio-bitcrusher-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-bitcrusher-note.content"
+      }
+    },
+    {
+      "id": "audio-bitcrusher-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio"
+      }
+    },
+    {
+      "id": "audio-compressor",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio",
+        "id": "seffect.compressor",
+        "parameters": {
+          "thresholdDb": -25,
+          "ratio": 8,
+          "attackMs": 5,
+          "releaseMs": 120
+        }
+      }
+    },
+    {
+      "id": "audio-compressor-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-compressor-note.content"
+      }
+    },
+    {
+      "id": "audio-compressor-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-audio"
+      }
+    },
+    {
+      "id": "filter",
+      "type": "audio.seffect.apply",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-filter",
+        "id": "seffect.lowPass",
+        "parameters": {
+          "cutoffHz": 20000
+        }
+      }
+    },
+    {
+      "id": "filter-animation",
+      "type": "timeline.play",
+      "condition": "",
+      "parameters": {
+        "timeline": {
+          "playbackHandleId": "library-audio-fade",
+          "frameRate": 60,
+          "durationFrames": 180,
+          "blocking": true,
+          "skippable": true,
+          "tracks": [],
+          "events": [
+            {
+              "frame": 90,
+              "type": "audio.play",
+              "parameters": {
+                "trackId": "sfx",
+                "asset": "a1000000000000000000000000000010",
+                "placement": "replace",
+                "gain": 0.3
+              }
+            },
+            {
+              "frame": 180,
+              "type": "audio.stop",
+              "parameters": {
+                "trackId": "sfx",
+                "fadeOut": 0.2
+              }
+            }
+          ],
+          "audioTracks": [
+            {
+              "scope": "Bus",
+              "targetId": "bgm",
+              "instanceId": "library-filter",
+              "parameter": "cutoffHz",
+              "keys": [
+                {
+                  "frame": 0,
+                  "value": 20000
+                },
+                {
+                  "frame": 180,
+                  "value": 500
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "audio-fade-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.audio-fade-note.content"
+      }
+    },
+    {
+      "id": "filter-stop",
+      "type": "audio.seffect.stop",
+      "condition": "",
+      "parameters": {
+        "scope": "bus",
+        "targetId": "bgm",
+        "instanceId": "library-filter"
+      }
+    },
+    {
+      "id": "duck-on",
+      "type": "audio.duck",
+      "condition": "",
+      "parameters": {
+        "sourceTrackId": "vocal",
+        "targetId": "bgm",
+        "scope": "bus",
+        "gain": 0.25
+      }
+    },
+    {
+      "id": "voice-with-duck",
+      "type": "audio.play",
+      "condition": "",
+      "parameters": {
+        "trackId": "vocal",
+        "asset": "a1000000000000000000000000000010",
+        "placement": "replaceAll"
+      }
+    },
+    {
+      "id": "duck-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.duck-note.content"
+      }
+    },
+    {
+      "id": "duck-off",
+      "type": "audio.duck",
+      "condition": "",
+      "parameters": {
+        "enabled": false
+      }
+    },
+    {
+      "id": "audio-stop",
+      "type": "audio.stop",
+      "condition": "",
+      "parameters": {
+        "trackId": "bgm",
+        "fadeOut": 0.5
+      }
+    },
+    {
+      "id": "voice-stop",
+      "type": "audio.stop",
+      "condition": "",
+      "parameters": {
+        "trackId": "vocal",
+        "clearQueue": "true"
+      }
+    }
+  ]
+}

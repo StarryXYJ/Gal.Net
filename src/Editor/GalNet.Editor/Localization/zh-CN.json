@@ -443,6 +443,7 @@
   "Entry.Parameter.bladeCount": "百叶数量",
   "Entry.Parameter.blendMode": "混合模式",
   "Entry.Parameter.blocking": "等待完成",
+  "Entry.Parameter.clear": "清除",
   "Entry.Parameter.clearQueue": "清空队列",
   "Entry.Parameter.count": "数量",
   "Entry.Parameter.curve": "曲线",

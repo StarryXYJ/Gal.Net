@@ -35,7 +35,7 @@ public class GameTestCaseTests
             var content = await new InstalledGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             using var assets = new AssetManager([new PakFileProvider(Path.Combine(output, "Assets/Paks/000-base.pak"), "assets", types)]);
             var programs = content.Configuration.ReadDefaultOptions().DefaultVisualPrograms;
-            Assert.That(programs, Has.Count.EqualTo(8));
+            Assert.That(programs, Has.Count.EqualTo(16));
             foreach (var id in programs.Values)
             {
                 var file = await assets.GetFileAsync(id);
@@ -94,6 +94,7 @@ public class GameTestCaseTests
                 Assert.That(presenter.Nvl, Has.Count.EqualTo(3));
                 Assert.That(presenter.Choices, Has.Count.EqualTo(2));
                 Assert.That(presenter.Lines.Select(line => line.Text), Has.None.StartsWith("group."));
+                Assert.That(presenter.Lines.Select(line => line.Text), Has.None.StartsWith("demo."));
                 Assert.That(presenter.Nvl, Has.None.StartsWith("group."));
                 Assert.That(presenter.Choices, Has.None.StartsWith("branch."));
                 Assert.That(presenter.Nvl[0], Does.Contain("<b>").And.Contain("\\skip"));
@@ -120,7 +121,7 @@ public class GameTestCaseTests
             {
                 Assert.That(content.Graph.RootNodeId, Is.EqualTo("entry"));
                 Assert.That(content.Graph.Nodes.OfType<Group>().Single(group => group.Id == "entry").Entries, Is.Empty);
-                Assert.That(groups, Has.Length.EqualTo(6));
+                Assert.That(groups, Has.Length.EqualTo(15));
                 Assert.That(groups, Has.All.Matches<Group>(group => group.Entries.Count > 0));
                 Assert.That(groups.SelectMany(group => group.Entries), Has.All.TypeOf<PrimitiveEntry>());
                 Assert.That(groups.Single(group => group.Id == "intro").Entries.OfType<PrimitiveEntry>(),

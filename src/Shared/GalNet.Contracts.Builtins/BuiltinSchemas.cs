@@ -106,7 +106,7 @@ public static class BuiltinSchemas
     public static IEntryModule CreateParticlesModule() => new DefaultEntryModule("particles",
     [
         DefaultPrimitiveEntryBase.ForDto<ParticlePlayOptions>(BuiltinEntryIds.PlayParticleEmitter, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.PlayParticleEmitter, arguments), validatePartialArguments: static _ => { }),
-        DefaultPrimitiveEntryBase.ForDto<InstanceIdOptions>(BuiltinEntryIds.StopParticleEmitter),
+        DefaultPrimitiveEntryBase.ForDto<ParticleStopOptions>(BuiltinEntryIds.StopParticleEmitter),
         DefaultPrimitiveEntryBase.ForDto<ParticleBurstOptions>(BuiltinEntryIds.BurstParticles, arguments => BuiltinArgumentValidation.Validate(BuiltinEntryIds.BurstParticles, arguments), validatePartialArguments: static _ => { })
     ]);
 

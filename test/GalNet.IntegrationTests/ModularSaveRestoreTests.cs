@@ -31,7 +31,7 @@ public class ModularSaveRestoreTests
         while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "GalNet.slnx"))) directory = directory.Parent;
         Assert.That(directory, Is.Not.Null);
         var source = JsonSerializer.Deserialize<GroupDocument>(await File.ReadAllTextAsync(
-            Path.Combine(directory!.FullName, "GameTestCase", "Graph", "groups", "intro.rawgalgroup")))!;
+            Path.Combine(directory!.FullName, "GameTestCase", "Graph", "groups", "audio.rawgalgroup")))!;
         var checkpointIndex = source.Entries.FindIndex(entry => entry.Id == "audio-save-checkpoint");
         Assert.That(checkpointIndex, Is.GreaterThan(0));
         // Consume real authoring entries; omit unrelated dialogue/gallery/media UI from this persistence smoke.
@@ -70,8 +70,8 @@ public class ModularSaveRestoreTests
             await using var restoration = new StateRestoreSession(view);
             await restored.SynchronizePresentationAsync(restoration.RestoreAsync);
             Assert.That(restored.Runtime.State.Table<Layer>().Values.Select(value => value.Id), Is.EquivalentTo(new[] { "background", "teacher" }));
-            Assert.That(restored.Runtime.State.Table<Layer>().Get("teacher").Variants!.VariantKey, Is.EqualTo("xy_idle"));
-            Assert.That(restored.Runtime.State.Table<Layer>().Get("background").Variants!.VariantKey, Is.EqualTo("classroom_speech_teacher"));
+            Assert.That(restored.Runtime.State.Table<Layer>().Get("teacher").Variants!.VariantKey, Is.EqualTo("xy_shock"));
+            Assert.That(restored.Runtime.State.Table<Layer>().Get("background").Variants!.VariantKey, Is.EqualTo("classroom_idle_empty"));
             Assert.That(restored.Runtime.State.Table<AudioTrackState>().Get("bgm").Paused, Is.True);
             Assert.That(restored.Runtime.State.Table<AudioSEffectState>().Values.Single().SEffectId, Is.EqualTo("seffect.gain"));
             Assert.That(host.Requests.Count(value => value.Action == AudioBackendAction.Start), Is.EqualTo(1));

@@ -157,3 +157,11 @@ public partial class ParticleBurstOptions
     [Field(1, EditorId = ValueEditorIds.Numeric)] public float Z { get; set; } = 100;
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
 }
+
+[GenerateFieldSchema]
+public partial class ParticleStopOptions
+{
+    [Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }
+    /// <summary>Remove existing particles immediately instead of allowing them to drain.</summary>
+    [Field(1)] public bool Clear { get; set; }
+}

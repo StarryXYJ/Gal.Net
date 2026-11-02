@@ -387,7 +387,7 @@ public class BuiltinPrimitiveInstanceTests
                 },
                 new TimelineEventDefinition { Frame = 0, Type = BuiltinEntryIds.BurstParticles, Parameters = Parameters(("count", 8), ("z", 90), ("parameters", burstParameters)) },
                 new TimelineEventDefinition { Frame = 1, Type = BuiltinEntryIds.BurstParticles, Parameters = Parameters(("count", 12), ("z", 95), ("parameters", burstParameters)) },
-                new TimelineEventDefinition { Frame = 1, Type = BuiltinEntryIds.StopParticleEmitter, Parameters = Parameters(("instanceId", "timed-snow")) }
+                new TimelineEventDefinition { Frame = 1, Type = BuiltinEntryIds.StopParticleEmitter, Parameters = Parameters(("instanceId", "timed-snow"), ("clear", true)) }
             }
         };
 
@@ -399,6 +399,7 @@ public class BuiltinPrimitiveInstanceTests
             Assert.That(particles.Started.Single().InstanceId, Is.EqualTo("timed-snow"));
             Assert.That(particles.Bursts.Select(request => request.Count), Is.EqualTo(TimedBurstCounts));
             Assert.That(particles.Stopped, Is.EqualTo(TimedSnowStopped));
+            Assert.That(particles.Cleared, Is.EqualTo(TimedSnowStopped));
             Assert.That(runtime.State.Table<ParticleEmitterInstance>().Values, Is.Empty);
         });
     }
@@ -908,6 +909,12 @@ public class BuiltinPrimitiveInstanceTests
         public List<ParticleEmitterRequest> Started { get; } = [];
         public List<ParticleBurstRequest> Bursts { get; } = [];
         public List<string> Stopped { get; } = [];
+        public List<string> Cleared { get; } = [];
+        public Task StopParticleEmitterAsync(string instanceId, bool clear, CancellationToken cancellationToken)
+        {
+            if (clear) Cleared.Add(instanceId);
+            return StopParticleEmitterAsync(instanceId, cancellationToken);
+        }
 
         public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken cancellationToken)
         {

@@ -57,7 +57,8 @@ public sealed record ParticleEmitterDefinition(
             Size = FloatRange(value, "size", new ParticleFloatRange(1, 1), .001f),
             RotationDegrees = FloatRange(value, "rotationDegrees", new ParticleFloatRange(0, 0)),
             AngularVelocityDegrees = FloatRange(value, "angularVelocityDegrees", new ParticleFloatRange(0, 0)),
-            Color = ColorRange(value, "color", new ParticleColorRange())
+            Color = ColorRange(value, "color", new ParticleColorRange()),
+            AlignToVelocity = Boolean(value, "alignToVelocity", false)
         };
     }
 
@@ -230,6 +231,7 @@ public sealed record ParticleInitialDefinition
     public ParticleFloatRange RotationDegrees { get; init; } = new(0, 0);
     public ParticleFloatRange AngularVelocityDegrees { get; init; } = new(0, 0);
     public ParticleColorRange Color { get; init; } = new();
+    public bool AlignToVelocity { get; init; }
 }
 
 public sealed record ParticleMotionDefinition

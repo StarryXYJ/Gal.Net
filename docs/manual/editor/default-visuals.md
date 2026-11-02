@@ -118,7 +118,7 @@ Push 的 anchorX/anchorY 为相对画布中心的逻辑坐标。锚点缩放与 
 
 ## 展示与范围
 
-GameTestCase 两条路线的 ending 组均展示调色、Bloom、暗角、Z 切焦、人物动作、多层震动、两种动态集中线、冲击、柔边擦除、模糊转场和图片遮罩溶解，附中英文说明。遮罩示例使用普通背景图片的亮度。
+GameTestCase 按主题分组比较基础与扩展视觉库：`shaders` 集中展示 shader/景深，`masks` 展示遮罩，`characters` 展示人物与情绪，`weather` 展示天气，`transitions` 展示转场。两条路线均可体验完整案例；详见 [演示项目](../../../GameTestCase/README.md)。
 
 真实相机/深度图景深、散景、自动镜头跟随、描边和翻页尚未实现。下面的扩展库提供显式视差、胶片/故障/波纹、天气和文本卡。
 
@@ -138,7 +138,7 @@ GameTestCase 两条路线的 ending 组均展示调色、Bloom、暗角、Z 切�
 | ShapeMask | mode=Rectangle/RoundedRectangle/Ellipse/Eyelid/Image/Letterbox、progress、centerX/centerY、width/height、rotation、cornerRadius、feather、invert、overlay、color、可选 mask 图片 |
 | Mood | strength、mode=Memory/Dream/Tension/Injury |
 
-动态 shader 的 time 仍需 Timeline 驱动。shader 颜色为 `#RRGGBB` / `#RRGGBBAA`；颜色图层与粒子沿用 `#RRGGBB` / `#AARRGGBB`，不能混用八位颜色顺序。
+动态 shader 的 time 仍需 Timeline 驱动。shader 与粒子颜色为 `#RRGGBB` / `#RRGGBBAA`；颜色图层沿用 `#RRGGBB` / `#AARRGGBB`，不能混用八位颜色顺序。
 
 ShapeMask 的中心、宽高相对画布归一化，feather/cornerRadius 相对画布短边，rotation 为度。feather=0 表示硬边。overlay=false 时裁切目标图层透明度；overlay=true 时在独立颜色图层上绘制遮挡色。Image 模式按图片亮度渐进遮挡，progress=0 完全显露、1 完全遮挡；Eyelid 为 0 完全闭合、1 完全打开。
 
@@ -154,15 +154,17 @@ ShapeMask 的中心、宽高相对画布归一化，feather/cornerRadius 相对�
 | preset.emphasis | program（ColorGrade）、instanceId、handleIds、activeHandleId、dimExposure、clear |
 | dialogue.emphasis | 强调参数加 speaker/content、可选 voice/trackId；强调动画非阻塞并与既有对白/语音组合 |
 
-所有视觉 clip 沿用 playbackHandleId、frameRate、durationFrames、blocking、skippable、batchId。持续 idle/weather/heartbeat 用 `animation.stop` 停止，复用指定时长与 UntilStopped 规则。停止时只收回各自资源/相对偏移。天气纹理是可编辑项目资源，不表示高级粒子碰撞或真实发光。
+所有视觉 clip 沿用 playbackHandleId、frameRate、durationFrames、blocking、skippable、batchId。持续 idle/weather/heartbeat 用 `animation.stop` 停止，复用指定时长与 UntilStopped 规则。停止时只收回各自资源/相对偏移。天气发射区域使用左上角原点的像素坐标。雨、雪、花瓣从画面上方 16 像素的全宽发射带落入；尘埃和萤火虫在 width×height 范围浮动。停止天气 Timeline 使用 `particle.stop.clear=false`，仅停止旧轮发射；已有粒子自然淡出并在排空后释放，不阻塞下一轮开始。要让新旧天气短暂共存，使用不同的 playbackHandleId；同 ID 仍表示替换。手动需要立即清除时可使用 `particle.stop.clear=true`。雨滴默认细长半透明，并叠加 250 px/s 的水平风速形成斜雨；`wind` 可进一步调整。发射带向上风侧扩展，保持下游覆盖。雨丝朝向跟随速度，花瓣颜色为桃红至粉红。为避免数量上限导致成批断档，天气实际发射速率取 `min(rate, maxParticles/(最大寿命+0.1))`；需要更高密度时相应提高 maxParticles。GameTestCase 在斜雨之后加入径向雨：用普通粒子 circle/radialVelocity 和 `initial.alignToVelocity=true` 从中心向外发射。天气纹理是可编辑项目资源，不表示高级粒子碰撞或真实发光。新雨滴模板为 4×64 的透明渐隐线条；模板升级不会覆盖既有项目纹理，既有项目要得到相同外观需替换 Rain 绑定的纹理，保留其资源 GUID。
 
 遮罩默认只在场景内按 z 排序。`overlay=true` 的遮罩颜色层在默认 PlayerSurface 的透明覆盖面合成，覆盖场景、对白和文本卡；系统退出/返回确认始终更高。Close/LetterboxIn/Show 保留遮罩，Open/LetterboxOut/Hide/Blink 完成后清理；跨条目开关同一遮罩须使用相同 instanceId。
+
+Blink/Open/Close 默认羽化为 `0.025`，可由 `parameters.feather` 覆写（含 `0` 硬边）。眼睑开口会扩大，`progress=0.65..1` 平滑淡出剩余角落遮挡，完全睁开不再切换可见性。闭合端连续收束羽化；边界预留两个 shader 像素。遮罩预设使用零切线三次 Hermite 缓动，Blink 在闭合保持段两端平滑衔接。
 
 说话人强调要求显式给出完整参与图层和当前活动图层。相同 instanceId/参与图层沿用自己的调色实例，从当前显示值继续变化；下一次切换前不自动恢复。clear=true 渐变回中性后只移除自己的效果。`effect.apply.ensureOnly=true` 可确保同 program/target 的现有实例不被重建；身份已被不同 program/target 占用时拒绝。强调不自动映射角色和立绘，不修改其他调色实例。
 
 新转场为 `transition.flash`、`transition.zoom`、`transition.pixelate`、`transition.glitch`，沿用交叉淡化的旧/新图层、资源、变换和时间参数。pixelate/glitch 还需显式 program；strength 控制强度，zoom 可指定 anchorX/Y。
 
-GameTestCase 的 `presentation-library` 组接在 ending 后，两条路线均可到达；包含 139 个作者条目、54 条中英文说明。覆盖九宫格/同位置替换、全部新 shader、两种遮罩覆盖面、人物强调、天气、情绪、视差、新转场和音频演示。
+GameTestCase 的 `presentation-library` 现在集中展示文本卡，与 `intro` 的文本/图集案例相邻；音效集中在 `audio`，视频集中在 `media`。每章有中英文标题和引导，并显式准备、清理布景。
 
 ## 通用文本卡
 

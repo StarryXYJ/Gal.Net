@@ -1,6 +1,6 @@
 {
-  "group.presentation-library.entry.chapter.content": "演出库扩展示例",
-  "group.presentation-library.entry.intro.content": "每段对白停留时，可以观察新效果、遮罩、文本卡、天气与音频。",
+  "group.presentation-library.entry.chapter.content": "文本卡：九宫格布局",
+  "group.presentation-library.entry.intro.content": "先观察各位置的进入方向，再比较同位置替换。",
   "group.presentation-library.entry.position-0.content": "TopLeft 位置文本卡",
   "group.presentation-library.entry.position-1.content": "Left 位置文本卡",
   "group.presentation-library.entry.position-2.content": "BottomLeft 位置文本卡",
@@ -28,7 +28,7 @@
   "group.presentation-library.entry.idle-Sway-note.content": "Sway 停止后恢复基准姿态。",
   "group.presentation-library.entry.emphasis-0.content": "显式说话人强调：library-alice",
   "group.presentation-library.entry.emphasis-1.content": "显式说话人强调：library-bob",
-  "group.presentation-library.entry.weather-Rain-note.content": "Rain 使用单个持续发射器。",
+  "group.presentation-library.entry.weather-Rain-note.content": "斜雨：连续发射细长雨丝。推进可切到径向雨，旧雨丝继续落下并自然释放。",
   "group.presentation-library.entry.weather-Snow-note.content": "Snow 使用单个持续发射器。",
   "group.presentation-library.entry.weather-Petals-note.content": "Petals 使用单个持续发射器。",
   "group.presentation-library.entry.weather-Dust-note.content": "Dust 使用单个持续发射器。",

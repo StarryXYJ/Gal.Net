@@ -443,6 +443,7 @@
   "Entry.Parameter.bladeCount": "블라인드 수",
   "Entry.Parameter.blendMode": "혼합 모드",
   "Entry.Parameter.blocking": "완료 대기",
+  "Entry.Parameter.clear": "지우기",
   "Entry.Parameter.clearQueue": "대기열 비우기",
   "Entry.Parameter.count": "개수",
   "Entry.Parameter.curve": "곡선",

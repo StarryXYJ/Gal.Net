@@ -13,6 +13,7 @@
 - `audio.play` / `audio.enqueue` 的 `loopCount` 默认 1，0 为无限重复；`completion` 默认为 `discard`，`requeueTail` 在完整播放次数结束后回到队尾。单项重复优先于 completion，失败、停止、替换、next 与 scope 清理不触发重播。每轮重新生成后端 identity；这是结束事件驱动的重复播放，不承诺无缝。有限循环保存 `CompletedIterations`，旧数据缺省为 0；旧请求缺省仍为一次播放并丢弃，当前轨道与效果状态表为 v2，旧档不能混用。无限循环计数不累加。暂停期间结束的播放保留逻辑项，Resume 后启动新一轮。
 - `audio.seffect.apply` / `audio.seffect.update` / `audio.seffect.stop`：以 `scope`（track/bus）、`targetId` 和 `instanceId` 管理有序目标效果链。默认 PCM 后端支持 gain、真正的二阶 lowPass/highPass（cutoffHz/q）和 reverb（roomSize/decaySeconds/damping/mix），不再使用 EQ 频段近似。apply 同实例更新保留顺序；update 只合并已有实例的参数，整体验证后更新，缺失实例不创建。stop 默认精确停止，`all=true` 显式移除该目标的全部效果，与非空 instanceId 互斥。启停平滑；参数或目标非法则诊断。`audio.mix.set` 保存独立于玩家偏好的目标 gain/muted。
 - `particle.play` / `particle.stop`：用 `rate` 创建和停止持续 emitter，维护唯一的 ParticleEmitterInstance 数据表，场景句柄查找引用同一记录。存档只保存 emitter 定义、排序与动画值；宿主读档后通过模块注册的恢复处理器 以相同 seed 从头重建，不保存单颗粒子。`initial` 的 lifetime、velocity、size、rotation、angular velocity、color 以及 `flipbook` 的播放速度与起始帧都按粒子确定性采样；`motion` 提供 gravity、noise、drag、radial、orbit、attractor，`lifetime` 曲线线性插值 size、opacity、velocity、rotation、color。当前粒子年龄、位置和 flipbook 帧不单独存档。
+- `particle.stop` 的 `clear=false` 默认仅停发，现有粒子自然排空；`clear=true` 在 Avalonia 宿主立即释放该发射器及粒子，不等待寿命。IParticlePresenter 的 clear 重载默认回退旧 stop，定制宿主要实现立即清除需覆写该重载。无论哪种模式，停止都立即移除逻辑发射器状态。
 - `particle.burst`：用 `count` 向 `IParticlePresenter` 发出一次性 burst，不创建 Runtime scene state，也不参与存档恢复。有限持续效果由流程或 animation timeline 编排 play/stop；重复 burst 由 animation timeline 事件表达，跳过 timeline 时不补发未来 burst。
 - `video.play` / `video.stop`：视频是 Runtime Layer，`IVideoPresenter` 将平台解码帧送入场景管线；阻塞时每次推进跳到当前播放位置之后的下一时间戳，跳转期间保持阻塞，结束后继续剧情。稳定存档只保存视频图层定义，非阻塞视频恢复时从零播放；播放 identity 和游标不入存档。
 - `flow.wait`：blocking、skippable 的等待实例。
@@ -66,7 +67,7 @@ ValueDocument 持有不可变 JSON 快照，提供 Root、FindProperty、GetIter
 
 同步执行可用 PrimitiveRegistry.Immediate / Immediate<T>，自动传递批次并同步完成；实例非阻塞且不可跳过。Normal/Quick 执行 dispatch，CatchUp 默认重复 dispatch，可显式覆盖。异常按原 PrimitiveInstance 协议传播，不推断取消、平台 dispatch 或异步生命周期。带参数入口沿用 Register<T> 的独立 DTO 和契约身份检查。内置 audio.pause/resume/next/clear 共用 AudioTrackOptions，flow.wait 使用 WaitOptions；旧手写参数表已删除。音频及语音复合指令的 trackId 为无默认值、不可为 null 的必填字符串，不再隐含选择 bgm/vocal；其他字段沿用其各自 schema。Contracts.Builtins 通过构建期 Analyzer 引用 SchemaGenerator，运行时仍只依赖 Core 和框架程序集。
 
-dialogue.text、nvl.append、layer.hide/replace、animation.stop、audio.seffect.stop、video.stop、effect.stop、particle.stop、variable.set 和 gallery.unlock 已采用 DTO 参数与强类型执行读取；effect.stop/particle.stop 共用 InstanceIdOptions。对白/NVL 保留 reading 标记与独立实例；Gallery 的正整数和 catalog 检查仍在原执行边界。Editor 含专属字符串编辑提示的 DTO 保留补全、多行文本、资源选择和表达式控件投影，普通字段仍使用共享 binding，不另维护参数表。
+dialogue.text、nvl.append、layer.hide/replace、animation.stop、audio.seffect.stop、video.stop、effect.stop、particle.stop、variable.set 和 gallery.unlock 已采用 DTO 参数与强类型执行读取；effect.stop 使用 InstanceIdOptions，particle.stop 使用带可选 clear 的 ParticleStopOptions。对白/NVL 保留 reading 标记与独立实例；Gallery 的正整数和 catalog 检查仍在原执行边界。Editor 含专属字符串编辑提示的 DTO 保留补全、多行文本、资源选择和表达式控件投影，普通字段仍使用共享 binding，不另维护参数表。
 
 其余带参数的内置 Primitive 也采用 DTO：layer.show/showColor/move、animation.animate、timeline.play、audio.play/enqueue/seffect.apply、video.play、effect.apply、particle.play/burst。audio.play/enqueue 共用 AudioPlayOptions，enqueue 仍显式选择 Enqueue 策略。嵌套 JSON 字段保留 JsonElement 与原解析规则；固定标量、布尔和枚举使用强类型属性。动画 from 的省略由规范化参数 presence 判断，batchId 仍由编译信封提取；快照/重放与复杂实例生命周期未改变。
 
@@ -237,3 +238,7 @@ Timeline 增加 audioTracks，并允许六种音频事件：audio.play、audio.s
 audio.duck 保存 AudioDuckingState（builtin.audio.ducking v1），后端按实际活跃源声音产生临时压低包络。包络与 DSP 尾音不入档。新增默认 SEffect：delay、pan、eq、distortion、bitcrusher、compressor；范围和语义见音频手册。
 
 新增 preset.mask/flash/idle/weather/mood/heartbeat/parallax/emphasis、dialogue.emphasis 与 transition.flash/zoom/pixelate/glitch。它们复用既有编译机制；对白强调展开为非阻塞 Timeline、可选 audio.play、dialogue.text。所有参与图层由作者显式指定。默认资源、参数、身份及停止规则见[默认视觉库手册](../../manual/editor/default-visuals.md)。
+
+`preset.mask` 的遮罩轨道使用零切线 CubicHermite 插值；Blink 的闭合、保持与睁开段速度平滑衔接。默认 ShapeMask 的 Eyelid 在开口扩大后于 progress 0.65–1 连续淡出剩余遮挡，闭合端连续收束羽化，边缘预留两个纹理像素；progress=1 不再通过阈值突切实现全开。
+
+粒子 `initial.alignToVelocity` 默认 false；true 时以当前速度方向对齐纹理纵轴，再叠加原旋转/角速度/生命周期旋转。径向速度同样参与朝向。连续发射达到 maxParticles 时丢弃该帧多余配额，只保留小数累积，不积压未来爆发；天气预设会按预算与最大寿命限制持续速率。场景宿主每帧必须更新所有帧对象，再聚合是否需要下一帧，不得用带副作用的 Any/All 短路更新。

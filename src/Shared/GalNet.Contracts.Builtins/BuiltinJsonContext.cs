@@ -48,6 +48,7 @@ namespace GalNet.Contracts.Builtins;
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.NvlVoiceOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.ParticleBurstOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.ParticlePlayOptions))]
+[JsonSerializable(typeof(global::GalNet.Contracts.Builtins.ParticleStopOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.RevealTransitionOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.Scene.EffectInstance[]))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.Scene.Layer[]))]

@@ -23,6 +23,9 @@ public sealed class PresentationLibraryTests
     {
         var timeline = VisualPresetTests.Compile("preset.mask", new { playbackHandleId = "blink", program = "mask", instanceId = "eyes", motion, overlay = true, durationFrames = 60 });
         Assert.That(timeline.Events.First().Parameters["overlay"].GetBoolean(), Is.True);
+        if (motion is "Blink" or "Open" or "Close")
+            Assert.That(timeline.Events.Single(item => item.Type == "effect.apply").Parameters["parameters"].GetProperty("feather").GetSingle(), Is.EqualTo(.025f));
+        Assert.That(timeline.Tracks.Single().Keys.All(key => key.InterpolationToNext == AnimationInterpolation.CubicHermite && key.InTangent == 0 && key.OutTangent == 0), Is.True);
         Assert.That(timeline.Tracks.Single().Keys.Last().Value, Is.EqualTo(motion is "Close" or "LetterboxOut" ? 0 : 1));
         Assert.That(timeline.Events.Any(e => e.Type == "layer.hide"), Is.EqualTo(motion is "Blink" or "Open" or "LetterboxOut"));
     }
@@ -36,6 +39,22 @@ public sealed class PresentationLibraryTests
         Assert.That(timeline.Events.Last().Execution, Is.EqualTo(TimelineEventExecution.OnCompletion));
         var definition = ParticleEmitterDefinition.FromJson(timeline.Events.First().Parameters["parameters"].GetRawText());
         Assert.That(definition.InitialModule.Lifetime.Min, Is.GreaterThan(0));
+        Assert.That(definition.EmissionRate * definition.InitialModule.Lifetime.Max, Is.LessThan(definition.MaxParticles));
+        var floating = weather is "Dust" or "Fireflies";
+        Assert.That(definition.Shape!.Y, Is.EqualTo(floating ? 540 : -16));
+        Assert.That(definition.Shape.Height, Is.EqualTo(floating ? 1080 : 1));
+        Assert.That(definition.Shape.X - definition.Shape.Width / 2, Is.LessThanOrEqualTo(0));
+        Assert.That(definition.Shape.X + definition.Shape.Width / 2, Is.GreaterThanOrEqualTo(1920));
+        Assert.That(timeline.Events.Last().Parameters["clear"].GetBoolean(), Is.False);
+        var fadeIn = definition.LifetimeModule.Opacity![1].Time;
+        Assert.That(fadeIn * definition.InitialModule.Lifetime.Max, Is.LessThan(.25f));
+        if (weather == "Rain")
+        {
+            Assert.That(definition.InitialModule.Size.Max * 28, Is.LessThanOrEqualTo(3));
+            Assert.That(definition.InitialModule.Color.Max, Is.EqualTo("#9FC6DF78"));
+        }
+        if (weather == "Petals")
+            Assert.That(definition.InitialModule.Color, Is.EqualTo(new ParticleColorRange("#ED4786CC", "#FFB1D1F2")));
     }
 
     [TestCase("transition.flash")] [TestCase("transition.zoom")] [TestCase("transition.pixelate")] [TestCase("transition.glitch")]

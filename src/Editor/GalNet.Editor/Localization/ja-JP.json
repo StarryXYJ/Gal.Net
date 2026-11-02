@@ -443,6 +443,7 @@
   "Entry.Parameter.bladeCount": "ブラインド数",
   "Entry.Parameter.blendMode": "合成モード",
   "Entry.Parameter.blocking": "完了を待機",
+  "Entry.Parameter.clear": "クリア",
   "Entry.Parameter.clearQueue": "キューを消去",
   "Entry.Parameter.count": "数",
   "Entry.Parameter.curve": "カーブ",

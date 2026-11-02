@@ -22,6 +22,6 @@ public sealed class BuiltinParticleModule(IParticlePresenter? presenter = null) 
             new PlayParticlePrimitiveInstance(presenter, context, options));
         registry.Register<ParticleBurstOptions>(BuiltinEntryIds.BurstParticles, (context, options) =>
             new BurstParticlePrimitiveInstance(presenter, context, options));
-        registry.Register<InstanceIdOptions>(BuiltinEntryIds.StopParticleEmitter, (context, options) =>
+        registry.Register<ParticleStopOptions>(BuiltinEntryIds.StopParticleEmitter, (context, options) =>
             new StopParticlePrimitiveInstance(presenter, context, options));
     });

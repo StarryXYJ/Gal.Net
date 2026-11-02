@@ -1,0 +1,312 @@
+{
+  "version": 2,
+  "kind": "Raw",
+  "entries": [
+    {
+      "id": "chapter-weather",
+      "type": "text.card",
+      "condition": "",
+      "parameters": {
+        "content": "demo.chapter-weather",
+        "position": "Center",
+        "styleName": "chapter",
+        "blocking": true,
+        "holdSeconds": 1.2
+      }
+    },
+    {
+      "id": "clear-library-bg",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg"
+      }
+    },
+    {
+      "id": "clear-library-alice",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice"
+      }
+    },
+    {
+      "id": "clear-library-bob",
+      "type": "layer.hide",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob"
+      }
+    },
+    {
+      "id": "stage-library-bg",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bg",
+        "assetId": "a1000000000000000000000000000001",
+        "displayMode": "Fill"
+      }
+    },
+    {
+      "id": "stage-library-alice",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-alice",
+        "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "transform": {
+          "x": -400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "stage-library-bob",
+      "type": "layer.show",
+      "condition": "",
+      "parameters": {
+        "handleId": "library-bob",
+        "assetId": "a1000000000000000000000000000004",
+        "transform": {
+          "x": 400,
+          "y": 80
+        },
+        "z": 10
+      }
+    },
+    {
+      "id": "weather-Rain",
+      "type": "preset.weather",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Rain",
+        "texture": "3179deaa20435822a149403dd67e075a",
+        "weather": "Rain",
+        "durationFrames": 180,
+        "rate": 100
+      }
+    },
+    {
+      "id": "weather-Rain-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.weather-Rain-note.content"
+      }
+    },
+    {
+      "id": "weather-Rain-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Rain",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "weather-RadialRain",
+      "type": "particle.play",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-radial-rain",
+        "z": 100,
+        "parameters": {
+          "particleTexture": "3179deaa20435822a149403dd67e075a",
+          "rate": 140,
+          "maxParticles": 400,
+          "seed": 20261102,
+          "shape": {
+            "type": "circle",
+            "x": 960,
+            "y": 540,
+            "radius": 64
+          },
+          "initial": {
+            "lifetime": {
+              "min": 1.2,
+              "max": 1.6
+            },
+            "velocityX": {
+              "min": 0,
+              "max": 0
+            },
+            "velocityY": {
+              "min": 0,
+              "max": 0
+            },
+            "size": {
+              "min": 0.06,
+              "max": 0.16
+            },
+            "alignToVelocity": true,
+            "color": {
+              "min": "#7FA9C730",
+              "max": "#9FC6DF78"
+            }
+          },
+          "motion": {
+            "radialVelocity": 1000,
+            "noise": 0
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.08,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "weather-RadialRain-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "demo.weather-radial-rain"
+      }
+    },
+    {
+      "id": "weather-RadialRain-stop",
+      "type": "particle.stop",
+      "condition": "",
+      "parameters": {
+        "instanceId": "library-radial-rain",
+        "clear": false
+      }
+    },
+    {
+      "id": "weather-Snow",
+      "type": "preset.weather",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Snow",
+        "texture": "e5a8fef331295f738a5eb40f9b5e1148",
+        "weather": "Snow",
+        "durationFrames": 180
+      }
+    },
+    {
+      "id": "weather-Snow-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.weather-Snow-note.content"
+      }
+    },
+    {
+      "id": "weather-Snow-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Snow",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "weather-Petals",
+      "type": "preset.weather",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Petals",
+        "texture": "b52e4108949456c8b613c47eec2e4530",
+        "weather": "Petals",
+        "durationFrames": 180
+      }
+    },
+    {
+      "id": "weather-Petals-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.weather-Petals-note.content"
+      }
+    },
+    {
+      "id": "weather-Petals-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Petals",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "weather-Dust",
+      "type": "preset.weather",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Dust",
+        "texture": "cd5d35bb40de5941b965d32bd90d08e9",
+        "weather": "Dust",
+        "durationFrames": 180
+      }
+    },
+    {
+      "id": "weather-Dust-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.weather-Dust-note.content"
+      }
+    },
+    {
+      "id": "weather-Dust-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Dust",
+        "mode": "CompleteImmediately"
+      }
+    },
+    {
+      "id": "weather-Fireflies",
+      "type": "preset.weather",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Fireflies",
+        "texture": "12d80a90e835574988aec865500726c4",
+        "weather": "Fireflies",
+        "durationFrames": 180
+      }
+    },
+    {
+      "id": "weather-Fireflies-note",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "speaker": "guide",
+        "content": "group.presentation-library.entry.weather-Fireflies-note.content"
+      }
+    },
+    {
+      "id": "weather-Fireflies-stop",
+      "type": "animation.stop",
+      "condition": "",
+      "parameters": {
+        "playbackHandleId": "library-weather-Fireflies",
+        "mode": "CompleteImmediately"
+      }
+    }
+  ]
+}

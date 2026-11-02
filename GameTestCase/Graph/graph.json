@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "Entry instance runtime smoke test",
+  "name": "GalNet presentation showcase",
   "rootNodeId": "entry",
   "nodes": [
     {
@@ -17,8 +17,8 @@
     {
       "id": "intro",
       "type": "Group",
-      "name": "Classroom",
-      "x": 360,
+      "name": "Text, variants and NVL",
+      "x": 340,
       "y": 260,
       "file": "groups/intro.rawgalgroup",
       "branchType": null,
@@ -29,8 +29,8 @@
       "id": "route_choice",
       "type": "Branch",
       "name": "Choose a route",
-      "x": 678.6314309495947,
-      "y": 262.73713810081057,
+      "x": 3040,
+      "y": 260,
       "file": null,
       "branchType": "Choice",
       "options": [
@@ -51,8 +51,8 @@
       "id": "downtown",
       "type": "Group",
       "name": "Tiled route",
-      "x": 1000,
-      "y": 80,
+      "x": 3340,
+      "y": 40,
       "file": "groups/downtown.rawgalgroup",
       "branchType": null,
       "options": null,
@@ -62,8 +62,8 @@
       "id": "harbor",
       "type": "Group",
       "name": "Filled route",
-      "x": 998.6314309495947,
-      "y": 442.73713810081057,
+      "x": 3640,
+      "y": 480,
       "file": "groups/harbor.rawgalgroup",
       "branchType": null,
       "options": null,
@@ -73,7 +73,7 @@
       "id": "ending_check",
       "type": "Branch",
       "name": "Literal condition",
-      "x": 1320,
+      "x": 3940,
       "y": 260,
       "file": null,
       "branchType": "Condition",
@@ -88,8 +88,8 @@
     {
       "id": "ending",
       "type": "Group",
-      "name": "Ending",
-      "x": 1640,
+      "name": "Complete",
+      "x": 4540,
       "y": 260,
       "file": "groups/ending.rawgalgroup",
       "branchType": null,
@@ -125,60 +125,172 @@
     {
       "id": "presentation-library",
       "type": "Group",
-      "name": "Presentation library",
-      "x": 1940,
+      "name": "Text cards",
+      "x": 640,
       "y": 260,
       "file": "groups/presentation-library.rawgalgroup"
+    },
+    {
+      "id": "media",
+      "type": "Group",
+      "file": "groups/media.rawgalgroup",
+      "name": "Video",
+      "x": 940,
+      "y": 260
+    },
+    {
+      "id": "audio",
+      "type": "Group",
+      "file": "groups/audio.rawgalgroup",
+      "name": "Audio and SEffects",
+      "x": 1240,
+      "y": 260
+    },
+    {
+      "id": "shaders",
+      "type": "Group",
+      "file": "groups/shaders.rawgalgroup",
+      "name": "Shaders and depth",
+      "x": 1540,
+      "y": 260
+    },
+    {
+      "id": "masks",
+      "type": "Group",
+      "file": "groups/masks.rawgalgroup",
+      "name": "Masks and eyelids",
+      "x": 1840,
+      "y": 260
+    },
+    {
+      "id": "characters",
+      "type": "Group",
+      "file": "groups/characters.rawgalgroup",
+      "name": "Character direction",
+      "x": 2140,
+      "y": 260
+    },
+    {
+      "id": "weather",
+      "type": "Group",
+      "file": "groups/weather.rawgalgroup",
+      "name": "Particles and weather",
+      "x": 2440,
+      "y": 260
+    },
+    {
+      "id": "routes",
+      "type": "Group",
+      "file": "groups/routes.rawgalgroup",
+      "name": "Transition introduction",
+      "x": 2740,
+      "y": 260
+    },
+    {
+      "id": "transitions",
+      "type": "Group",
+      "file": "groups/transitions.rawgalgroup",
+      "name": "Transition comparison",
+      "x": 4240,
+      "y": 260
     }
   ],
   "edges": [
     {
-      "id": "entry_intro",
+      "id": "entry_to_intro",
       "fromNodeId": "entry",
       "fromOutlet": 0,
       "toNodeId": "intro"
     },
     {
-      "id": "intro_choice",
+      "id": "intro_to_presentation-library",
       "fromNodeId": "intro",
+      "fromOutlet": 0,
+      "toNodeId": "presentation-library"
+    },
+    {
+      "id": "presentation-library_to_media",
+      "fromNodeId": "presentation-library",
+      "fromOutlet": 0,
+      "toNodeId": "media"
+    },
+    {
+      "id": "media_to_audio",
+      "fromNodeId": "media",
+      "fromOutlet": 0,
+      "toNodeId": "audio"
+    },
+    {
+      "id": "audio_to_shaders",
+      "fromNodeId": "audio",
+      "fromOutlet": 0,
+      "toNodeId": "shaders"
+    },
+    {
+      "id": "shaders_to_masks",
+      "fromNodeId": "shaders",
+      "fromOutlet": 0,
+      "toNodeId": "masks"
+    },
+    {
+      "id": "masks_to_characters",
+      "fromNodeId": "masks",
+      "fromOutlet": 0,
+      "toNodeId": "characters"
+    },
+    {
+      "id": "characters_to_weather",
+      "fromNodeId": "characters",
+      "fromOutlet": 0,
+      "toNodeId": "weather"
+    },
+    {
+      "id": "weather_to_routes",
+      "fromNodeId": "weather",
+      "fromOutlet": 0,
+      "toNodeId": "routes"
+    },
+    {
+      "id": "routes_to_route_choice",
+      "fromNodeId": "routes",
       "fromOutlet": 0,
       "toNodeId": "route_choice"
     },
     {
-      "id": "choice_downtown",
+      "id": "route_choice_to_downtown",
       "fromNodeId": "route_choice",
       "fromOutlet": 0,
       "toNodeId": "downtown"
     },
     {
-      "id": "choice_harbor",
+      "id": "route_choice_to_harbor",
       "fromNodeId": "route_choice",
       "fromOutlet": 1,
       "toNodeId": "harbor"
     },
     {
-      "id": "downtown_check",
+      "id": "downtown_to_ending_check",
       "fromNodeId": "downtown",
       "fromOutlet": 0,
       "toNodeId": "ending_check"
     },
     {
-      "id": "harbor_check",
+      "id": "harbor_to_ending_check",
       "fromNodeId": "harbor",
       "fromOutlet": 0,
       "toNodeId": "ending_check"
     },
     {
-      "id": "check_ending",
+      "id": "ending_check_to_transitions",
       "fromNodeId": "ending_check",
       "fromOutlet": 0,
-      "toNodeId": "ending"
+      "toNodeId": "transitions"
     },
     {
-      "id": "ending_presentation_library",
-      "fromNodeId": "ending",
+      "id": "transitions_to_ending",
+      "fromNodeId": "transitions",
       "fromOutlet": 0,
-      "toNodeId": "presentation-library"
+      "toNodeId": "ending"
     }
   ],
   "playerVariables": [],

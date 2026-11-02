@@ -176,6 +176,35 @@ public sealed class SceneLayerHostTests
         Assert.That(diagnostics.Snapshot().Events.Count(@event => @event.Code == "effect.skipped.pass-budget"), Is.EqualTo(1));
     }
 
+    [Test, NonParallelizable]
+    public Task Actual_scene_render_updates_all_emitters_even_when_the_first_remains_active() =>
+        Avalonia.Headless.HeadlessUnitTestSession.GetOrStartForAssembly(typeof(ThemeTestApplication).Assembly).Dispatch(() =>
+    {
+        var first = new UpdatingRenderable("old", true);
+        var second = new UpdatingRenderable("new", true);
+        var third = new UpdatingRenderable("draining", false);
+        var host = new SceneLayerHost { RenderablesSource = new ISceneRenderable[] { first, second, third } };
+        host.Measure(new Avalonia.Size(1920, 1080));
+        host.Arrange(new Avalonia.Rect(0, 0, 1920, 1080));
+        var drawing = new DrawingGroup();
+        using (var context = drawing.Open())
+        {
+            // DrawingGroup cannot record the custom Skia operation submitted after frame updates.
+            try { host.Render(context); } catch (NotSupportedException) { }
+        }
+        Assert.That(new[] { first.Updates, second.Updates, third.Updates }, Is.EqualTo(new[] { 1, 1, 1 }));
+        return Task.CompletedTask;
+    }, TestContext.CurrentContext.CancellationToken);
+
+    private sealed class UpdatingRenderable(string id, bool active) : IFrameUpdatableSceneRenderable
+    {
+        public string HandleId => id;
+        public double Z => 0;
+        public int Updates { get; private set; }
+        public bool Update(SceneFrameContext frame) { Updates++; return active; }
+        public void Render(SceneRenderContext context) { }
+    }
+
     private sealed class SolidRenderable(string handleId, double z, SKColor color) : ISceneRenderable
     {
         public string HandleId { get; } = handleId;

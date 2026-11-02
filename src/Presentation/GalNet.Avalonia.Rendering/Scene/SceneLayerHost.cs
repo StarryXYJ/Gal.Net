@@ -206,8 +206,11 @@ public sealed class SceneLayerHost : Control
         var delta = TimeSpan.FromSeconds(Math.Clamp((now - _lastFrame).TotalSeconds, 0, .05));
         _lastFrame = now;
         var frame = new SceneFrameContext(now, delta, new SKSize((float)Bounds.Width, (float)Bounds.Height));
-        if (RenderablesSource?.OfType<IFrameUpdatableSceneRenderable>().Any(renderable => renderable.Update(frame)) == true)
-            RequestNextFrame();
+        var active = false;
+        if (RenderablesSource is { } renderables)
+            foreach (var renderable in renderables.OfType<IFrameUpdatableSceneRenderable>())
+                active |= renderable.Update(frame);
+        if (active) RequestNextFrame();
     }
 
     // Avalonia forbids invalidating a visual from inside its own render pass. Frame-updated

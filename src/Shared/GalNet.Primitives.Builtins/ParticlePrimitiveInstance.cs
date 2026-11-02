@@ -19,15 +19,15 @@ public sealed class PlayParticlePrimitiveInstance(IGameContext runtime, IParticl
 }
 
 public sealed class StopParticlePrimitiveInstance(IGameContext runtime, IParticlePresenter? presenter,
-    string instanceId, string? batchId, CancellationToken scopeCancellation)
+    string instanceId, string? batchId, CancellationToken scopeCancellation, bool clear = false)
     : BuiltinPresentationPrimitiveInstance(batchId, scopeCancellation)
 {
-    public StopParticlePrimitiveInstance(IParticlePresenter? presenter, PrimitiveCreateContext context, InstanceIdOptions options)
-        : this(context.Runtime, presenter, options.InstanceId ?? "", context.BatchId, context.ScopeCancellation) { }
+    public StopParticlePrimitiveInstance(IParticlePresenter? presenter, PrimitiveCreateContext context, ParticleStopOptions options)
+        : this(context.Runtime, presenter, options.InstanceId ?? "", context.BatchId, context.ScopeCancellation, options.Clear) { }
 
     protected override void OnStarting() => BuiltinRuntimeActions.RemoveParticleState(runtime, instanceId);
     protected override Task ExecuteAsync(CancellationToken token) =>
-        presenter?.StopParticleEmitterAsync(instanceId, token) ?? Task.CompletedTask;
+        presenter?.StopParticleEmitterAsync(instanceId, clear, token) ?? Task.CompletedTask;
 }
 
 public sealed class BurstParticlePrimitiveInstance(IParticlePresenter? presenter, ParticleBurstRequest request,

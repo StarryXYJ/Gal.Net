@@ -13,7 +13,7 @@ public enum EditorDocumentValidation { Complete, Authoring }
 public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocumentValidation validation = EditorDocumentValidation.Complete) : IEditorDocumentRepository
 {
     private bool IsAuthoring => validation == EditorDocumentValidation.Authoring;
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, PropertyNameCaseInsensitive = true };
     private Dictionary<string, byte[]?>? _baseline;
 
     public IReadOnlyDictionary<string, byte[]?> SourceBaseline => _baseline is null ? new Dictionary<string, byte[]?>() :
@@ -30,7 +30,7 @@ public sealed class EditorDocumentRepository(IEntryCatalog catalog, EditorDocume
         var rawGraph = reader.Read("Graph/graph.json", diagnostics);
         validator.ValidateGraph(rawGraph, diagnostics, validateConditionSyntax: !IsAuthoring);
         RequireValid(diagnostics);
-        var document = rawGraph!.Value.Deserialize<EditorGraphDocument>()!;
+        var document = rawGraph!.Value.Deserialize<EditorGraphDocument>(JsonOptions)!;
         var loaded = new LoadedEditorProjectDocument { Document = document };
         _baseline = new(PathComparer) { ["Graph/graph.json"] = File.ReadAllBytes(reader.Resolve("Graph/graph.json")) };
         foreach (var node in document.Nodes.Where(node => node.Type == "Group"))

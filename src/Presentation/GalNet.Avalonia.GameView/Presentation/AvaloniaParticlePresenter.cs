@@ -59,9 +59,13 @@ public sealed class AvaloniaParticlePresenter : IParticlePresenter, IDisposable
         });
 
     public Task StopParticleEmitterAsync(string instanceId, CancellationToken cancellationToken) =>
+        StopParticleEmitterAsync(instanceId, false, cancellationToken);
+
+    public Task StopParticleEmitterAsync(string instanceId, bool clear, CancellationToken cancellationToken) =>
         _dispatcher.InvokeAsync(() =>
         {
-            if (_emitters.TryGetValue(instanceId, out var emitter)) emitter.StopEmission();
+            if (clear) StopParticleEmitter(instanceId);
+            else if (_emitters.TryGetValue(instanceId, out var emitter)) emitter.StopEmission();
             return Task.CompletedTask;
         });
 

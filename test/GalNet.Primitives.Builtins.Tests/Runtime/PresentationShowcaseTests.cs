@@ -19,10 +19,18 @@ public sealed class PresentationShowcaseTests
     {
         var root = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
         while (!File.Exists(Path.Combine(root.FullName, "GalNet.slnx"))) root = root.Parent!;
-        var source = JsonSerializer.Deserialize<GroupDocument>(File.ReadAllText(Path.Combine(root.FullName, "GameTestCase/Graph/groups/presentation-library.rawgalgroup")))!;
+        var source = new GroupDocument();
+        foreach (var chapter in new[] { "presentation-library", "audio", "shaders", "masks", "characters", "weather", "transitions", "ending" })
+        {
+            var group = JsonSerializer.Deserialize<GroupDocument>(File.ReadAllText(Path.Combine(root.FullName, $"GameTestCase/Graph/groups/{chapter}.rawgalgroup")))!;
+            // Variant decoding is covered by the installed-game integration suite.
+            source.Entries.AddRange(group.Entries.Where(entry => !entry.Type.StartsWith("variants.", StringComparison.Ordinal)));
+        }
         using var registration = new GameRegistration();
         using var view = registration.AddBuiltins(dialoguePresenter: new Dialogue(), audioConfiguration: BuiltinAudioDefaults.Create(),
             characters: new CharacterCatalog([new("guide", "guide-name")])).BuildView();
+        var index = 0;
+        foreach (var entry in source.Entries) entry.Id = $"showcase-{index++}";
         var compiled = GalgroupCompiler.Compile(source, registration.BuildCatalog()).Document;
         var game = new GameRuntime(null, stateCatalog: view.StateCatalog);
         using var cancel = new CancellationTokenSource(TimeSpan.FromSeconds(10));
@@ -51,6 +59,29 @@ public sealed class PresentationShowcaseTests
         var effect = restored.Table<EffectInstance>().Values.Single();
         Assert.That(effect.AnimationValues.ContainsKey("progress"), Is.False);
         Assert.That(JsonSerializer.Deserialize<JsonElement>(effect.Parameters).GetProperty("progress").GetInt32(), Is.EqualTo(1));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task Particle_stop_forwards_clear_and_removes_its_runtime_state(bool clear)
+    {
+        var presenter = new ParticleStopRecorder();
+        using var view = new GameRegistration().AddBuiltins(particlePresenter: presenter).BuildView();
+        var game = new GameRuntime(null, stateCatalog: view.StateCatalog);
+        await view.Dispatch(new("particle.play", JsonSerializer.SerializeToElement(new { instanceId = "weather", parameters = new { particleTexture = "weather-texture" } })), game, default).PresentationCompletion;
+        await view.Dispatch(new("particle.stop", JsonSerializer.SerializeToElement(new { instanceId = "weather", clear })), game, default).PresentationCompletion;
+        Assert.That(presenter.Stopped, Is.EqualTo(("weather", clear)));
+        Assert.That(game.State.Table<ParticleEmitterInstance>().Values, Is.Empty);
+    }
+
+    private sealed class ParticleStopRecorder : IParticlePresenter
+    {
+        public (string Id, bool Clear)? Stopped { get; private set; }
+        public Task StartParticleEmitterAsync(ParticleEmitterRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task BurstParticlesAsync(ParticleBurstRequest request, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StopParticleEmitterAsync(string instanceId, CancellationToken cancellationToken) => StopParticleEmitterAsync(instanceId, false, cancellationToken);
+        public Task StopParticleEmitterAsync(string instanceId, bool clear, CancellationToken cancellationToken)
+        { Stopped = (instanceId, clear); return Task.CompletedTask; }
     }
 
     private sealed class Dialogue : IDialoguePresenter
