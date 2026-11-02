@@ -5,11 +5,13 @@
     xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
     x:Class="GalNet.Sample.CrossPlatform.Views.TitlePage"
     x:DataType="vm:TitlePageViewModel">
-  <Grid Background="{DynamicResource GalNet.Brush.Background}">
-    <Grid IsHitTestVisible="False" Opacity="0.3">
+  <Grid Background="{DynamicResource GalNet.Brush.Background}" ClipToBounds="True">
+    <Viewbox Stretch="UniformToFill" IsHitTestVisible="False">
+    <Grid Width="1920" Height="1080" Opacity="0.3">
       <Ellipse Width="1000" Height="1000" Fill="{DynamicResource GalNet.Brush.Primary}" HorizontalAlignment="Right" Margin="0,0,-240,-480" VerticalAlignment="Bottom"/>
       <Ellipse Width="640" Height="640" Stroke="{DynamicResource GalNet.Brush.Primary}" StrokeThickness="2" HorizontalAlignment="Right" Margin="0,0,80,-200" VerticalAlignment="Bottom"/>
     </Grid>
+    </Viewbox>
     <Grid x:Name="TitleLayout" Margin="80,64" ColumnDefinitions="440,*" RowDefinitions="Auto,*">
       <StackPanel Grid.ColumnSpan="2" Spacing="12">
         <TextBlock Text="{Binding GameTitle}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap"/>

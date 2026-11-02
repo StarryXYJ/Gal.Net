@@ -19,3 +19,9 @@ feature: F-20261102-04-mobile-layout
 范围：固定设计画布之外的触摸交互层。不借此修改玩家已有字号配置或整体放大其他 UI。规范见 docs/spec/presentation/game-view.md 的自适应页面与工具栏。后续用户要求桌面共用自适应，桌面整页像素一致不再作为门禁，固定游戏场景构图仍保持。
 
 后续跨平台测量陷阱：按钮上的 SetCurrentValue(FontSize) 可在挂载/资源更新后被 DynamicResource 覆盖，先测得的总宽失效，WrapPanel 临时换行会把真实点击位置移开。菜单与工具按钮的视口字号由 GamePage 直接赋值拥有；固定样式类和 margin 在 XAML 提前声明；完整工具栏使用单行 StackPanel，由已有宽度测量唯一决定收纳。验证必须包含真实鼠标按下/抬起导航与隐藏 UI，不能仅检查命令绑定或改用命令直调。143 项相关 Integration 回归通过，见 output/responsive-layout/regression/。
+
+整体 UI 复查后的当前规则：外部字号必须折算实际逻辑视口，不能直接套设计字号；Avalonia 已处理 DPI，不重复乘屏幕缩放。普通按钮 36、紧凑页 40，而工具栏保持 32。hover 不能与 idle 同色，使用主题色和预留的透明下边线反馈；对白至工具栏区域约 2，工具栏锚定场景下沿，避免竖向黑边拉开距离。旧 4 净空、始终贴视口底部和普通页面 48 高已被这次反馈替代。
+
+复现到的资源陷阱：Sample CreateStyles 将 Dimensions.axaml 合并在外层 Styles.Resources，内层 Player.axaml 重复定义 PageMargin/PanelPadding 等键不会成为最终值。只改内层会导致代码看似收紧、截图仍保留原间距。当前已合并为 Dimensions 单一来源；验证需读取实际控件 Bounds 和最终截图，不能只看 XAML diff。外部缩放还必须排除 Dialogue/Speaker/SceneBody，避免固定画布内二次缩放；ChoiceList 显式绑定 SceneBodyFontSize。
+
+设置空白的另一实际来源：IsVisible 绑定 Context.Issue.Message，Issue 为 null 时会返回 UnsetValue，StringConverters.IsNotNullOrEmpty 并不一定被调用，TextBlock 可能保留默认可见并占一行。当前 SettingsCategories 明确设置 FallbackValue=False，无错误的语言行 <=44 高有实际测量断言。不能仅凭 Text=null 推断控件不占空间。

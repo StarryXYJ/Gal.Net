@@ -19,3 +19,13 @@
 - 扩展回归中的点击失败经真实鼠标事件定位：工具栏测量后字号资源可覆盖 SetCurrentValue，WrapPanel 临时换行使坐标改变。按钮字号改由 GamePage 直接拥有，样式类与 margin 提前在 XAML 声明，完整栏改为单行 StackPanel，统一由宽度测量决定收纳；没有用直接调用命令代替真实点击回归。
 - 最终相关 Integration 143 passed / 0 failed，证据 output/responsive-layout/regression/，日志 output/responsive-layout-regression.log。桌面 1280×720 与连续宽度变化截图保存在 output/responsive-layout/，已检查桌面标题画面。docs check 72 页/316 仓库引用通过；git diff --check 通过。
 - 初版桌面整页像素一致要求已由用户的统一自适应方向取代，场景设计尺寸与对白横向构图仍保持。最新统一布局未重新打 Android 包；output/android-mobile-20261102/ 是此次跨平台改动前、与上一版证书一致的包。
+
+- P5 用户要求全 UI/UX 复查：确认桌面脱离固定画布后直接使用设计字号、普通控件一刀切 48 高、toolbar hover 与 idle 同色、70 设计单位对白下限及竖向黑边造成距离、弹窗按钮模板状态层混用。对照 Ren’Py GUI 与 Windows 有效逻辑像素文档，见 ui-audit.md。
+- 引入外部字号 .75–1 折算，Dialogue/Speaker/SceneBody 保留设计字号，ChoiceList 显式使用 SceneBody；项目按钮模板统一 36/紧凑 40、主次操作、焦点和 hover/pressed。工具栏 hover 增加颜色与预留下划线，锚定场景下沿，净空约 2。退出/返回/跳过确认和截图样式一起核对。
+- 截图发现修改内层样式间距未真正生效：外层 Styles.Resources 合并 Dimensions 后覆盖 Player.axaml 重复定义。去除重复键并统一修改 Dimensions；设置标签换行、220 标签列/16 行距、分类跟随操作字号，标题装饰背景保持原 1920×1080 比例覆盖。
+- 前置截图 28 项通过。整体相关 Integration 最终 173 passed /0 failed，TRX output/ui-audit/final/；最后固定画布字号/三配色补充 13 passed /0 failed，output/ui-audit/scene-fonts/；标题装饰比例修正后视觉与页面专项 46 passed /0 failed，output/ui-audit/visual-final/。这些用例有重叠，不相加作为独立测试总数。Docs check 72 页/316 仓库引用通过，git diff --check 通过。
+- 视觉证据 output/ui-audit/{before,after}/，已查看三配色页面截图、实际宿主桌面设置/确认、移动更多菜单、标题/弹窗前后对照。审查范围为玩家页面、夹具媒体和合成场景，未进行 Editor 改造、真实 GameTestCase 全流程、原生 GPU/DPI 多显示器/真机触摸验收或新 Android 打包。用户原有 Larger/Large 配置值保持，提交仅包含 Apply 实现，不夹带原有档位改动。
+
+- 最后逐行测量发现无错误的语言/字号字段仍各占 56 高：Context.Issue 为 null 时嵌套 IsVisible 绑定返回 UnsetValue，转换器没有执行，错误 TextBlock 保持默认可见并占 20 高。为该绑定增加 FallbackValue=False；实际语言行高回归约束 <=44，保留有错误时的消息绑定。此前只是缩 Margin，不能解决隐藏错误行的空白。探针已移除，最终相关用例重新验证于 output/ui-audit/complete/。
+
+- 全部修正后的最终完整相关集成回归再次 173 passed /0 failed（output/ui-audit/complete/），包含无错误行高、固定画布选项字号、五视口确认/返回/跳过及 hover。最终设置截图已目视复查；文档检查和 diff check 通过。

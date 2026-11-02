@@ -22,14 +22,16 @@ public static class PlayerTypography
         [FontSizePreset.Large] = new(72, 42, 24, 32, 24, 16, 30)
     };
 
-    public static void Apply(IResourceDictionary resources, FontSizePreset preset)
+    public static void Apply(IResourceDictionary resources, FontSizePreset preset, double uiScale = 1)
     {
+        if (!double.IsFinite(uiScale) || uiScale <= 0) throw new ArgumentOutOfRangeException(nameof(uiScale));
         var sizes = Presets[preset];
         var values = new Dictionary<string, double>
         {
             ["TitleSize"] = sizes.Title,
             ["HeadingSize"] = sizes.Heading,
             ["BodyFontSize"] = sizes.Body,
+            ["SceneBodyFontSize"] = sizes.Body,
             ["SpeakerFontSize"] = sizes.Emphasis,
             ["ActionFontSize"] = sizes.Action,
             ["AuxiliaryFontSize"] = sizes.Auxiliary,
@@ -52,6 +54,12 @@ public static class PlayerTypography
         };
         if (values.Values.Any(value => !double.IsFinite(value) || value is < 1 or > 512))
             throw new ArgumentOutOfRangeException(nameof(preset), "Configured font sizes must be finite and between 1 and 512.");
-        foreach (var (key, value) in values) resources["GalNet.Theme." + key] = value;
+        foreach (var (key, value) in values)
+        {
+            // Dialogue and its speaker remain in the fixed scene canvas; the shell uses viewport units.
+            var viewportValue = key is "DialogueFontSize" or "SpeakerFontSize" or "SceneBodyFontSize" ? value
+                : Math.Max(value * uiScale, Math.Min(value, key == "ModalHeadingSize" ? 16 : key == "ModalFontSize" ? 13 : 11));
+            resources["GalNet.Theme." + key] = viewportValue;
+        }
     }
 }

@@ -76,15 +76,16 @@ public partial class GamePage : GalNet.Avalonia.GameView.Page.GamePage
                     requiredWidth = showHistory ? expandedWidth : expandedWidth - historyWidth;
                 }
             }
-            _toolbar.Margin = new Thickness(8, 0);
+            var sceneBottom = (availableSize.Height + 1080 * scale) / 2;
+            var toolbarBottom = Math.Min(availableSize.Height, sceneBottom);
+            _toolbar.Margin = new Thickness(8, 0, 8, availableSize.Height - toolbarBottom);
             _toolbar.Width = Math.Min(width, Math.Max(Math.Min(320, 1920 * scale), requiredWidth));
             Panel activeToolbar = compact ? _compactToolbar : _fullToolbar;
             var toolbarHeight = activeToolbar.Children.Where(child => child.IsVisible)
                 .Select(child => child.DesiredSize.Height).DefaultIfEmpty(32).Max();
-            var sceneBottom = (availableSize.Height + 1080 * scale) / 2;
-            var clearance = _toolbar.IsVisible ? sceneBottom - (availableSize.Height - toolbarHeight) + 4 : 0;
+            var clearance = _toolbar.IsVisible ? sceneBottom - (toolbarBottom - toolbarHeight) + 2 : 0;
             if (_dialogue is not null && scale > 0)
-                _dialogue.Margin = new Thickness(64, 0, 64, Math.Max(70, clearance / scale));
+                _dialogue.Margin = new Thickness(64, 0, 64, _toolbar.IsVisible ? Math.Max(0, clearance / scale) : 70);
         }
         return base.MeasureOverride(availableSize);
     }

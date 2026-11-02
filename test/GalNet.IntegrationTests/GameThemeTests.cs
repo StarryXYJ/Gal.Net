@@ -827,8 +827,8 @@ public sealed partial class GameThemeTests
                 Assert.That(new Rect(window.ClientSize).Contains(backRect), Is.True);
                 Assert.That(new Rect(window.ClientSize).Contains(mediaRect), Is.True);
                 Assert.That(mediaRect.Intersects(backRect), Is.False, "The media must not cover the return target.");
-                Assert.That(backRect.Width, Is.GreaterThanOrEqualTo(120));
-                Assert.That(backRect.Height, Is.GreaterThanOrEqualTo(48));
+                Assert.That(backRect.Width, Is.GreaterThanOrEqualTo(80));
+                Assert.That(backRect.Height, Is.GreaterThanOrEqualTo(36));
                 Capture(window, $"{layout}-large-image-{width}x{height}");
                 Click(window, back);
                 Assert.That(navigation.CurrentViewModel, Is.TypeOf<SettingsPageViewModel>());

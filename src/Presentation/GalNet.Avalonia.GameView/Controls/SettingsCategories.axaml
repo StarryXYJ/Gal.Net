@@ -31,7 +31,7 @@
           <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,20,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="settings:SettingItem">
-                <common:SettingRow ColumnDefinitions="180,*" ColumnSpacing="22" Margin="0,0,0,24" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
+                <common:SettingRow ColumnDefinitions="220,*" ColumnSpacing="16" Margin="0,0,0,16" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
                   <StackPanel Spacing="4" IsVisible="{Binding !IsFullWidth}">
                     <ContentControl Classes="setting-label" Content="{Binding Label}" />
                     <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
@@ -56,7 +56,7 @@
                                             <ContentControl Grid.Column="1" Content="{Binding DataContext.InlineToggle, RelativeSource={RelativeSource AncestorType={x:Type forms:DtoEditorHost}}}" ContentTemplate="{StaticResource MuteEditor}" VerticalAlignment="Center" />
                                           </Grid>
                                           <text:PlayerTextBlock Key="{Binding Context.Field.Editor.UnitKey}" Opacity="0.64" />
-                                          <TextBlock Text="{Binding Context.Issue.Message}" IsVisible="{Binding Context.Issue.Message, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" TextWrapping="Wrap" />
+                                          <TextBlock Text="{Binding Context.Issue.Message}" IsVisible="{Binding Context.Issue.Message, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}, FallbackValue=False}" TextWrapping="Wrap" />
                                         </StackPanel>
                                       </DataTemplate>
                                     </ItemsControl.ItemTemplate>

@@ -132,7 +132,7 @@ public sealed class ResponsiveLayoutTests
         {
             window.UpdateLayout();
             var titleButton = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "NewGameButton");
-            Assert.That(titleButton.Bounds.Height, Is.GreaterThanOrEqualTo(48));
+            Assert.That(titleButton.Bounds.Height, Is.GreaterThanOrEqualTo(40));
             Capture(window, $"title-{width}x{height}");
             navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel>(NavigationTransition.None);
             var model = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel>();
@@ -145,11 +145,11 @@ public sealed class ResponsiveLayoutTests
             window.UpdateLayout();
             var frame = window.GetVisualDescendants().OfType<Border>().Single(item => item.Name == "PageFrame");
             Assert.That(frame.Bounds.Width, Is.LessThanOrEqualTo(width));
-            Assert.That(window.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "PageBackButton").Bounds.Height, Is.GreaterThanOrEqualTo(48));
+            Assert.That(window.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "PageBackButton").Bounds.Height, Is.GreaterThanOrEqualTo(40));
             var confirmation = host.ConfirmExitAsync();
             window.UpdateLayout();
             var cancel = host.View.FindControl<Button>("CancelExitButton")!;
-            Assert.That(cancel.Bounds.Height, Is.GreaterThanOrEqualTo(48));
+            Assert.That(cancel.Bounds.Height, Is.InRange(36, 40));
             Assert.That(cancel.TranslatePoint(default, host.View)!.Value.X + cancel.Bounds.Width, Is.LessThanOrEqualTo(width));
             cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.That(await confirmation, Is.False);
@@ -210,10 +210,9 @@ public sealed class ResponsiveLayoutTests
             Assert.That(((global::Avalonia.Media.ISolidColorBrush)frame.Background!).Color.A, Is.Zero, "Touch targets must not become a large visible toolbar plate.");
             Assert.That(frame.Bounds.Width, Is.LessThanOrEqualTo(width - 16));
             var dialogueBottom = page.Dialogue.TranslatePoint(new Point(0, page.Dialogue.Bounds.Height), page)!.Value.Y;
-            Assert.That(dialogueBottom, Is.LessThanOrEqualTo(frame.Bounds.Top - 3));
-            Assert.That(height - frame.Bounds.Bottom, Is.InRange(0, 1));
-            if (width >= height)
-                Assert.That(frame.Bounds.Top - dialogueBottom, Is.EqualTo(Math.Max(4, 70 * Math.Min(width / 1920d, height / 1080d) - frame.Bounds.Height)).Within(1));
+            Assert.That(frame.Bounds.Top - dialogueBottom, Is.EqualTo(2).Within(1));
+            var sceneBottom = (height + 1080 * Math.Min(width / 1920d, height / 1080d)) / 2;
+            Assert.That(frame.Bounds.Bottom, Is.EqualTo(Math.Min(height, sceneBottom)).Within(1));
             using (var scene = page.SceneHost.CaptureControl(page.Scene)) Assert.That(scene.PixelSize, Is.EqualTo(new PixelSize(1920, 1080)));
             using (var screen = page.SceneHost.CaptureControl(host.Services.GetRequiredService<GameShell>())) Assert.That(screen.PixelSize, Is.EqualTo(new PixelSize(width, height)));
             Capture(window, $"game-{width}x{height}");
@@ -250,7 +249,7 @@ public sealed class ResponsiveLayoutTests
             window.UpdateLayout();
             var page = window.GetVisualDescendants().OfType<GalNet.Sample.CrossPlatform.Views.SettingsPage>().Single();
             var back = page.FindControl<Button>("PageBackButton")!;
-            Assert.That(back.Bounds.Height, Is.GreaterThanOrEqualTo(48));
+            Assert.That(back.Bounds.Height, Is.GreaterThanOrEqualTo(40));
             var row = page.GetVisualDescendants().OfType<SettingRow>().First(item => item.Children[0].IsVisible);
             var editor = row.Children[1];
             Assert.That(Grid.GetRow(editor), Is.Zero);
@@ -332,7 +331,7 @@ public sealed class ResponsiveLayoutTests
             var title = window.GetVisualDescendants().OfType<GalNet.Sample.CrossPlatform.Views.TitlePage>().Single();
             var layout = title.FindControl<Grid>("TitleLayout")!;
             var button = title.FindControl<Button>("NewGameButton")!;
-            Assert.That(layout.ColumnDefinitions[0].Width.Value, Is.EqualTo(440));
+            Assert.That(layout.ColumnDefinitions[0].Width.Value, Is.EqualTo(320));
             Assert.That(shell.Classes.Contains("compact-player"), Is.False);
             foreach (var width in new[] { 360, 1280, 800, 1280 })
             {
@@ -383,6 +382,97 @@ public sealed class ResponsiveLayoutTests
             Assert.That(host.Services.GetRequiredService<GamePage>(), Is.SameAs(page));
             Assert.That(page.GetVisualDescendants().OfType<Button>().Count(button => button.Classes.Contains("player-link") && button.IsEffectivelyVisible), Is.EqualTo(9));
             Capture(window, "desktop-toolbar-expanded");
+        }
+        finally { window.Close(); }
+    });
+
+    [TestCase(360, 800, FontSizePreset.Larger)]
+    [TestCase(800, 360, FontSizePreset.Larger)]
+    [TestCase(1280, 720, FontSizePreset.Smaller)]
+    [TestCase(1920, 1080, FontSizePreset.Smaller)]
+    [TestCase(2560, 1440, FontSizePreset.Smaller)]
+    public Task ViewportDensityPreservesSceneFontsAndGivesButtonsVisibleFeedback(int width, int height, FontSizePreset preset) => SampleUiTests.RunAsync(async () =>
+    {
+        await using var host = await ResponsiveHost(preset);
+        var window = new Window { Width = width, Height = height, Content = host.View };
+        window.Styles.Add(new global::Avalonia.Themes.Fluent.FluentTheme());
+        window.Show();
+        try
+        {
+            window.UpdateLayout();
+            var sizes = PlayerTypography.Presets[preset];
+            var shell = host.Services.GetRequiredService<GameShell>();
+            var scale = PlayerLayout.UiScale(new Size(width, height));
+            Assert.That(shell.Resources["GalNet.Theme.TitleSize"], Is.EqualTo(sizes.Title * scale));
+            Assert.That(shell.Resources["GalNet.Theme.BodyFontSize"], Is.EqualTo(sizes.Body * scale));
+            Assert.That(shell.Resources["GalNet.Theme.DialogueFontSize"], Is.EqualTo(sizes.Dialogue));
+            Assert.That(shell.Resources["GalNet.Theme.SpeakerFontSize"], Is.EqualTo(sizes.Emphasis));
+            Capture(window, $"audit-title-{width}x{height}");
+            var navigation = host.Services.GetRequiredService<IGameNavigationService>();
+            foreach (var type in new[] { typeof(GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel), typeof(GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel), typeof(GalNet.Sample.CrossPlatform.ViewModels.GalleryPageViewModel), typeof(GalNet.Sample.CrossPlatform.ViewModels.AboutPageViewModel) })
+            {
+                await navigation.NavigateAsync((GalNet.Avalonia.GameView.Navigation.PageViewModelBase)host.Services.GetRequiredService(type), NavigationTransition.None);
+                window.UpdateLayout();
+                var back = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "PageBackButton");
+                var point = back.TranslatePoint(default, host.View)!.Value;
+                Assert.That(point.X, Is.GreaterThanOrEqualTo(0));
+                Assert.That(point.X + back.Bounds.Width, Is.LessThanOrEqualTo(width));
+                Assert.That(back.Bounds.Height, Is.InRange(36, 44));
+                if (type == typeof(GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel) && width >= 1000)
+                {
+                    var languageRow = window.GetVisualDescendants().OfType<SettingRow>().First(row => row.IsEffectivelyVisible);
+                    Assert.That(languageRow.Bounds.Height, Is.LessThanOrEqualTo(44), "A field without an error must not reserve an empty validation line.");
+                }
+                Capture(window, $"audit-{type.Name}-{width}x{height}");
+            }
+            navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel>(NavigationTransition.None);
+            var state = host.Services.GetRequiredService<GamePresentationState>();
+            state.CompleteOpeningPresentation();
+            state.IsDialogueVisible = true;
+            var page = host.Services.GetRequiredService<GamePage>();
+            page.Dialogue.Speaker = "角色名 / Speaker";
+            page.Dialogue.CharactersPerSecond = 0;
+            page.Dialogue.Text = "保持场景构图，外部界面按窗口调整。The scene keeps its composition.";
+            window.UpdateLayout();
+            await page.Dialogue.StartAsync();
+            window.UpdateLayout();
+            Assert.That(page.Choice.FontSize, Is.EqualTo(sizes.Body));
+            var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.IsEffectivelyVisible && button.Command == state.ToggleQuickCommand);
+            var normal = ((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color;
+            Capture(window, $"audit-game-{width}x{height}");
+            var center = quick.TranslatePoint(new Point(quick.Bounds.Width / 2, quick.Bounds.Height / 2), window)!.Value;
+            window.MouseMove(center);
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color, Is.Not.EqualTo(normal));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.BorderBrush!).Color.A, Is.GreaterThan(0));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
+            Capture(window, $"audit-hover-{width}x{height}");
+            state.IsSkipConfirmationOpen = true; // Visual fixture has no runtime playback controller.
+            window.UpdateLayout();
+            var skipConfirm = window.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, state.ConfirmSkipCommand));
+            var skipPoint = skipConfirm.TranslatePoint(default, host.View)!.Value;
+            Assert.That(skipPoint.X, Is.GreaterThanOrEqualTo(0));
+            Assert.That(skipPoint.X + skipConfirm.Bounds.Width, Is.LessThanOrEqualTo(width));
+            Assert.That(skipConfirm.Classes.Contains("player-primary"), Is.True);
+            Capture(window, $"audit-skip-{width}x{height}");
+            state.CancelSkipCommand.Execute(null);
+            var confirm = host.ConfirmExitAsync();
+            window.UpdateLayout();
+            var cancel = host.View.FindControl<Button>("CancelExitButton")!;
+            var primary = host.View.FindControl<Button>("ConfirmExitButton")!;
+            Assert.That(cancel.Bounds.Height, Is.InRange(36, 40));
+            Assert.That(primary.Bounds.Height, Is.EqualTo(cancel.Bounds.Height));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)primary.Background!).Color, Is.Not.EqualTo(((global::Avalonia.Media.ISolidColorBrush)cancel.Background!).Color));
+            Capture(window, $"audit-confirm-{width}x{height}");
+            cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.That(await confirm, Is.False);
+            var returnConfirm = ((GalNet.Sample.CrossPlatform.Views.PlayerView)host.View).ConfirmReturnToTitleAsync();
+            window.UpdateLayout();
+            var returnButton = host.View.FindControl<Button>("ConfirmReturnToTitleButton")!;
+            Assert.That(returnButton.IsEffectivelyVisible, Is.True);
+            Assert.That(returnButton.Bounds.Height, Is.EqualTo(cancel.Bounds.Height));
+            Capture(window, $"audit-return-{width}x{height}");
+            cancel.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.That(await returnConfirm, Is.False);
         }
         finally { window.Close(); }
     });

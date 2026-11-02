@@ -13,7 +13,7 @@ public sealed class SettingRow : Grid
         if (_compact != compact && Children.Count == 2)
         {
             _compact = compact;
-            ColumnDefinitions = new(compact ? "*" : "180,*");
+            ColumnDefinitions = new(compact ? "*" : "220,*");
             RowDefinitions = new(compact ? "Auto,Auto" : "Auto");
             RowSpacing = compact ? 8 : 0;
             var editor = Children[1];

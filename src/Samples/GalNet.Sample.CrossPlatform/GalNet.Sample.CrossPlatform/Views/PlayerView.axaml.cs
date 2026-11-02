@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.VisualTree;
+using GalNet.Avalonia.GameHost.Settings;
 using GalNet.Avalonia.GameView.Page;
 using GalNet.Game.Controls;
 
@@ -14,7 +15,8 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
     private GameShell? _responsiveShell;
     private IDisposable? _shellVisibility;
     private bool? _compactLayout;
-    private readonly List<(Button Button, double Height)> _modalTargets = [];
+    private FontSizePreset _fontSize = PlayerTypography.Default;
+    private double _uiScale = 1;
     private readonly List<(string Key, bool Exists, object? Value)> _layoutResources = [];
 
     public void AttachResponsiveShell(GameShell shell)
@@ -25,20 +27,12 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
         _responsiveShell = shell;
         content.Children.Insert(1, shell);
         _shellVisibility = shell.Bind(IsVisibleProperty, new Binding(nameof(IsVisible)) { Source = canvas });
-        foreach (var name in new[] { "CancelExitButton", "ConfirmExitButton", "ConfirmReturnToTitleButton" })
-        {
-            var button = this.FindControl<Button>(name)!;
-            _modalTargets.Add((button, button.MinHeight));
-            button.MinHeight = Math.Max(48, button.MinHeight);
-        }
     }
 
     public void DetachResponsiveShell()
     {
         _shellVisibility?.Dispose();
         _shellVisibility = null;
-        foreach (var (button, height) in _modalTargets) button.MinHeight = height;
-        _modalTargets.Clear();
         if (_responsiveShell is not { } shell) return;
         this.FindControl<Grid>("PlayerContent")!.Children.Remove(shell);
         shell.Classes.Remove("compact-player");
@@ -62,6 +56,12 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
     {
         if (_responsiveShell is { } shell && double.IsFinite(availableSize.Width) && double.IsFinite(availableSize.Height))
         {
+            var scale = PlayerLayout.UiScale(availableSize);
+            if (_uiScale != scale)
+            {
+                _uiScale = scale;
+                ApplyTypography(_fontSize);
+            }
             var compact = PlayerLayout.IsCompact(availableSize);
             if (_compactLayout != compact)
             {
@@ -79,6 +79,13 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
             }
         }
         return base.MeasureOverride(availableSize);
+    }
+
+    public void ApplyTypography(FontSizePreset preset)
+    {
+        _fontSize = preset;
+        PlayerTypography.Apply(Resources, preset, _uiScale);
+        if (_responsiveShell is { } shell) PlayerTypography.Apply(shell.Resources, preset, _uiScale);
     }
 
     private void SetLayoutResource(GameShell shell, string key, object value)

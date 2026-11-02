@@ -7,16 +7,10 @@
       <ResourceDictionary.MergedDictionaries>
         <ResourceInclude Source="avares://GalNet.Avalonia.Controls/Styles/Resources.axaml" />
       </ResourceDictionary.MergedDictionaries>
-      <Thickness x:Key="GalNet.Theme.PageMargin">44</Thickness>
-      <Thickness x:Key="GalNet.Theme.PanelPadding">36</Thickness>
-      <x:Double x:Key="GalNet.Theme.PanelWidth">640</x:Double>
       <x:Double x:Key="GalNet.Theme.PageMaxWidth">1640</x:Double>
-      <x:Double x:Key="GalNet.Theme.PageHeaderMinHeight">80</x:Double>
-      <x:Double x:Key="GalNet.Theme.BackMinWidth">120</x:Double>
-      <x:Double x:Key="GalNet.Theme.BackMinHeight">48</x:Double>
-      <x:Double x:Key="GalNet.Theme.HeadingSize">32</x:Double>
-      <x:Double x:Key="GalNet.Theme.TitleSize">48</x:Double>
-      <x:Int32 x:Key="GalNet.Theme.SaveColumns">4</x:Int32>
+      <x:Double x:Key="GalNet.Theme.PageHeaderMinHeight">72</x:Double>
+      <x:Double x:Key="GalNet.Theme.BackMinWidth">80</x:Double>
+      <x:Double x:Key="GalNet.Theme.BackMinHeight">36</x:Double>
       <SolidColorBrush x:Key="GalNet.Brush.DisabledSurface" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" Opacity="0.18" />
       <SolidColorBrush x:Key="GalNet.Brush.DisabledBorder" Color="{DynamicResource GalNet.Palette.TextSecondaryColor}" Opacity="0.5" />
       <!-- Fluent control resources also reach popup roots and focus/pressed template parts. -->
@@ -76,8 +70,16 @@
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
     <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
-    <Setter Property="Padding" Value="14,9" />
-    <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
+    <Setter Property="Padding" Value="14,7" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="Template">
+      <ControlTemplate>
+        <ContentPresenter Name="PlayerButtonContent" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{TemplateBinding CornerRadius}" Padding="{TemplateBinding Padding}" Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalContentAlignment="Center" />
+      </ControlTemplate>
+    </Setter>
   </Style>
   <Style Selector=".galnet-player Button:pointerover">
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Selection}" />
@@ -88,7 +90,19 @@
   </Style>
   <Style Selector=".galnet-player Button:focus-visible">
     <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}" />
-    <Setter Property="BorderThickness" Value="2" />
+    <Setter Property="BorderThickness" Value="1" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-primary">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Primary}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Primary}" />
+    <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.OnPrimary}" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-primary:pointerover">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+    <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+  </Style>
+  <Style Selector=".galnet-player Button.player-primary:pressed">
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.PrimaryPressed}" />
   </Style>
   <Style Selector=".galnet-player Button:disabled">
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextDisabled}" />
@@ -110,6 +124,14 @@
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Surface}" />
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
     <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
+  </Style>
+  <Style Selector=".galnet-player TabItem">
+    <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.ActionFontSize}" />
+    <Setter Property="MinHeight" Value="36" />
+    <Setter Property="Padding" Value="12,8" />
+  </Style>
+  <Style Selector=".galnet-player ContentControl.setting-label TextBlock">
+    <Setter Property="TextWrapping" Value="Wrap" />
   </Style>
   <Style Selector=".galnet-player CheckBox">
     <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
@@ -159,14 +181,14 @@
   <Style Selector=".galnet-player Button.player-back">
     <Setter Property="MinWidth" Value="{DynamicResource GalNet.Theme.BackMinWidth}" />
     <Setter Property="MinHeight" Value="{DynamicResource GalNet.Theme.BackMinHeight}" />
-    <Setter Property="Padding" Value="24,12" />
+    <Setter Property="Padding" Value="16,7" />
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
   </Style>
   <Style Selector=".galnet-player Border.player-settings-card">
     <Setter Property="MaxWidth" Value="1000" />
-    <Setter Property="Padding" Value="28" />
+    <Setter Property="Padding" Value="20" />
     <Setter Property="Background" Value="{DynamicResource GalNet.Brush.SurfaceRaised}" />
     <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />

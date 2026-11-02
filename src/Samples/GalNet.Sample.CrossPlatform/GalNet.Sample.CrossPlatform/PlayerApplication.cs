@@ -35,8 +35,7 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
     private void ApplyTypography()
     {
         if (_appliedFontSize == settings.RuntimeSettings.FontSize) return;
-        PlayerTypography.Apply(view.Resources, settings.RuntimeSettings.FontSize);
-        PlayerTypography.Apply(shell.Resources, settings.RuntimeSettings.FontSize);
+        view.ApplyTypography(settings.RuntimeSettings.FontSize);
         _appliedFontSize = settings.RuntimeSettings.FontSize;
     }
     public void ShowTitle() => navigation.ResetTo<TitlePageViewModel>(NavigationTransition.None);

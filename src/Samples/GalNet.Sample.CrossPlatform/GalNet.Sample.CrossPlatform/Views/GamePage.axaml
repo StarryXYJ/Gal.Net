@@ -46,14 +46,14 @@
                 <Button Name="MoreButton" Classes="player-link adaptive-target" Margin="4,0" Content="{text:PlayerText Common.More, More}">
                   <Button.Flyout>
                     <MenuFlyout Placement="Top">
-                      <MenuItem Name="CompactHistoryMenu" IsVisible="False" MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Playback.Skip, Skip}" Command="{Binding State.RequestSkipCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding State.RequestScreenshotCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding State.HideUiCommand}" />
-                      <MenuItem MinHeight="48" MinWidth="144" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Title, Title}" Command="{Binding State.ReturnToTitleCommand}" />
+                      <MenuItem Name="CompactHistoryMenu" IsVisible="False" MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText History.Title, History}" Command="{Binding State.OpenHistoryCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Save, Save}" Command="{Binding OpenSaveSlotsCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Title.Load, Load}" Command="{Binding OpenLoadSlotsCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Settings.Title, Settings}" Command="{Binding OpenSettingsCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Playback.Skip, Skip}" Command="{Binding State.RequestSkipCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Screenshot, Screenshot}" Command="{Binding State.RequestScreenshotCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.HideUi, 'Hide UI'}" Command="{Binding State.HideUiCommand}" />
+                      <MenuItem MinHeight="36" MinWidth="128" FontSize="{DynamicResource GalNet.Theme.ActionFontSize}" Header="{text:PlayerText Common.Title, Title}" Command="{Binding State.ReturnToTitleCommand}" />
                     </MenuFlyout>
                   </Button.Flyout>
                 </Button>
@@ -67,13 +67,17 @@
     </ControlTheme>
   </page:GamePage.Resources>
   <page:GamePage.Styles>
+    <Style Selector="controls|ChoiceList">
+      <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.SceneBodyFontSize}" />
+    </Style>
     <Style Selector="Border#ToolbarFrame">
       <Setter Property="Background" Value="Transparent"/>
     </Style>
     <Style Selector=":is(Button).player-link">
       <Setter Property="Background" Value="Transparent"/>
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}"/>
-      <Setter Property="BorderThickness" Value="0"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
+      <Setter Property="BorderBrush" Value="Transparent"/>
       <Setter Property="Padding" Value="12,7"/>
       <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.ActionFontSize}"/>
       <Setter Property="CornerRadius" Value="6"/>
@@ -87,7 +91,7 @@
     </Style>
     <Style Selector=":is(Button).player-link:focus-visible">
       <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Focus}"/>
-      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="BorderThickness" Value="0,0,0,1"/>
     </Style>
     <Style Selector=":is(Button).player-link.adaptive-target">
       <Setter Property="MinHeight" Value="32" />
@@ -104,16 +108,18 @@
     </Style>
     <Style Selector=":is(Button).player-link.adaptive-target:pointerover">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="#F1F3F5" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+      <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
     </Style>
     <Style Selector=":is(Button).player-link.adaptive-target:pressed">
       <Setter Property="Background" Value="Transparent" />
-      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryPressed}" />
     </Style>
     <Style Selector="ToggleButton.player-link.adaptive-target:checked">
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
       <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.PrimaryHover}" />
     </Style>
   </page:GamePage.Styles>
 </page:GamePage>

@@ -21,13 +21,13 @@ public partial class TitlePage : UserControl
         }
         else
         {
-            TitleLayout.Margin = new Thickness(80, 64);
-            if (TitleLayout.ColumnDefinitions[0].Width.Value != 440)
-                TitleLayout.ColumnDefinitions = new("440,*");
+            TitleLayout.Margin = new Thickness(48, 40);
+            if (TitleLayout.ColumnDefinitions[0].Width.Value != 320)
+                TitleLayout.ColumnDefinitions = new("320,*");
             TitleMenu.Margin = new Thickness(0, 32, 0, 0);
             TitleMenu.MaxWidth = double.PositiveInfinity;
             TitleMenu.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch;
-            TitleButtons.Margin = new Thickness(0, 0, 40, 0);
+            TitleButtons.Margin = new Thickness(0, 0, 16, 0);
         }
         return base.MeasureOverride(availableSize);
     }
