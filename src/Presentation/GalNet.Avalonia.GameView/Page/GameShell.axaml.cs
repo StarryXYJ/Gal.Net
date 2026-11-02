@@ -95,12 +95,15 @@ public partial class GameShell : UserControl, IDisposable
             () => _inputSettings?.IsCapturing == true);
         if (settings.Input is { } input)
         {
-            _inputRouter = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel), session, GoBack, _applicationAction);
+            _inputRouter = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel), session, GoBack, _applicationAction, () => PageHost.Content as Control);
             _touchInput = new(this, input, () => GetGameplay(_viewModel.CurrentViewModel) is { IsChoiceVisible: false, IsSkipConfirmationOpen: false, IsHistoryOpen: false }, _inputRouter.DispatchAsync);
         }
     }
 
     private static GamePresentationState? GetGameplay(PageViewModelBase? page) => (page as IGameplayPage)?.State;
+
+    /// <summary>Routes gamepad input to a host-owned modal until it closes.</summary>
+    public void SetNavigationScope(Control? scope, Action? cancel = null) => _inputRouter?.SetNavigationScope(scope, cancel);
 
     private void GoBack()
     {
@@ -129,6 +132,7 @@ public partial class GameShell : UserControl, IDisposable
         _session.PropertyChanged -= OnSessionPropertyChanged;
         if (_gameplay is not null)
         {
+            _gameplay.PropertyChanged -= OnGameplayInputChanged;
             _gameplay.CancelPlayback();
             _gameplay.CancelSkipCommand.Execute(null);
             _gameplay.ScreenshotRequested -= OnScreenshotRequested;
@@ -264,6 +268,7 @@ public partial class GameShell : UserControl, IDisposable
         try
         {
             await completed.Task.WaitAsync(cancellationToken);
+            Dispatcher.UIThread.Post(() => { if (!_disposed) _inputRouter?.RefreshNavigation(); }, DispatcherPriority.Loaded);
         }
         finally
         {
@@ -304,6 +309,7 @@ public partial class GameShell : UserControl, IDisposable
         {
             if (_gameplay is not null)
             {
+                _gameplay.PropertyChanged -= OnGameplayInputChanged;
                 _gameplay.CancelPlayback();
                 _gameplay.CancelSkipCommand.Execute(null);
                 _gameplay.ScreenshotRequested -= OnScreenshotRequested;
@@ -313,10 +319,18 @@ public partial class GameShell : UserControl, IDisposable
             SkipPrompt.DataContext = _gameplay;
             if (_gameplay is not null)
             {
+                _gameplay.PropertyChanged += OnGameplayInputChanged;
                 _gameplay.ScreenshotRequested += OnScreenshotRequested;
                 _gameplay.ReturnToTitleRequested += OnReturnToTitleRequested;
             }
         }
+    }
+
+    private void OnGameplayInputChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(GamePresentationState.IsChoiceVisible) or nameof(GamePresentationState.IsHistoryOpen) or
+            nameof(GamePresentationState.IsSkipConfirmationOpen) or nameof(GamePresentationState.IsUiHidden))
+            Dispatcher.UIThread.Post(() => { if (!_disposed) _inputRouter?.RefreshNavigation(); }, DispatcherPriority.Loaded);
     }
 
     private async void OnScreenshotRequested()
@@ -330,7 +344,8 @@ public partial class GameShell : UserControl, IDisposable
             owner,
             includeUi => CaptureScreenshotAsync(page, includeUi, null))
         {
-            CapturePreviewPngAsync = includeUi => CaptureScreenshotAsync(page, includeUi, new PixelSize(720, 405))
+            CapturePreviewPngAsync = includeUi => CaptureScreenshotAsync(page, includeUi, new PixelSize(720, 405)),
+            SetNavigationScope = SetNavigationScope
         });
     }
 

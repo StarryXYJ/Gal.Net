@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- 2026-11-02 手柄导航：Start 进入/退出工具栏，动态几何循环，不写死按钮/列数；GameShell.SetNavigationScope 显式交接壳外模态，Sample 标记 PlayerNavigation.IsToolbar/IsDefault/IsTarget。ChoiceList 高亮不提交，确认/指针点击才提交；共享字段下拉预览须阻断写入。见 [实现记录](../features/F-20261102-07-gamepad-navigation/design.md) 与 [焦点/提交 lesson](lessons/L-20261102-12-choice-focus-and-commit.md)。
 - 2026-11-02 Sample P8：设置Tab零水平Padding、项间距24，首项文字与页标题对齐；Tab/游戏工具栏交互只变背景，不加下划线或加粗。普通按钮hover/pressed为轻/重中性灰，保持文字；Mono主按钮按下不再近黑。工具栏固定浅色字、灰底反馈、保留键盘边框；合并旧重复样式，取消Fluent继承的按压缩放及过渡。137项回归通过。见 [总结](../features/F-20261102-06-player-layout-polish/summary.md)与[基础主题变换经验](lessons/L-20261102-11-inherited-button-press-motion.md)。
 - 2026-11-02 Sample P7 用户澄清：设置页应整体居中、内部左对齐。标题/分类/表单/页脚共用最大800的PageFrame，标题不额外留左侧空隙；已移除正文额外限宽与宽度绑定。此规则替代P5的“仅正文居中、页头沿用宽页面”。90项相关回归通过；配色只分析未实施，见 [总结](../features/F-20261102-06-player-layout-polish/summary.md)。
 - 2026-11-02 Sample P6：设置 Tab 改用 GroupHeadingSize（默认22）；存档及图片/视频/场景鉴赏共用 AdaptiveCardGrid、CardColumns/CardHeight（默认4列/210高），删除旧鉴赏比例面板；三类鉴赏共用 GalleryCardTemplate，保留锁定标题与打开命令。113项回归通过，三档宽度卡片实际Bounds与存档相同，图片/标题点击通过。见 [P6总结](../features/F-20261102-06-player-layout-polish/summary.md)。

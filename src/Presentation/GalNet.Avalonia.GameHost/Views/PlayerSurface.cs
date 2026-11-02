@@ -132,6 +132,7 @@ public abstract class PlayerSurface : UserControl
         PlayerContent.Classes.Add("modal-background");
         PlayerContent.IsEnabled = false;
         ExitConfirmation.IsVisible = true;
+        _shell?.SetNavigationScope(ExitConfirmation, () => CancelExitConfirmation());
         CancelExitButton.Focus();
         return _exitConfirmation.Task;
     }
@@ -155,7 +156,11 @@ public abstract class PlayerSurface : UserControl
     {
         var completion = _exitConfirmation;
         _exitConfirmation = null;
-        if (completion is not null) _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
+        if (completion is not null)
+        {
+            _shell?.SetNavigationScope(null);
+            _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
+        }
         ExitConfirmation.IsVisible = false;
         PlayerContent.IsEnabled = true;
         PlayerContent.Classes.Remove("modal-background");
@@ -169,8 +174,9 @@ public abstract class PlayerSurface : UserControl
         var selection = _languageSelection ?? throw new InvalidOperationException("The player view is not attached.");
         StartupStatus.IsVisible = false;
         LanguageSelection.IsVisible = true;
+        _shell?.SetNavigationScope(LanguageSelection);
         try { return await selection.ChooseAsync(preferred, cancellationToken); }
-        finally { LanguageSelection.IsVisible = false; }
+        finally { _shell?.SetNavigationScope(null); LanguageSelection.IsVisible = false; }
     }
 
     public void CompleteStartup(string? error = null)

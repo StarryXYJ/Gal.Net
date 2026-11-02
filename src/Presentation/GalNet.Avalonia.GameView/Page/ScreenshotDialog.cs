@@ -67,6 +67,7 @@ public abstract class ScreenshotDialog : UserControl, IDisposable
         CancelButton = Require<Button>(nameof(CancelButton));
         SaveButton = Require<Button>(nameof(SaveButton));
         ErrorBlock = Require<TextBlock>(nameof(ErrorBlock));
+        Input.PlayerNavigation.SetIsDefault(CancelButton, true);
         _initialized = true;
         OnDataContextChanged(EventArgs.Empty);
     }

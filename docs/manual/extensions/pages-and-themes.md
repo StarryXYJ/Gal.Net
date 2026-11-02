@@ -59,3 +59,9 @@ PlayerTypography.DesktopDefault = FontSizePreset.Smaller;
 `PlayerLayout.UiScale(Size, bool, double)` 定义普通页面整体缩放，默认限制在 0.65–1.25，移动端下限 0.7、低 DPI 增加 8%；系统 DPI 已由 Avalonia 处理。`Styles/Dimensions.axaml` 统一固定布局尺寸，`PlayerTypography` 统一字号，页面标题、返回和分类直接复用 Heading、Action 和 GroupHeadingSize；不要在测量回调或嵌套样式重复覆写。设置页的页头与正文共用最大800的居中区域，标题与面板左边界对齐。`GamePage.axaml` 和 code-behind 定义独立工具栏的测量/收纳与对白净空。设置 `SettingRow`/`InputBindingRow` 仅移动原有子控件；新增编辑器避免按断点重建控件，否则会丢失草稿或录入状态。存档与图片/视频/场景鉴赏共用 `AdaptiveCardGrid` 和 `CardColumns`/`CardHeight`，三类鉴赏共用 `GalleryCardTemplate`；网格只负责排版，原命令和资源归属不变。
 
 自定义游戏模板时保留内层固定画布及所需 PART_*，历史覆盖层位于工具栏之上；独立工具栏继续设置 GamePage.IsPlayerInteraction。只捕获场景与含 UI 截图的范围不同，见[自适应页面规范](../../spec/presentation/game-view.md#自适应页面与工具栏)。平台安全区交给原 TopLevel/InsetsManager，不叠加另一份刘海边距。
+
+### 定制页面的手柄导航
+
+页面的按钮数量和卡片列数可以变化，默认按当前可见/可用控件与实际位置计算方向目标，不需要维护索引表。在剧情工具栏容器上设置 `input:PlayerNavigation.IsToolbar="True"`（`xmlns:input="using:GalNet.Avalonia.GameView.Input"`），菜单键即可进入。`IsDefault="True"` 指定默认项，`IsTarget="False"` 排除复合控件的内部按钮或仅供键鼠使用的编辑器。危险确认应将取消设为默认。
+
+宿主在 GameShell 外显示模态时，显示后调用 `shell.SetNavigationScope(dialog, cancelAction)`，关闭/释放时在 finally 调用 `shell.SetNavigationScope(null)`；这不替代底层输入阻断。自定义截图服务使用请求中的 `SetNavigationScope` 回调交接。控件确认沿用原生命令/Click 语义；自定义控件应保留键盘可聚焦和激活能力。完整规则见[玩家界面规范](../../spec/presentation/game-view.md#手柄焦点导航)。

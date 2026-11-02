@@ -1,9 +1,15 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:input="using:GalNet.Avalonia.GameView.Input"
+        xmlns:controls="using:GalNet.Game.Controls"
         xmlns:page="using:GalNet.Avalonia.GameView.Page"
         xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
         xmlns:layout="using:GalNet.Sample.CrossPlatform.Views"
         xmlns:vm="using:GalNet.Avalonia.GameView.ViewModels">
+  <!-- Gamepad treats a save card as one action. Renaming retains native keyboard/pointer input. -->
+  <Style Selector=".galnet-player controls|SaveSlotCard /template/ TextBox#PART_Name">
+    <Setter Property="input:PlayerNavigation.IsTarget" Value="False" />
+  </Style>
   <Styles.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>

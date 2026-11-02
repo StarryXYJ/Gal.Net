@@ -120,6 +120,18 @@ GamePage 的 scene/dialogue/NVL/choice 在内部 1920×1080 GameCanvasHost 中�
 
 Gallery 使用独立的 `IGalleryPageRegistry`，以精确 Gallery `typeId` 映射到页面 ViewModel 和 View。`Add<TViewModel, TView>` 注册新类型，`Replace<TViewModel, TView>` 显式覆盖既有类型；多个 type ID 可以映射到同一页面。该注册同时写入普通 ViewModel→View registry 和 DI，构建后不可修改。
 
+### 手柄焦点导航
+
+`PlayerInputRouter` 将手柄输入限制在当前页面或活动交互范围内。普通页使用 GameShell 当前实际页面，不搜索转场中的旧页面；剧情分支、历史和跳过确认分别独占自己的控件范围。宿主通过 `GameShell.SetNavigationScope(control, cancel)` 将壳外模态临时接入，关闭时传 null；底层 `PlayerContent.IsEnabled` 阻断继续保留。首次语言选择、退出/返回标题和默认截图覆盖层均接入；自定义截图服务可使用 `GameScreenshotRequest.SetNavigationScope` 同样交接，并须在 finally 归还。
+
+Start 是保留菜单键：剧情阅读时进入布局标记的工具栏，停止自动/按住快进并恢复隐藏 UI；再次 Start 或当前布局的取消键退出工具栏返回剧情。打开的 Flyout 优先接收方向/确认/取消；取消先关闭菜单，下一次再退出工具栏。剧情分支不能取消到后台剧情。菜单模式期间不分发剧情设备动作；指针交互退出手柄工具栏模式。旧偏好只移除包含 Start 的手柄绑定，其余配置保留；新默认不再用 Start 直接打开设置。
+
+布局可使用 `PlayerNavigation.IsToolbar` 标记工具栏容器、`IsDefault` 指定默认焦点、`IsTarget=false` 排除内部编辑器。默认候选为实际可见/可用的按钮（含 Toggle/CheckBox）、下拉框、滑条、Tab、数值框和文本框，不写死数量或列数。方向按当前布局中心和行列交叠寻找目标，到边界循环；焦点使用 Directional 显示焦点提示并 BringIntoView。每个范围记住最近有效焦点，失效时回退默认/首项。肩键循环切换离焦点最近的 TabControl；方向斜推保持已有方向，不作为组合动作提交。
+
+确认走控件原生激活路径，Click、Command、切换和 Flyout 各执行一次。滑条/数值框左右调整，数值边界不循环；上下切换控件。下拉框确认展开、方向预览、再次确认提交，取消或输入中断恢复；共享字段编辑器通过 `DefaultFieldEditors.IsSelectionPreview` 阻止预览写入设置，输入配置面板同时沿用 `IsPreviewingChoice`。Sample 存档卡的名称编辑器不参与手柄方向导航，保留键鼠改名。
+
+`ChoiceList` 的 SelectedIndex/PreviewSelection 只改变高亮；CommitSelection、Enter/Space 或实际条目的点击才提交剧情选择。手柄焦点只在此列表中循环。历史无语音目标时上下滚动，有语音按钮时可方向选择重播；LT/RT 按视口翻页。失焦、断连、页面切换、卸载和释放清除连发与未提交输入。系统目录选择和文字输入继续沿用系统/键鼠，不提供模拟鼠标或软键盘；移动端原生手柄源尚未接入。
+
 ### 设置与界面文本
 
 Sample 新增 `operation`（操作）分类，与游戏、画面、音频并列。它借用现有 `CustomSetting<PlayerInputConfiguration>` 和可释放编辑器租约，承载键鼠、手柄、触屏三个局部 Tab；`SettingItem.IsFullWidth` 允许此类编辑器跨设置行标签列展示。键盘/鼠标共用录入控件，手柄支持按钮组合，触屏通过 ComboBox 选择离散手势。偏好经原 SettingsCoordinator 保存到 `player.galnet.input.bindings`，不进入剧情快照。

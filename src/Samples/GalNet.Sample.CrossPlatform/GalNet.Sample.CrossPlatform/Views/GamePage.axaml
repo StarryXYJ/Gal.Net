@@ -1,6 +1,7 @@
 <page:GamePage
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:input="using:GalNet.Avalonia.GameView.Input"
     xmlns:page="using:GalNet.Avalonia.GameView.Page"
     xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
     xmlns:controls="using:GalNet.Game.Controls"
@@ -26,7 +27,7 @@
                 </Grid>
               </controls:GameCanvasHost.GameContent>
             </controls:GameCanvasHost>
-            <Border Name="ToolbarFrame" IsVisible="{Binding State.IsGameToolbarVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" page:GamePage.IsPlayerInteraction="True">
+            <Border input:PlayerNavigation.IsToolbar="True" Name="ToolbarFrame" IsVisible="{Binding State.IsGameToolbarVisible}" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="20" ZIndex="40" page:GamePage.IsPlayerInteraction="True">
               <Grid>
               <StackPanel Name="FullToolbar" Orientation="Horizontal" HorizontalAlignment="Center">
               <ToggleButton Classes="player-link" Margin="4,0" Content="{text:PlayerText Playback.Quick, Quick}" IsChecked="{Binding State.IsQuickMode, Mode=OneWay}" Command="{Binding State.ToggleQuickCommand}" page:GamePage.PlaybackToggle="Quick"/>

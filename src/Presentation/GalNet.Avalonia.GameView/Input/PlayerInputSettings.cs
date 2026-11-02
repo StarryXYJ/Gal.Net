@@ -166,6 +166,12 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         try
         {
             var parsed = json is null ? null : JsonSerializer.Deserialize(json, PlayerInputJsonContext.Default.PlayerInputConfiguration);
+            // Start is now shell navigation. Remove old bindings without discarding other preferences.
+            if (parsed?.Bindings is { } bindings)
+                foreach (var id in bindings.Keys.ToArray())
+                    if (bindings[id] is { } values)
+                        bindings[id] = values.Where(binding => binding is null || binding.Device != PlayerInputDevice.Gamepad ||
+                            binding.Gesture is null || !binding.Gesture.Split('+').Contains("Start")).ToArray()!;
             var restored = parsed is not null && Validate(parsed) is null ? parsed : Defaults();
             // Older preferences had no default history binding. Preserve explicit unbinding and conflicts.
             if (!restored.Bindings.ContainsKey("open.history"))
@@ -195,6 +201,7 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
                 if (binding.Device == PlayerInputDevice.Touch && !TouchGestures.Contains(binding.Gesture)) return "Input.InvalidConfiguration";
                 if (!seen.Add(binding)) return "Input.Conflict";
                 if (binding.Device == PlayerInputDevice.KeyboardMouse && binding.Gesture.Split('+').Contains("Escape")) return "Input.Reserved";
+                if (binding.Device == PlayerInputDevice.Gamepad && binding.Gesture.Split('+').Contains("Start")) return "Input.Reserved";
                 if (binding.Device == PlayerInputDevice.Gamepad && binding.Gesture.Split('+').Contains(configuration.EastConfirms ? "South" : "East")) return "Input.Reserved";
                 if (Actions.First(action => action.Id == pair.Key).IsHold && binding.Device == PlayerInputDevice.Touch) return "Input.HoldUnavailable";
                 if (Actions.First(action => action.Id == pair.Key).IsHold && binding.Gesture.Split('+').Any(code => code is "WheelUp" or "WheelDown")) return "Input.HoldUnavailable";
@@ -215,7 +222,7 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         ["save.first-empty"] = [new(PlayerInputDevice.KeyboardMouse, "Control+S")],
         ["open.save"] = [new(PlayerInputDevice.KeyboardMouse, "F5")],
         ["open.load"] = [new(PlayerInputDevice.KeyboardMouse, "Control+L")],
-        ["open.settings"] = [new(PlayerInputDevice.KeyboardMouse, "F1"), new(PlayerInputDevice.Gamepad, "Start")],
+        ["open.settings"] = [new(PlayerInputDevice.KeyboardMouse, "F1")],
         ["screenshot"] = [new(PlayerInputDevice.KeyboardMouse, "F12")],
         ["toggle.fullscreen"] = [new(PlayerInputDevice.KeyboardMouse, "Alt+Enter")],
         ["open.history"] = [new(PlayerInputDevice.KeyboardMouse, "WheelUp")]

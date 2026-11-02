@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:input="using:GalNet.Avalonia.GameView.Input" xmlns:page="using:GalNet.Avalonia.GameView.Page" xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions">
   <Style Selector="page|SkipConfirmation">
     <Setter Property="Template">
       <ControlTemplate x:CompileBindings="False">
@@ -9,7 +9,7 @@
               <TextBlock Text="{text:PlayerText Playback.SkipTitle, 'Skip read text?'}" FontSize="{DynamicResource GalNet.Theme.ModalHeadingSize}" FontWeight="SemiBold" />
               <TextBlock Text="{text:PlayerText Playback.SkipMessage, 'Continue along the current story until unread text or the next choice.'}" TextWrapping="Wrap" FontSize="{DynamicResource GalNet.Theme.ModalFontSize}" LineHeight="{DynamicResource GalNet.Theme.ModalLineHeight}" Foreground="{DynamicResource GalNet.Brush.TextSecondary}" />
               <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
-                <Button MinWidth="80" MinHeight="36" Padding="16,6" FontSize="{DynamicResource GalNet.Theme.ModalFontSize}" Content="{text:PlayerText Common.Cancel, Cancel}" Command="{Binding CancelSkipCommand}" />
+                <Button MinWidth="80" MinHeight="36" Padding="16,6" FontSize="{DynamicResource GalNet.Theme.ModalFontSize}" input:PlayerNavigation.IsDefault="True" Content="{text:PlayerText Common.Cancel, Cancel}" Command="{Binding CancelSkipCommand}" />
                 <Button Classes="player-primary" MinWidth="80" MinHeight="36" Padding="16,6" FontSize="{DynamicResource GalNet.Theme.ModalFontSize}" Content="{text:PlayerText Common.Confirm, Confirm}" Command="{Binding ConfirmSkipCommand}" />
               </StackPanel>
             </StackPanel>

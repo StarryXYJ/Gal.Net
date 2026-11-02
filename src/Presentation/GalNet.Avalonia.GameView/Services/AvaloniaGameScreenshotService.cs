@@ -55,8 +55,18 @@ public sealed class AvaloniaGameScreenshotService(IPageViewRegistry views, IServ
 
         using var dialog = (ScreenshotDialog)ActivatorUtilities.CreateInstance(services,
             views.GetViewType(typeof(ScreenshotDialogViewModel)));
-        await OverlayDialog.ShowCustomAsync<bool>(dialog, viewModel, null,
-            new OverlayDialogOptions { TopLevelHashCode = request.Owner.GetHashCode() }, cancellationToken);
+        void Attached(object? sender, global::Avalonia.VisualTreeAttachmentEventArgs e) => request.SetNavigationScope?.Invoke(dialog, viewModel.Cancel);
+        dialog.AttachedToVisualTree += Attached;
+        try
+        {
+            await OverlayDialog.ShowCustomAsync<bool>(dialog, viewModel, null,
+                new OverlayDialogOptions { TopLevelHashCode = request.Owner.GetHashCode() }, cancellationToken);
+        }
+        finally
+        {
+            dialog.AttachedToVisualTree -= Attached;
+            request.SetNavigationScope?.Invoke(null, null);
+        }
     }
 
     private static string SanitizeFileName(string value)
