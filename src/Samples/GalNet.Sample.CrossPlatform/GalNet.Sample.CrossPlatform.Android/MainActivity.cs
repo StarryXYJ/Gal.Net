@@ -90,12 +90,7 @@ public partial class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioF
     {
         base.OnResume();
         var granted = RequestFocus();
-        Observe(async () =>
-        {
-            if (Player is not { } player) return;
-            await player.SetAudioAvailableAsync(granted);
-            await player.SetPlatformActiveAsync(true);
-        });
+        Observe(() => Player?.SetPlatformActiveAsync(true, granted));
     }
 
     protected override void OnPause()

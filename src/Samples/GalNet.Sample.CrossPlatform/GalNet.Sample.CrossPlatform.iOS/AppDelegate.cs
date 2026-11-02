@@ -69,12 +69,7 @@ public partial class AppDelegate : AvaloniaAppDelegate<App>
         return Task.CompletedTask;
     }
 
-    private static void OnActivated() => Observe(async () =>
-    {
-        if (Player is not { } player) return;
-        await player.SetAudioAvailableAsync(ActivateAudio());
-        await player.SetPlatformActiveAsync(true);
-    });
+    private static void OnActivated() => Observe(() => Player?.SetPlatformActiveAsync(true, ActivateAudio()));
 
     private static void OnDeactivated() =>
         Observe(() => Player?.SetPlatformActiveAsync(false));

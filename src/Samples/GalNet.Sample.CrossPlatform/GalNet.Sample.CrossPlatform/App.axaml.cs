@@ -331,9 +331,10 @@ public partial class App : Application, IAsyncDisposable
         return player;
     }
 
-    public Task SetPlatformActiveAsync(bool active)
+    public Task SetPlatformActiveAsync(bool active, bool? audioAvailable = null)
     {
         _platformActive = active;
+        if (audioAvailable is { } available) _audioAvailable = available;
         return ApplyPlatformStateAsync();
     }
 
