@@ -10,11 +10,11 @@
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
-        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
-          <TextBlock Text="{text:PlayerText Title.About, 'About'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" Classes="player-page-header">
+          <TextBlock Text="{text:PlayerText Title.About, 'About'}" Classes="player-page-title" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
         </Grid>
-        <Border Grid.Row="1" Height="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <Border Grid.Row="1" Classes="player-page-rule" />
         <ScrollViewer Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
           <StackPanel Spacing="12">
             <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.AboutTitleFontSize}" FontWeight="SemiBold" />

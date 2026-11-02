@@ -257,12 +257,12 @@ public sealed class PlayerLayoutPolishTests
                     Assert.That(header.TranslatePoint(new Point(header.Bounds.Width / 2, 0), host.View)!.Value.X,
                         Is.EqualTo(width / 2d).Within(1), "The heading and form share one centered frame, allowing layout pixel rounding.");
                     var tab = (TabItem)tabs.ContainerFromIndex(0)!;
-                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontSize, Is.EqualTo(sizes.Heading * 22 / 34));
-                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.SemiBold));
+                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontSize, Is.EqualTo(sizes.Heading * 24 / 34));
+                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.Bold));
                     Assert.That(tab.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_SelectedPipe").IsVisible, Is.False);
-                    Assert.That(tab.GetVisualDescendants().OfType<TextBlock>().First().TranslatePoint(default, host.View)!.Value.X,
+                    Assert.That(tab.TranslatePoint(default, host.View)!.Value.X,
                         Is.EqualTo(heading.TranslatePoint(default, host.View)!.Value.X).Within(1),
-                        "The first category label must not retain TabItem's leading padding.");
+                        "The first category button aligns with the page heading.");
                     foreach (var row in tabs.GetVisualDescendants().OfType<SettingRow>().Where(row => row.IsEffectivelyVisible))
                     {
                         var editorLeft = row.Children[1].TranslatePoint(default, row)!.Value.X;
@@ -307,7 +307,7 @@ public sealed class PlayerLayoutPolishTests
                 {
                     Assert.That(headers[other].TranslatePoint(default, categories)!.Value.X, Is.EqualTo(positions[other]).Within(1),
                         "Changing the selected weight must not move neighboring category labels.");
-                    Assert.That(headers[other].FontWeight, Is.EqualTo(other == index ? global::Avalonia.Media.FontWeight.SemiBold : global::Avalonia.Media.FontWeight.Normal));
+                    Assert.That(headers[other].FontWeight, Is.EqualTo(other == index ? global::Avalonia.Media.FontWeight.Bold : global::Avalonia.Media.FontWeight.Normal));
                 }
             }
             categories.SelectedIndex = 1;
@@ -327,6 +327,8 @@ public sealed class PlayerLayoutPolishTests
             var label = keyboard.GetVisualDescendants().OfType<TextBlock>().First();
             Assert.That(label.FontSize, Is.EqualTo(PlayerTypography.Presets[preset].Action));
             Assert.That(label.FontSize, Is.LessThan(primary.FontSize));
+            Assert.That(primary.Padding.Left, Is.GreaterThan(0));
+            Assert.That(primary.Padding.Right, Is.GreaterThan(0));
             Assert.That(label.FontWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.Normal));
             Assert.That(keyboard.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_SelectedPipe").IsVisible, Is.False);
             var background = keyboard.GetVisualDescendants().OfType<Border>().Single(border => border.Name == "PART_LayoutRoot");

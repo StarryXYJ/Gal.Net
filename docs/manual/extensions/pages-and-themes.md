@@ -56,7 +56,7 @@ PlayerTypography.DesktopDefault = FontSizePreset.Smaller;
 
 所有平台使用实际内容视口，无需平台标记。`PlayerView.AttachResponsiveShell` 把同一 GameShell 放入一个 Viewbox；普通页面按 1600×900 参考尺寸统一有界缩放，保持实际视口纵横比，游戏与场景鉴赏使用实际视口。Detach 时解除可见性绑定并移除借用的 shell，不应额外创建一套导航或 presenter。
 
-`PlayerLayout.UiScale(Size, bool, double)` 定义普通页面整体缩放，默认限制在 0.65–1.25，移动端下限 0.7、低 DPI 增加 8%；系统 DPI 已由 Avalonia 处理。`Styles/Dimensions.axaml` 统一固定布局尺寸，`PlayerTypography` 统一字号，页面标题、返回和分类直接复用 Heading、Action 和 GroupHeadingSize；不要在测量回调或嵌套样式重复覆写。设置页的页头与正文共用最大800的居中区域，标题与面板左边界对齐。`GamePage.axaml` 和 code-behind 定义独立工具栏的测量/收纳与对白净空。设置 `SettingRow`/`InputBindingRow` 仅移动原有子控件；新增编辑器避免按断点重建控件，否则会丢失草稿或录入状态。存档与图片/视频/场景鉴赏共用 `AdaptiveCardGrid` 和 `CardColumns`/`CardHeight`，三类鉴赏共用 `GalleryCardTemplate`；网格只负责排版，原命令和资源归属不变。
+`PlayerLayout.UiScale(Size, bool, double)` 定义普通页面整体缩放，默认限制在 0.65–1.25，移动端下限 0.7、低 DPI 增加 8%；系统 DPI 已由 Avalonia 处理。`Styles/Dimensions.axaml` 统一固定布局尺寸，`PlayerTypography` 统一字号；不要在测量回调或嵌套样式重复覆写。普通页面使用 `player-page-header`、`player-page-title` 和 `player-page-rule` 样式类统一页头外观，标题内容与返回命令仍由各页面提供。设置页的页头与正文共用最大 800 的居中区域，分类使用独立字号。`GamePage.axaml` 和 code-behind 定义独立工具栏的测量/收纳与对白净空。设置 `SettingRow`/`InputBindingRow` 仅移动原有子控件；新增编辑器避免按断点重建控件，否则会丢失草稿或录入状态。存档与图片/视频/场景鉴赏共用 `AdaptiveCardGrid` 和 `CardColumns`/`CardHeight`，三类鉴赏共用 `GalleryCardTemplate`；网格只负责排版，原命令和资源归属不变。
 
 自定义游戏模板时保留内层固定画布及所需 PART_*，历史覆盖层位于工具栏之上；独立工具栏继续设置 GamePage.IsPlayerInteraction。只捕获场景与含 UI 截图的范围不同，见[自适应页面规范](../../spec/presentation/game-view.md#自适应页面与工具栏)。平台安全区交给原 TopLevel/InsetsManager，不叠加另一份刘海边距。
 

@@ -11,11 +11,11 @@
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,Auto,*">
-        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
-          <TextBlock Text="{Binding State.Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" Classes="player-page-header">
+          <TextBlock Text="{Binding State.Title}" Classes="player-page-title" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
         </Grid>
-        <Border Grid.Row="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <Border Grid.Row="1" Classes="player-page-rule" />
         <TextBlock Grid.Row="2" Text="{Binding State.ErrorMessage}" IsVisible="{Binding State.ErrorMessage, Converter={x:Static conv:StringConverters.IsNotNullOrEmpty}}" Foreground="{DynamicResource GalNet.Brush.Error}" TextWrapping="Wrap" Margin="0,12,0,0" />
         <ScrollViewer Grid.Row="3" Margin="{DynamicResource GalNet.Theme.ContentMargin}" HorizontalScrollBarVisibility="Disabled">
           <ItemsControl x:Name="Items" ItemsSource="{Binding State.Items}">

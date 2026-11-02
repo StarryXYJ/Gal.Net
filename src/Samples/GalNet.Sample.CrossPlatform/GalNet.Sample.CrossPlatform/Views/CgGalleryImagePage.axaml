@@ -9,11 +9,11 @@
   <Grid Background="{DynamicResource GalNet.Brush.Background}">
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
-        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
-          <TextBlock Text="{Binding State.Title}" ToolTip.Tip="{Binding State.Title}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+        <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" Classes="player-page-header">
+          <TextBlock Text="{Binding State.Title}" ToolTip.Tip="{Binding State.Title}" Classes="player-page-title" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
         </Grid>
-        <Border Grid.Row="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />
+        <Border Grid.Row="1" Classes="player-page-rule" />
         <Border Classes="player-media-stage" Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
           <Grid>
             <Image Source="{Binding State.Image}" Stretch="Uniform" ClipToBounds="True" x:Name="PageMedia" />
