@@ -28,7 +28,7 @@ GameShell 的返回标题和应用输入动作由组合入口提供回调；Game
 
 `AddAvaloniaGameView` 仅装配应用显式映射的页面和 Gallery 类型，自动注册普通页面 VM/View 的 Scoped 服务，不要求完整固定页面列表。启用的游戏和截图机制分别校验 GamePage/ScreenshotDialog 控件契约；无映射的路由按实际 VM 全名报告错误。Sample 的 Gallery 缺失类型诊断由项目回调提供。
 
-存档页组合 `SaveSlotCollection`，内置对象订阅槽位更新并释放预览，项目 VM 决定保存后返回及读档流程。Gallery 页面组合 `GalleryThumbnailCollection`、`GalleryImageState`、`GalleryAudioState`、`GalleryVideoState` 与 `GalleryScenePlayback`，内置对象负责预览、轮询、取消与资源释放，不选择具体应用页面。缩略图请求捕获本次取消源与行快照，旧请求不能回写替换后的列表。场景重播等待 pending startup 结束后才释放；已由启动取消路径释放的 run 不再留在 pending slot 中，避免重复释放。
+存档页组合 `SaveSlotCollection`，内置对象订阅槽位更新并释放预览，项目 VM 决定保存后返回及读档流程。SaveSlotCard 的激活按钮在预览图片下层；图片设置 IsHitTestVisible=false，保证应用按钮样式不会遮挡预览，图片区域点击仍能激活槽位，名称和高亮位于上层。Gallery 页面组合 `GalleryThumbnailCollection`、`GalleryImageState`、`GalleryAudioState`、`GalleryVideoState` 与 `GalleryScenePlayback`，内置对象负责预览、轮询、取消与资源释放，不选择具体应用页面。缩略图请求捕获本次取消源与行快照，旧请求不能回写替换后的列表。场景重播等待 pending startup 结束后才释放；已由启动取消路径释放的 run 不再留在 pending slot 中，避免重复释放。
 
 Sample 使用配色库的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，目标平台实际显示仍需验收。Editor 自身字体不在本次范围。
 
@@ -52,11 +52,13 @@ Sample 的标题、加载、游戏、设置、存读档、Gallery/详情/诊断�
 
 页面容器和返回按钮位置、对白人物名/正文字号等由项目 XAML/资源决定。当前默认页面保持顶部页头右侧返回、独立媒体区域；桌面默认“较小”档的人物名/正文为 26/22 设计字号。局部按钮可直接写 XAML、样式或 ControlTheme，不要求实现整套主题。
 
+普通按钮的hover/pressed只改变中性背景：ControlHover/ControlPressed分别以TextPrimary颜色的0.08/0.16透明度叠加，前景和字重不切换；主要按钮保留自身基色，Mono按下为灰色而非纯黑。变体默认值在前、交互状态在后，禁用控件不显示hover。Sample范围的Button/ToggleButton取消基础主题的按压缩放与变换过渡，键盘焦点保留细边框。
+
 ### 玩家字号与富文本字号
 
 Sample 的 `PlayerTypography` 提供 Small/Smaller/Larger/Large 四套 `PlayerFontSizes`，分别配置 Title、Heading、Body、Emphasis、Action、Auxiliary、Dialogue。默认桌面 Smaller、Android/iOS Larger；项目可修改各档数值和平台默认档。资源只应用于项目 surface、shell 及截图弹窗；标题/表单/工具栏/存档和媒体信息使用对应角色，ADV/NVL 使用 Dialogue，姓名使用 Emphasis，历史保留其原有字号层级并跟随对应角色。开场 Logo/公告演出保留独立排版，Editor 和调试工具不接入。每个最终资源值要求有限且在 1–512；一次应用先校验整套值再更新资源。
 
-这些数值属于设计空间，固定画布缩放仍会影响实际显示大小，不代表设备 dp 或最小触摸尺寸。不改变场景坐标、画布比例或页面排布；大字号导致的长文本排版及移动端实际阅读效果须单独检查。
+这些数值是语义字号：普通页面按逻辑单位使用，固定画布中的对白、角色名和选项按设计单位使用，场景缩放仍会影响它们的实际显示大小。普通页标题复用 Heading，返回复用 Action，设置分类 Tab 复用 GroupHeadingSize（默认较小档为22），页脚复用 Auxiliary，不再由页面布局另行封顶。字号档位不代表最小触摸尺寸。场景坐标和画布比例保持不变，大字号长文本及移动端实际阅读效果须单独检查。
 
 `RichTypewriterTextParser` 支持下列标签，大小写不敏感，可带单/双引号，使用 invariant 小数点：
 
@@ -90,21 +92,29 @@ Core token 保留原位置构造/解构参数，新增 `FontSizeScale`（默认 
 
 `GameScreenshotRequest.CapturePreviewPngAsync` 是可选的预览回调，未提供时复用原 `CapturePngAsync`；正式保存始终调用后者。GameShell 的预览按原比例限制到 720×405，不放大；“包含对话框和操作栏”两种状态在当前弹窗内分别缓存，失败可重试。正式导出使用捕获目标的完整逻辑尺寸（场景与含 UI 的范围见移动页面说明），PNG 编码在后台完成。`SceneLayerHost.CaptureControl` 和有尺寸上限的 `CapturePng` 同时限制场景中间纹理与 CPU 效果处理像素，图层位置和原生图片尺寸仍使用原逻辑坐标；剧情截图入口的无参捕获保持原行为。
 
+退出/返回标题确认继续禁用底层 PlayerContent，以保留既有键盘、手柄和焦点隔离。模态期间底层区域标记 modal-background，Sample 首页菜单保持正常文字色，只通过遮罩压暗；关闭时移除此标记，普通禁用样式保留。
+
 ### 自适应页面与工具栏
 
-外部 UI 使用 Avalonia 已处理 DPI 的窗口逻辑尺寸，不直接根据显示器物理分辨率或对角线缩放。`PlayerLayout.UiScale(Size)` 为 `clamp(min(width/1600, height/900), 0.75, 1)`；例如 1280×720 为 0.8，1920×1080 为 1。PlayerTypography.Apply 的可选 uiScale 只折算外部字号资源，保留玩家选择的语义档位；辅助文字下限 11、弹窗标题/正文下限 16/13（不高于配置本值）。DialogueFontSize、SpeakerFontSize、SceneBodyFontSize 保持设计字号，ChoiceList 使用 SceneBodyFontSize，避免游戏画布内发生二次缩放。切换窗口或字号仍更新原控件，不重播对白。
+普通页面使用 Avalonia 已处理 DPI 的逻辑视口，以 1600×900 为尺寸参考。PlayerView 用一个 Viewbox 等比缩放同一个 GameShell：常规缩放为 clamp(min(width/1600,height/900),0.65,1.25)，移动端下限 0.7；移动端 RenderScaling <1.5 时增加 8%。PageDesign 的宽高为实际视口除以缩放值，保持实际纵横比，页面内部继续根据内容可用空间自适应。字号、按钮、间距和边距共同缩放，不再给每个元素独立计算窗口比例；字号资源本身仍使用玩家档位值，避免重复缩放。
 
-CrossPlatform Sample 所有平台共用实际内容视口布局，不以操作系统决定布局。`PlayerApplication` 挂载后将同一个 GameShell 从外层 GameCanvas 移入 PlayerContent；可见性跟随原 GameCanvas 的启动状态。解绑释放订阅、移除借用内容并恢复局部资源，不复制 VM、导航或 presenter。PlayerSurface 的模态、文本卡、演出覆盖层和安全区仍沿用原有所有权。
+只有首页根据视口纵横比切换水平对齐：横屏标题和菜单靠左，竖屏标题、进度提示和菜单居中。标题在上、菜单靠下的纵向构图及同一组按钮保持不变；标题允许自然换行，菜单宽 380、最小高 46、间距 10 均为统一缩放前的设计值，不因方向改变。根主体最大宽 1600。
 
-`PlayerLayout.IsCompact(Size)` 在宽度小于 1000 或高度小于 600 逻辑单位时启用 `compact-player`；恢复宽窗口时撤销局部资源覆盖。普通页面通过 `Styles/Adaptive.axaml` 减少边距、页头及内容间距，普通按钮最小 36、紧凑页面最小 40 逻辑单位；项目拥有统一按钮模板，保证背景、边框、悬浮、按下及焦点不依赖宿主主题的不同模板。确认按钮使用 player-primary，取消保留次级边框。标题菜单在紧凑视口使用单列，放宽恢复原列定义。设置行不足 600 宽时标签移到编辑器上方，绑定行不足 640 时两个捕获控件分行，保留同一编辑器及录入状态；分类/设备标签可换行。存档按 240 最小列宽减列，上限跟随 SaveColumns（默认 4，至少 1）；Gallery 填满列宽并保持 260:190 比例。所有平台均使用这些规则。设置标签可换行，宽排标签列为 220、行底间距 16，分类标签跟随操作字号；布局尺寸由 Dimensions.axaml 统一定义，避免被更外层同名资源覆盖。退出/返回标题/跳过确认统一主次按钮、间距及字体层级。截图弹窗继续使用自身预览与窗口尺寸限制，不套普通页面的通用按钮高度。
+其他普通页面没有独立横竖版。统一页边距为 48×36 设计单位，单行页头最小高 64、内容间距 20；普通按钮设计最小高 40，移动端 44。固定布局尺寸集中在 Dimensions.axaml，字号集中在 PlayerTypography；PlayerView 测量只调整 PageDesign 宽高，不覆写静态布局或字号资源。已删除旧 compact-player 样式分支。
+
+设置页整体置于居中的最大 800 设计单位区域，标题、分类、正文与页脚提示共用左边界，标题不另加左侧空隙。Tab左右Padding为0，项间距24，首项文字直接对齐页标题；hover/pressed/selected使用背景反馈，不使用下划线或加粗。分类保持单行、必要时横向滚动；正文独立滚动，各分类记住偏移。ScrollViewer 的 DataContext 复用时也恢复正确分类位置，原生键盘选择保留。正文显式 Stretch，避免表单按最短控件的 DesiredSize 收缩。SettingRow 统一管理标签列 260、列距 32、上下排时的间距 8；行最小高 44、行间距 16，仅行宽 <600 时自然上下重排；全宽项不保留空标签行。数字输入宽 160，下拉框 280–360，二者靠左；滑条最多 520 且保持可用轨道，内部编辑器与输入列起点对齐。输入绑定保持现有内容重排及捕获状态。
+
+存档与图片、视频、场景鉴赏共用 AdaptiveCardGrid，按容器宽度/240 减列，最多使用 CardColumns（默认4）列。CardHeight 默认210，卡片外边距7、列距6、行距8，底部标题区域最小高84。三类鉴赏共用 GalleryCardTemplate，保留各页打开命令、名称提示及锁定隐藏名称；预览和标题在点击按钮上方绘制且不拦截命中。这些页面共用标题、右侧返回按钮及分隔线位置；设置页按自身居中表单宽度排列页头。
+
+游戏页与场景鉴赏不套普通页面缩放，GameShell 在这两种活动页中保持实际视口。PlayerApplication 随导航切换同一 PageDesign 的尺寸，解绑时取消导航订阅；不复制页面、VM 或 presenter。游戏 scene/dialogue/NVL/choice 仍由内部 1920×1080 画布呈现，工具栏和包含 UI 的截图继续采用实际视口。启动可见性仍跟随原 GameCanvas，PlayerSurface 的确认、演出覆盖层和安全区所有权保持不变。
 
 GamePage 的 scene/dialogue/NVL/choice 在内部 1920×1080 GameCanvasHost 中等比显示，历史是工具栏之上的全页阅读覆盖层。工具栏在实际视口居中，优先留在场景宽度内，按钮确有需要时才使用两侧黑边，总宽不超过视口减左右各 8 逻辑单位。操作条以不超过场景宽度的 320 逻辑单位为最小舒展宽度，按实际内容增长，不强行铺满场景。完整工具栏放不下时收纳为快进、自动、历史（可用时）、更多，更窄时历史进入更多；命令不丢失。放宽恢复完整工具栏时关闭更多菜单。
 
-工具栏按钮最小宽 48、高 32；工具文字按画布比例折算（比例下限 0.5），限制为 12–18，菜单为 14–18 逻辑单位，不修改玩家字号档位。文字和工具栏背景均透明，浅色文字加轻微黑影；hover 以前景色和下划线反馈，按下使用 PrimaryPressed，选中使用主题色、下划线和字重。预留透明下边线，反馈不改变布局。工具栏底部锚定显示场景的下沿，竖向黑边较大时也靠近对白，不远挂在视口底端；横屏无竖向黑边时贴近视口底部。对白与按钮区域保持约 2 逻辑单位净空；仅工具栏隐藏时恢复原 70 设计单位底边距。对白横向位置、宽度、字号和场景坐标不变。
+工具栏按钮最小宽 48、高 32；工具文字按画布比例折算（比例下限 0.5），限制为 12–18，菜单为 14–18 逻辑单位，不修改玩家字号档位。工具栏整体及按钮静止背景透明，文字固定浅色，轻微黑影仅作用于文字；hover使用#565D66，按下使用更深的#454C55，checked使用#656D78背景。交互不改变字色、字重、字号，不使用下划线或按压缩放；键盘焦点使用预留的1像素边框。工具栏底部锚定显示场景的下沿，竖向黑边较大时也靠近对白，不远挂在视口底端；横屏无竖向黑边时贴近视口底部。对白与按钮区域保持约 2 逻辑单位净空；仅工具栏隐藏时恢复原 70 设计单位底边距。对白横向位置、宽度、字号和场景坐标不变。
 
 更多菜单复用原命令，打开取消自动/快进，返回先关闭，切页/卸载清理。按钮 Flyout 打开期间 PlayerInputRouter 不分发剧情设备动作，不改写共享 IsInteractionBlocked；菜单命令仍可直接执行。工具栏透明空白区标记 IsPlayerInteraction，TouchInputRecognizer 排除该区域与 RangeBase，并清理待双击判定的单击，避免关闭菜单后延迟推进。
 
-仅场景 PNG 仍为设计空间（默认 1920×1080），存档预览仍为 480×270。含 UI 截图捕获完整 GameShell，所有平台均为当前内容视口逻辑像素尺寸，包含黑边和工具栏；预览继续限制 720×405。平台安全区不重复扣除，真实挖孔/系统手势和完整竖屏阅读仍须单独验收。
+仅场景 PNG 仍为设计空间（默认 1920×1080），存档预览仍为 480×270。含 UI 截图捕获完整 GameShell，所有平台均为当前内容视口逻辑像素尺寸，包含黑边和工具栏；预览继续限制 720×405。平台安全区不重复扣除。当前普通页面自适应没有改变对白的固定画布语义，小屏阅读字号仍受场景比例影响，独立竖屏阅读布局尚未实现；真实挖孔、系统手势和软键盘仍须设备验收。
 
 ### Gallery 页面
 
@@ -160,7 +170,7 @@ Sample 在会话初始化后将设置接入 Player 变量存储，恢复语言�
 
 ## 运行期呈现边界
 
-游戏工具栏的快速/自动模式互斥且允许均关闭，再次点击已选模式可取消。所有状态背景均透明，按下与选中以前景色和字重反馈。左键取消旧模式后，模式按钮按点击前状态决定开启/关闭，并从权威播放状态刷新选中绑定；工具栏操作不同时推进剧情。
+游戏工具栏的快速/自动模式互斥且允许均关闭，再次点击已选模式可取消。正常状态背景透明，按下与选中只以灰色背景反馈。左键取消旧模式后，模式按钮按点击前状态决定开启/关闭，并从权威播放状态刷新选中绑定；工具栏操作不同时推进剧情。
 
 Runtime 通过 `GalNet.Core.Execution` 中的 IPrimitiveDispatcher、Choice 与快进/播放控制协议接入宿主，不引用呈现程序集。`GalNet.Presentation.Abstractions` 提供文本、NVL、图层、转场、视频、效果等具体领域 presenter 协议及执行注册/恢复组合。`AvaloniaGamePresenters` 是页面侧 presenter 的组合器，分别暴露 dialogue/NVL/choice、layer、animation 和 particle 端口；它不是页面或执行 view。宿主通过 `CompositeGameView` 把这些端口组合成 Runtime 使用的 `IPrimitiveDispatcher`。`NullGameView` 供测试和无界面宿主使用。
 

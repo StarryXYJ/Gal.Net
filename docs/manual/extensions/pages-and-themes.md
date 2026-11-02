@@ -50,12 +50,12 @@ PlayerTypography.DesktopDefault = FontSizePreset.Smaller;
 
 `FontSizePreset` 位于 `GalNet.Avalonia.GameHost.Settings`。这里是项目源码配置，不是 Editor 的项目配置字段；玩家设置只选择档位。应用通过局部 DynamicResource 更新字号，不改写剧情内容或重新挂载 presenter。新增页面优先使用现有 `GalNet.Theme.*` 字号资源。截图弹窗通过 DI 读取当前玩家档位，独立创建时使用平台默认。
 
-剧情局部强调可以写 `<size=1.25em>大一点</size>`、`<size=+4>加四个单位</size>` 或 `<size=-2>小声</size>`；嵌套相对于父级字号。优先使用相对值，裸数字绝对字号不会跟随玩家偏好。完整语义与限制见[游戏页面规范](../../spec/presentation/game-view.md#玩家字号与富文本字号)。对白、角色名和选项属于设计空间；外部页面字号额外按窗口逻辑尺寸折算，真机检查时应同时看最终缩放和长文本布局。
+剧情局部强调可以写 `<size=1.25em>大一点</size>`、`<size=+4>加四个单位</size>` 或 `<size=-2>小声</size>`；嵌套相对于父级字号。优先使用相对值，裸数字绝对字号不会跟随玩家偏好。完整语义与限制见[游戏页面规范](../../spec/presentation/game-view.md#玩家字号与富文本字号)。字号资源只表达玩家档位，普通页面在容器内整体缩放，不能再次按窗口比例折算字号；真机检查时应同时看最终缩放和长文本布局。
 
 ## 定制自适应布局
 
-所有平台使用实际内容视口，无需平台标记。`PlayerLayout.IsCompact(Size)` 统一定义紧凑断点：宽度小于 1000 或高度小于 600 逻辑单位。缩小桌面窗口即可验证，放宽恢复原有局部资源。`PlayerView.AttachResponsiveShell` 借用原 shell，Detach 时解除可见性绑定并恢复局部资源，不应额外创建一套导航或 presenter。
+所有平台使用实际内容视口，无需平台标记。`PlayerView.AttachResponsiveShell` 把同一 GameShell 放入一个 Viewbox；普通页面按 1600×900 参考尺寸统一有界缩放，保持实际视口纵横比，游戏与场景鉴赏使用实际视口。Detach 时解除可见性绑定并移除借用的 shell，不应额外创建一套导航或 presenter。
 
-`PlayerLayout.UiScale(Size)` 定义外部字号缩放，目前为 min(width/1600,height/900) 并限制在 0.75–1，系统 DPI 已由 Avalonia 处理，不要再乘一遍屏幕缩放。PlayerTypography 的配置数值和玩家档位继续保留，Dialogue/Speaker/SceneBody 不参与这层缩放。`Styles/Dimensions.axaml` 统一布局尺寸，避免在嵌套样式重复定义同名键。`Styles/Adaptive.axaml` 定义紧凑页面间距与操作高度；`GamePage.axaml` 和 code-behind 定义独立工具栏的测量/收纳与对白净空。设置 `SettingRow`/`InputBindingRow` 仅移动原有子控件；新增编辑器避免按断点重建控件，否则会丢失草稿或录入状态。`AdaptiveSaveGrid` 和 `AdaptiveGalleryPanel` 只负责卡片布局，原存档/Gallery 命令和资源归属不变。
+`PlayerLayout.UiScale(Size, bool, double)` 定义普通页面整体缩放，默认限制在 0.65–1.25，移动端下限 0.7、低 DPI 增加 8%；系统 DPI 已由 Avalonia 处理。`Styles/Dimensions.axaml` 统一固定布局尺寸，`PlayerTypography` 统一字号，页面标题、返回和分类直接复用 Heading、Action 和 GroupHeadingSize；不要在测量回调或嵌套样式重复覆写。设置页的页头与正文共用最大800的居中区域，标题与面板左边界对齐。`GamePage.axaml` 和 code-behind 定义独立工具栏的测量/收纳与对白净空。设置 `SettingRow`/`InputBindingRow` 仅移动原有子控件；新增编辑器避免按断点重建控件，否则会丢失草稿或录入状态。存档与图片/视频/场景鉴赏共用 `AdaptiveCardGrid` 和 `CardColumns`/`CardHeight`，三类鉴赏共用 `GalleryCardTemplate`；网格只负责排版，原命令和资源归属不变。
 
 自定义游戏模板时保留内层固定画布及所需 PART_*，历史覆盖层位于工具栏之上；独立工具栏继续设置 GamePage.IsPlayerInteraction。只捕获场景与含 UI 截图的范围不同，见[自适应页面规范](../../spec/presentation/game-view.md#自适应页面与工具栏)。平台安全区交给原 TopLevel/InsetsManager，不叠加另一份刘海边距。

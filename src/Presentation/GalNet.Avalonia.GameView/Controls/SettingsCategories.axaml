@@ -21,22 +21,32 @@
     </DataTemplate>
   </UserControl.Resources>
   <TabControl x:Name="CategoryTabs" ItemsSource="{Binding VisibleCategories, RelativeSource={RelativeSource AncestorType=UserControl}}">
-    <TabControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></TabControl.ItemsPanel>
+    <TabControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></TabControl.ItemsPanel>
+    <TabControl.Template>
+      <ControlTemplate>
+        <Grid RowDefinitions="Auto,*">
+          <ScrollViewer Name="CategoryHeaderScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+            <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
+          </ScrollViewer>
+          <ContentPresenter Name="PART_SelectedContentHost" Grid.Row="1" Content="{TemplateBinding SelectedContent}" ContentTemplate="{TemplateBinding SelectedContentTemplate}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" />
+        </Grid>
+      </ControlTemplate>
+    </TabControl.Template>
     <TabControl.ItemTemplate>
       <DataTemplate DataType="settings:SettingCategory"><ContentControl Content="{Binding Label}" /></DataTemplate>
     </TabControl.ItemTemplate>
     <TabControl.ContentTemplate>
       <DataTemplate DataType="settings:SettingCategory">
-        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,20,0,0">
+        <ScrollViewer Name="CategoryContentScroll" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" PropertyChanged="ContentPropertyChanged" AttachedToVisualTree="ContentAttached">
+          <ItemsControl ItemsSource="{Binding DisplayItems}" Margin="0,16,0,0" HorizontalAlignment="Stretch">
             <ItemsControl.ItemTemplate>
               <DataTemplate DataType="settings:SettingItem">
-                <common:SettingRow ColumnDefinitions="220,*" ColumnSpacing="16" Margin="0,0,0,16" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
-                  <StackPanel Spacing="4" IsVisible="{Binding !IsFullWidth}">
+                <common:SettingRow MinHeight="44" Margin="0,0,0,16" IsVisible="{Binding IsVisible}" Classes.setting-unavailable="{Binding !IsEnabled}">
+                  <StackPanel Spacing="4" VerticalAlignment="Center" IsVisible="{Binding !IsFullWidth}">
                     <ContentControl Classes="setting-label" Content="{Binding Label}" />
                     <text:PlayerTextBlock Key="{Binding DescriptionKey}" TextWrapping="Wrap" Opacity="0.64" />
                   </StackPanel>
-                  <StackPanel Grid.Column="{Binding EditorColumn}" Grid.ColumnSpan="{Binding EditorColumnSpan}" Spacing="4">
+                  <StackPanel Spacing="4" VerticalAlignment="Center">
                     <ContentControl Content="{Binding}" IsEnabled="{Binding IsEnabled}" VerticalAlignment="Center">
                       <ContentControl.DataTemplates>
                         <DataTemplate DataType="settings:ActionSetting"><Button Content="{Binding Label}" Command="{Binding ExecuteCommand}" /></DataTemplate>

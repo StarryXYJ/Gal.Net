@@ -9,25 +9,26 @@ public partial class TitlePage : UserControl
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        if (PlayerLayout.IsCompact(availableSize))
+        if (double.IsFinite(availableSize.Width) && double.IsFinite(availableSize.Height))
         {
-            TitleLayout.Margin = new Thickness(24, 16);
-            if (TitleLayout.ColumnDefinitions[1].Width.Value != 0)
-                TitleLayout.ColumnDefinitions = new("*,0");
-            TitleMenu.Margin = new Thickness(0, 12, 0, 0);
-            TitleMenu.MaxWidth = 340;
-            TitleMenu.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
-            TitleButtons.Margin = new Thickness(0);
-        }
-        else
-        {
-            TitleLayout.Margin = new Thickness(48, 40);
-            if (TitleLayout.ColumnDefinitions[0].Width.Value != 320)
-                TitleLayout.ColumnDefinitions = new("320,*");
-            TitleMenu.Margin = new Thickness(0, 32, 0, 0);
-            TitleMenu.MaxWidth = double.PositiveInfinity;
-            TitleMenu.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch;
-            TitleButtons.Margin = new Thickness(0, 0, 16, 0);
+            var portrait = PlayerLayout.IsPortrait(availableSize);
+            TitleLayout.ColumnDefinitions[0].Width = portrait ? new GridLength(1, GridUnitType.Star) : new GridLength(380);
+            TitleLayout.ColumnDefinitions[1].Width = portrait ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+            TitleLayout.Margin = portrait ? new Thickness(32, 48) : new Thickness(64, 48);
+            TitleMenu.MaxWidth = 380;
+            TitleMenu.Width = 380;
+            TitleMenu.HorizontalAlignment = portrait ? global::Avalonia.Layout.HorizontalAlignment.Center : global::Avalonia.Layout.HorizontalAlignment.Stretch;
+            GameTitleText.TextAlignment = portrait ? global::Avalonia.Media.TextAlignment.Center : global::Avalonia.Media.TextAlignment.Left;
+            TitleProgress.HorizontalAlignment = portrait ? global::Avalonia.Layout.HorizontalAlignment.Center : global::Avalonia.Layout.HorizontalAlignment.Left;
+            var titleSize = (double?)this.FindResource("GalNet.Theme.TitleSize") ?? 64;
+            GameTitleText.FontSize = titleSize;
+            var menuSize = (double?)this.FindResource("GalNet.Theme.MenuFontSize") ?? 20;
+            foreach (var button in TitleButtons.Children.OfType<Button>())
+            {
+                button.FontSize = menuSize;
+                button.MinHeight = 46;
+                button.Padding = new Thickness(14, 7);
+            }
         }
         return base.MeasureOverride(availableSize);
     }

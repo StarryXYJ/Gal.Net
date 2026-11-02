@@ -51,7 +51,7 @@ public sealed class ResponsiveLayoutTests
         await using var host = await ResponsiveHost();
         var application = host.Services.GetRequiredService<IPlayerApplication>();
         var shell = host.Services.GetRequiredService<GameShell>();
-        var content = host.View.FindControl<Grid>("PlayerContent")!;
+        var content = host.View.FindControl<Grid>("PageDesign")!;
         application.Detach();
         Assert.That(content.Children, Does.Not.Contain(shell));
         Assert.That(host.View.FindControl<GameCanvasHost>("GameCanvas")!.GameContent, Is.Null);
@@ -132,19 +132,19 @@ public sealed class ResponsiveLayoutTests
         {
             window.UpdateLayout();
             var titleButton = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "NewGameButton");
-            Assert.That(titleButton.Bounds.Height, Is.GreaterThanOrEqualTo(40));
+            Assert.That(titleButton.Bounds.Height, Is.GreaterThanOrEqualTo(36));
             Capture(window, $"title-{width}x{height}");
             navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel>(NavigationTransition.None);
             var model = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel>();
             for (var index = 0; index < 8; index++) model.Slots.Add(new(new(index, default, "", true, false), false, _ => Task.CompletedTask, _ => Task.CompletedTask));
             window.UpdateLayout();
-            var grid = window.GetVisualDescendants().OfType<GalNet.Sample.CrossPlatform.Views.AdaptiveSaveGrid>().Single();
-            Assert.That(grid.Columns, Is.EqualTo(width < 600 ? 1 : 3));
+            var grid = window.GetVisualDescendants().OfType<GalNet.Sample.CrossPlatform.Views.AdaptiveCardGrid>().Single();
+            Assert.That(grid.Columns, Is.EqualTo(width < 600 ? 1 : 4));
             Capture(window, $"slots-{width}x{height}");
             navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.GalleryPageViewModel>(NavigationTransition.None);
             window.UpdateLayout();
             var frame = window.GetVisualDescendants().OfType<Border>().Single(item => item.Name == "PageFrame");
-            Assert.That(frame.Bounds.Width, Is.LessThanOrEqualTo(width));
+            Assert.That(frame.TranslatePoint(new Point(frame.Bounds.Width, 0), host.View)!.Value.X, Is.LessThanOrEqualTo(width));
             Assert.That(window.GetVisualDescendants().OfType<Button>().Single(item => item.Name == "PageBackButton").Bounds.Height, Is.GreaterThanOrEqualTo(40));
             var confirmation = host.ConfirmExitAsync();
             window.UpdateLayout();
@@ -197,7 +197,8 @@ public sealed class ResponsiveLayoutTests
                 Assert.That(button.FontSize, Is.LessThanOrEqualTo(18));
                 Assert.That(visual.Bounds.Height, Is.LessThanOrEqualTo(30));
                 Assert.That(button.Bounds.Height - visual.Bounds.Height, Is.GreaterThanOrEqualTo(4));
-                Assert.That(((global::Avalonia.Media.ISolidColorBrush)visual.Background!).Color.A, Is.Zero);
+                Assert.That(((global::Avalonia.Media.ISolidColorBrush)button.GetVisualDescendants().OfType<Border>()
+                    .Single(border => border.Name == "ToolbarButtonFrame").Background!).Color.A, Is.Zero);
             }
             Assert.That(buttons.All(button => button.Bounds.Width >= 48 && button.Bounds.Height >= 32 && button.Bounds.Height <= 36), Is.True);
             foreach (var button in buttons)
@@ -260,7 +261,8 @@ public sealed class ResponsiveLayoutTests
             Assert.That(row.Children[1], Is.SameAs(editor));
             Assert.That(Grid.GetRow(editor), Is.EqualTo(1));
             Assert.That(host.Services.GetRequiredService<AvaloniaPlayerSettingsService>().RuntimeSettings.TextSpeed, Is.EqualTo(value));
-            Assert.That(page.FindControl<Border>("PageFrame")!.Bounds.Width, Is.LessThanOrEqualTo(360));
+            var frame = page.FindControl<Border>("PageFrame")!;
+            Assert.That(frame.TranslatePoint(new Point(frame.Bounds.Width, 0), host.View)!.Value.X, Is.LessThanOrEqualTo(360));
             Capture(window, "settings-360");
             host.View.Width = 760;
             window.UpdateLayout();
@@ -275,15 +277,10 @@ public sealed class ResponsiveLayoutTests
     [TestCase(1100, 4)]
     public Task TilesUseAvailableWidth(int width, int columns) => SampleUiTests.RunAsync(() =>
     {
-        var slots = new GalNet.Sample.CrossPlatform.Views.AdaptiveSaveGrid();
-        var gallery = new GalNet.Sample.CrossPlatform.Views.AdaptiveGalleryPanel();
-        for (var index = 0; index < 8; index++)
-        { slots.Children.Add(new Border { Height = 180 }); gallery.Children.Add(new Border()); }
-        slots.Measure(new Size(width, double.PositiveInfinity));
-        gallery.Measure(new Size(width, double.PositiveInfinity));
-        Assert.That(slots.Columns, Is.EqualTo(columns));
-        Assert.That(gallery.ItemWidth, Is.LessThanOrEqualTo(width));
-        Assert.That(gallery.ItemHeight / gallery.ItemWidth, Is.EqualTo(190d / 260).Within(.001));
+        var grid = new GalNet.Sample.CrossPlatform.Views.AdaptiveCardGrid();
+        for (var index = 0; index < 8; index++) grid.Children.Add(new Border { Height = 210 });
+        grid.Measure(new Size(width, double.PositiveInfinity));
+        Assert.That(grid.Columns, Is.EqualTo(columns));
         return Task.CompletedTask;
     });
 
@@ -331,7 +328,7 @@ public sealed class ResponsiveLayoutTests
             var title = window.GetVisualDescendants().OfType<GalNet.Sample.CrossPlatform.Views.TitlePage>().Single();
             var layout = title.FindControl<Grid>("TitleLayout")!;
             var button = title.FindControl<Button>("NewGameButton")!;
-            Assert.That(layout.ColumnDefinitions[0].Width.Value, Is.EqualTo(320));
+            Assert.That(button.Bounds.Width, Is.EqualTo(380).Within(1));
             Assert.That(shell.Classes.Contains("compact-player"), Is.False);
             foreach (var width in new[] { 360, 1280, 800, 1280 })
             {
@@ -339,12 +336,12 @@ public sealed class ResponsiveLayoutTests
                 host.View.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
                 window.UpdateLayout();
                 Assert.That(host.Services.GetRequiredService<GameShell>(), Is.SameAs(shell));
-                Assert.That(shell.Bounds.Width, Is.EqualTo(width));
-                Assert.That(shell.Classes.Contains("compact-player"), Is.EqualTo(width < 1000));
-                Assert.That(layout.ColumnDefinitions[1].Width.Value, width < 1000 ? Is.Zero : Is.EqualTo(1));
+                Assert.That(shell.Bounds.Width * PlayerLayout.UiScale(new Size(width, 720)), Is.EqualTo(width).Within(1));
+                Assert.That(shell.Classes.Contains("compact-player"), Is.False);
+                Assert.That(button.Bounds.Width, Is.EqualTo(380).Within(1));
                 Assert.That(title.FindControl<Button>("NewGameButton"), Is.SameAs(button));
-                Assert.That(button.TranslatePoint(default, host.View)!.Value.X + button.Bounds.Width, Is.LessThanOrEqualTo(width));
-                Assert.That(shell.Resources.ContainsKey("GalNet.Theme.PageHeaderMinHeight"), Is.EqualTo(width < 1000));
+                Assert.That(button.TranslatePoint(new Point(button.Bounds.Width, 0), host.View)!.Value.X, Is.LessThanOrEqualTo(width));
+                Assert.That(shell.FindResource("GalNet.Theme.PageHeaderMinHeight"), Is.EqualTo(64d));
                 Capture(window, $"desktop-title-{width}");
             }
             host.Services.GetRequiredService<IPlayerApplication>().Detach();
@@ -402,9 +399,8 @@ public sealed class ResponsiveLayoutTests
             window.UpdateLayout();
             var sizes = PlayerTypography.Presets[preset];
             var shell = host.Services.GetRequiredService<GameShell>();
-            var scale = PlayerLayout.UiScale(new Size(width, height));
-            Assert.That(shell.Resources["GalNet.Theme.TitleSize"], Is.EqualTo(sizes.Title * scale));
-            Assert.That(shell.Resources["GalNet.Theme.BodyFontSize"], Is.EqualTo(sizes.Body * scale));
+            Assert.That(shell.Resources["GalNet.Theme.TitleSize"], Is.EqualTo(sizes.Title));
+            Assert.That(shell.Resources["GalNet.Theme.BodyFontSize"], Is.EqualTo(sizes.Body));
             Assert.That(shell.Resources["GalNet.Theme.DialogueFontSize"], Is.EqualTo(sizes.Dialogue));
             Assert.That(shell.Resources["GalNet.Theme.SpeakerFontSize"], Is.EqualTo(sizes.Emphasis));
             Capture(window, $"audit-title-{width}x{height}");
@@ -416,8 +412,11 @@ public sealed class ResponsiveLayoutTests
                 var back = window.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "PageBackButton");
                 var point = back.TranslatePoint(default, host.View)!.Value;
                 Assert.That(point.X, Is.GreaterThanOrEqualTo(0));
-                Assert.That(point.X + back.Bounds.Width, Is.LessThanOrEqualTo(width));
-                Assert.That(back.Bounds.Height, Is.InRange(36, 44));
+                Assert.That(back.TranslatePoint(new Point(back.Bounds.Width, 0), host.View)!.Value.X, Is.LessThanOrEqualTo(width));
+                Assert.That(back.Bounds.Height, Is.GreaterThanOrEqualTo(40));
+                Assert.That(back.Bounds.Height, Is.GreaterThanOrEqualTo(
+                    back.GetVisualDescendants().OfType<TextBlock>().Single().DesiredSize.Height + back.Padding.Top + back.Padding.Bottom),
+                    "Navigation grows with the player's font choice instead of clipping its label.");
                 if (type == typeof(GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel) && width >= 1000)
                 {
                     var languageRow = window.GetVisualDescendants().OfType<SettingRow>().First(row => row.IsEffectivelyVisible);
@@ -439,13 +438,49 @@ public sealed class ResponsiveLayoutTests
             Assert.That(page.Choice.FontSize, Is.EqualTo(sizes.Body));
             var quick = page.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.IsEffectivelyVisible && button.Command == state.ToggleQuickCommand);
             var normal = ((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color;
+            var normalBorder = ((global::Avalonia.Media.ISolidColorBrush)quick.BorderBrush!).Color;
+            var normalWeight = quick.FontWeight;
+            var normalBounds = quick.Bounds;
+            var quickLabel = quick.GetVisualDescendants().OfType<TextBlock>().Single();
+            Assert.That(normalWeight, Is.EqualTo(global::Avalonia.Media.FontWeight.Normal));
+            Assert.That(quickLabel.TextDecorations?.Count ?? 0, Is.Zero);
             Capture(window, $"audit-game-{width}x{height}");
             var center = quick.TranslatePoint(new Point(quick.Bounds.Width / 2, quick.Bounds.Height / 2), window)!.Value;
             window.MouseMove(center);
-            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color, Is.Not.EqualTo(normal));
-            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.BorderBrush!).Color.A, Is.GreaterThan(0));
-            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color, Is.EqualTo(normal));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.BorderBrush!).Color, Is.EqualTo(normalBorder));
+            var hover = ((global::Avalonia.Media.ISolidColorBrush)quick.Background!).Color;
+            Assert.That(hover.A, Is.GreaterThan(0));
             Capture(window, $"audit-hover-{width}x{height}");
+            window.MouseDown(center, MouseButton.Left);
+            window.UpdateLayout();
+            var pressed = ((global::Avalonia.Media.ISolidColorBrush)quick.Background!).Color;
+            Assert.That(pressed, Is.Not.EqualTo(hover));
+            Assert.That(pressed.R + pressed.G + pressed.B, Is.LessThan(hover.R + hover.G + hover.B));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color, Is.EqualTo(normal));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.BorderBrush!).Color, Is.EqualTo(normalBorder));
+            Assert.That(quick.FontWeight, Is.EqualTo(normalWeight));
+            Assert.That(quick.Bounds, Is.EqualTo(normalBounds));
+            Assert.That(quick.RenderTransform?.Value.IsIdentity ?? true, Is.True);
+            Capture(window, $"audit-pressed-{width}x{height}");
+            window.MouseMove(new Point(1, 1));
+            window.MouseUp(new Point(1, 1), MouseButton.Left);
+            state.PlaybackMode = GalNet.Core.Primitives.PlaybackMode.Quick;
+            window.UpdateLayout();
+            Assert.That(quick.IsChecked, Is.True);
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Background!).Color.A, Is.GreaterThan(0));
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)quick.Foreground!).Color, Is.EqualTo(normal));
+            Assert.That(quick.FontWeight, Is.EqualTo(normalWeight));
+            Assert.That(quick.Bounds, Is.EqualTo(normalBounds));
+            Assert.That(quickLabel.TextDecorations?.Count ?? 0, Is.Zero);
+            Capture(window, $"audit-selected-{width}x{height}");
+            window.KeyPress(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            window.KeyRelease(Key.Tab, RawInputModifiers.None, PhysicalKey.Tab, null);
+            var focused = window.FocusManager!.GetFocusedElement() as Button;
+            Assert.That(focused, Is.Not.Null);
+            Assert.That(focused!.Classes.Contains("player-link"), Is.True);
+            Assert.That(((global::Avalonia.Media.ISolidColorBrush)focused.BorderBrush!).Color.A, Is.GreaterThan(0));
+            state.PlaybackMode = GalNet.Core.Primitives.PlaybackMode.Manual;
             state.IsSkipConfirmationOpen = true; // Visual fixture has no runtime playback controller.
             window.UpdateLayout();
             var skipConfirm = window.GetVisualDescendants().OfType<Button>().Single(button => ReferenceEquals(button.Command, state.ConfirmSkipCommand));

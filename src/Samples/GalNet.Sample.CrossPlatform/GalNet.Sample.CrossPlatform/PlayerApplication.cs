@@ -22,6 +22,8 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
         view.Attach(shell, language);
         view.AttachResponsiveShell(shell);
         view.BindAudioAnnouncements(state);
+        navigation.CurrentViewModelChanged += UpdatePageLayout;
+        UpdatePageLayout(null, EventArgs.Empty);
         settings.SettingsChanged += ApplyTypography;
         _appliedFontSize = null;
         ApplyTypography();
@@ -29,9 +31,12 @@ public sealed class PlayerApplication(PlayerView view, GameShell shell, Language
     public void Detach()
     {
         settings.SettingsChanged -= ApplyTypography;
+        navigation.CurrentViewModelChanged -= UpdatePageLayout;
         view.DetachResponsiveShell();
         view.Detach();
     }
+    private void UpdatePageLayout(object? sender, EventArgs e) =>
+        view.UseProportionalPages(navigation.CurrentViewModel is not IGameplayPage and not SceneGalleryPlayerPageViewModel);
     private void ApplyTypography()
     {
         if (_appliedFontSize == settings.RuntimeSettings.FontSize) return;

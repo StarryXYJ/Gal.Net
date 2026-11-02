@@ -129,6 +129,7 @@ public abstract class PlayerSurface : UserControl
         _exitPreviousFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
         _shell?.SetConfirmationOpen(true);
         _textCards.ClearTextCards();
+        PlayerContent.Classes.Add("modal-background");
         PlayerContent.IsEnabled = false;
         ExitConfirmation.IsVisible = true;
         CancelExitButton.Focus();
@@ -157,6 +158,7 @@ public abstract class PlayerSurface : UserControl
         if (completion is not null) _shell?.SetConfirmationOpen(false, restorePlayback && !confirmed);
         ExitConfirmation.IsVisible = false;
         PlayerContent.IsEnabled = true;
+        PlayerContent.Classes.Remove("modal-background");
         _exitPreviousFocus?.Focus();
         _exitPreviousFocus = null;
         completion?.TrySetResult(confirmed);

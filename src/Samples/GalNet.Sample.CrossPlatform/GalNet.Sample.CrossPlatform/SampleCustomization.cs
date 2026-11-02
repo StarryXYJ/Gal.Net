@@ -51,12 +51,13 @@ public static class SampleCustomization
         {
             fluent,
             new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri("avares://GalNet.Avalonia.GameView/Styles/Controls.axaml") },
-            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Player.axaml") },
-            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Adaptive.axaml") }
+            new global::Avalonia.Markup.Xaml.Styling.StyleInclude(origin) { Source = new Uri(origin, "Styles/Player.axaml") }
         };
         styles.Resources["GalNet.Theme.FontFamily"] = GameTypography.UiFontFamily;
         styles.Resources.MergedDictionaries.Add(palette.CreateResources());
         styles.Resources.MergedDictionaries.Add(new global::Avalonia.Markup.Xaml.Styling.ResourceInclude(origin) { Source = new Uri(origin, "Styles/Dimensions.axaml") });
+        if (OperatingSystem.IsAndroid() || OperatingSystem.IsIOS())
+            styles.Resources["GalNet.Theme.ControlMinHeight"] = 44d;
         PlayerTypography.Apply(styles.Resources, PlayerTypography.Default);
         return styles;
     }
@@ -174,7 +175,38 @@ public static class SampleCustomization
             : type == typeof(IServiceProvider) ? this : services.GetService(type);
     }
 
-    public static EditorRegistry CreateFieldEditors() => EditorRegistry.CreateDefault().Freeze();
+    public static EditorRegistry CreateFieldEditors()
+    {
+        var editors = EditorRegistry.CreateDefault();
+        static FieldEditorLease LimitWidth(FieldEditorLease editor, double width)
+        {
+            editor.Control.MaxWidth = width;
+            editor.Control.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Left;
+            return editor;
+        }
+        FieldEditorLease Numeric(FieldEditorContext context)
+        {
+            var editor = LimitWidth(DefaultFieldEditors.CreateNumeric(context), 160);
+            editor.Control.Classes.Add("player-number");
+            editor.Control.Width = 160;
+            return editor;
+        }
+        editors.Replace(GalNet.Core.Parameters.ValueEditorIds.Numeric, Numeric);
+        editors.Replace(GalNet.Core.Parameters.ValueEditorIds.NumericText, Numeric);
+        editors.Replace(GalNet.Core.Parameters.ValueEditorIds.Choice, context =>
+        {
+            var editor = LimitWidth(DefaultFieldEditors.CreateChoice(context), 360);
+            editor.Control.MinWidth = 280;
+            return editor;
+        });
+        editors.Replace(GalNet.Core.Parameters.ValueEditorIds.Slider, context =>
+        {
+            var editor = LimitWidth(DefaultFieldEditors.CreateSlider(context), 520);
+            editor.Control.HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Stretch;
+            return editor;
+        });
+        return editors.Freeze();
+    }
 
     public static AvaloniaPlayerLocalization CreateLocalizationService() =>
 #if GALNET_GAME_DEBUG

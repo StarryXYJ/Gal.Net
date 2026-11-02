@@ -6,7 +6,11 @@ namespace GalNet.Sample.CrossPlatform;
 public static class PlayerLayout
 {
     // Avalonia sizes are logical units; OS DPI scaling is already applied.
-    public static double UiScale(Size viewport) => Math.Clamp(Math.Min(viewport.Width / 1600, viewport.Height / 900), .75, 1);
+    public static bool IsPortrait(Size viewport) => viewport.Height > viewport.Width;
 
-    public static bool IsCompact(Size viewport) => viewport.Width < 1000 || viewport.Height < 600;
+    public static double UiScale(Size viewport, bool mobile = false, double renderScaling = 1)
+    {
+        var scale = Math.Clamp(Math.Min(viewport.Width / 1600, viewport.Height / 900), mobile ? .7 : .65, 1.25);
+        return mobile && renderScaling < 1.5 ? scale * 1.08 : scale;
+    }
 }

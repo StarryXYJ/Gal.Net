@@ -3,6 +3,8 @@ using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
+using Avalonia.Threading;
 using GalNet.Avalonia.GameView.Settings;
 using GalNet.Game.Controls.Forms;
 
@@ -12,6 +14,9 @@ public sealed partial class SettingsCategories : UserControl
 {
     private SettingItem[] _observedItems = [];
     private bool _attached;
+    private readonly Dictionary<SettingCategory, Vector> _offsets = [];
+    private int _restoreVersion;
+    private bool _restoring;
     public ObservableCollection<SettingCategory> VisibleCategories { get; } = [];
     public static readonly StyledProperty<EditorRegistry?> EditorsProperty =
         AvaloniaProperty.Register<SettingsCategories, EditorRegistry?>(nameof(Editors));
@@ -28,6 +33,37 @@ public sealed partial class SettingsCategories : UserControl
         set => SetValue(CategoriesProperty, value);
     }
     public SettingsCategories() => AvaloniaXamlLoader.Load(this);
+
+    private void ContentPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (sender is not ScrollViewer { DataContext: SettingCategory category } scroll) return;
+        if (e.Property == DataContextProperty) RestoreOffset(scroll, category);
+        else if (e.Property == ScrollViewer.OffsetProperty && !_restoring)
+            _offsets[category] = scroll.Offset;
+    }
+
+    private void ContentAttached(object? sender, VisualTreeAttachmentEventArgs e)
+    {
+        if (sender is not ScrollViewer { DataContext: SettingCategory category } scroll) return;
+        RestoreOffset(scroll, category);
+    }
+
+    private void RestoreOffset(ScrollViewer scroll, SettingCategory category)
+    {
+        var version = ++_restoreVersion;
+        _restoring = true;
+        var offset = _offsets.GetValueOrDefault(category);
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_restoreVersion != version) return;
+            if (scroll.IsAttachedToVisualTree() && ReferenceEquals(scroll.DataContext, category))
+            {
+                scroll.UpdateLayout();
+                scroll.Offset = offset;
+            }
+            _restoring = false;
+        }, DispatcherPriority.Loaded);
+    }
 
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
@@ -67,6 +103,8 @@ public sealed partial class SettingsCategories : UserControl
     private void RefreshCategories()
     {
         var visible = Categories?.Where(category => category.Items.Any(item => item.IsVisible)).ToArray() ?? [];
+        foreach (var category in _offsets.Keys.Where(category => !visible.Contains(category)).ToArray())
+            _offsets.Remove(category);
         if (VisibleCategories.SequenceEqual(visible)) return;
         var tabs = this.FindControl<TabControl>("CategoryTabs");
         var selected = tabs?.SelectedItem as SettingCategory;

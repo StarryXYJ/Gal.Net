@@ -99,13 +99,14 @@ public sealed class PlayerTypographyTests
             try
             {
                 window.UpdateLayout();
-                var scale = PlayerLayout.UiScale(new global::Avalonia.Size(1280, 720));
-                var title = window.GetVisualDescendants().OfType<TextBlock>().Single(text => text.FontSize == 64 * scale);
+                var title = window.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Name == "GameTitleText");
+                var initialTitleSize = title.FontSize;
                 Assert.That(await FontSizeSetting(settings).TrySetValueAsync(FontSizePreset.Larger), Is.True);
                 window.UpdateLayout();
                 var larger = PlayerTypography.Presets[FontSizePreset.Larger];
                 var large = PlayerTypography.Presets[FontSizePreset.Large];
-                Assert.That(title.FontSize, Is.EqualTo(larger.Title * scale));
+                Assert.That(title.FontSize, Is.GreaterThanOrEqualTo(initialTitleSize));
+                Assert.That(title.FontSize, Is.LessThanOrEqualTo(larger.Title));
                 var navigation = host.Services.GetRequiredService<IGameNavigationService>();
                 navigation.ResetTo<GalNet.Sample.CrossPlatform.ViewModels.GamePageViewModel>(NavigationTransition.None);
                 var page = host.Services.GetRequiredService<GamePage>();
@@ -135,13 +136,13 @@ public sealed class PlayerTypographyTests
                 state.IsHistoryOpen = true;
                 window.UpdateLayout();
                 var history = page.History.GetVisualDescendants().OfType<TypewriterTextBlock>().Single();
-                Assert.That(history.FontSize, Is.EqualTo(large.Body * 21 / 18 * scale));
-                Assert.That(history.Inlines!.OfType<Run>().Last().FontSize, Is.EqualTo(large.Body * 21 / 18 * scale * 1.25));
+                Assert.That(history.FontSize, Is.EqualTo(large.Body * 21 / 18));
+                Assert.That(history.Inlines!.OfType<Run>().Last().FontSize, Is.EqualTo(large.Body * 21 / 18 * 1.25));
                 using (var screenshot = new GalNet.Sample.CrossPlatform.Views.ScreenshotDialog(settings))
                     Assert.That(screenshot.FindResource("GalNet.Theme.DialogueFontSize"), Is.EqualTo(large.Dialogue));
                 Assert.That(await FontSizeSetting(settings).TrySetValueAsync(FontSizePreset.Smaller), Is.True);
                 window.UpdateLayout();
-                Assert.That((dialogue.FontSize, nvl.FontSize, speaker.FontSize, history.FontSize), Is.EqualTo((22d, 22d, 26d, 21d * scale)));
+                Assert.That((dialogue.FontSize, nvl.FontSize, speaker.FontSize, history.FontSize), Is.EqualTo((22d, 22d, 26d, 21d)));
             }
             finally { window.Close(); }
         }

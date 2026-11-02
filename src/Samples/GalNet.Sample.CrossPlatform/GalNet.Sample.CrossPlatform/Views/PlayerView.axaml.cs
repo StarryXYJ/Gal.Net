@@ -14,18 +14,14 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
 
     private GameShell? _responsiveShell;
     private IDisposable? _shellVisibility;
-    private bool? _compactLayout;
-    private FontSizePreset _fontSize = PlayerTypography.Default;
-    private double _uiScale = 1;
-    private readonly List<(string Key, bool Exists, object? Value)> _layoutResources = [];
+    private bool _proportionalPages = true;
 
     public void AttachResponsiveShell(GameShell shell)
     {
         var canvas = this.FindControl<GameCanvasHost>("GameCanvas")!;
-        var content = this.FindControl<Grid>("PlayerContent")!;
         canvas.GameContent = null;
         _responsiveShell = shell;
-        content.Children.Insert(1, shell);
+        PageDesign.Children.Add(shell);
         _shellVisibility = shell.Bind(IsVisibleProperty, new Binding(nameof(IsVisible)) { Source = canvas });
     }
 
@@ -34,66 +30,34 @@ public partial class PlayerView : GalNet.Avalonia.GameHost.Views.PlayerSurface
         _shellVisibility?.Dispose();
         _shellVisibility = null;
         if (_responsiveShell is not { } shell) return;
-        this.FindControl<Grid>("PlayerContent")!.Children.Remove(shell);
-        shell.Classes.Remove("compact-player");
-        RestoreLayoutResources(shell);
-        Classes.Remove("compact-player");
-        _compactLayout = null;
+        PageDesign.Children.Remove(shell);
         _responsiveShell = null;
     }
 
-    private void RestoreLayoutResources(GameShell shell)
+    public void UseProportionalPages(bool enabled)
     {
-        foreach (var (key, exists, value) in _layoutResources)
-        {
-            if (exists) shell.Resources[key] = value;
-            else shell.Resources.Remove(key);
-        }
-        _layoutResources.Clear();
+        if (_proportionalPages == enabled) return;
+        _proportionalPages = enabled;
+        InvalidateMeasure();
     }
 
     protected override Size MeasureOverride(Size availableSize)
     {
-        if (_responsiveShell is { } shell && double.IsFinite(availableSize.Width) && double.IsFinite(availableSize.Height))
+        if (_responsiveShell is not null && double.IsFinite(availableSize.Width) && double.IsFinite(availableSize.Height))
         {
-            var scale = PlayerLayout.UiScale(availableSize);
-            if (_uiScale != scale)
-            {
-                _uiScale = scale;
-                ApplyTypography(_fontSize);
-            }
-            var compact = PlayerLayout.IsCompact(availableSize);
-            if (_compactLayout != compact)
-            {
-                _compactLayout = compact;
-                Classes.Set("compact-player", compact);
-                shell.Classes.Set("compact-player", compact);
-                RestoreLayoutResources(shell);
-                if (compact)
-                {
-                    SetLayoutResource(shell, "PageHeaderMinHeight", 52d);
-                    SetLayoutResource(shell, "PageHeaderSpacing", 12d);
-                    SetLayoutResource(shell, "ContentMargin", new Thickness(0, 12, 0, 0));
-                    SetLayoutResource(shell, "RuleMargin", new Thickness(0, 8, 0, 0));
-                }
-            }
+            var mobile = OperatingSystem.IsAndroid() || OperatingSystem.IsIOS();
+            var scale = _proportionalPages ? PlayerLayout.UiScale(availableSize, mobile, TopLevel.GetTopLevel(this)?.RenderScaling ?? 1) : 1;
+            PageDesign.Width = availableSize.Width / scale;
+            PageDesign.Height = availableSize.Height / scale;
         }
         return base.MeasureOverride(availableSize);
     }
 
     public void ApplyTypography(FontSizePreset preset)
     {
-        _fontSize = preset;
-        PlayerTypography.Apply(Resources, preset, _uiScale);
-        if (_responsiveShell is { } shell) PlayerTypography.Apply(shell.Resources, preset, _uiScale);
-    }
-
-    private void SetLayoutResource(GameShell shell, string key, object value)
-    {
-        key = "GalNet.Theme." + key;
-        var exists = shell.Resources.TryGetValue(key, out var previous);
-        _layoutResources.Add((key, exists, previous));
-        shell.Resources[key] = value;
+        PlayerTypography.Apply(Resources, preset);
+        if (_responsiveShell is { } shell)
+            PlayerTypography.Apply(shell.Resources, preset);
     }
 
     public bool CloseToolbarMenu() => this.GetVisualDescendants().OfType<GamePage>().Any(page => page.CloseToolbarMenu());

@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:layout="using:GalNet.Sample.CrossPlatform.Views"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:controls="using:GalNet.Game.Controls"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
@@ -14,21 +13,13 @@
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
         <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
-          <StackPanel Spacing="3">
-            <text:PlayerTextBlock Key="{Binding HeadingKey}" Fallback="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-            <TextBlock Text="{text:PlayerText SaveSlots.Choose, 'Choose a slot'}" Opacity="0.64" />
-          </StackPanel>
+          <text:PlayerTextBlock Key="{Binding HeadingKey}" Fallback="{Binding Heading}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
         </Grid>
         <Border Grid.Row="1" Height="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Background="{DynamicResource GalNet.Brush.Divider}" />
         <Grid RowDefinitions="*,Auto" RowSpacing="18" Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl ItemsSource="{Binding Slots}" VerticalAlignment="Top">
-              <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <layout:AdaptiveSaveGrid Columns="{DynamicResource GalNet.Theme.SaveColumns}" ColumnSpacing="6" RowSpacing="8" VerticalAlignment="Top" />
-                </ItemsPanelTemplate>
-              </ItemsControl.ItemsPanel>
+            <ItemsControl Classes="player-card-grid" ItemsSource="{Binding Slots}" VerticalAlignment="Top">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="sharedvm:GameSaveSlotRowViewModel">
                   <Panel Margin="7">

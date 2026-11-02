@@ -12,10 +12,7 @@
     <Border x:Name="PageFrame" Classes="player-page-frame" BorderThickness="0" Background="Transparent">
       <Grid RowDefinitions="Auto,Auto,*">
         <Grid ColumnDefinitions="*,Auto" x:Name="PageHeader" MinHeight="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" ColumnSpacing="{DynamicResource GalNet.Theme.PageHeaderSpacing}">
-          <StackPanel Spacing="3">
-            <TextBlock Text="{text:PlayerText Title.Gallery, 'Gallery'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-            <TextBlock Text="{text:PlayerText Gallery.Description, 'Unlocked memories and artwork'}" Opacity="0.64" />
-          </StackPanel>
+          <TextBlock Text="{text:PlayerText Title.Gallery, 'Gallery'}" FontSize="{DynamicResource GalNet.Theme.HeadingSize}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" VerticalAlignment="Center" x:Name="PageBackButton" />
         </Grid>
         <Border Grid.Row="1" Margin="{DynamicResource GalNet.Theme.RuleMargin}" Height="1" Background="{DynamicResource GalNet.Brush.Divider}" />

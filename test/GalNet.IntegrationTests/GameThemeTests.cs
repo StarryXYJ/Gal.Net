@@ -505,26 +505,29 @@ public sealed partial class GameThemeTests
                 Assert.That(((ISolidColorBrush)auto.Background!).Color.A, Is.Zero);
                 var quickPoint = BoundsInWindow(quick, window).Center;
                 window.MouseMove(quickPoint);
-                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero, "Unselected modes stay transparent even on hover.");
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.GreaterThan(0), "Hover is indicated by a background fill.");
                 var skipPoint = BoundsInWindow(skip, window).Center;
                 window.MouseMove(skipPoint);
                 var hover = (ISolidColorBrush)skip.Background!;
-                Assert.That(hover.Color.A, Is.Zero);
+                Assert.That(hover.Color.A, Is.GreaterThan(0));
                 var normalForeground = skip.Foreground;
                 window.MouseDown(skipPoint, MouseButton.Left);
-                Assert.That(((ISolidColorBrush)skip.Background!).Color.A, Is.Zero);
-                Assert.That(skip.Foreground, Is.Not.EqualTo(normalForeground));
-                Assert.That(((ISolidColorBrush)skip.GetVisualDescendants().OfType<ContentPresenter>().Single(item => item.Name == "ToolbarContentPresenter").Background!).Color.A, Is.Zero);
+                Assert.That(((ISolidColorBrush)skip.Background!).Color, Is.Not.EqualTo(hover.Color));
+                Assert.That(skip.Foreground, Is.EqualTo(normalForeground));
+                Assert.That(((ISolidColorBrush)skip.GetVisualDescendants().OfType<Border>().Single(item => item.Name == "ToolbarButtonFrame").Background!).Color,
+                    Is.EqualTo(((ISolidColorBrush)skip.Background!).Color));
                 window.MouseUp(skipPoint, MouseButton.Left);
                 state.CancelSkipCommand.Execute(null);
                 Click(window, quick);
                 Assert.That(state.IsQuickMode, Is.True);
                 Assert.That(quick.IsChecked, Is.True);
-                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
-                Assert.That(quick.FontWeight, Is.EqualTo(FontWeight.SemiBold));
+                window.MouseMove(new Point(1, 1));
+                Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.GreaterThan(0));
+                Assert.That(quick.FontWeight, Is.EqualTo(FontWeight.Normal));
                 Click(window, quick);
                 Assert.That(state.IsQuickMode, Is.False, "Tunnel cancellation must not turn an off-toggle into an on-toggle.");
                 Assert.That(quick.IsChecked, Is.False, "The button must also clear its own toggled visual state.");
+                window.MouseMove(new Point(1, 1));
                 Assert.That(((ISolidColorBrush)quick.Background!).Color.A, Is.Zero);
                 Click(window, quick);
                 Click(window, auto);
@@ -772,10 +775,14 @@ public sealed partial class GameThemeTests
                     window.UpdateLayout();
                     if (root.Child.FindControl<Border>("PageFrame") is { } frame)
                     {
-                        Assert.That(BoundsInWindow(frame, window), Is.EqualTo(frameBounds), viewModelType.Name);
+                        var currentFrame = BoundsInWindow(frame, window);
+                        Assert.That(currentFrame.Top, Is.EqualTo(frameBounds.Top), viewModelType.Name);
+                        Assert.That(currentFrame.Height, Is.EqualTo(frameBounds.Height), viewModelType.Name);
+                        Assert.That(currentFrame.Center.X, Is.EqualTo(window.Width / 2).Within(1), "Page content remains centered even when a form has a narrower reading width.");
                         Assert.That(frame.BorderThickness, Is.EqualTo(default(Thickness)), "Pages must not have an enclosing outline.");
-                        Assert.That(BoundsInWindow(root.Child.FindControl<Button>("PageBackButton")!, window),
-                            Is.EqualTo(backBounds), "The return target must stay in the same place across pages.");
+                        var currentBack = BoundsInWindow(root.Child.FindControl<Button>("PageBackButton")!, window);
+                        Assert.That(currentBack.Top, Is.EqualTo(backBounds.Top));
+                        Assert.That(currentBack.Right, Is.EqualTo(currentFrame.Right).Within(1), "Return stays aligned to its page header.");
                     }
                     Capture(window, $"{layout}-{paletteName}-{viewModelType.Name}");
                 }

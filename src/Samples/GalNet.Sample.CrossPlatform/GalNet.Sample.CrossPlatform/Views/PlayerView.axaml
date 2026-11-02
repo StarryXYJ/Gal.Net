@@ -29,6 +29,11 @@
       <controls:GameCanvasHost x:Name="GameCanvas" IsVisible="False"
                                DesignWidth="1920"
                                DesignHeight="1080" />
+      <Border Background="{DynamicResource GalNet.Brush.Background}" IsVisible="{Binding IsVisible, ElementName=GameCanvas}">
+        <Viewbox x:Name="PageViewport" Stretch="Uniform">
+          <Grid x:Name="PageDesign" />
+        </Viewbox>
+      </Border>
       <project:LanguageSelectionView x:Name="LanguageSelection" IsVisible="False" />
       <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
                  Foreground="{DynamicResource GalNet.Brush.TextPrimary}" IsVisible="False" TextWrapping="Wrap" MaxWidth="600" />

@@ -41,4 +41,5 @@
   <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,5</Thickness>
   <x:Double x:Key="GalNet.Theme.NvlSpacing">14</x:Double>
   <x:Double x:Key="GalNet.Theme.SaveMinHeight">150</x:Double>
+  <x:Double x:Key="GalNet.Theme.CardHeight">210</x:Double>
 </ResourceDictionary>
