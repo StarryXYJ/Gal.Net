@@ -174,6 +174,40 @@ public sealed partial class GameThemeTests
         }, TestContext.CurrentContext.CancellationToken);
     }
 
+    [TestCase(SaveSlotsMode.Load)]
+    [TestCase(SaveSlotsMode.Save)]
+    public async Task SavePageCreatesOneCardPerSlotWithTheCorrectCommand(SaveSlotsMode mode)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            using var provider = CreateServices(new TemplateAppearance()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            await page.ActivateAsync(mode);
+            var view = scope.ServiceProvider.GetRequiredService<IPageViewFactory>().Create(page);
+            var root = new Border { Child = view };
+            root.Classes.Add("galnet-player");
+            root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var cards = view.GetVisualDescendants().OfType<SaveSlotCard>().ToArray();
+                Assert.That(cards, Has.Length.EqualTo(page.Slots.Count));
+                foreach (var card in cards)
+                {
+                    var row = page.Slots.Single(slot => slot.SlotIndex == card.SlotIndex);
+                    Assert.That(card.Command, Is.SameAs(mode == SaveSlotsMode.Save ? row.SaveCommand : row.LoadCommand));
+                    Assert.That(card.Command!.CanExecute(null), Is.EqualTo(mode == SaveSlotsMode.Save || !row.IsEmpty && !row.IsCorrupt));
+                }
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     [Test]
     public async Task SavingWaitsForRenameAndRenameFailureKeepsTheDraftWithoutLoading()
     {

@@ -23,6 +23,7 @@ public sealed class GameSaveSlotRowViewModel : ObservableObject, IDisposable
     public bool IsSaveMode { get; }
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand LoadCommand { get; }
+    public IAsyncRelayCommand ActivateCommand => IsSaveMode ? SaveCommand : LoadCommand;
 
     public GameSaveSlotRowViewModel(GameSaveSlot slot, bool isSaveMode, Func<int, Task> save, Func<int, Task> load)
         : this(slot, isSaveMode, save, load, null) { }

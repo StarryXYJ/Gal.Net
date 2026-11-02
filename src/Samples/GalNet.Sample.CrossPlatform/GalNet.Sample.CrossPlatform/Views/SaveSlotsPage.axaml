@@ -22,10 +22,7 @@
             <ItemsControl Classes="player-card-grid" ItemsSource="{Binding Slots}" VerticalAlignment="Top">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="sharedvm:GameSaveSlotRowViewModel">
-                  <Panel Margin="7">
-                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding LoadCommand}" IsVisible="{Binding !IsSaveMode}" />
-                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding SaveCommand}" IsVisible="{Binding IsSaveMode}" />
-                  </Panel>
+                  <controls:SaveSlotCard Margin="7" Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding ActivateCommand}" />
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
