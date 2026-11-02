@@ -19,6 +19,12 @@ if (args is ["--verify"])
         benchmark.Verify();
         Console.WriteLine("Verified full and bounded PNG decode sizes.");
     }
+    using (var benchmark = new ToolbarBenchmarks())
+    {
+        benchmark.Setup();
+        benchmark.Verify();
+        Console.WriteLine("Verified toolbar breakpoint and recovery.");
+    }
     return;
 }
 

@@ -24,6 +24,16 @@
 
 2/2 完成，退出码 0，报告位于 `output/sample-thumbnail-baseline/results/`。每轮单次操作，BDN 对两项报告了最小迭代时间不足 100 ms；两方法分别在独立进程测量，未做交错 AB/BA。缩小后的像素面积约为原来的 9%，但**没有测量原生峰值或留存内存**；此对照不支持宣称总内存已下降或解码更快，也没有验证各种 DPI 的图像质量。当前不替换生产解码。
 
+## 游戏工具栏跨断点调整
+
+夹具挂载实际 Sample `GamePage`，显示工具栏并在 450 与 1280 宽度之间交替调整窗口，单次调用包含 20 次调整；`OperationsPerInvoke=20`，下表按每次调整报告。自检验证窄窗口使用紧凑工具栏、恢复宽度后使用完整工具栏。页面没有加载真实场景或媒体。
+
+| 每次调整平均 | 标准差 | 每次托管分配 |
+| ---: | ---: | ---: |
+| 360.4 μs | 30.34 μs | 27.82 KiB |
+
+1/1 完成，退出码 0，报告位于 `output/sample-toolbar-baseline/results/`。这是 Headless 页面和布局更新总成本，不是 GPU 帧时间，也不是 `MeasureOverride` 的独占成本；单 launch、6 次样本的 99.9% 误差为 ±85.07 μs，BDN 报告迭代时间不足 100 ms。没有对照实验或真实玩家场景证据，不据此宣称工具栏需要性能优化；不为缩短代码而增加缓存/事件订阅。
+
 ## 复现
 
 ```powershell
@@ -32,6 +42,7 @@ dotnet build benchmarks/GalNet.Sample.Benchmarks/GalNet.Sample.Benchmarks.csproj
 dotnet run --project benchmarks/GalNet.Sample.Benchmarks/GalNet.Sample.Benchmarks.csproj -c Release --no-build --no-restore -- --verify
 dotnet run --project benchmarks/GalNet.Sample.Benchmarks/GalNet.Sample.Benchmarks.csproj -c Release --no-build --no-restore -- --filter '*GalleryBenchmarks*' --artifacts output/sample-gallery-baseline --exporters json markdown
 dotnet run --project benchmarks/GalNet.Sample.Benchmarks/GalNet.Sample.Benchmarks.csproj -c Release --no-build --no-restore -- --filter '*ThumbnailBenchmarks*' --artifacts output/sample-thumbnail-baseline --exporters json markdown
+dotnet run --project benchmarks/GalNet.Sample.Benchmarks/GalNet.Sample.Benchmarks.csproj -c Release --no-build --no-restore -- --filter '*ToolbarBenchmarks*' --artifacts output/sample-toolbar-baseline --exporters json markdown
 ```
 
 BenchmarkDotNet 会在工程默认 `bin/` 下构建执行子工程，报告写入 `output/`；入口检查空结果、关键校验错误和失败报告。合成 PNG 暂存在 `output/sample-gallery-fixtures/`，正常清理后删除。测量线程不得与其他构建或运行活动冲突；如实际发生文件占用，按仓库约定停下并由用户决定处理。
