@@ -1,0 +1,69 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..128
+  animatable: true
+
+@param time
+  uniform: time
+  type: float
+  default: 0
+  range: 0..36000
+  animatable: true
+
+@param frequency
+  uniform: frequency
+  type: float
+  default: 12
+  range: 0.1..100
+  animatable: true
+
+@param speed
+  uniform: speed
+  type: float
+  default: 1
+  range: -20..20
+  animatable: true
+
+@param mode
+  uniform: mode
+  type: enum
+  default: Wave
+  options: Wave,Ripple,Heat
+  animatable: false
+
+@param centerX
+  uniform: centerX
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param centerY
+  uniform: centerY
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength,time,frequency,speed,mode,centerX,centerY;
+
+half4 main(float2 p) {
+ if (strength <= 0.0) return source.eval(p);
+ float2 uv=p/max(size,float2(1)); float phase=time*speed*6.2831853;
+ float2 offset=float2(sin(uv.y*frequency*6.2831853+phase),0);
+ if (mode>0.5 && mode<1.5) {
+  float2 delta=(uv-float2(centerX,centerY))*size; float d=length(delta);
+  offset=delta/max(d,0.001)*sin(d/max(min(size.x,size.y),1.0)*frequency*6.2831853-phase);
+ } else if(mode>1.5) offset=float2(sin(uv.y*frequency*6.2831853+phase),cos(uv.x*frequency*3.14159-phase)*0.3);
+ return source.eval(clamp(p+offset*strength,float2(0),max(size-float2(0.5),float2(0))));
+}

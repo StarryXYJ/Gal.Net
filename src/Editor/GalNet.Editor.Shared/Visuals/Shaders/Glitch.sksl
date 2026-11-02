@@ -1,0 +1,53 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param time
+  uniform: time
+  type: float
+  default: 0
+  range: 0..36000
+  animatable: true
+
+@param aberration
+  uniform: aberration
+  type: float
+  default: 8
+  range: 0..128
+  animatable: true
+
+@param displacement
+  uniform: displacement
+  type: float
+  default: 24
+  range: 0..256
+  animatable: true
+
+@param scanlines
+  uniform: scanlines
+  type: float
+  default: 0.15
+  range: 0..1
+  animatable: true
+
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength,time,aberration,displacement,scanlines;
+float hash(float2 p){return fract(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
+half4 main(float2 p) {
+ half4 original=source.eval(p); if(strength<=0.0) return original;
+ float tick=floor(time*20.0); float band=floor(p.y/16.0); float h=hash(float2(band,tick));
+ float offset=(h-0.5)*displacement*strength*step(0.7,h); float2 q=p+float2(offset,0);
+ half4 c=source.eval(q); half4 r=source.eval(q+float2(aberration*strength,0)); half4 b=source.eval(q-float2(aberration*strength,0));
+ half alpha=max(c.a,max(r.a,b.a)); half3 rgb=half3(r.r,c.g,b.b)*half(1.0-strength*scanlines*(0.5+0.5*sin(p.y*3.14159)));
+ return half4(clamp(rgb,half3(0),half3(alpha)),alpha);
+}

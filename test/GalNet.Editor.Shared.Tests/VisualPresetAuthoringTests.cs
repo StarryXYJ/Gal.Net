@@ -12,6 +12,24 @@ namespace GalNet.Editor.Shared.Tests;
 
 public sealed class VisualPresetAuthoringTests
 {
+    [Test]
+    public void Copy_remaps_emphasis_participants_parallax_targets_and_audio_automation_instances()
+    {
+        var layer = new EditorEntryData { Type = "layer.showColor", Parameters = Parameters(new { handleId = "hero", color = "#FFFFFF" }) };
+        var emphasis = new EditorEntryData { Type = "preset.emphasis", Parameters = Parameters(new { playbackHandleId = "focus", handleIds = new[] { "hero" }, activeHandleId = "hero" }) };
+        var parallax = new EditorEntryData { Type = "preset.parallax", Parameters = Parameters(new { playbackHandleId = "camera", targets = new[] { new { handleId = "hero", transform = new { } } } }) };
+        var effect = new EditorEntryData { Type = "audio.seffect.apply", Parameters = Parameters(new { scope = "bus", targetId = "bgm", instanceId = "filter", id = "seffect.lowPass" }) };
+        var timeline = new EditorEntryData { Type = "timeline.play", Parameters = Parameters(new { timeline = new { playbackHandleId = "audio", tracks = Array.Empty<object>(), events = Array.Empty<object>(), audioTracks = new[] { new { scope = "Bus", targetId = "bgm", instanceId = "filter", parameter = "cutoffHz" } } } }) };
+        SceneAuthoringIdentities.RemapCopy([layer, emphasis, parallax, effect, timeline]);
+        var hero = layer.Parameters["handleId"].GetString();
+        Assert.That(hero, Is.Not.EqualTo("hero"));
+        Assert.That(emphasis.Parameters["activeHandleId"].GetString(), Is.EqualTo(hero));
+        Assert.That(emphasis.Parameters["handleIds"][0].GetString(), Is.EqualTo(hero));
+        Assert.That(parallax.Parameters["targets"][0].GetProperty("handleId").GetString(), Is.EqualTo(hero));
+        Assert.That(timeline.Parameters["timeline"].GetProperty("audioTracks")[0].GetProperty("instanceId").GetString(), Is.EqualTo(effect.Parameters["instanceId"].GetString()));
+        Assert.That(effect.Parameters["instanceId"].GetString(), Is.Not.EqualTo("filter"));
+    }
+
     private static Dictionary<string, JsonElement> Parameters(object value) => JsonSerializer.SerializeToElement(value).EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone());
 
     [Test]

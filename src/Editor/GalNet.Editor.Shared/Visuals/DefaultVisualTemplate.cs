@@ -18,7 +18,15 @@ public static class DefaultVisualTemplate
         ["depthBlur"] = "DepthBlur",
         ["speedLines"] = "SpeedLines",
         ["reveal"] = "Reveal",
-        ["maskReveal"] = "MaskReveal"
+        ["maskReveal"] = "MaskReveal",
+        ["distortion"] = "Distortion",
+        ["radialBlur"] = "RadialBlur",
+        ["film"] = "Film",
+        ["glitch"] = "Glitch",
+        ["pixelate"] = "Pixelate",
+        ["spotlight"] = "Spotlight",
+        ["shapeMask"] = "ShapeMask",
+        ["mood"] = "Mood"
     });
 
     public static IReadOnlyDictionary<string, string> ProgramNames => Programs;
@@ -47,6 +55,17 @@ public static class DefaultVisualTemplate
             files.Add("Assets/" + path, Encoding.UTF8.GetBytes(ReadShader(name)));
             files.Add("Assets/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "effect-program", path }));
             options.DefaultVisualPrograms.Add(purpose, id);
+        }
+        foreach (var (purpose, name) in new Dictionary<string, string> { ["Rain"] = "Rain", ["Snow"] = "Soft", ["Petals"] = "Petal", ["Dust"] = "Soft", ["Fireflies"] = "Soft" })
+        {
+            if (options.DefaultWeatherTextures.ContainsKey(purpose)) continue;
+            var id = Guid.NewGuid().ToString("N"); var path = "Effects/Default/" + purpose + "Particle.png";
+            using var stream = typeof(DefaultVisualTemplate).Assembly.GetManifestResourceStream("GalNet.Visuals.Particles." + name + ".png")
+                ?? throw new InvalidOperationException("Missing weather texture.");
+            using var memory = new MemoryStream(); stream.CopyTo(memory);
+            files.Add("Assets/" + path, memory.ToArray());
+            files.Add("Assets/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "sprite", path }));
+            options.DefaultWeatherTextures.Add(purpose, id);
         }
         result.Set(DefaultProjectConfiguration.Section, options);
         return new(result, files);

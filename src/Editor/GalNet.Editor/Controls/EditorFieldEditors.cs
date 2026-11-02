@@ -39,6 +39,7 @@ public static class EditorFieldEditors
         registry.RegisterDefault<LayerTransform>(TransformFieldEditor.Create);
         registry.RegisterMember<MotionPresetOptions>(value => value.Transform, TransformFieldEditor.Create);
         registry.RegisterMember<RevealTransitionOptions>(value => value.Center, context => ShaderVectorFieldEditor.Create(context, 2));
+        registry.RegisterMember<MaskPresetOptions>(value => value.Parameters, context => PresetShaderParametersFieldEditor.Create(context, shaderPrograms, new HashSet<string>(StringComparer.Ordinal) { "overlay" }));
         registry.RegisterMember<SpeedLinesPresetOptions>(value => value.Parameters, context => PresetShaderParametersFieldEditor.Create(context, shaderPrograms));
         registry.RegisterMember<ImpactPresetOptions>(value => value.Parameters, context => PresetShaderParametersFieldEditor.Create(context, shaderPrograms));
         registry.RegisterMember<LayerShowOptions>(value => value.Flipbook, FlipbookFieldEditor.Create);
@@ -100,6 +101,11 @@ public static class EditorFieldEditors
             registry.RegisterMember<VariantsSelectOptions>(options => options.Dimension, context => VariantFieldEditor.Create(context, scenes, selection: false, dimension: true));
             registry.RegisterMember<VariantsSelectOptions>(options => options.Value, context => VariantFieldEditor.Create(context, scenes, selection: false));
             FieldEditorLease Target(FieldEditorContext context) => SceneTargetFieldEditor.Create(context, scenes);
+            registry.RegisterMember<IdlePresetOptions>(options => options.HandleId, Target);
+            registry.RegisterMember<HeartbeatPresetOptions>(options => options.HandleId, Target);
+            registry.RegisterMember<EmphasisPresetOptions>(options => options.ActiveHandleId, Target);
+            registry.RegisterMember<MoodPresetOptions>(options => options.TargetHandleId, Target);
+            registry.RegisterMember<StylizedTransitionOptions>(options => options.OldHandleId, Target);
             registry.RegisterMember<ShakePresetOptions>(options => options.HandleId, Target);
             registry.RegisterMember<ImpactPresetOptions>(options => options.HandleId, Target);
             registry.RegisterMember<LayerHandleOptions>(options => options.HandleId, Target);

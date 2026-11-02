@@ -268,7 +268,20 @@ public sealed partial class SceneTargetAnalysis
             case BuiltinEntryIds.ShakePreset:
             case BuiltinEntryIds.SpeedLinesPreset:
             case BuiltinEntryIds.ImpactPreset:
+            case BuiltinEntryIds.MaskPreset:
+            case BuiltinEntryIds.FlashPreset:
+            case BuiltinEntryIds.IdlePreset:
+            case BuiltinEntryIds.WeatherPreset:
+            case BuiltinEntryIds.MoodPreset:
+            case BuiltinEntryIds.HeartbeatPreset:
+            case BuiltinEntryIds.ParallaxPreset:
+            case BuiltinEntryIds.FlashTransition:
+            case BuiltinEntryIds.ZoomTransition:
+            case BuiltinEntryIds.PixelateTransition:
+            case BuiltinEntryIds.GlitchTransition:
             case BuiltinEntryIds.ColorFadeTransition: TransferTransition(state, group, entry); break;
+            case BuiltinEntryIds.EmphasisPreset:
+            case BuiltinEntryIds.EmphasisText: TransferEmphasis(state, group, entry); break;
             case BuiltinEntryIds.Animate:
                 TransferAnimationPlayback(state, group, entry);
                 if (state.Targets.TryGetValue(Text("handleId"), out var animated)) state.Targets[animated.Handle] = animated with { Values = EmptyValues };

@@ -7,51 +7,21 @@
              xmlns:ursa="https://irihi.tech/ursa"
              x:Class="GalNet.Sample.CrossPlatform.Views.PlayerView">
   <UserControl.Resources>
-    <ControlTheme x:Key="MusicToastTheme" TargetType="ursa:ToastCard">
-      <Setter Property="MinWidth" Value="280" />
-      <Setter Property="MaxWidth" Value="360" />
-      <Setter Property="HorizontalAlignment" Value="Left" />
-      <Setter Property="VerticalAlignment" Value="Bottom" />
+    <ControlTheme x:Key="TextCardTheme.default" TargetType="ContentControl">
       <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.TextPrimary}" />
-      <Setter Property="Background">
-        <SolidColorBrush Color="{DynamicResource GalNet.Palette.SurfaceColor}" Opacity="0.84" />
-      </Setter>
-      <Setter Property="BorderBrush" Value="{DynamicResource GalNet.Brush.Border}" />
-      <Setter Property="RenderTransform"><TranslateTransform /></Setter>
-      <Setter Property="Template">
-        <ControlTemplate>
-          <Border x:Name="MusicToastSurface" Padding="20,12" Margin="8" CornerRadius="6"
-                  Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                  BorderThickness="1" BoxShadow="0 4 16 0 #20000000">
-            <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
-                       FontSize="{DynamicResource GalNet.Theme.ModalFontSize}" TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis" />
-          </Border>
-        </ControlTemplate>
-      </Setter>
-      <Style Selector="^[IsClosing=False]">
-        <Style.Animations>
-          <Animation Duration="0:0:0.8" Easing="CubicEaseOut" FillMode="Forward">
-            <KeyFrame Cue="0%"><Setter Property="TranslateTransform.X" Value="-320" /><Setter Property="Opacity" Value="0" /></KeyFrame>
-            <KeyFrame Cue="100%"><Setter Property="TranslateTransform.X" Value="0" /><Setter Property="Opacity" Value="1" /></KeyFrame>
-          </Animation>
-        </Style.Animations>
-      </Style>
-      <Style Selector="^[IsClosing=True]">
-        <Style.Animations>
-          <Animation Duration="0:0:0.8" Easing="CubicEaseIn" FillMode="Forward">
-            <KeyFrame Cue="0%">
-              <Setter Property="TranslateTransform.X" Value="0" />
-              <Setter Property="Opacity" Value="1" />
-              <Setter Property="IsClosed" Value="False" />
-            </KeyFrame>
-            <KeyFrame Cue="100%">
-              <Setter Property="TranslateTransform.X" Value="-320" />
-              <Setter Property="Opacity" Value="0" />
-              <Setter Property="IsClosed" Value="True" />
-            </KeyFrame>
-          </Animation>
-        </Style.Animations>
-      </Style>
+      <Setter Property="Template"><ControlTemplate>
+        <Border Padding="20,12" Margin="8" CornerRadius="6" MinWidth="280" MaxWidth="560"
+                BorderBrush="{DynamicResource GalNet.Brush.Border}" BorderThickness="1">
+          <Border.Background><SolidColorBrush Color="{DynamicResource GalNet.Palette.SurfaceColor}" Opacity="0.84" /></Border.Background>
+          <TextBlock Text="{TemplateBinding Content}" TextWrapping="Wrap"
+                     Foreground="{TemplateBinding Foreground}" FontSize="{DynamicResource GalNet.Theme.ModalFontSize}" />
+        </Border>
+      </ControlTemplate></Setter>
+    </ControlTheme>
+    <ControlTheme x:Key="TextCardTheme.music" TargetType="ContentControl" BasedOn="{StaticResource TextCardTheme.default}" />
+    <ControlTheme x:Key="TextCardTheme.location" TargetType="ContentControl" BasedOn="{StaticResource TextCardTheme.default}" />
+    <ControlTheme x:Key="TextCardTheme.chapter" TargetType="ContentControl" BasedOn="{StaticResource TextCardTheme.default}">
+      <Setter Property="Foreground" Value="{DynamicResource GalNet.Brush.Primary}" />
     </ControlTheme>
   </UserControl.Resources>
   <Grid x:Name="PlayerRoot" Classes="galnet-player" Background="{DynamicResource GalNet.Brush.Background}">
@@ -63,18 +33,6 @@
       <TextBlock x:Name="StartupStatus" HorizontalAlignment="Center" VerticalAlignment="Center"
                  Foreground="{DynamicResource GalNet.Brush.TextPrimary}" IsVisible="False" TextWrapping="Wrap" MaxWidth="600" />
     </Grid>
-    <ursa:WindowToastManager x:Name="AudioToast" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                            Margin="24,24,24,88" MaxItems="1" IsHitTestVisible="False">
-      <ursa:WindowToastManager.Template>
-        <ControlTemplate>
-          <!-- Outgoing and incoming tracks share one anchor during replacement. -->
-          <Grid x:Name="PART_Items" ClipToBounds="True" />
-        </ControlTemplate>
-      </ursa:WindowToastManager.Template>
-      <ursa:WindowToastManager.Styles>
-        <Style Selector="ursa|ToastCard"><Setter Property="Theme" Value="{StaticResource MusicToastTheme}" /></Style>
-      </ursa:WindowToastManager.Styles>
-    </ursa:WindowToastManager>
     <Grid x:Name="ExitConfirmation" IsVisible="False" Background="#66000000" KeyboardNavigation.TabNavigation="Cycle">
       <Border MaxWidth="360" Margin="24" Padding="24" HorizontalAlignment="Center" VerticalAlignment="Center"
               CornerRadius="6" Background="{DynamicResource GalNet.Brush.Surface}"

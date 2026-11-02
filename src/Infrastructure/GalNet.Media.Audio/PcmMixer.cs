@@ -8,6 +8,8 @@ public sealed class PcmMixer
     public const int SampleRate = 48_000;
     private const int BlockSamples = 2048;
     private Graph _graph = new([], [], []);
+    private AudioDuckingState[] _ducking = [];
+    public void SetDucking(AudioDuckingState[] rules) => Volatile.Write(ref _ducking, rules.ToArray());
     private float _master = 1;
     private float _masterTarget = 1;
     public IReadOnlyList<PcmVoice> Voices => Volatile.Read(ref _graph).Voices;
@@ -23,6 +25,7 @@ public sealed class PcmMixer
     public void Reset()
     {
         Volatile.Write(ref _graph, new([], [], []));
+        Volatile.Write(ref _ducking, []);
     }
     public void Add(PcmVoice voice)
     { var graph = Volatile.Read(ref _graph); Volatile.Write(ref _graph, graph with { Voices = [.. graph.Voices, voice] }); }
@@ -54,6 +57,12 @@ public sealed class PcmMixer
             foreach (var track in graph.Tracks) track.Buffer.AsSpan(0, block.Length).Clear();
             foreach (var bus in graph.Buses) bus.Buffer.AsSpan(0, block.Length).Clear();
             foreach (var voice in voices) voice.Render(block.Length);
+            foreach (var track in graph.Tracks) track.ResetDuckTarget();
+            foreach (var bus in graph.Buses) bus.ResetDuckTarget();
+            foreach (var rule in Volatile.Read(ref _ducking))
+                if (HasDuckSource(voices, rule.SourceTrackId))
+                    foreach (var target in rule.Scope == SEffectScope.Track ? graph.Tracks : graph.Buses)
+                        if (target.Id == rule.TargetId) target.SetDuck(rule.Gain, rule.AttackMs, rule.ReleaseMs);
             foreach (var track in graph.Tracks)
             {
                 track.Process(block.Length);
@@ -70,6 +79,8 @@ public sealed class PcmMixer
             output = output[block.Length..];
         }
     }
+    private static bool HasDuckSource(PcmVoice[] voices, string track)
+    { foreach (var voice in voices) if (voice.Request.TrackId == track && voice.ActiveForDuck) return true; return false; }
     private static float Limit(float value) => float.IsNaN(value) ? 0 : Math.Clamp(value, -1, 1);
     internal static float Smooth(float value, float target) => value + Math.Clamp(target - value, -1f / 480, 1f / 480);
     private static void Add(ReadOnlySpan<float> source, Span<float> target)
@@ -82,6 +93,10 @@ public sealed class PcmChannel(string id, float defaultGain = 1, PcmChannel? bus
     private PcmEffect[] _effects = [];
     private AudioMixLevel _playerLevel = new();
     private AudioMixLevel _contentLevel = new();
+    private float _duckGain = 1, _duckTarget = 1, _duckAttack = 80, _duckRelease = 400;
+    internal void ResetDuckTarget() => _duckTarget = 1;
+    internal void SetDuck(float gain, float attack, float release)
+    { if (gain > _duckTarget) return; _duckTarget = gain; _duckAttack = attack; _duckRelease = release; }
     private float _gain = defaultGain;
     private readonly float _defaultGain = defaultGain;
     public string Id { get; } = id;
@@ -114,6 +129,7 @@ public sealed class PcmChannel(string id, float defaultGain = 1, PcmChannel? bus
     { foreach (var effect in Volatile.Read(ref _effects)) if (effect.InstanceId == instanceId) effect.Enabled = false; }
     internal void Process(int count)
     {
+        _duckTarget = Math.Clamp(_duckTarget, 0, 1);
         var samples = Buffer.AsSpan(0, count);
         foreach (var effect in Volatile.Read(ref _effects)) effect.Process(samples);
         var player = Volatile.Read(ref _playerLevel);
@@ -122,7 +138,9 @@ public sealed class PcmChannel(string id, float defaultGain = 1, PcmChannel? bus
         for (var index = 0; index < count; index += 2)
         {
             _gain = PcmMixer.Smooth(_gain, gain);
-            samples[index] *= _gain; samples[index + 1] *= _gain;
+            var coefficient = MathF.Exp(-1 / (.001f * (_duckTarget < _duckGain ? _duckAttack : _duckRelease) * PcmMixer.SampleRate));
+            _duckGain = _duckTarget + (_duckGain - _duckTarget) * coefficient;
+            samples[index] *= _gain * _duckGain; samples[index + 1] *= _gain * _duckGain;
         }
     }
 }
@@ -138,6 +156,8 @@ public sealed class PcmVoice(AudioBackendRequest request, PcmChannel track, IAud
     private int _stopTotal;
     private long _position;
     private int _ended;
+    private bool _hasStarted;
+    internal bool ActiveForDuck => _hasStarted && !Ended && Volatile.Read(ref _paused) == 0;
     public AudioBackendRequest Request { get; } = request;
     public bool Ended => Volatile.Read(ref _ended) != 0;
     public void Abandon() => Volatile.Write(ref _ended, 1);
@@ -162,6 +182,7 @@ public sealed class PcmVoice(AudioBackendRequest request, PcmChannel track, IAud
             return;
         }
         var read = source.Read(_buffer.AsSpan(0, count));
+        if (read > 0) _hasStarted = true;
         var fadeIn = Request.FadeSeconds * PcmMixer.SampleRate;
         var fadeOut = Request.FadeOutSeconds * PcmMixer.SampleRate;
         var length = source.DurationSeconds * PcmMixer.SampleRate;

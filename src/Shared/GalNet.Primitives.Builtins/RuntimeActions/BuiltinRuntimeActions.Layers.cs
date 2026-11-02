@@ -17,6 +17,7 @@ internal static partial class BuiltinRuntimeActions
                 Id = id,
                 AssetId = request.AssetId,
                 Color = request.Color,
+                Overlay = request.Overlay,
                 Flipbook = request.Flipbook?.Clone(),
                 Variants = variants,
                 Transform = request.Transform.Clone(),
@@ -73,6 +74,7 @@ internal static partial class BuiltinRuntimeActions
                     Opacity = layer.Opacity,
                     DisplayMode = layer.DisplayMode,
                     Visible = layer.Visible,
+                    Overlay = layer.Overlay,
                     Flipbook = layer.Flipbook?.Clone()
                 });
             }

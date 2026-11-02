@@ -1,0 +1,22 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param blockSize
+  uniform: blockSize
+  type: float
+  default: 1
+  range: 1..256
+  animatable: true
+
+*/
+uniform shader source;
+uniform float2 size;
+uniform float blockSize;
+
+half4 main(float2 p) {
+ if(blockSize<=1.0) return source.eval(p);
+ float2 q=(floor(p/blockSize)+0.5)*blockSize;
+ return source.eval(clamp(q,float2(0),max(size-float2(0.5),float2(0))));
+}

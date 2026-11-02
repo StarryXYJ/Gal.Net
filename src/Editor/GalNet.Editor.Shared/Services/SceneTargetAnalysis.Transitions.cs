@@ -34,6 +34,15 @@ public sealed partial class SceneTargetAnalysis
         _transitionTimelines[entry] = result;
         return result;
     }
+    private void TransferEmphasis(State state, string group, EditorEntryData entry)
+    {
+        var definition = TransitionCatalog.Value.Get(entry.Type);
+        var source = new GroupDocument { Entries = [new() { Id = entry.StableId, Type = entry.Type,
+            Parameters = entry.Parameters.Where(pair => definition.DynamicParameters.ContainsKey(pair.Key)).ToDictionary(pair => pair.Key, pair => pair.Value.Clone()) }] };
+        foreach (var primitive in GalgroupCompiler.Compile(source, TransitionCatalog.Value).Document.Entries)
+            Transfer(state, group, new EditorEntryData { StableId = entry.StableId, Type = primitive.TypeId,
+                Parameters = primitive.Arguments.EnumerateObject().ToDictionary(p => p.Name, p => p.Value.Clone()) });
+    }
     private void TransferTransition(State state, string group, EditorEntryData entry)
     {
         var candidate = state.Clone();

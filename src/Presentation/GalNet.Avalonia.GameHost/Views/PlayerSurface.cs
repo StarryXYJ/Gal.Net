@@ -33,7 +33,9 @@ public abstract class PlayerSurface : UserControl
     private GalNet.Game.Controls.GameCanvasHost GameCanvas = null!;
     private Control LanguageSelection = null!;
     private TextBlock StartupStatus = null!;
-    private Ursa.Controls.WindowToastManager AudioToast = null!;
+    private readonly GalNet.Avalonia.GameView.Controls.TextCardHost _textCards = new();
+    public GalNet.Avalonia.GameView.Controls.TextCardHost TextCards => _textCards;
+    private GalNet.Rendering.Scene.SceneLayerHost _overlay = new() { IsHitTestVisible = false, TransparentBackground = true };
     private Control PlayerContent = null!;
     private Control ExitConfirmation = null!;
     private Control ExitCopy = null!;
@@ -49,7 +51,9 @@ public abstract class PlayerSurface : UserControl
         GameCanvas = Require<GalNet.Game.Controls.GameCanvasHost>(nameof(GameCanvas));
         LanguageSelection = Require<Control>(nameof(LanguageSelection));
         StartupStatus = Require<TextBlock>(nameof(StartupStatus));
-        AudioToast = Require<Ursa.Controls.WindowToastManager>(nameof(AudioToast));
+        var root = Require<Grid>("PlayerRoot");
+        root.Children.Insert(root.Children.Count - 1, _textCards);
+        root.Children.Insert(root.Children.Count - 1, _overlay);
         PlayerContent = Require<Control>(nameof(PlayerContent));
         ExitConfirmation = Require<Control>(nameof(ExitConfirmation));
         ExitCopy = Require<Control>(nameof(ExitCopy));
@@ -80,9 +84,10 @@ public abstract class PlayerSurface : UserControl
     public void Detach()
     {
         CompleteExitConfirmation(false, restorePlayback: false);
-        AudioToast.CloseAll();
-        if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
+        _textCards.ClearTextCards();
+        if (_audioGame is not null) { _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement; _audioGame.TextCards = null; }
         _audioGame = null;
+        _overlay.ItemsSource = null; _overlay.EffectsSource = null;
         if (_shell is not null) _shell.ConfirmReturnToTitleAsync = null;
         _shell = null;
         GameCanvas.GameContent = null;
@@ -92,17 +97,19 @@ public abstract class PlayerSurface : UserControl
 
     public void BindAudioAnnouncements(GamePresentationState gameplay)
     {
-        if (_audioGame is not null) _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement;
+        if (_audioGame is not null) { _audioGame.AudioAnnouncementRequested -= OnAudioAnnouncement; _audioGame.TextCards = null; }
         _audioGame = gameplay;
         gameplay.AudioAnnouncementRequested += OnAudioAnnouncement;
+        gameplay.TextCards = _textCards;
+        _overlay.ItemsSource = gameplay.OverlayLayers;
+        _overlay.EffectsSource = gameplay.OverlayEffects;
     }
 
     private void OnAudioAnnouncement(string name)
     {
-        AudioToast.CloseAll();
         if (!string.IsNullOrWhiteSpace(name) && _exitConfirmation is null)
-            AudioToast.Show(name, NotificationType.Information,
-                AudioAnnouncementDuration, showIcon: false, showClose: false);
+            _ = _textCards.ShowTextCardAsync(new(name, GalNet.Contracts.Builtins.Scene.TextCardPosition.BottomLeft, "music",
+                (float)Math.Max(0, AudioAnnouncementDuration.TotalSeconds - _textCards.EnterDuration.TotalSeconds)), CancellationToken.None);
     }
 
     public Task<bool> ConfirmExitAsync() => ConfirmAsync(returnToTitle: false);
@@ -121,7 +128,7 @@ public abstract class PlayerSurface : UserControl
         _exitConfirmation = new(TaskCreationOptions.RunContinuationsAsynchronously);
         _exitPreviousFocus = TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement();
         _shell?.SetConfirmationOpen(true);
-        AudioToast.CloseAll();
+        _textCards.ClearTextCards();
         PlayerContent.IsEnabled = false;
         ExitConfirmation.IsVisible = true;
         CancelExitButton.Focus();

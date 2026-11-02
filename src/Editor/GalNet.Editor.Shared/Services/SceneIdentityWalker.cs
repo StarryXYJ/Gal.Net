@@ -5,7 +5,10 @@ namespace GalNet.Editor.Shared.Services;
 
 internal sealed record SceneIdentitySlot(JsonObject Owner, string Field, string Pointer, SceneIdentityDomain Domain, SceneOutputSlot? Output, SceneReferenceSlot? Reference, SceneTimelinePosition? Position, string? EventId)
 {
-    public string? Handle => Owner[Field] is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
+    public JsonArray? Elements { get; init; }
+    public int ElementIndex { get; init; }
+    public void Rewrite(string handle) { if (Elements is not null) Elements[ElementIndex] = handle; else Owner[Field] = handle; }
+    public string? Handle => (Elements is null ? Owner[Field] : Elements[ElementIndex]) is JsonValue value && value.TryGetValue<string>(out var text) ? text : null;
     public string? Qualifier => Domain == SceneIdentityDomain.AudioEffect ? AudioAuthoringTarget.Qualifier(Owner) : null;
     public string? RequiredProperty { get; init; }
 }
@@ -31,7 +34,9 @@ internal static class SceneIdentityWalker
                 {
                     step?.Invoke();
                     var path = pointer + "/" + Escape(reference.Container) + "/" + index;
-                    if (array[index] is JsonObject item) Visit(item, reference.Field, path, reference.Domain, null, reference, position, eventId, slot, gap);
+                    if (reference.Field.Length == 0 && array[index] is JsonValue scalar && scalar.TryGetValue<string>(out _))
+                        slot(new(parameters, "", path, reference.Domain, null, reference, position, eventId) { Elements = array, ElementIndex = index });
+                    else if (array[index] is JsonObject item) Visit(item, reference.Field, path, reference.Domain, null, reference, position, eventId, slot, gap);
                     else gap(new(path, "scene.coverage.structure"));
                 }
             else gap(new(pointer + "/" + reference.Container, "scene.coverage.structure"));
@@ -54,6 +59,16 @@ internal static class SceneIdentityWalker
                 if (handle is not null) Visit(track, handle, path, SceneIdentityDomain.Object, null, new(handle, SceneIdentityDomain.Object, [SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect]), new(0), null, slot, gap, property);
             }
         else if (tracks is not null) gap(new(root + "/" + Escape(tracks), "scene.coverage.structure"));
+        var audioTracks = Key(timeline, "audioTracks", root, gap);
+        if (audioTracks is not null && timeline[audioTracks] is JsonArray audioArray)
+            for (var index = 0; index < audioArray.Count; index++)
+            {
+                step?.Invoke(); var path = root + "/" + Escape(audioTracks) + "/" + index;
+                if (audioArray[index] is not JsonObject audio) { gap(new(path, "scene.coverage.structure")); continue; }
+                var instance = Key(audio, "instanceId", path, gap);
+                if (instance is not null) Visit(audio, instance, path, SceneIdentityDomain.AudioEffect, null,
+                    new(instance, SceneIdentityDomain.AudioEffect, [SceneTargetKind.AudioEffect]), new(0), null, slot, gap);
+            }
         var events = Key(timeline, "events", root, gap);
         if (events is not null && timeline[events] is JsonArray eventArray)
             for (var index = 0; index < eventArray.Count; index++)

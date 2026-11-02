@@ -90,6 +90,7 @@ public class PcmAudioPlaybackHost : IAudioPlaybackHost, IAsyncDisposable
                     if (diagnostics.Count != 0) throw new InvalidDataException(string.Join(" ", diagnostics));
                     _mixer.Target(request.Scope, request.TrackId).ApplyEffect(new(request.TrackId, request.SEffectInstanceId ?? "", request.SEffectId!, parameters, request.Scope)); break;
                 case AudioBackendAction.StopSEffect: _mixer.Target(request.Scope, request.TrackId).StopEffect(request.SEffectInstanceId ?? ""); break;
+                case AudioBackendAction.SetDucking: _mixer.SetDucking(request.DuckingRules ?? []); break;
                 case AudioBackendAction.SetLevel: _mixer.Target(request.Scope, request.TrackId).ContentLevel = new(request.Gain, request.Muted); break;
                 default:
                     if (request.Action == AudioBackendAction.Stop && _pending.TryGetValue(request.VoiceId, out var loading) && loading.Generation == request.Generation) loading.Cancel.Cancel();

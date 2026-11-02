@@ -14,7 +14,9 @@ public static class TimelineEventCapabilities
         BuiltinEntryIds.ShowLayer, BuiltinEntryIds.ShowColorLayer, BuiltinEntryIds.HideLayer,
         BuiltinEntryIds.MoveLayer, BuiltinEntryIds.ReplaceLayer, BuiltinEntryIds.ApplyEffect,
         BuiltinEntryIds.StopEffect, BuiltinEntryIds.PlayParticleEmitter,
-        BuiltinEntryIds.StopParticleEmitter, BuiltinEntryIds.BurstParticles
+        BuiltinEntryIds.StopParticleEmitter, BuiltinEntryIds.BurstParticles,
+        BuiltinEntryIds.PlayAudio, BuiltinEntryIds.StopAudio, BuiltinEntryIds.ApplyAudioSEffect,
+        BuiltinEntryIds.UpdateAudioSEffect, BuiltinEntryIds.StopAudioSEffect, BuiltinEntryIds.SetAudioLevel
     });
     private static readonly FrozenSet<string> Supported = Types.ToFrozenSet(StringComparer.Ordinal);
     private static readonly Lazy<IEntryCatalog> Catalog = new(() => new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));

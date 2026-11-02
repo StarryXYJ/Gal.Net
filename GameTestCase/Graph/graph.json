@@ -121,6 +121,14 @@
         "galleryUnlockId": 401,
         "galleryPreviewAssetId": "a1000000000000000000000000000003"
       }
+    },
+    {
+      "id": "presentation-library",
+      "type": "Group",
+      "name": "Presentation library",
+      "x": 1940,
+      "y": 260,
+      "file": "groups/presentation-library.rawgalgroup"
     }
   ],
   "edges": [
@@ -165,6 +173,12 @@
       "fromNodeId": "ending_check",
       "fromOutlet": 0,
       "toNodeId": "ending"
+    },
+    {
+      "id": "ending_presentation_library",
+      "fromNodeId": "ending",
+      "fromOutlet": 0,
+      "toNodeId": "presentation-library"
     }
   ],
   "playerVariables": [],

@@ -12,4 +12,7 @@
 
 `AudioPlayOptions.announceName` 为默认关闭的播放提示开关，传入 `AudioPlayRequest.AnnounceName`；资源名称来自 `AssetMeta.DisplayNameKey`。运行时只为新执行且显式启用提示的逻辑播放保留瞬时提示资格。排队不会提前触发，只有匹配当前 voice/generation 的后端 Started 才产生 `BuiltinAudioModule.PlaybackStarted`，每个逻辑播放最多一次。失败、过期回调、循环、恢复和追赶不重新授予资格；该资格不进入存档。
 
-事件在音频/状态锁外串行派发，隔离观察者异常；观察者负责切换 UI 线程。Started 事件携带资源身份，宿主在 UI 线程按当前语言解析资源名称；未命名资源不显示。默认 Avalonia 宿主使用 Ursa 提示容器和主题化提示条：最小宽度 280 DIP、背景不透明度 0.84，向右滑入 0.8 秒后停留两秒，2.8 秒后开始向左滑出及淡出，退场持续 0.8 秒，动画结束后从容器移除；后端与 primitives 不依赖 Ursa。提示开关不改变读档、循环或追赶的抑制规则；鉴赏试听和场景回放不弹曲名提示。
+事件在音频/状态锁外串行派发，隔离观察者异常；观察者负责切换 UI 线程。Started 事件携带资源身份，宿主在 UI 线程按当前语言解析资源名称；未命名资源不显示。默认 Avalonia 宿主将曲名交给通用 TextCardHost，默认位置 BottomLeft、样式 music；应用在 PlayerView 定义 TextCardTheme.music，左右位置决定默认滑动方向，同位置替换。入场/退场默认各 0.8 秒，AudioAnnouncementDuration（默认 3 秒）包含入场与停留，不包含退场。提示开关不改变读档、循环或追赶的抑制规则；鉴赏试听和场景回放不弹曲名提示。
+
+
+默认 PCM 效果库还包括 Delay、立体声平衡、峰值 EQ、软失真、位深/降采样与左右联动 Compressor。AudioDuckingState 保存路由规则，瞬时压低包络由 PCM 混音器根据实际开始且未暂停/结束的源声部计算，叠加在剧情/玩家音量上；重置清空。Timeline 音频参数与控制事件由 BuiltinAudioModule 复用 AudioRuntime 执行，设备回调不处理剧情 Entry。

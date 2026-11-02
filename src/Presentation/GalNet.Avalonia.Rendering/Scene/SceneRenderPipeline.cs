@@ -33,7 +33,7 @@ public static class SceneRenderPipeline
         try
         {
             var sceneEffects = effectPlan.ScenePost;
-            if (sceneEffects.Length == 0)
+            if (sceneEffects.Length == 0 && options?.TransparentBackground != true)
             {
                 destination.Clear(SKColors.Black);
                 RenderEntriesGpu(destination, gpuContext, plan, effectPlan, renderables, width, height, budget);
@@ -42,12 +42,12 @@ public static class SceneRenderPipeline
 
             using var sceneSurface = NewGpuSurface(gpuContext, width, height);
             if (sceneSurface is null) return false;
-            sceneSurface.Canvas.Clear(SKColors.Black);
+            sceneSurface.Canvas.Clear(options?.TransparentBackground == true ? SKColors.Transparent : SKColors.Black);
             RenderEntriesGpu(sceneSurface.Canvas, gpuContext, plan, effectPlan, renderables, width, height, budget);
             sceneSurface.Flush();
             using var input = sceneSurface.Snapshot();
             using var output = ApplyGpuEffects(gpuContext, input, sceneEffects, width, height, budget);
-            destination.Clear(SKColors.Black);
+            if (options?.TransparentBackground != true) destination.Clear(SKColors.Black);
             destination.DrawImage(output ?? input, 0, 0);
             return true;
         }
@@ -74,7 +74,7 @@ public static class SceneRenderPipeline
         var logicalHeight = Math.Max(1, (int)Math.Ceiling(logicalSize.Height));
         var scene = NewBitmap(width, height);
         using var sceneCanvas = new SKCanvas(scene);
-        sceneCanvas.Clear(SKColors.Black);
+        sceneCanvas.Clear(options?.TransparentBackground == true ? SKColors.Transparent : SKColors.Black);
         var effectPlan = EffectFramePlan.Create(effects);
 
         foreach (var entry in OrderedEntries(plan, renderables))

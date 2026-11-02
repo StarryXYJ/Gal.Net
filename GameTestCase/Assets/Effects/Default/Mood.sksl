@@ -1,0 +1,29 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+@param mode
+  uniform: mode
+  type: enum
+  default: Memory
+  options: Memory,Dream,Tension,Injury
+  animatable: false
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength,mode;
+half4 main(float2 p) {
+ half4 c=source.eval(p); if(strength<=0.0 || c.a<=0.0) return c;
+ half3 rgb=c.rgb/c.a; half l=dot(rgb,half3(0.2126,0.7152,0.0722)); half3 styled;
+ if(mode<0.5) styled=half3(l*1.08,l*0.95,l*0.78);
+ else if(mode<1.5) styled=mix(rgb,half3(l),0.25)*half3(1.05,0.95,1.1)+half3(0.08);
+ else { float d=length(p/max(size,float2(1))-0.5); float edge=smoothstep(0.15,0.7,d);
+  styled=mode<2.5?rgb*half(1.0-edge*0.9):mix(rgb,half3(0.65,0.02,0.02),half(edge*0.8)); }
+ return half4(clamp(mix(rgb,styled,half(strength)),half3(0),half3(1))*c.a,c.a);
+}

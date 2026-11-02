@@ -22,6 +22,7 @@ public partial class LayerShowOptions
 [GenerateFieldSchema]
 public partial class LayerColorOptions
 {
+    [Field(5)] public bool Overlay { get; set; }
     [Common, Field(0, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? HandleId { get; set; }
     [Common, Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Color { get; set; }
     [Field(2, DefaultJson = "{}", EditorId = ValueEditorIds.Json, StructureType = typeof(GalNet.Contracts.Builtins.Scene.LayerTransform), StructureAllowsJsonString = true, StructureIgnoresCase = true)] public JsonElement Transform { get; set; }
@@ -132,6 +133,7 @@ public partial class VideoPlayOptions
 [GenerateFieldSchema]
 public partial class EffectApplyOptions
 {
+    [Field(6)] public bool EnsureOnly { get; set; }
     [Common, Field(0, AllowNull = true, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string? Program { get; set; } = "";
     [Field(1, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? Id { get; set; } = "";
     [Field(2, AllowNull = true, EditorId = ValueEditorIds.Text)] public string? InstanceId { get; set; }

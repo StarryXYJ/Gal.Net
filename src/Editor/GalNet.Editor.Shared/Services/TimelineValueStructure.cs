@@ -16,10 +16,11 @@ internal static class TimelineValueStructure
         new FieldDescriptor("editorTangents", new ValueDescriptor(typeof(JsonElement)).WithStructure(Tangents))]), ignoresCase: true);
     private static readonly ValueStructure Track = ValueStructure.Object(TimelineTrackDefinition.Schema.Select(field => field.Id == "keys"
         ? Structure(field, List(Key)) : field), ignoresCase: true);
+    private static readonly ValueStructure AudioTrack = ValueStructure.Object(TimelineAudioTrackDefinition.Schema.Select(field => field.Id == "keys" ? Structure(field, List(Key)) : field), ignoresCase: true);
     private static readonly ValueStructure Event = ValueStructure.Object(TimelineEventDefinition.Schema.Select(field => field.Id == "parameters"
         ? Structure(field, ValueStructure.Dynamic(EventParameters)) : field).Concat([new FieldDescriptor("editorId", new(typeof(string)))]), ignoresCase: true);
     private static readonly ValueStructure Timeline = ValueStructure.Object(TimelineDefinition.Schema.Select(field => field.Id switch
-    { "tracks" => Structure(field, List(Track)), "events" => Structure(field, List(Event)), _ => field }), ignoresCase: true);
+    { "audioTracks" => Structure(field, List(AudioTrack)), "tracks" => Structure(field, List(Track)), "events" => Structure(field, List(Event)), _ => field }), ignoresCase: true);
 
     public static FieldDescriptor Describe(FieldDescriptor field) => new(field.Id,
         field.Value.WithJsonOptions(JsonOptions).WithStructure(Timeline),

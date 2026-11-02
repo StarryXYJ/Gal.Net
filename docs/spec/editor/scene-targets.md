@@ -137,3 +137,6 @@ apply 创建/更新精确键；stop 删除单个精确键，all 显式清空一�
 参数类型来自 ISEffectCatalog；范围和默认值与契约/DSP 共用元数据。选择类型同时提交类型键和初始参数，为一次作者历史。stop/update 先选范围和目标，再列出直接挂载实例；Track 不显示所属 Bus 的挂载实例。同类多个效果按来源区分，类型歧义的 update 不生成猜测字段。参数编辑保留未改字段与未知 JSON；未知类型和失效引用不因刷新自动改选。
 
 选择提交检查位置、结果版本和写入方上下文；相关修改使旧候选失效，撤销不会复活旧选择。更换更新目标时清空原参数 patch，避免把另一算法的参数带入新目标；参数字段的草稿随所选目标/实例/类型变化失效。该扩展未新增 Timeline 音频事件或音频参数动画。
+
+
+演出库的新增单 Timeline 预设沿用终态展开分析，dialogue.emphasis/preset.emphasis 展开后的强调 Timeline 也进入同一分析。text.card/audio.duck 为场景对象中立条目。Timeline 音频事件更新独立的 AudioEffects 候选，非阻塞时间线按前后状态合并，不能把尚未触发的音效视为一定存在。Mask 参数分析使用项目 shader metadata，参与本地化与资源扫描；Parallax 的显式目标数组提供结构 schema。

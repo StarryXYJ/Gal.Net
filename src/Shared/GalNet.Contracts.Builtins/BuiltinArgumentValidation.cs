@@ -81,13 +81,24 @@ internal static class BuiltinArgumentValidation
                 previous = key.Frame;
             }
         }
+        var audioTargets = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var audio in timeline.AudioTracks ?? throw new InvalidDataException("Missing audio tracks."))
+        {
+            if (!Enum.IsDefined(audio.Scope) || string.IsNullOrWhiteSpace(audio.TargetId) || string.IsNullOrWhiteSpace(audio.Parameter) ||
+                !audioTargets.Add(audio.Identity) || string.IsNullOrEmpty(audio.InstanceId) && audio.Parameter != "gain")
+                throw new InvalidDataException("Invalid or duplicate audio automation target.");
+            ValidateTimelineStructure(new TimelineDefinition { FrameRate = timeline.FrameRate, DurationFrames = timeline.DurationFrames,
+                Tracks = [new() { HandleId = audio.TargetId, Property = audio.Parameter, Keys = audio.Keys }] });
+            if (string.IsNullOrEmpty(audio.InstanceId) && audio.Keys.Any(key => key.Value is < 0 or > 1))
+                throw new InvalidDataException("Mixer gain keys must be 0..1.");
+        }
         foreach (var item in timeline.Events)
         {
             if (item is null || item.Parameters is null || item.Frame < 0 || item.Frame > timeline.DurationFrames || !Enum.IsDefined(item.Execution))
                 throw new InvalidDataException("Animation events must be inside the timeline duration.");
             if (item.Execution == TimelineEventExecution.Once && item.Frame != 0 ||
                 item.Execution == TimelineEventExecution.OnCompletion && (item.Frame != timeline.DurationFrames ||
-                    item.Type is not (BuiltinEntryIds.HideLayer or BuiltinEntryIds.StopEffect or BuiltinEntryIds.StopParticleEmitter)))
+                    item.Type is not (BuiltinEntryIds.HideLayer or BuiltinEntryIds.StopEffect or BuiltinEntryIds.StopParticleEmitter or BuiltinEntryIds.StopAudio or BuiltinEntryIds.StopAudioSEffect)))
                 throw new InvalidDataException("Playback setup must be at frame zero; completion events must be terminal cleanup operations.");
         }
     }

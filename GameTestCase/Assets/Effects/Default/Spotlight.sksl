@@ -1,0 +1,50 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param centerX
+  uniform: centerX
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param centerY
+  uniform: centerY
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param radius
+  uniform: radius
+  type: float
+  default: 0.25
+  range: 0..2
+  animatable: true
+
+@param feather
+  uniform: feather
+  type: float
+  default: 0.1
+  range: 0..1
+  animatable: true
+
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength,centerX,centerY,radius,feather;
+
+half4 main(float2 p) {
+ half4 c=source.eval(p); float d=length((p-float2(centerX,centerY)*size)/max(min(size.x,size.y),1.0))-radius;
+ float outside=feather<=0.0 ? step(0.0,d) : smoothstep(-feather,feather,d);
+ return half4(c.rgb*half(1.0-strength*outside),c.a);
+}

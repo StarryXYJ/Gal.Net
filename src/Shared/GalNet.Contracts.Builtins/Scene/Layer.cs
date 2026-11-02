@@ -36,6 +36,8 @@ public sealed class Layer : AnimatableSceneInstance
     /// <summary>Optional #RRGGBB or #AARRGGBB solid color used instead of an image asset.</summary>
     public string? Color { get; set; }
 
+    public bool Overlay { get; set; }
+
     public LayerTransform Transform { get; set; } = new();
 
     /// <summary>z-index 层叠顺序，越大越靠前。背景建议 0，立绘建议 5~20</summary>

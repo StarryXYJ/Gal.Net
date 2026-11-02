@@ -4,7 +4,7 @@ using GalNet.Contracts.Builtins.Audio;
 namespace GalNet.Media.Audio;
 
 /// <summary>Persistent audio-thread DSP state; control thread publishes immutable parameters.</summary>
-internal sealed class PcmEffect
+internal sealed partial class PcmEffect
 {
     private Parameters _parameters;
     private int _enabled = 1;
@@ -12,6 +12,7 @@ internal sealed class PcmEffect
     private readonly Biquad? _filter;
     private readonly Reverb? _reverb;
     private float _gain = 1;
+    private readonly CreativeProcessor? _creative;
     public string InstanceId { get; }
     public string Id { get; }
     public bool Enabled { get => Volatile.Read(ref _enabled) != 0; set => Volatile.Write(ref _enabled, value ? 1 : 0); }
@@ -27,12 +28,19 @@ internal sealed class PcmEffect
             case "seffect.highpass": _filter = new(true, _parameters.Cutoff, _parameters.Q); break;
             case "seffect.reverb": _reverb = new(_parameters); break;
             case "seffect.gain": break;
+            case "seffect.delay": case "seffect.pan": case "seffect.eq":
+            case "seffect.distortion": case "seffect.bitcrusher": case "seffect.compressor":
+                _creative = new(id, _parameters); break;
             default: throw new InvalidDataException($"Unsupported PCM effect '{id}'.");
         }
     }
     public void Update(JsonElement parameters) => Volatile.Write(ref _parameters, Parse(parameters));
     private Parameters Parse(JsonElement parameters) => new(Value(parameters, "cutoffHz", Id.Equals("seffect.highPass", StringComparison.OrdinalIgnoreCase) ? SEffectDefaults.HighPassCutoff : SEffectDefaults.LowPassCutoff), Value(parameters, "q", SEffectDefaults.Q),
-        Value(parameters, "gain", SEffectDefaults.Gain), Value(parameters, "roomSize", SEffectDefaults.RoomSize), Value(parameters, "decaySeconds", SEffectDefaults.DecaySeconds), Value(parameters, "damping", SEffectDefaults.Damping), Value(parameters, "mix", SEffectDefaults.Mix));
+        Value(parameters, "gain", SEffectDefaults.Gain), Value(parameters, "roomSize", SEffectDefaults.RoomSize), Value(parameters, "decaySeconds", SEffectDefaults.DecaySeconds), Value(parameters, "damping", SEffectDefaults.Damping), Value(parameters, "mix", Id.Equals("seffect.bitcrusher", StringComparison.OrdinalIgnoreCase) ? .5f : SEffectDefaults.Mix),
+        Value(parameters, "delaySeconds", .25f), Value(parameters, "feedback", .35f), Value(parameters, "pan", 0),
+        Value(parameters, "frequencyHz", 1000), Value(parameters, "gainDb", 0), Value(parameters, "drive", 2),
+        Value(parameters, "bits", 8), Value(parameters, "downsample", 1), Value(parameters, "thresholdDb", -18),
+        Value(parameters, "ratio", 4), Value(parameters, "attackMs", 10), Value(parameters, "releaseMs", 100), Value(parameters, "makeupDb", 0));
     private static float Value(JsonElement parameters, string name, float fallback) => parameters.TryGetProperty(name, out var value) ? value.GetSingle() : fallback;
     public void Process(Span<float> samples)
     {
@@ -47,12 +55,14 @@ internal sealed class PcmEffect
             float left, right;
             if (_filter is not null) _filter.Process(dryLeft, dryRight, parameters, out left, out right);
             else if (_reverb is not null) _reverb.Process(dryLeft, dryRight, parameters, out left, out right);
+            else if (_creative is not null) _creative.Process(dryLeft, dryRight, parameters, out left, out right);
             else { _gain = PcmMixer.Smooth(_gain, parameters.Gain); left = dryLeft * _gain; right = dryRight * _gain; }
             samples[index] = dryLeft + (left - dryLeft) * _blend;
             samples[index + 1] = dryRight + (right - dryRight) * _blend;
         }
     }
-    private sealed record Parameters(float Cutoff, float Q, float Gain, float Room, float Decay, float Damping, float Mix);
+    private sealed record Parameters(float Cutoff, float Q, float Gain, float Room, float Decay, float Damping, float Mix, float Delay, float Feedback, float Pan, float Frequency, float GainDb, float Drive,
+        float Bits, float Downsample, float ThresholdDb, float Ratio, float AttackMs, float ReleaseMs, float MakeupDb);
 
     // RBJ low/high pass, transposed direct form II, separate state for each channel.
     private sealed class Biquad(bool highPass, float cutoff, float q)

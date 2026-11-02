@@ -6,10 +6,10 @@ using GalNet.Presentation.Abstractions.View;
 namespace GalNet.Primitives.Builtins;
 
 public sealed class BuiltinAnimationModule(
-        IAnimationPresenter? animationPresenter = null,
-        ILayerPresenter? layerPresenter = null,
-        IEffectPresenter? effectPresenter = null,
-        IParticlePresenter? particlePresenter = null) : PrimitiveModule(
+        IAnimationPresenter? animationPresenter,
+        ILayerPresenter? layerPresenter,
+        IEffectPresenter? effectPresenter,
+        IParticlePresenter? particlePresenter, BuiltinAudioModule? audioModule) : PrimitiveModule(
     registry =>
     {
         registry.ValidateState((_, state) =>
@@ -27,17 +27,17 @@ public sealed class BuiltinAnimationModule(
                     context.Start(new AnimationPrimitiveInstance(context.Runtime, animationPresenter, request, null, context.CancellationToken, restoring: true));
                 else if (state.Timeline is { } timeline)
                     context.Start(new TimelinePrimitiveInstance(context.Runtime, animationPresenter, layerPresenter, effectPresenter,
-                        particlePresenter, timeline, null, context.CancellationToken, restoring: true));
+                        particlePresenter, timeline, null, context.CancellationToken, restoring: true) { AudioModule = audioModule });
             }
             return Task.CompletedTask;
         }, validate: state =>
         {
             if ((state.Request is null) == (state.Timeline is null)) throw new InvalidDataException("An animation state requires exactly one definition.");
-        }, version: 2, after: ["builtin.layers", "builtin.effects", "builtin.particles", "builtin.videos"]);
+        }, version: 2, after: ["builtin.layers", "builtin.effects", "builtin.particles", "builtin.videos", "builtin.audio"]);
         registry.Register<AnimationOptions>(BuiltinEntryIds.Animate, (context, options) =>
             new AnimationPrimitiveInstance(animationPresenter, context, options));
         registry.Register<TimelineOptions>(BuiltinEntryIds.PlayTimeline, (context, options) =>
-            new TimelinePrimitiveInstance(animationPresenter, layerPresenter, effectPresenter, particlePresenter, context, options));
+            new TimelinePrimitiveInstance(animationPresenter, layerPresenter, effectPresenter, particlePresenter, context, options) { AudioModule = audioModule });
         registry.Async<AnimationStopOptions>(BuiltinEntryIds.StopAnimation, async (context, options, token) =>
             {
                 var playbackHandleId = options.PlaybackHandleId ?? "";
@@ -52,10 +52,20 @@ public sealed class BuiltinAnimationModule(
                     // Headless and catch-up playbacks can retain a loop definition without a live presenter.
                     if (context.Runtime.State.Table<LoopAnimationState>().TryGet(playbackHandleId, out var saved))
                     {
-                        if (saved.Timeline is { } timeline) BuiltinRuntimeActions.ApplyTimelineTerminalState(context.Runtime, timeline);
+                        if (saved.Timeline is { } timeline)
+                        {
+                            BuiltinRuntimeActions.ApplyTimelineTerminalState(context.Runtime, timeline);
+                            audioModule?.BindTimeline(context.Runtime, timeline, context.ScopeCancellation);
+                            audioModule?.CompleteTimeline(context.Runtime, timeline, catchUp: true);
+                        }
                         else if (saved.Request is { } request) BuiltinRuntimeActions.ApplyAnimationTerminalValue(context.Runtime, request);
                     }
                     BuiltinRuntimeActions.StopAnimationState(context.Runtime, playbackHandleId);
                 }
             }, blocking: true);
-    });
+    })
+{
+    public BuiltinAnimationModule(IAnimationPresenter? animationPresenter = null, ILayerPresenter? layerPresenter = null,
+        IEffectPresenter? effectPresenter = null, IParticlePresenter? particlePresenter = null)
+        : this(animationPresenter, layerPresenter, effectPresenter, particlePresenter, null) { }
+}

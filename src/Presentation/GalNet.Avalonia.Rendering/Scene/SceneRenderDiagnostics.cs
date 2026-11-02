@@ -83,6 +83,7 @@ public sealed class SceneRenderDiagnostics
 /// <summary>Options shared by one renderer invocation. Omit it to use the default safety budget.</summary>
 public sealed record SceneRenderOptions(SceneRenderBudget Budget, SceneRenderDiagnostics? Diagnostics = null)
 {
+    public bool TransparentBackground { get; init; }
     public static SceneRenderOptions Default { get; } = new(SceneRenderBudget.Default);
 }
 

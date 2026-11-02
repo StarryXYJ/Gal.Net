@@ -32,6 +32,12 @@ internal static partial class BuiltinRuntimeActions
             if (string.IsNullOrWhiteSpace(request.InstanceId))
                 return;
 
+            if (request.EnsureOnly && runtime.Scene().TryGet<EffectInstance>(request.InstanceId, out var existing))
+            {
+                if (existing.ProgramResource != request.ProgramResource || existing.TargetHandleId != request.TargetHandleId)
+                    throw new InvalidDataException("An ensured effect must retain its program and target.");
+                return;
+            }
             RemoveEffectState(runtime, request.InstanceId);
             var effect = runtime.Scene().GetOrAdd(request.InstanceId, _ => new EffectInstance
             {

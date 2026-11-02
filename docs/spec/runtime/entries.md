@@ -7,7 +7,7 @@
 - `dialogue.text`：对话与打字机阶段，支持 `\skip` 分段跳过；`dialogue.show` / `dialogue.hide` 控制显示状态。
 - `nvl.show` / `nvl.hide` / `nvl.clear`：分别显示、隐藏和清空 NVL 历史；`nvl.append` 以相同的富文本和打字机语义追加一行，完成打字后等待玩家推进。NVL 不会因 append 自动显示。
 - `layer.*`：show/showColor/hide/move/replace，先更新 `GameState` 的 Layer 表再通知 `ILayerPresenter`。
-- `animation.animate` / `timeline.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。timeline 是单个 instance，内部事件只作为 animation 模块私有 layer/effect 事件处理，不重新进入通用 Entry 分发。
+- `animation.animate` / `timeline.play` / `animation.stop`：创建 animation primitive instance；一次性动画先提交最终逻辑状态，循环动画提交第 0 帧状态并保存完整重放定义，再启动呈现动画。timeline 是单个 instance，内部事件作为 animation 模块私有 layer/effect/particle/audio 事件处理，不重新进入通用 Entry 分发。
 - `effect.apply` / `effect.stop`：维护唯一的 EffectInstance 数据表和 `IEffectPresenter` 调用；动画直接修改同一记录，不维护 ActiveEffectState 镜像。Skia effect-program 的 `@gal.effect` 元数据声明可动画参数，动画使用其逻辑参数名；`time` 可映射到常见 shader 时间 uniform。
 - `audio.play` / `audio.stop` / `audio.pause` / `audio.resume` / `audio.enqueue` / `audio.next` / `audio.clear`：`AudioRuntime` 持有轨道队列与 voice 生命周期，`IAudioPlaybackHost` 只执行平台播放请求。`dialogue.textVoice` 与 `nvl.appendVoice` 会先发出非阻塞的 `audio.play(replaceIfDifferent)`，默认使用 `vocal` 轨道，再按正常文本语义阻塞。
 - `audio.play` / `audio.enqueue` 的 `loopCount` 默认 1，0 为无限重复；`completion` 默认为 `discard`，`requeueTail` 在完整播放次数结束后回到队尾。单项重复优先于 completion，失败、停止、替换、next 与 scope 清理不触发重播。每轮重新生成后端 identity；这是结束事件驱动的重复播放，不承诺无缝。有限循环保存 `CompletedIterations`，旧数据缺省为 0；旧请求缺省仍为一次播放并丢弃，当前轨道与效果状态表为 v2，旧档不能混用。无限循环计数不累加。暂停期间结束的播放保留逻辑项，Resume 后启动新一轮。
@@ -26,9 +26,9 @@
 
 淡出项立即从逻辑播放集合移除，但 AudioRuntime 保留运行期 retiring voice，继续发送玩家音量/静音更新；retiring 不进入存档，也不占逻辑声部/队列容量。支持淡出的 host 必须在真实结束（含显式停止、淡出完成、停止尚未启动的声音）时上报对应 Ended，供运行时清理身份；scope 切换和释放会强制立即停止所有 retiring。此类结束不会重新入队。
 
-动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst。
+动画 timeline 的事件与轨道共用 presenter 的播放时间源。`PlayTimelineAsync` 必须在采样前 await `beforeFrame(elapsedFrames)`，正常完成前提供末帧；Loop/PingPong 的 elapsedFrames 单调增加，不在循环时归零。跳过不补发未来 particle burst 或 audio.play。
 
-Timeline 的播放级 Once 初始化事件不随迭代重放，OnCompletion 清理仅在整段完成/跳过时通知。`animation.stop / CompleteImmediately` 等待对应播放实例的 PresentationCompletion；中立实例补发剩余非 burst 事件并提交循环终态后才移除播放身份，保证后续剧情可复用标识。Timeline 的 AfterIteration 请求由单调播放时钟在下一轮边界完成；无活动呈现的循环直接提交逻辑终态。CatchUp 分离、scope 取消和被替换不补发完成清理。事件生命周期为 Timeline 的可选字段，builtin.animations section 仍为 v2。
+Timeline 的播放级 Once 初始化事件不随迭代重放，OnCompletion 清理仅在整段完成/跳过时通知。`animation.stop / CompleteImmediately` 等待对应播放实例的 PresentationCompletion；中立实例补发剩余非 burst/瞬时声音事件并提交循环终态后才移除播放身份，保证后续剧情可复用标识。Timeline 的 AfterIteration 请求由单调播放时钟在下一轮边界完成；无活动呈现的循环直接提交逻辑终态。CatchUp 分离、scope 取消和被替换不补发完成清理。事件生命周期为 Timeline 的可选字段，builtin.animations section 仍为 v2。
 
 音频后端请求按 voice 顺序提交，目标级 Configure/Mix/Effect/Reset 另有顺序屏障，Start 等待已提交的目标配置。Stop 即刻取消待加载 Start；异步销毁等待后台源和设备回调退出。Windows miniaudio 解码至每实例有界 PCM 缓冲；设备回调不执行文件 I/O、不取得 Runtime 锁或调用终态订阅。取消后的租约和原生解码器均释放，读档清空旧图，旧 scope Reset 与迟到终态不能影响新代。Headless 保留逻辑状态；无 host 时流程 ticket 完成。
 
@@ -122,11 +122,24 @@ preset.motion
 preset.shake
 preset.speedLines
 preset.impact
+preset.mask
+preset.flash
+preset.idle
+preset.weather
+preset.mood
+preset.heartbeat
+preset.parallax
+preset.emphasis
+dialogue.emphasis
+transition.flash
+transition.zoom
+transition.pixelate
+transition.glitch
 ```
 
 这些 entry 不是 Runtime primitive，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
 
-视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 显式资源参数传递。编辑器插入/类型切换时从项目 defaultVisualPrograms 用途绑定填入 GUID；编译器不查找隐藏默认 shader，不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击目标为 targets[].handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../../manual/editor/default-visuals.md)。
+视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 显式资源参数传递。编辑器插入/类型切换时从项目 defaultVisualPrograms 用途绑定填入 GUID；编译器不查找隐藏默认 shader，不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击每个条目显式指定单个 handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../../manual/editor/default-visuals.md)。
 
 ## 内置 primitive ID
 
@@ -137,14 +150,14 @@ preset.impact
 `GameRegistration.UseCatalog(catalog)` 使用现有项目 catalog，禁止随后增加 schema。`AddBuiltinImplementations(catalog, ...)` 按该集合选择已声明的内置 primitive，不增加 schema；选择不拆散组件状态或释放所有权。宿主通过 `RequireInstructions(compiledTypes)` 检查实际内容需要的执行实现；可选 `RequireExecutionCoverage()` 检查整个 primitive 集合。工具契约加载不要求执行实现，外部游戏宿主缺少自定义实现时明确失败。
 
 ```text
-dialogue.text, dialogue.textVoice, dialogue.show, dialogue.hide
+dialogue.text, dialogue.textVoice, dialogue.show, dialogue.hide, text.card
 nvl.show, nvl.hide, nvl.clear, nvl.append, nvl.appendVoice
 layer.show, layer.showColor, layer.hide, layer.move, layer.replace
 variants.show, variants.select
 animation.animate, animation.stop
 timeline.play
 audio.play, audio.stop, audio.pause, audio.resume, audio.enqueue, audio.next, audio.clear
-audio.seffect.apply, audio.seffect.update, audio.seffect.stop, audio.mix.set
+audio.seffect.apply, audio.seffect.update, audio.seffect.stop, audio.mix.set, audio.duck
 video.play, video.stop
 effect.apply, effect.stop
 particle.play, particle.stop
@@ -204,8 +217,23 @@ GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldD
 
 Timeline 使用 TimelineOptions.Timeline 对应的 timeline 根参数（JsonElement），内容为 TimelineDefinition；播放接口为 PlayTimelineAsync。旧 animation.play ID 和 plan 根参数没有别名。动画轨道、键与事件分别使用 TimelineTrackDefinition、TimelineKeyframeDefinition、TimelineEventDefinition，纯采样入口为 TimelineSampler。
 
-Timeline 事件的 `execution` 默认为 `EachIteration`，按帧逐轮执行；`Once` 仅允许帧 0，属于整次播放的初始化；`OnCompletion` 仅允许结束帧的 layer.hide/effect.stop/particle.stop，属于整次播放的收尾，不随循环触发。恢复不重复已提交的首帧初始化。震屏/集中线预设支持 `playbackMode=Timed/UntilStopped`；持续模式编译为非阻塞、不可点击跳过的 Loop，集中线的创建和移除分别使用 Once/OnCompletion。其他预设保持单次。
+Timeline 事件的 `execution` 默认为 `EachIteration`，按帧逐轮执行；`Once` 仅允许帧 0，属于整次播放的初始化；`OnCompletion` 仅允许结束帧的 layer.hide/effect.stop/particle.stop/audio.stop/audio.seffect.stop，属于整次播放的收尾，不随循环触发。恢复不重复已提交的首帧初始化。震屏/集中线预设支持 `playbackMode=Timed/UntilStopped`；持续模式编译为非阻塞、不可点击跳过的 Loop，集中线的创建和移除分别使用 Once/OnCompletion。idle/weather/heartbeat 同样支持持续模式，其余预设保持单次。
 
 音频效果条目目标为 `scope`（track/bus）与必填 `targetId`；播放/轨道控制仍使用 `trackId`。效果参数和新 PCM 后端见 [音频混音](../../manual/editor/audio.md)。
 
 `audio.seffect.update` 使用 `AudioSEffectUpdateOptions`，以 `instanceId` 引用已有实例，`parameters` 为字段 patch；合并后验证，缺失实例无操作。`audio.seffect.stop` 的 `all` 默认 false；true 时停止目标上的全部效果且不能同时指定非空实例身份。Editor 自动隐藏 apply 的输出身份，类型/参数及 stop/update 的引用选择见 [作者目标查询](../editor/scene-targets.md)。
+
+
+## 演出库扩展
+
+新增 text.card 原语以本地化 content、九宫格 position、App styleName、可选 holdSeconds 和 blocking 发出 ITextCardPresenter 请求。缺失呈现端口时直接完成；Quick/CatchUp 不弹出，取消结束等待。卡片是瞬时呈现，不进入剧情状态表。
+
+layer.showColor.overlay 默认 false，保存到 Layer 并传到 LayerRenderRequest。默认 Avalonia 宿主为 true 的颜色层提供独立透明合成面，位于对白/提示卡上、系统确认下。ScenePost 仍只作用于场景。shader 实例的未动画参数保留静态 metadata/参数初值，恢复时不制造 progress=0 覆盖它。
+
+effect.apply.ensureOnly 默认 false；为 true 时保留同身份、program 和 target 的既有实例，冲突则拒绝。Timeline Replace 轨道可用 startFromCurrent=true，在呈现线程注册时读取当前显示值替代首键，作者键不被改写；稳定逻辑终值仍取末键。这用于连续说话人强调切换。
+
+Timeline 增加 audioTracks，并允许六种音频事件：audio.play、audio.stop、audio.seffect.apply/update/stop、audio.mix.set。BuiltinAnimationModule 借用当前 BuiltinAudioModule，仍由原 AudioRuntime 管理状态与后端。音频参数采样使用 beforeFrame 的同一帧数；快进完成控制值但不补发瞬时声音。一次性音频渐变保存最新已提交参数，不保存精确播放时钟；循环仍由 LoopAnimationState 恢复。
+
+audio.duck 保存 AudioDuckingState（builtin.audio.ducking v1），后端按实际活跃源声音产生临时压低包络。包络与 DSP 尾音不入档。新增默认 SEffect：delay、pan、eq、distortion、bitcrusher、compressor；范围和语义见音频手册。
+
+新增 preset.mask/flash/idle/weather/mood/heartbeat/parallax/emphasis、dialogue.emphasis 与 transition.flash/zoom/pixelate/glitch。它们复用既有编译机制；对白强调展开为非阻塞 Timeline、可选 audio.play、dialogue.text。所有参与图层由作者显式指定。默认资源、参数、身份及停止规则见[默认视觉库手册](../../manual/editor/default-visuals.md)。

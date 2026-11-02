@@ -24,7 +24,7 @@ public sealed class AvaloniaLayerPresenter(
             Z = request.Z,
             DisplayMode = request.DisplayMode,
             Opacity = request.Opacity
-        }));
+        }, request.Overlay));
 
     public void ReplaceLayer(string handleId, string assetId) =>
         dispatcher.Dispatch(() => state.ReplaceLayer(handleId, layers.ResolveTexture(assetId)));

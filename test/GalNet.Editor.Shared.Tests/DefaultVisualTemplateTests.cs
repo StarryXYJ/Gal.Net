@@ -59,7 +59,7 @@ public sealed class DefaultVisualTemplateTests
             Assert.That(File.ReadAllBytes(bloomPath), Is.EqualTo(modified));
             settings = JsonSerializer.Deserialize<ProjectConfiguration>(File.ReadAllBytes(settingsPath))!;
             Assert.That(settings.ReadDefaultOptions().DefaultVisualPrograms["bloom"], Is.EqualTo(bloom));
-            Assert.That(settings.ReadDefaultOptions().DefaultVisualPrograms, Has.Count.EqualTo(8));
+            Assert.That(settings.ReadDefaultOptions().DefaultVisualPrograms, Has.Count.EqualTo(DefaultVisualTemplate.ProgramNames.Count));
             var installed = File.ReadAllBytes(settingsPath);
             var repeated = await CliHelpTests.Invoke(["project", "visuals", "install", target]);
             Assert.That(repeated.ExitCode, Is.Zero, repeated.Output);
@@ -102,13 +102,13 @@ public sealed class DefaultVisualTemplateTests
             var dry = await EditorProjectCreator.CreateAsync(new(target, ContractsDirectory: contracts, DryRun: true));
             var report = (ProjectCreateReport)dry.Data!;
             Assert.That(Directory.Exists(parent), Is.False);
-            Assert.That(report.Files.Count(file => file.EndsWith(".sksl", StringComparison.Ordinal)), Is.EqualTo(8));
+            Assert.That(report.Files.Count(file => file.EndsWith(".sksl", StringComparison.Ordinal)), Is.EqualTo(DefaultVisualTemplate.ProgramNames.Count));
             var created = await EditorProjectCreator.CreateAsync(new(target, ContractsDirectory: contracts));
             var createdReport = (ProjectCreateReport)created.Data!;
             using var json = JsonDocument.Parse(File.ReadAllText(Path.Combine(target, "settings.json")));
             var settings = json.RootElement.Deserialize<ProjectConfiguration>()!;
             var bindings = settings.ReadDefaultOptions().DefaultVisualPrograms;
-            Assert.That(bindings, Has.Count.EqualTo(8));
+            Assert.That(bindings, Has.Count.EqualTo(DefaultVisualTemplate.ProgramNames.Count));
             foreach (var (purpose, name) in DefaultVisualTemplate.ProgramNames)
             {
                 var shader = Path.Combine(target, "Assets/Effects/Default", name + ".sksl");

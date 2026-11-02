@@ -1,0 +1,52 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param time
+  uniform: time
+  type: float
+  default: 0
+  range: 0..36000
+  animatable: true
+
+@param grain
+  uniform: grain
+  type: float
+  default: 0.15
+  range: 0..1
+  animatable: true
+
+@param flicker
+  uniform: flicker
+  type: float
+  default: 0.05
+  range: 0..1
+  animatable: true
+
+@param scratches
+  uniform: scratches
+  type: float
+  default: 0.1
+  range: 0..1
+  animatable: true
+
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength,time,grain,flicker,scratches;
+float hash(float2 p){return fract(sin(dot(p,float2(127.1,311.7)))*43758.5453);}
+half4 main(float2 p) {
+ half4 c=source.eval(p); if(strength<=0.0 || c.a<=0.0) return c;
+ float tick=floor(time*24.0); float n=hash(p+tick*17.0)-0.5;
+ float line=step(0.997,hash(float2(floor(p.x/2.0),floor(tick/3.0))));
+ float change=strength*(n*grain+sin(tick*2.13)*flicker+line*scratches);
+ return half4(clamp(c.rgb+half(change)*c.a,half3(0),half3(c.a)),c.a);
+}

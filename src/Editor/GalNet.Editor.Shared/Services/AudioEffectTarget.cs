@@ -16,6 +16,7 @@ public static class AudioAuthoringTarget
         try
         {
             var scope = owner["scope"]?.GetValue<string>() ?? "track";
+            scope = scope switch { "Track" => "track", "Bus" => "bus", _ => scope };
             var target = owner["targetId"]?.GetValue<string>();
             return scope is "track" or "bus" && !string.IsNullOrWhiteSpace(target)
                 ? JsonSerializer.Serialize(new[] { scope, target }) : null;

@@ -42,7 +42,7 @@ internal static partial class BuiltinRuntimeActions
             Enum(parameters, "displayMode", LayerDisplayMode.Native),
             Float(parameters, "opacity", 1),
             color,
-            Json<FlipbookDefinition>(parameters, "flipbook")?.Clone());
+            Json<FlipbookDefinition>(parameters, "flipbook")?.Clone()) { Overlay = parameters.TryGetValue("overlay", out var overlay) && overlay.ValueKind == JsonValueKind.True };
 
     private static EffectRequest ToEffectRequest(IReadOnlyDictionary<string, JsonElement> parameters) => new(
         Get(parameters, "id"),
@@ -50,7 +50,7 @@ internal static partial class BuiltinRuntimeActions
         Get(parameters, "targetHandleId"),
         Int(parameters, "order"),
         RawJson(parameters, "parameters", "{}"),
-        Get(parameters, "program"));
+        Get(parameters, "program")) { EnsureOnly = parameters.TryGetValue("ensureOnly", out var ensure) && ensure.ValueKind == JsonValueKind.True };
 
     private static ParticleBurstRequest ToParticleBurstRequest(IReadOnlyDictionary<string, JsonElement> parameters)
     {

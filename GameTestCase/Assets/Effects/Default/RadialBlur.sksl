@@ -1,0 +1,47 @@
+/*
+@gal.effect v=1
+@input source
+@targets layer,scenePost
+
+@param strength
+  uniform: strength
+  type: float
+  default: 0
+  range: 0..1
+  animatable: true
+
+@param centerX
+  uniform: centerX
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param centerY
+  uniform: centerY
+  type: float
+  default: 0.5
+  range: 0..1
+  animatable: true
+
+@param mode
+  uniform: mode
+  type: enum
+  default: Zoom
+  options: Zoom,Spin
+  animatable: false
+
+*/
+uniform shader source;
+uniform float2 size;
+uniform float strength,centerX,centerY,mode;
+
+half4 main(float2 p) {
+ if(strength<=0.0) return source.eval(p);
+ float2 center=float2(centerX,centerY)*size; float2 v=p-center; half4 sum=half4(0);
+ for(int i=0;i<12;i++) { float t=(float(i)/11.0-0.5)*strength; float2 q;
+  if(mode<0.5) q=center+v*(1.0-t);
+  else { float a=t*0.5; q=center+float2(v.x*cos(a)-v.y*sin(a),v.x*sin(a)+v.y*cos(a)); }
+  sum+=source.eval(clamp(q,float2(0),max(size-float2(0.5),float2(0))));
+ } return sum/12.0;
+}

@@ -88,7 +88,13 @@ public sealed partial class SceneTargetAnalysisTests
             Event(6, BuiltinEntryIds.BurstParticles, new { parameters = new { particleTexture = "star" } }),
             Event(7, BuiltinEntryIds.StopEffect, new { instanceId = "effect" }),
             Event(8, BuiltinEntryIds.StopParticleEmitter, new { instanceId = "particle" }),
-            Event(9, BuiltinEntryIds.HideLayer, new { handleId = "color" })];
+            Event(9, BuiltinEntryIds.HideLayer, new { handleId = "color" }),
+            Event(10, BuiltinEntryIds.PlayAudio, new { trackId = "bgm", asset = "sound" }),
+            Event(11, BuiltinEntryIds.StopAudio, new { trackId = "bgm" }),
+            Event(12, BuiltinEntryIds.ApplyAudioSEffect, new { scope = "track", targetId = "bgm", instanceId = "audio", id = "seffect.gain", parameters = new { gain = .5 } }),
+            Event(13, BuiltinEntryIds.UpdateAudioSEffect, new { scope = "track", targetId = "bgm", instanceId = "audio", parameters = new { gain = .4 } }),
+            Event(14, BuiltinEntryIds.StopAudioSEffect, new { scope = "track", targetId = "bgm", instanceId = "audio" }),
+            Event(15, BuiltinEntryIds.SetAudioLevel, new { scope = "track", targetId = "bgm", gain = .5 })];
         var clip = Clip(events); var analysis = Analyze(clip);
         var definitions = clip.Parameters["timeline"].GetProperty("events").Deserialize<List<TimelineEventDefinition>>(new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
         Assert.That(definitions.Select(item => item.Type), Is.EquivalentTo(TimelineEventCapabilities.Types));

@@ -26,7 +26,7 @@ Editor 的应用表单依次选择作用范围、Track/Bus、效果类型，再�
 {"type":"audio.seffect.stop","parameters":{"scope":"bus","targetId":"environment","all":true}}
 ```
 
-同一精确挂载身份在不同分支来自不同类型时，仍能停止，但更新表单不会猜测参数类型。既有未知类型、参数和失效引用保留，查询刷新不自动清空或改选。音频效果参数尚未接入 Timeline 动画，也没有新增音频 Timeline 事件。
+同一精确挂载身份在不同分支来自不同类型时，仍能停止，但更新表单不会猜测参数类型。既有未知类型、参数和失效引用保留，查询刷新不自动清空或改选。音效参数与混音 gain 可通过 Timeline 的 audioTracks 动画；事件及使用方式见下文。
 
 内置效果：
 
@@ -80,3 +80,49 @@ Editor 的应用表单依次选择作用范围、Track/Bus、效果类型，再�
 - `autoBlocking` 为字符串 `"true"` 时，自动推进等待完整逻辑播放结束；无限循环或轮播要靠停止/跳过终止等待。通常让 BGM 保持默认非自动阻塞。
 - 暂停保留播放和队列；读档从当前轮开头恢复，保留已完成的有限循环轮数，不恢复音频游标或淡化时钟。
 - 淡出期间调整音量或静音仍然有效。媒体文件直接复用已有资源租约；最后一个声音、视频或 Gallery 消费者释放后才删除临时文件。
+
+
+## 扩展音效
+
+| ID | 参数（默认值） |
+|---|---|
+| seffect.delay | delaySeconds=0.25（0.001～2）、feedback=0.35（0～0.95）、mix=0.25 |
+| seffect.pan | pan=0（-1～1）；立体声平衡，居中左右保持原增益，正值衰减左声道、负值衰减右声道 |
+| seffect.eq | frequencyHz=1000（20～20000）、q=0.7071068（0.1～10）、gainDb=0（-24～24）；峰值均衡 |
+| seffect.distortion | drive=2（1～20）、mix=0.25；软失真 |
+| seffect.bitcrusher | bits=8（2～16）、downsample=1（1～64）、mix=0.5；位深/采样保持参数取整 |
+| seffect.compressor | thresholdDb=-18（-60～0）、ratio=4（1～20）、attackMs=10（0.1～200）、releaseMs=100（5～2000）、makeupDb=0（0～24）；左右联动 |
+
+各效果都支持 Track/Bus。mix 范围均为 0～1。Delay 与混响都可在音源结束后保留尾音；读档/reset 清空延迟缓冲，移除效果会平滑旁路。
+
+## Timeline 音频
+
+Timeline 允许 audio.play/stop、audio.seffect.apply/update/stop、audio.mix.set 事件。事件以相同播放时钟在对应帧触发，不额外生成剧情检查点；快进不补播未来 audio.play，Quick/CatchUp 不触发瞬时声音。持续声音应通过普通音频条目管理，或明确安排停止事件。
+
+`audioTracks` 中每项指定 scope（Track/Bus）、targetId、instanceId、parameter、keys。instanceId 为空时 parameter 只能为 gain，作用于剧情混音，保留 muted；不为空时更新直接挂载效果的指定数值字段，保留其他参数。关键帧规则与视觉轨道一致，同一精确参数的新播放替换旧播放的控制权。
+
+```json
+{
+  "type": "timeline.play",
+  "parameters": {
+    "timeline": {
+      "playbackHandleId": "muffle", "frameRate": 60, "durationFrames": 180,
+      "blocking": true, "skippable": true, "tracks": [], "events": [],
+      "audioTracks": [{
+        "scope": "Bus", "targetId": "bgm", "instanceId": "filter", "parameter": "cutoffHz",
+        "keys": [{"frame": 0, "value": 20000}, {"frame": 180, "value": 500}]
+      }]
+    }
+  }
+}
+```
+
+先挂载 filter 实例，再播放上例。正常完成/立即跳过提交末值；scope 取消或替换不补播未来事件。一次性音频参数动画不保存精确时钟，读档保留已提交参数值；循环沿用 Timeline 定义恢复。无呈现的循环只建立第零帧状态，显式停止再执行终态清理。
+
+## 语音压低背景声
+
+```json
+{"type":"audio.duck","parameters":{"instanceId":"voice-duck","sourceTrackId":"vocal","scope":"bus","targetId":"bgm","gain":0.35,"attackMs":80,"releaseMs":400,"enabled":true}}
+```
+
+规则随剧情存档，包络不存档。PCM 根据源轨道已经开始实际输出且未暂停/结束的声音压低目标；加载待播、排队不触发。gain 与剧情音量、玩家偏好相乘；多个规则取当前最小目标 gain。相同 instanceId 更新规则，enabled=false 移除规则并恢复。禁止目标包含源轨道的自压低路由。此能力是播放状态驱动的 duck，不是完整信号侧链压缩。

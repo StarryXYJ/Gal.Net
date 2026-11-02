@@ -19,7 +19,7 @@ public enum AnimationInterpolation
 [GenerateFieldSchema]
 public sealed partial class TimelineDefinition
 {
-    public TimelineDefinition() { Tracks = []; Events = []; }
+    public TimelineDefinition() { Tracks = []; Events = []; AudioTracks = []; }
     /// <summary>Opaque handle for this timeline playback; it must be unique while the timeline is active.</summary>
     [Field(0)] public string PlaybackHandleId { get; set; } = "";
     /// <summary>Timeline sampling frequency in frames per second. Valid authoring values are 1 through 240.</summary>
@@ -34,6 +34,7 @@ public sealed partial class TimelineDefinition
     [Field(6)] public List<TimelineTrackDefinition> Tracks { get; set; }
     /// <summary>Entries dispatched at their declared frames without creating a separate engine checkpoint.</summary>
     [Field(7)] public List<TimelineEventDefinition> Events { get; set; }
+    [Field(8, DefaultJson = "[]")] public List<TimelineAudioTrackDefinition> AudioTracks { get; set; }
 }
 
 /// <summary>Keyframed values for one property on one active scene instance.</summary>
@@ -47,6 +48,8 @@ public sealed partial class TimelineTrackDefinition
     [Field(2)] public AnimationBlendMode BlendMode { get; set; }
     /// <summary>Strictly frame-ordered keys; the first key must be at frame 0.</summary>
     [Field(3)] public List<TimelineKeyframeDefinition> Keys { get; set; }
+    /// <summary>Resolve the first Replace key from the current presentation value when playback begins.</summary>
+    [Field(4)] public bool StartFromCurrent { get; set; }
 }
 
 /// <summary>Tangents are values per timeline frame. Interpolation belongs to the segment after this key.</summary>

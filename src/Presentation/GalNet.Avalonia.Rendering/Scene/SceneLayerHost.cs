@@ -49,6 +49,7 @@ public sealed class SceneLayerHost : Control
     public IEnumerable<SceneLayerItem>? ItemsSource { get => GetValue(ItemsSourceProperty); set => SetValue(ItemsSourceProperty, value); }
     public IEnumerable<SceneEffectInstance>? EffectsSource { get => GetValue(EffectsSourceProperty); set => SetValue(EffectsSourceProperty, value); }
     public IEnumerable<ISceneRenderable>? RenderablesSource { get => GetValue(RenderablesSourceProperty); set => SetValue(RenderablesSourceProperty, value); }
+    public bool TransparentBackground { get; set; }
     public SceneRenderBudget RenderBudget { get => GetValue(RenderBudgetProperty); set => SetValue(RenderBudgetProperty, value); }
     public SceneRenderDiagnostics RenderDiagnostics { get; } = new();
     public SceneRenderPlan RenderPlan => _renderPlan;
@@ -96,7 +97,7 @@ public sealed class SceneLayerHost : Control
     public override void Render(DrawingContext context)
     {
         base.Render(context);
-        if (Bounds.Width <= 0 || Bounds.Height <= 0) return;
+        if (Bounds.Width <= 0 || Bounds.Height <= 0 || TransparentBackground && _renderPlan.Items.Count == 0 && EffectsSource?.Any() != true) return;
         AdvanceRenderables();
         // The operation receives Avalonia's live Skia canvas. Do not encode a PNG or create an
         // Avalonia Bitmap here: animation must be a texture draw, not a per-frame image round trip.
@@ -222,7 +223,7 @@ public sealed class SceneLayerHost : Control
         }, DispatcherPriority.Render);
     }
 
-    private SceneRenderOptions CreateRenderOptions() => new(RenderBudget, RenderDiagnostics);
+    private SceneRenderOptions CreateRenderOptions() => new(RenderBudget, RenderDiagnostics) { TransparentBackground = TransparentBackground };
 }
 
 /// <summary>Desktop scene presenter. Avalonia.Skia owns the destination canvas and GPU context.</summary>
