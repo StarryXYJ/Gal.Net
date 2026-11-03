@@ -90,6 +90,8 @@
 
 [第九轮](round-9.md)：无 schema 对象的结构化编辑。
 
+[第十轮](round-10.md)：无 schema 列表的结构化编辑。
+
 ## 相关资料
 
 - [已有 Editor UI/UX feature](../F-20261023-01-editor-uiux/feature.md)：此前界面、问题定位等已实施；本次是后续反馈，不覆盖其记录。

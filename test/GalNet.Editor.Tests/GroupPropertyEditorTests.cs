@@ -397,6 +397,36 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task UntypedHomogeneousListUsesStructuredRowsAndKeepsOtherValues()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault();
+            var binding = new PropertyBinding("[{\"amount\":1,\"id\":\"first\"},{\"amount\":2,\"id\":\"second\"}]");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field)(context);
+            var window = new Window { Content = lease.Control, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.Controls/")) { Source = new Uri("avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var list = (StructuredFieldEditor)lease.Control; list.IsExpanded = true; TimelinePump(window);
+                var row = list.GetVisualDescendants().OfType<StructuredFieldEditor>().First(editor => !ReferenceEquals(editor, list));
+                row.IsExpanded = true; TimelinePump(window);
+                var amount = row.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Single(item => item.Field.Id == "amount");
+                amount.Text = "3"; Assert.That(await amount.CommitTextAsync(), Is.True);
+                Assert.That(binding.Value.Json!.Value[0].GetProperty("amount").GetInt32(), Is.EqualTo(3));
+                Assert.That(binding.Value.Json.Value[0].GetProperty("id").GetString(), Is.EqualTo("first"));
+                Assert.That(binding.Value.Json.Value[1].GetProperty("amount").GetInt32(), Is.EqualTo(2));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task UntypedObjectUsesStructuredFieldsAndPreservesSiblingValues()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

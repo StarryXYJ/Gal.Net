@@ -10,7 +10,7 @@ internal static class InferredJsonFieldEditor
 {
     public static FieldEditorLease Create(FieldEditorContext parent)
     {
-        if (parent.EffectiveValue is not { ValueKind: JsonValueKind.Object } value || Infer(value, 0) is not { } descriptor)
+        if (parent.EffectiveValue is not { ValueKind: JsonValueKind.Object or JsonValueKind.Array } value || Infer(value, 0) is not { } descriptor)
             return DefaultFieldEditors.CreateJson(parent);
         var field = new FieldDescriptor(parent.Field.Id, descriptor, parent.Field.IsRequired, labelKey: parent.Field.LabelKey);
         var binding = new ForwardBinding(parent);
@@ -27,6 +27,18 @@ internal static class InferredJsonFieldEditor
             case JsonValueKind.String: return new(typeof(string));
             case JsonValueKind.True or JsonValueKind.False: return new(typeof(bool));
             case JsonValueKind.Number: return value.TryGetDecimal(out _) ? new(typeof(decimal)) : null;
+            case JsonValueKind.Array:
+            {
+                if (value.GetArrayLength() is 0 or > 200) return null;
+                ValueDescriptor? element = null;
+                foreach (var item in value.EnumerateArray())
+                {
+                    var next = Infer(item, depth + 1);
+                    if (next is null || element is not null && !SameShape(element, next)) return null;
+                    element ??= next;
+                }
+                return new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Sequence(new("element", element!)));
+            }
             case JsonValueKind.Object:
             {
                 var fields = new List<FieldDescriptor>();
@@ -40,6 +52,17 @@ internal static class InferredJsonFieldEditor
             }
             default: return null;
         }
+    }
+
+    private static bool SameShape(ValueDescriptor left, ValueDescriptor right)
+    {
+        if (left.ValueType != right.ValueType || left.Structure?.Kind != right.Structure?.Kind) return false;
+        if (left.Structure?.Kind == ValueStructureKind.Sequence)
+            return SameShape(left.Structure.Element!.Value, right.Structure!.Element!.Value);
+        if (left.Structure?.Kind != ValueStructureKind.Object) return true;
+        var fields = right.Structure!.Fields!.ToDictionary(field => field.Id, StringComparer.Ordinal);
+        return left.Structure.Fields!.Count == fields.Count && left.Structure.Fields.All(field =>
+            fields.TryGetValue(field.Id, out var match) && SameShape(field.Value, match.Value));
     }
 
     private sealed class ForwardBinding : IFieldBinding, IDisposable
