@@ -69,6 +69,8 @@ Engine 同时支持同步和异步释放；异步宿主优先使用 `await using
 
 `GameDebugSpan` 表示匹配作者映射提供的 primitive 半开范围。断点在范围起点前，单步不跨出范围且保留正常阻塞/Skip；定位的 `TargetEnd` 指定一次目标条件豁免范围，离开后恢复普通条件。Engine 不解析作者 ID 或网络协议。`InitialScene` 是调用方显式选择的独立测试起点，不自动把不可达位置视为正常剧情路线。
 
+Developer 调试可在同一执行门内整体替换完整 Graph。调用方必须提供当前 run generation、Group/index/活动 primitive 边界和候选编译 index；任一前置条件变化即拒绝，失败不改变导航或 generation。成功替换会推进 generation 并失效旧定位/断点操作，活动 primitive 自然结束，后续分发读取候选 Graph。Runtime 不保存候选、不分类修改影响，也不管理提示。自然进入 Group 时按顺序记录 Group ID 并写入 Snapshot v6；调试 Seek/回放不追加，首期不解释环。
+
 Runtime 本地变量表归一化作用域前缀；向 IVariableService 回写已有变量时按 UID 保留桥接服务中的原键，避免同一 Player 系统变量生成两个存储别名。默认 Avalonia 运行停止/释放后刷新玩家变量；Save 仍由正常保存链写入。
 
 ### 追帧到当前 Group 末尾

@@ -10,7 +10,11 @@ Player 修改先同步当前 Runtime 与玩家变量服务，默认 Avalonia 宿
 
 当前协议校验版本、随机会话邀请、项目身份和构建内容指纹；请求按 runId/执行代次拒绝过期运行，变量还检查 UID/类型/原值。内容指纹覆盖 Graph、I18n、settings 及存在的 Contracts 目录；另可在 DebugIdentity 中提供 ContractFingerprint。Editor 使用项目已加载契约 DLL 的 SHA256，并通过 `--debug-contract` 传入预期值；Sample 对自己实际加载的 `ProjectSchemas` 程序集计算 SHA256，不匹配即拒绝。自定义 App 必须同样提供实际契约身份，不应直接信任命令行中的预期值。契约指纹不等价于执行模块程序集的代码指纹。
 
-CLI/Editor/App 应使用同一份项目契约构建产物，包括默认只含内置条目的工程；选择 Sample 时需先部署 Sample 对应的 Contracts。运行内容来自构建目录，不提供资源热更新；作者内容编辑后旧源码映射失效，需要重新启动测试。
+CLI/Editor/App 应使用同一份项目契约构建产物，包括默认只含内置条目的工程；选择 Sample 时需先部署 Sample 对应的 Contracts。Developer 调试组合支持由 Editor 构建并安装完整内容候选：未经过 Group 和当前 Group 未执行作者 Entry 可直接激活；当前已执行前缀变化要求返回 Group 开头；已离开 Group 或非 Entry 内容变化要求重新开始游戏。Contracts 变化仍必须重启调试 App。
+
+内容更新协议只包含安装最新候选、激活最新候选、激活并返回当前 Group 开头三类操作，不公开内容版本号。Editor 保存当前已应用构建和待处理构建并负责分类与提示；App 只保存当前运行内容和最新候选两个对象引用。命令继续按 run ID、generation、当前 Group/index 和活动 primitive 校验原子边界。成功后 Editor 才切换源码/断点映射；失败或超时保留旧映射，不做响应丢失后的内容版本对账。
+
+调试存档保存自然经过的 Group ID 序列；Seek 和回放不追加。首期不处理环。非 Entry Graph、Assets、I18n 与 settings 变化统一保守要求重新开始，不分析资源使用位置；新 Run 使用最新完整候选，已有资源对象按正常生命周期释放。
 
 在仓库根目录运行 `./scripts/contracts/export-sample-contracts.ps1`（可选 `-Configuration Release`），会先构建 Avalonia Sample，再将配套契约及依赖 DLL 导出到根目录 `out/Contracts`。该输出目录已被 Git 忽略。关闭 Editor 项目，将导出的 DLL 复制到项目 `Contracts` 目录，重新打开项目，并使用脚本打印的对应 App 路径启动测试。
 
