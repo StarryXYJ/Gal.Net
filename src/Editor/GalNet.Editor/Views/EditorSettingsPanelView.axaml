@@ -14,7 +14,7 @@
                    Margin="0,0,0,12" />
 
         <Grid Grid.Row="1">
-        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorBackground1}" CornerRadius="6" IsHitTestVisible="False" />
+        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorFill0}" CornerRadius="6" IsHitTestVisible="False" />
         <TabControl TabStripPlacement="Left" Background="Transparent">
           <TabItem MinWidth="180">
           <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M12 2L14 4L17 3L18 6L21 7L20 10L22 12L20 14L21 17L18 18L17 21L14 20L12 22L10 20L7 21L6 18L3 17L4 14L2 12L4 10L3 7L6 6L7 3L10 4Z M12 8A4 4 0 1 0 12 16A4 4 0 1 0 12 8"/><TextBlock Text="{loc:Localize Settings.Editor.Title}"/></StackPanel></TabItem.Header>

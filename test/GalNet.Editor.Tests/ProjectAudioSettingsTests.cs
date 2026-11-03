@@ -58,8 +58,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }, CancellationToken.None);
     }
 
-    [Test]
-    public async Task AudioTracksDisplayTheirIdentityAndAccessibleActions()
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task AudioTracksDisplayTheirIdentityAndAccessibleActions(bool dark)
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(async () =>
@@ -69,24 +70,54 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var audio = BuiltinAudioDefaults.Create();
             var project = await projects.CreateAsync(Path.Combine(_root, "AudioPresentation"), "AudioPresentation", new DefaultProjectOptions { AudioBuses = audio.Buses.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration(), Contracts());
             var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
-            var view = new ProjectSettingsPanelView { DataContext = panel }; var window = new Window { Content = view, Width = 1000, Height = 700 };
+            var view = new ProjectSettingsPanelView { DataContext = panel };
+            var window = new Window { Content = view, Width = 1200, Height = 940, RequestedThemeVariant = dark ? Avalonia.Styling.ThemeVariant.Dark : Avalonia.Styling.ThemeVariant.Light };
+            window.Resources.MergedDictionaries.Add(new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Assets/icons.axaml") });
+            window.Resources.MergedDictionaries.Add(new Avalonia.Markup.Xaml.Styling.ResourceInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Themes/EditorButtons.axaml") });
             window.Show(); TimelinePump(window);
             try
             {
-                var tracks = view.GetVisualDescendants().OfType<StructuredFieldEditor>().Single(editor => editor.Context.Field.Id == "audioTracks");
-                tracks.IsExpanded = true; TimelinePump(window);
-                Assert.That(tracks.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "#1 · bgm"), Is.True);
-                var remove = tracks.GetVisualDescendants().OfType<Button>().First(button => button.Name == "remove");
-                Assert.That(Avalonia.Automation.AutomationProperties.GetName(remove), Is.Not.Null.And.Not.Empty);
-                Assert.That(ToolTip.GetTip(remove), Is.Not.Null);
-                var firstTrack = tracks.GetVisualDescendants().OfType<StructuredFieldEditor>().First(editor => !ReferenceEquals(editor, tracks));
-                firstTrack.IsExpanded = true; TimelinePump(window);
-                tracks.BringIntoView(); TimelinePump(window);
+                var settings = panel.Sections.Single(section => section.AudioSettings is not null).AudioSettings!;
+                var audioRoot = view.GetVisualDescendants().OfType<Expander>().Single(editor => editor.Name == "AudioSettings");
+                var childExpansions = 0;
+                audioRoot.Expanded += (_, args) => { if (!ReferenceEquals(args.Source, audioRoot)) childExpansions++; };
+                var firstBus = settings.Buses[0];
+                firstBus.IsExpanded = true; TimelinePump(window);
+                var track = firstBus.Tracks[0];
+                track.IsExpanded = true; TimelinePump(window);
+                var trackView = view.GetVisualDescendants().OfType<Expander>().Single(editor => editor.Name == "AudioTrack" && ReferenceEquals(editor.DataContext, track));
+                audioRoot.BringIntoView(new Rect(0, 0, audioRoot.Bounds.Width, 800)); TimelinePump(window);
+                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } initialArtifacts)
+                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(initialArtifacts, dark ? "audio-settings-dark.png" : "audio-settings-light.png")); }
+                window.Width = 620; TimelinePump(window);
+                var audioView = view.GetVisualDescendants().OfType<ProjectAudioSettingsView>().Single(item => ReferenceEquals(item.DataContext, settings));
+                Assert.That(audioView.Classes.Contains("narrow"), Is.True);
+                Assert.That(trackView.GetVisualDescendants().OfType<Avalonia.Controls.Primitives.UniformGrid>().Where(grid => grid.Classes.Contains("audio-fields")).All(grid => grid.Columns == 1), Is.True);
+                trackView.BringIntoView(); TimelinePump(window);
+                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } narrowArtifacts)
+                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(narrowArtifacts, dark ? "audio-settings-dark-narrow.png" : "audio-settings-light-narrow.png")); }
+                window.Width = 1200; TimelinePump(window);
+                var advanced = trackView.GetVisualDescendants().OfType<Expander>().Single(editor => editor.Name == "AudioAdvanced");
+                advanced.IsExpanded = true; TimelinePump(window);
+                Assert.That(settings.Buses[0], Is.SameAs(firstBus), "Expanding a child must not rebuild its ancestor list.");
+                Assert.That(firstBus.Tracks[0], Is.SameAs(track));
+                Assert.That(childExpansions, Is.GreaterThanOrEqualTo(2), "Child expansion events bubble; the audio list must not rebuild in response.");
+                Assert.That(trackView.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "bgm"), Is.True);
+                var menu = view.GetVisualDescendants().OfType<Button>().First(button => button.Name == "AudioTrackMenu");
+                Assert.That(Avalonia.Automation.AutomationProperties.GetName(menu), Is.Not.Null.And.Not.Empty);
+                Assert.That(ToolTip.GetTip(menu), Is.Not.Null);
+                trackView.BringIntoView(); TimelinePump(window);
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
                 { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "settings-audio-expanded.png")); }
-                var bus = firstTrack.GetVisualDescendants().OfType<ComboBox>().Single(box => box.Name == "AudioBusInput");
-                var buses = audio.Buses.ToList(); buses.Add(new("ambience", "Environment"));
-                await Stage(panel, "audioBuses", buses); TimelinePump(window);
+                var bus = trackView.GetVisualDescendants().OfType<ComboBox>().Single(box => box.Name == "AudioBusInput");
+                var addBus = view.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "AddAudioBus" && button.IsVisible && ReferenceEquals(button.DataContext, settings));
+                addBus.BringIntoView(); TimelinePump(window); Click(window, addBus); TimelinePump(window);
+                var added = settings.Buses[^1];
+                var addedView = view.GetVisualDescendants().OfType<Expander>().Single(editor => editor.Name == "AudioBus" && ReferenceEquals(editor.DataContext, added));
+                var fields = addedView.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Contexts).ToArray();
+                Assert.That(await fields.Single(context => context.Field.Id == "id").CommitValueAsync("ambience"), Is.True);
+                Assert.That(await fields.Single(context => context.Field.Id == "name").CommitValueAsync("Environment"), Is.True);
+                TimelinePump(window);
                 Assert.That(bus.Items.Cast<object>().Any(option => option.ToString() == "Environment (ambience)"), Is.True, "Unsaved bus drafts must be selectable.");
                 bus.SelectedItem = bus.Items.Cast<object>().Single(option => option.ToString() == "Environment (ambience)"); TimelinePump(window);
                 Assert.That(Setting(panel, "audioTracks").Read().Json!.Value[0].GetProperty("busId").GetString(), Is.EqualTo("ambience"));
@@ -97,6 +128,105 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             return true;
         }, CancellationToken.None);
     }
+
+    [Test]
+    public async Task NestedAudioDraftSurvivesViewClosureAndBlocksInvalidSave()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "AudioDraft"), "AudioDraft", new(), Contracts());
+            var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
+            await Stage(panel, "audioBuses", new[] { new { id = "music", name = "Music", extension = 17 } });
+            await Stage(panel, "audioTracks", new[] { new { id = "main", busId = "music", extension = new { keep = true } } });
+            var settings = panel.Sections.Single(section => section.AudioSettings is not null).AudioSettings!;
+            var bus = settings.Buses.Single(); bus.IsExpanded = true;
+            var track = bus.Tracks.Single(); track.IsExpanded = true;
+            var view = new ProjectSettingsPanelView { DataContext = panel };
+            var window = new Window { Content = view, Width = 1100, Height = 850 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var field = AudioField(view, track, "maxVoices"); field.Text = "-";
+                panel.L.ApplyLocale("en-US"); TimelinePump(window);
+                Assert.That(settings.Buses.Single(), Is.SameAs(bus), "Language refresh must retain nested input owners.");
+                Assert.That(AudioField(view, track, "maxVoices").Text, Is.EqualTo("-"));
+                window.Content = null; TimelinePump(window);
+                Assert.ThrowsAsync<EditorOperationException>(async () => await panel.CommitDraftAsync());
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks, Is.Empty);
+                window.Content = view; TimelinePump(window);
+                field = AudioField(view, track, "maxVoices");
+                Assert.That(field.Text, Is.EqualTo("-"), "Closing a page must retain incomplete nested input.");
+                field.Text = "4"; await panel.CommitDraftAsync(); TimelinePump(window);
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().MaxVoices, Is.EqualTo(4));
+                var data = project.Configuration.Sections["galnet.project"].Data;
+                Assert.That(data.GetProperty("audioBuses")[0].GetProperty("extension").GetInt32(), Is.EqualTo(17));
+                Assert.That(data.GetProperty("audioTracks")[0].GetProperty("extension").GetProperty("keep").GetBoolean(), Is.True);
+                await panel.UndoRedoHistory.UndoAsync();
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks, Is.Empty);
+                await panel.UndoRedoHistory.RedoAsync();
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Single().MaxVoices, Is.EqualTo(4));
+            }
+            finally { window.Close(); panel.Dispose(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task NestedAudioActionsKeepReferencesAndRejectRemovedItemBindings()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "AudioActions"), "AudioActions", new(), Contracts());
+            var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
+            await Stage(panel, "audioBuses", new[] { new { id = "music", name = "Music" } });
+            await Stage(panel, "audioTracks", new[] { new { id = "first", busId = "music", extension = 42 }, new { id = "second", busId = "music", extension = 43 } });
+            var settings = panel.Sections.Single(section => section.AudioSettings is not null).AudioSettings!;
+            var bus = settings.Buses.Single(); bus.IsExpanded = true;
+            var first = bus.Tracks[0]; first.IsExpanded = true;
+            var view = new ProjectSettingsPanelView { DataContext = panel };
+            var window = new Window { Content = view, Width = 1100, Height = 850 }; window.Show(); TimelinePump(window);
+            try
+            {
+                Assert.That(await AudioField(view, bus, "id").CommitValueAsync("renamed"), Is.True); TimelinePump(window);
+                Assert.That(Setting(panel, "audioTracks").Read().Json!.Value.EnumerateArray().All(value => value.GetProperty("busId").GetString() == "renamed"), Is.True);
+                await bus.AddTrackCommand.ExecuteAsync(null); TimelinePump(window);
+                var added = bus.Tracks[^1];
+                Assert.That(Setting(panel, "audioTracks").Read().Json!.Value.EnumerateArray().Single(value => value.GetProperty("id").GetString() == added.Id).GetProperty("busId").GetString(), Is.EqualTo("renamed"));
+                await added.RemoveCommand.ExecuteAsync(null); TimelinePump(window);
+                Assert.That(await AudioField(view, first, "id").CommitValueAsync("second"), Is.False, "Duplicate IDs must leave the prior value intact.");
+                AudioField(view, first, "id").RevertDraft();
+                await first.CopyCommand.ExecuteAsync(null); TimelinePump(window);
+                var copy = bus.Tracks[1];
+                Assert.That(copy.Id, Is.Not.EqualTo(first.Id));
+                Assert.That(Setting(panel, "audioTracks").Read().Json!.Value[1].GetProperty("extension").GetInt32(), Is.EqualTo(42));
+                await copy.MoveDownCommand.ExecuteAsync(null); TimelinePump(window);
+                Assert.That(bus.Tracks[^1], Is.SameAs(copy));
+                var obsolete = AudioField(view, copy, "name");
+                await copy.RemoveCommand.ExecuteAsync(null); TimelinePump(window);
+                Assert.That(await obsolete.CommitValueAsync("removed"), Is.False);
+                await bus.RemoveCommand.ExecuteAsync(null); TimelinePump(window);
+                Assert.That(settings.Buses, Is.Empty);
+                Assert.That(settings.UnassignedTracks.Count, Is.EqualTo(2));
+                await bus.AddTrackCommand.ExecuteAsync(null);
+                Assert.That(settings.UnassignedTracks.Count, Is.EqualTo(2), "A removed bus cannot add tracks through an old command.");
+                Assert.That(Setting(panel, "audioTracks").Read().Json!.Value.EnumerateArray().All(value => value.GetProperty("busId").ValueKind == JsonValueKind.Null), Is.True);
+                await panel.CommitDraftAsync();
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks.Count, Is.EqualTo(2));
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioBuses, Is.Empty);
+            }
+            finally { window.Close(); panel.Dispose(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    private static FieldEditorContext AudioField(Control view, AudioSettingsItemViewModel item, string id) =>
+        view.GetVisualDescendants().OfType<DtoEditorHost>()
+            .Where(host => ReferenceEquals(host.Item, item.CommonForm) || ReferenceEquals(host.Item, item.AdvancedForm))
+            .SelectMany(host => host.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Contexts))
+            .Single(context => context.Field.Id == id);
 
     [Test]
     public async Task DefaultWeatherTexturesUseStructuredMapAndProjectHistory()

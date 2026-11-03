@@ -6,6 +6,7 @@ using GalNet.Core.Configuration;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
 using GalNet.Contracts.Builtins.Audio;
+using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services;
 
@@ -30,9 +31,11 @@ public sealed class ConfigurationSectionEditor : IDisposable
         _ => _section.Id
     };
     public DtoEditorItem Item { get; }
+    public DtoEditorItem DisplayItem { get; }
+    public ProjectAudioSettingsViewModel? AudioSettings { get; }
     public EditorRegistry Registry { get; }
     public event Action? AudioBusesChanged;
-    public bool HasChanges => _fields.Values.Any(item => item.Draft.IsDirty || item.Pending is { } value && !Equal(item.Source(_baseline), value));
+    public bool HasChanges => AudioSettings?.HasInputDraft == true || _fields.Values.Any(item => item.Draft.IsDirty || item.Pending is { } value && !Equal(item.Source(_baseline), value));
 
     public ConfigurationSectionEditor(ConfigurationSection section, ProjectConfiguration configuration, EditorRegistry registry,
         IEditorLocalizationService localization, Func<bool> isCurrent, Action changed, Func<FieldDescriptor, bool> canEdit)
@@ -51,6 +54,12 @@ public sealed class ConfigurationSectionEditor : IDisposable
                 if (await Binding(fields.Single(field => field.Id == id)).CommitAsync(value, token) is { } issue) return issue;
             return null;
         });
+        if (section.Id == DefaultProjectConfiguration.Section.Id)
+        {
+            AudioSettings = new(this, localization, changed);
+            DisplayItem = new(section.Id, null, fields.Where(field => field.Id is not ("audioBuses" or "audioTracks")).ToArray(), Binding);
+        }
+        else DisplayItem = Item;
     }
     private FieldDescriptor Decorate(FieldDescriptor field)
     {
@@ -146,6 +155,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
             JsonSerializer.SerializeToElement(choice.Value))).ToArray());
     public async Task FlushAsync()
     {
+        if (AudioSettings is not null) await AudioSettings.FlushAsync();
         foreach (var field in _fields.Values.Where(field => field.Draft.IsDirty))
         {
             using var context = new FieldEditorContext(field.Descriptor, field, Registry);
@@ -165,7 +175,19 @@ public sealed class ConfigurationSectionEditor : IDisposable
     public static bool Equal(ProjectSectionData? left, ProjectSectionData? right) => left is null ? right is null
         : right is not null && left.Version == right.Version && JsonElement.DeepEquals(left.Data, right.Data);
     private static bool Equal(FieldValue left, FieldValue right) => left.Json is { } a ? right.Json is { } b && JsonElement.DeepEquals(a, b) : right.Json is null;
-    public void Dispose() { _disposed = true; foreach (var field in _fields.Values) field.Dispose(); }
+    internal ValueIssue? StageAudio(JsonElement buses, JsonElement tracks)
+    {
+        var bus = _fields["audioBuses"]; var track = _fields["audioTracks"];
+        if (!bus.IsEnabled || !track.IsEnabled) return new("settings.obsolete", "Configuration field is unavailable.");
+        var busChanged = !Equal(bus.Read(), new(buses)); var trackChanged = !Equal(track.Read(), new(tracks));
+        if (busChanged) bus.Stage(new(buses));
+        if (trackChanged) track.Stage(new(tracks));
+        if (busChanged || trackChanged) _changed();
+        if (busChanged) { bus.NotifyChanged(); AudioBusesChanged?.Invoke(); }
+        if (trackChanged) track.NotifyChanged();
+        return null;
+    }
+    public void Dispose() { _disposed = true; AudioSettings?.Dispose(); foreach (var field in _fields.Values) field.Dispose(); }
 
     private sealed class Field : IFieldBinding, IDisposable
     {
@@ -199,6 +221,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
             if (Descriptor.Id == "orientationPolicy") _owner.RefreshDefaultOrientationVisibility();
             return Task.FromResult<ValueIssue?>(null);
         }
+        public void Stage(FieldValue value) => Pending = value;
         public void RefreshLocalization()
         {
             _options = _owner.Options(Descriptor);

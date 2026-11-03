@@ -1,0 +1,156 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:GalNet.Editor.ViewModels"
+             xmlns:views="using:GalNet.Editor.Views"
+             xmlns:forms="using:GalNet.Game.Controls.Forms"
+             xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+             x:Class="GalNet.Editor.Views.ProjectAudioSettingsView"
+             x:DataType="vm:ProjectAudioSettingsViewModel">
+  <UserControl.Styles>
+    <Style Selector="Border.audio-bus-card, Border.audio-track-card">
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Border.audio-bus-card"><Setter Property="Background" Value="{DynamicResource SemiColorBackground1}"/></Style>
+    <Style Selector="Border.audio-track-card"><Setter Property="Background" Value="{DynamicResource SemiColorBackground0}"/></Style>
+    <Style Selector="Expander.audio-card">
+      <Setter Property="HorizontalAlignment" Value="Stretch"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}"/>
+      <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="CornerRadius" Value="6"/>
+    </Style>
+    <Style Selector="Button.audio-menu">
+      <Setter Property="Theme" Value="{DynamicResource EditorIconButton}"/>
+      <Setter Property="Margin" Value="0,8,40,0"/>
+      <Setter Property="VerticalAlignment" Value="Top"/>
+      <Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="M4 10A2 2 0 1 0 4 14A2 2 0 1 0 4 10 M12 10A2 2 0 1 0 12 14A2 2 0 1 0 12 10 M20 10A2 2 0 1 0 20 14A2 2 0 1 0 20 10"/></DataTemplate></Setter>
+    </Style>
+    <Style Selector="TextBlock.audio-id, TextBlock.audio-summary">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorText2}"/>
+      <Setter Property="VerticalAlignment" Value="Center"/>
+      <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="views|ProjectAudioSettingsView.narrow TextBlock.audio-summary">
+      <Setter Property="IsVisible" Value="False"/>
+    </Style>
+    <Style Selector="UniformGrid.audio-fields"><Setter Property="Columns" Value="2"/></Style>
+    <Style Selector="views|ProjectAudioSettingsView.narrow UniformGrid.audio-fields"><Setter Property="Columns" Value="1"/></Style>
+    <Style Selector="StackPanel.audio-body"><Setter Property="Margin" Value="16,12,0,8"/></Style>
+    <Style Selector="views|ProjectAudioSettingsView.narrow StackPanel.audio-body"><Setter Property="Margin" Value="8,8,0,8"/></Style>
+    <Style Selector="StackPanel.audio-field"><Setter Property="Margin" Value="0,0,16,12"/></Style>
+    <Style Selector="views|ProjectAudioSettingsView.narrow StackPanel.audio-field"><Setter Property="Margin" Value="0,0,8,12"/></Style>
+    <Style Selector="forms|SchemaForm" x:CompileBindings="False">
+      <Setter Property="Template">
+        <ControlTemplate>
+          <StackPanel>
+            <ItemsControl ItemsSource="{TemplateBinding Editors}">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Classes="audio-fields"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Classes="audio-field" Spacing="5">
+                    <TextBlock DataContext="{Binding Context}" Text="{loc:Localize Label, FallbackPath=Field.Id}" Foreground="{DynamicResource SemiColorText1}" TextWrapping="Wrap"/>
+                    <forms:FieldEditorRow Context="{Binding Context}" Editor="{Binding Control}" ShowLabel="False" IsVisible="{Binding Context.IsVisible}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{TemplateBinding Diagnostics}">
+              <ItemsControl.ItemTemplate><DataTemplate><TextBlock Text="{Binding Message}" TextWrapping="Wrap"/></DataTemplate></ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </StackPanel>
+        </ControlTemplate>
+      </Setter>
+    </Style>
+  </UserControl.Styles>
+  <UserControl.Resources>
+    <DataTemplate x:Key="AudioTrackTemplate" x:DataType="vm:AudioSettingsItemViewModel">
+      <Border Classes="audio-track-card" Margin="0,0,0,6">
+      <Grid>
+        <Expander Name="AudioTrack" Classes="audio-card" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+          <Expander.Header>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,42,0">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Classes="audio-id" Text="{Binding Id}"/>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Classes="audio-summary" Text="{Binding Summary}"/>
+            </Grid>
+          </Expander.Header>
+          <StackPanel Classes="audio-body">
+            <forms:DtoEditorHost Item="{Binding CommonForm}" Registry="{Binding Registry}"/>
+            <Expander Name="AudioAdvanced" Header="{loc:Localize Settings.Project.Audio.Advanced}" IsVisible="{Binding HasAdvanced}" Margin="0,0,16,0">
+              <forms:DtoEditorHost Margin="0,10,0,0" Item="{Binding AdvancedForm}" Registry="{Binding Registry}"/>
+            </Expander>
+          </StackPanel>
+        </Expander>
+        <Button Name="AudioTrackMenu" Classes="audio-menu" Content="…" HorizontalAlignment="Right" ToolTip.Tip="{loc:Localize Settings.Project.Audio.More}" AutomationProperties.Name="{loc:Localize Settings.Project.Audio.More}">
+          <Button.Flyout><MenuFlyout>
+            <MenuItem Header="{loc:Localize Form.CopyElement}" Command="{Binding CopyCommand}"/>
+            <MenuItem Header="{loc:Localize Form.MoveUp}" Command="{Binding MoveUpCommand}"/>
+            <MenuItem Header="{loc:Localize Form.MoveDown}" Command="{Binding MoveDownCommand}"/>
+            <Separator/>
+            <MenuItem Header="{loc:Localize Form.RemoveElement}" Command="{Binding RemoveCommand}"/>
+          </MenuFlyout></Button.Flyout>
+        </Button>
+      </Grid>
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:Key="AudioBusTemplate" x:DataType="vm:AudioSettingsItemViewModel">
+      <Border Classes="audio-bus-card" Margin="0,0,0,8">
+      <Grid>
+        <Expander Name="AudioBus" Classes="audio-card" IsExpanded="{Binding IsExpanded, Mode=TwoWay}">
+          <Expander.Header>
+            <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12" Margin="0,0,42,0">
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <PathIcon Width="16" Height="16" Data="M3 9H7L13 4V20L7 15H3Z M16 7L18 5C22 9 22 15 18 19L16 17C19 14 19 10 16 7Z"/>
+                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Classes="audio-id" Text="{Binding Id}"/>
+              </StackPanel>
+              <TextBlock Grid.Column="1" Classes="audio-summary" Text="{Binding Summary}"/>
+            </Grid>
+          </Expander.Header>
+          <StackPanel Classes="audio-body" Spacing="8">
+            <forms:DtoEditorHost Item="{Binding CommonForm}" Registry="{Binding Registry}"/>
+            <Grid ColumnDefinitions="*,Auto" Margin="0,0,16,0">
+              <TextBlock Text="{loc:Localize Settings.Project.AudioTracks}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+              <Button Name="AddAudioTrack" Grid.Column="1" Command="{Binding AddTrackCommand}">
+                <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Width="14" Height="14" Data="{DynamicResource AddIcon}"/><TextBlock Text="{loc:Localize Settings.Project.AddTrack}"/></StackPanel>
+              </Button>
+            </Grid>
+            <ItemsControl ItemsSource="{Binding Tracks}" ItemTemplate="{StaticResource AudioTrackTemplate}" Margin="0,0,16,0"/>
+          </StackPanel>
+        </Expander>
+        <Button Name="AudioBusMenu" Classes="audio-menu" Content="…" HorizontalAlignment="Right" ToolTip.Tip="{loc:Localize Settings.Project.Audio.More}" AutomationProperties.Name="{loc:Localize Settings.Project.Audio.More}">
+          <Button.Flyout><MenuFlyout>
+            <MenuItem Header="{loc:Localize Form.MoveUp}" Command="{Binding MoveUpCommand}"/>
+            <MenuItem Header="{loc:Localize Form.MoveDown}" Command="{Binding MoveDownCommand}"/>
+            <Separator/>
+            <MenuItem Header="{loc:Localize Settings.Project.Audio.RemoveBus}" Command="{Binding RemoveCommand}"/>
+          </MenuFlyout></Button.Flyout>
+        </Button>
+      </Grid>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+  <Expander Name="AudioSettings" Header="{loc:Localize Settings.Project.Audio.Title}" IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch">
+    <StackPanel Margin="12,8,0,0" Spacing="8">
+      <TextBlock IsVisible="{Binding !IsSupported}" Text="{loc:Localize Settings.Project.Audio.InvalidConfiguration}" Foreground="{DynamicResource SemiColorDanger}" TextWrapping="Wrap"/>
+      <StackPanel Spacing="8" IsEnabled="{Binding IsEnabled}">
+      <Button Name="AddAudioBus" Command="{Binding AddBusCommand}" HorizontalAlignment="Right">
+        <StackPanel Orientation="Horizontal" Spacing="6"><PathIcon Width="14" Height="14" Data="{DynamicResource AddIcon}"/><TextBlock Text="{loc:Localize Settings.Project.Audio.AddBus}"/></StackPanel>
+      </Button>
+      <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SemiColorDanger}" TextWrapping="Wrap"/>
+      <ItemsControl ItemsSource="{Binding Buses}" ItemTemplate="{StaticResource AudioBusTemplate}"/>
+      <Expander Name="UnassignedAudioTracks" Header="{loc:Localize Settings.Project.Audio.Unassigned}" IsVisible="{Binding HasUnassignedTracks}" HorizontalAlignment="Stretch">
+        <StackPanel Margin="12,8,0,0" Spacing="8">
+          <ItemsControl ItemsSource="{Binding UnassignedTracks}" ItemTemplate="{StaticResource AudioTrackTemplate}"/>
+          <Button Name="AddUnassignedAudioTrack" Content="{loc:Localize Settings.Project.AddTrack}" Command="{Binding AddUnassignedTrackCommand}" HorizontalAlignment="Right"/>
+        </StackPanel>
+      </Expander>
+      </StackPanel>
+    </StackPanel>
+  </Expander>
+</UserControl>

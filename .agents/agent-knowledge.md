@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [嵌套 Expander 的路由事件](lessons/L-20261103-08-nested-expander-routed-events.md)：子项 Expanded/Collapsed 会冒泡；普通嵌套列表绑定 IsExpanded，父级不能据此无条件重建子树。音频明暗主题展开回归已验证。
 - [列表 Enter 的 tunnel 路由](lessons/L-20261103-07-list-enter-tunnel-routing.md)：ListBox 可能先处理 Enter；导航需在 tunnel 阶段处理并排除行内按钮，验证实际点击/按键而非只调命令。
 - [标题按钮本地值压过交互状态](lessons/L-20261103-06-caption-local-value-priority.md)：Semi CaptionButton 常态已透明；全局普通按钮样式会覆盖它，标记标题按钮以排除该样式；不要设置本地背景或提高普通按钮样式优先级。
 - [默认折叠与问题定位](lessons/L-20261103-05-collapsed-group-navigation-order.md)：先打开 Group，再展开定位目标，避免面板首次 Attach 覆盖展开状态。
