@@ -22,6 +22,13 @@ public sealed class ConfigurationSectionEditor : IDisposable
     private readonly Dictionary<string, Field> _fields;
     private bool _disposed;
     public string Id => _section.Id;
+    public string DisplayNameKey => _section.Id switch
+    {
+        "galnet.project" => "Settings.Project.Section.Project",
+        "galnet.packaging" => "Settings.Project.Section.Packaging",
+        "galnet.resourceOverrides" => "Settings.Project.Section.ResourceOverrides",
+        _ => _section.Id
+    };
     public DtoEditorItem Item { get; }
     public EditorRegistry Registry { get; }
     public event Action? AudioBusesChanged;
@@ -47,8 +54,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
     }
     private FieldDescriptor Decorate(FieldDescriptor field)
     {
-        if (_section.Id != "galnet.project") return field;
-        var label = field.Id switch
+        var label = _section.Id == "galnet.project" ? field.Id switch
         {
             "defaultWidth" => "Settings.Project.DefaultWidth",
             "defaultHeight" => "Settings.Project.DefaultHeight",
@@ -60,7 +66,9 @@ public sealed class ConfigurationSectionEditor : IDisposable
             "audioBuses" => "Settings.Project.AudioBuses",
             "audioTracks" => "Settings.Project.AudioTracks",
             _ => field.LabelKey
-        };
+        } : field.LabelKey ?? BuiltInFieldLabelKey(_section.Id, field.Id);
+        if (_section.Id != "galnet.project")
+            return label is null ? field : new(field.Id, field.Value, field.IsRequired, field.DefaultValue, field.Editor, label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
         if (field.Id is "defaultVisualPrograms" or "defaultWeatherTextures")
         {
             var editor = field.Id == "defaultWeatherTextures" ? "entry.imageasset" : "entry.effectprogramasset";
@@ -90,6 +98,15 @@ public sealed class ConfigurationSectionEditor : IDisposable
         var value = field.Value.WithStructure(ValueStructure.Sequence(element));
         return new(field.Id, value, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
     }
+    private static string? BuiltInFieldLabelKey(string sectionId, string fieldId) => (sectionId, fieldId) switch
+    {
+        ("galnet.packaging", "maxPakBytes") => "Settings.Project.Packaging.MaxPakBytes",
+        ("galnet.packaging", "includeResources") => "Settings.Project.Packaging.IncludeResources",
+        ("galnet.packaging", "declaredCompleteResources") => "Settings.Project.Packaging.DeclaredCompleteResources",
+        ("galnet.resourceOverrides", "packages") => "Settings.Project.ResourceOverrides.Packages",
+        ("galnet.resourceOverrides", "additionalOriginals") => "Settings.Project.ResourceOverrides.AdditionalOriginals",
+        _ => null
+    };
     public IReadOnlyList<(string Id, string Name)> AudioBuses()
     {
         if (!_fields.TryGetValue("audioBuses", out var field) || field.Read().Json is not { ValueKind: JsonValueKind.Array } values) return [];

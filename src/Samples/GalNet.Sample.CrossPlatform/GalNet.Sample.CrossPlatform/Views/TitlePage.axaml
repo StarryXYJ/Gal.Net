@@ -14,7 +14,7 @@
     </Viewbox>
     <Grid x:Name="TitleLayout" Margin="64,48" MaxWidth="1600" ColumnDefinitions="380,*" RowDefinitions="Auto,*">
       <StackPanel Grid.ColumnSpan="2" Spacing="12">
-        <TextBlock x:Name="GameTitleText" Text="{Binding GameTitle}" ToolTip.Tip="{Binding GameTitle}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"/>
+        <TextBlock x:Name="GameTitleText" Text="{text:PlayerText App.Title, 'GalNet CrossPlatform Sample Player'}" ToolTip.Tip="{text:PlayerText App.Title, 'GalNet CrossPlatform Sample Player'}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}" FontSize="{DynamicResource GalNet.Theme.TitleSize}" FontWeight="Bold" TextWrapping="Wrap" MaxLines="3" TextTrimming="CharacterEllipsis"/>
         <ProgressBar x:Name="TitleProgress" IsIndeterminate="True" IsVisible="{Binding !IsReady}" Width="120" Height="2" HorizontalAlignment="Left" />
       </StackPanel>
       <ScrollViewer x:Name="TitleMenu" Grid.Row="1" VerticalAlignment="Bottom" HorizontalContentAlignment="Stretch" HorizontalScrollBarVisibility="Disabled" Margin="0,32,0,0">

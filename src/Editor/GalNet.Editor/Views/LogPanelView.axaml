@@ -9,13 +9,13 @@
     <Grid RowDefinitions="Auto,*">
         <StackPanel Orientation="Horizontal" Spacing="8" Margin="4,4,4,0">
             <ToggleButton IsChecked="{Binding OnlyShowErrors}"
-                          ToolTip.Tip="Errors only"
-                          AutomationProperties.Name="Errors only">
+                          ToolTip.Tip="{loc:Localize Log.ErrorsOnly}"
+                          AutomationProperties.Name="{loc:Localize Log.ErrorsOnly}">
                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource FilterIcon}" /><TextBlock Text="{loc:Localize Log.ErrorsOnly}" /></StackPanel>
             </ToggleButton>
             <ToggleButton IsChecked="{Binding AutoScroll}"
-                          ToolTip.Tip="Auto-scroll"
-                          AutomationProperties.Name="Auto-scroll">
+                          ToolTip.Tip="{loc:Localize Log.AutoScroll}"
+                          AutomationProperties.Name="{loc:Localize Log.AutoScroll}">
                 <StackPanel Orientation="Horizontal" Spacing="4"><PathIcon Data="{StaticResource ScrollIcon}" /><TextBlock Text="{loc:Localize Log.AutoScroll}" /></StackPanel>
             </ToggleButton>
             <Menu VerticalAlignment="Center">

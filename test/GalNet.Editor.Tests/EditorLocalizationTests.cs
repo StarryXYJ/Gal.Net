@@ -104,12 +104,12 @@ public sealed class EditorLocalizationTests
     {
         var root = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
         while (!File.Exists(Path.Combine(root.FullName, "GalNet.slnx"))) root = root.Parent!;
-        var files = new[] { "Views/NewProjectPanelView.axaml", "Views/ProjectSettingsPanelView.axaml", "Views/EditorSettingsPanelView.axaml", "Views/LogPanelView.axaml", "Controls/GraphNodeControl.axaml", "Inspector/Views/NodeInspectorControl.axaml" };
-        var allowed = new HashSet<string>(StringComparer.Ordinal) { "×", "bgm / sfx / vocal", "zh-CN" };
+        var files = new[] { "Views/NewProjectPanelView.axaml", "Views/ProjectSettingsPanelView.axaml", "Views/EditorSettingsPanelView.axaml", "Views/LogPanelView.axaml", "Controls/AssetPicker.axaml", "Controls/GraphNodeControl.axaml", "Inspector/Views/NodeInspectorControl.axaml" };
+        var allowed = new HashSet<string>(StringComparer.Ordinal) { "×", "…", "bgm / sfx / vocal", "zh-CN" };
         foreach (var file in files)
         {
             var text = File.ReadAllText(Path.Combine(root.FullName, "src/Editor/GalNet.Editor", file));
-            foreach (Match match in Regex.Matches(text, "(?:Text|Content|Header|Title|PlaceholderText)=\"([^\"{]+)\""))
+            foreach (Match match in Regex.Matches(text, "(?:Text|Content|Header|Title|PlaceholderText|ToolTip\\.Tip|AutomationProperties\\.Name)=\"([^\"{]+)\""))
                 Assert.That(allowed.Contains(match.Groups[1].Value), Is.True, file + ": " + match.Value);
         }
     }

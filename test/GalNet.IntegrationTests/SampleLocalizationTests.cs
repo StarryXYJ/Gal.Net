@@ -25,13 +25,21 @@ public sealed class SampleLocalizationTests
         try
         {
             PlayerTextExtension.Resolve = localization.GetString;
+            Assert.That(localization.GetString("App.MadeWith").Value, Is.EqualTo("made with"));
+            Assert.That(localization.GetString("App.Title").Value, Is.EqualTo("GalNet CrossPlatform Sample Player"));
             var heading = new PlayerTextBlock { Key = "SaveSlots.SaveTitle", Fallback = "Save game" };
             Assert.That(heading.Text, Is.EqualTo("Save game"));
             localization.ApplyCulture("zh-CN");
+            Assert.That(localization.GetString("App.MadeWith").Value, Is.EqualTo("由 GalNet 制作"));
+            Assert.That(localization.GetString("App.Title").Value, Is.EqualTo("GalNet 跨平台示例播放器"));
             Assert.That(heading.Text, Is.EqualTo("保存进度"));
             heading.Key = "SaveSlots.LoadTitle";
             Assert.That(heading.Text, Is.EqualTo("读取存档"));
             Assert.That(localization.GetString("Screenshot.IncludeUi").Value, Is.EqualTo("包含对话框和操作栏"));
+            localization.ApplyCulture("ja-JP");
+            Assert.That(localization.GetString("App.MadeWith").Value, Is.EqualTo("GalNetで制作"));
+            localization.ApplyCulture("ko-KR");
+            Assert.That(localization.GetString("App.MadeWith").Value, Is.EqualTo("GalNet으로 제작"));
             localization.ApplyCulture("en-US");
             Assert.That(heading.Text, Is.EqualTo("Load game"));
             Assert.That(localization.GetString("Screenshot.IncludeUi").Value, Is.EqualTo("Include dialogue and controls"));

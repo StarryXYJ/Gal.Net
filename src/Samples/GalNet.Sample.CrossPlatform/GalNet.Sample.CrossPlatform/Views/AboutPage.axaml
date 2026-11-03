@@ -17,7 +17,7 @@
         <Border Grid.Row="1" Classes="player-page-rule" />
         <ScrollViewer Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
           <StackPanel Spacing="12">
-            <TextBlock Text="{Binding GameTitle}" FontSize="{DynamicResource GalNet.Theme.AboutTitleFontSize}" FontWeight="SemiBold" />
+            <TextBlock Text="{text:PlayerText App.Title, 'GalNet CrossPlatform Sample Player'}" FontSize="{DynamicResource GalNet.Theme.AboutTitleFontSize}" FontWeight="SemiBold" />
             <TextBlock Text="{text:PlayerText About.Description, 'This default player shell is fully replaceable by a game client without changing its runtime or game data.'}" TextWrapping="Wrap" Opacity="0.72" />
           </StackPanel>
         </ScrollViewer>

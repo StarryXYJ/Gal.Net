@@ -119,7 +119,7 @@ internal sealed class EditorMenuBuilder(EditorShortcutService shortcuts, EditorD
 
     private AvaloniaList<MenuData> BuildLoadLayoutItems()
     {
-        var items = new AvaloniaList<MenuData> { new() { Header = "Default", Command = commands.LoadLayout, CommandParameter = "Default" } };
+        var items = new AvaloniaList<MenuData> { new() { HeaderKey = "Uiux.Layout.Default", Command = commands.LoadLayout, CommandParameter = "Default" } };
         foreach (var name in layouts.Names)
             items.Add(new MenuData { Header = name, Command = commands.LoadLayout, CommandParameter = name });
         return items;

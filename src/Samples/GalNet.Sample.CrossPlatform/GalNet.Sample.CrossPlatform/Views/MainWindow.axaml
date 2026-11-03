@@ -8,7 +8,7 @@
                  Classes="galnet-player"
                  Background="{DynamicResource GalNet.Brush.Background}"
                  Foreground="{DynamicResource GalNet.Brush.TextPrimary}"
-                 Title="GalNet Avalonia CrossPlatform Player">
+                 Title="{loc:Localize App.Title}">
   <ursa:UrsaWindow.RightContent>
     <Button x:Name="FitAspectButton" Classes="fit-aspect" Width="40" Height="32" Padding="10,8" Click="OnFitAspect"
             AutomationProperties.Name="{loc:Localize Window.FitAspectRatio}" ToolTip.Tip="{loc:Localize Window.FitAspectRatio}">
