@@ -445,6 +445,31 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task UntypedFieldUsesOneLabelAcrossStructuredAndFallbackViews()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(() =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding("{\"amount\":1}");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            var form = new SchemaForm { Schema = [field], Registry = registry, Binding = _ => binding };
+            var window = new Window { Content = form, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Controls/AuthorFormStyles.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var row = form.GetVisualDescendants().OfType<FieldEditorRow>().First();
+                var label = row.Children.OfType<ContentControl>().Single(control => control.Name == "FieldLabel");
+                Assert.That(label.IsVisible, Is.False, "The structured editor already displays its own label.");
+                binding.ReplaceExternally("[]"); TimelinePump(window);
+                Assert.That(label.IsVisible, Is.True, "The source fallback needs the outer label.");
+            }
+            finally { window.Close(); }
+            return Task.FromResult(true);
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task UntypedShapeChangeDoesNotDiscardPendingFieldInput()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

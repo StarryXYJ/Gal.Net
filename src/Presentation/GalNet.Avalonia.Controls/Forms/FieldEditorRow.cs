@@ -42,17 +42,36 @@ public sealed class FieldEditorRow : Grid
         Layout(false);
         SizeChanged += (_, _) => { var narrow = Bounds.Width < NarrowWidth; if (_narrow != narrow) Layout(narrow); };
     }
-    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) { base.OnAttachedToVisualTree(e); _mounted = true; Connect(); }
-    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) { _mounted = false; Disconnect(); base.OnDetachedFromVisualTree(e); }
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e); _mounted = true;
+        if (Editor is ContentControl editor) editor.PropertyChanged += EditorContentChanged;
+        Connect(); Layout(_narrow);
+    }
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        _mounted = false;
+        if (Editor is ContentControl editor) editor.PropertyChanged -= EditorContentChanged;
+        Disconnect(); base.OnDetachedFromVisualTree(e);
+    }
     protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
     {
         base.OnPropertyChanged(change);
         if (_label is null) return;
         if (change.Property == LabelProperty) _label.Content = Label;
-        if (change.Property == EditorProperty) { _editor.Content = Editor; Layout(_narrow); }
+        if (change.Property == EditorProperty)
+        {
+            if (_mounted && change.OldValue is ContentControl previous) previous.PropertyChanged -= EditorContentChanged;
+            if (_mounted && change.NewValue is ContentControl next) next.PropertyChanged += EditorContentChanged;
+            _editor.Content = Editor; Layout(_narrow);
+        }
         if (change.Property == ContextProperty || change.Property == FieldProperty || change.Property == BindingProperty) { if (_mounted) Connect(); }
         if (change.Property == NarrowWidthProperty) Layout(Bounds.Width < NarrowWidth);
         if (change.Property == ShowLabelProperty || change.Property == LabelWidthProperty || change.Property == ShowActionsProperty) Layout(_narrow);
+    }
+    private void EditorContentChanged(object? sender, AvaloniaPropertyChangedEventArgs args)
+    {
+        if (args.Property == ContentControl.ContentProperty) Layout(_narrow);
     }
     private void Connect()
     {
@@ -76,7 +95,7 @@ public sealed class FieldEditorRow : Grid
     private void Layout(bool narrow)
     {
         _narrow = narrow;
-        var showLabel = ShowLabel && Editor is not StructuredFieldEditor;
+        var showLabel = ShowLabel && Editor is not StructuredFieldEditor && Editor is not ContentControl { Content: StructuredFieldEditor };
         _label.IsVisible = showLabel;
         _actions.IsVisible = ShowActions;
         ColumnDefinitions = narrow || !showLabel ? new("*,Auto") : new ColumnDefinitions { new(LabelWidth, GridUnitType.Pixel), new(1, GridUnitType.Star), new(GridLength.Auto) };
