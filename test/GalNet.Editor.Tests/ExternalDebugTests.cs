@@ -150,7 +150,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(group.IsDebugCurrent, Is.True, "Editing must not hide the running Group.");
                     Assert.That(entry.IsDebugCurrent, Is.True, "Editing must not hide the Entry still running from published content.");
                 });
-                await panel.HotReloadCommand.ExecuteAsync(null);
+                await workspace.SaveAsync();
+                await Until(() => revisions.InstallCount == 1 && !panel.Busy);
                 Assert.Multiple(() =>
                 {
                     Assert.That(panel.Error, Is.Empty);
@@ -163,7 +164,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
 
                 entry.Condition = "true";
                 var directlyApplied = hotReload.PublishedBuild;
-                await panel.HotReloadCommand.ExecuteAsync(null);
+                await workspace.SaveAsync();
+                await Until(() => revisions.InstallCount == 2 && panel.HasPendingContent && !panel.Busy);
                 Assert.Multiple(() =>
                 {
                     Assert.That(panel.Error, Is.Empty);
@@ -197,7 +199,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
                 await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 500, 200);
                 var beforeRestartRequirement = hotReload.PublishedBuild;
-                await panel.HotReloadCommand.ExecuteAsync(null);
+                await workspace.SaveAsync();
+                await Until(() => revisions.InstallCount == 3 && panel.HasPendingContent && !panel.Busy);
                 Assert.Multiple(() =>
                 {
                     Assert.That(panel.Error, Is.Empty);
