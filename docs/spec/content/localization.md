@@ -43,7 +43,7 @@ I18nKey.ForBranchOption(branchId, optionIndex, "text");
 
 ## 包内游戏文本加载
 
-项目目录和旧 content v2 安装目录使用 `GameLocalizationLoader` 读取以下作者布局：
+项目目录使用 `GameLocalizationLoader` 读取以下作者布局：
 
 文本和人物文件整体保留在本体特殊内容中，不随剧情 PAK 拆分。安装内容只对已安装的 Group 检查剧情文本引用；未安装的可选剧情不要求加载正文。资源覆盖包按 priority/hash 统一排序，没有语言匹配条件；文本覆盖仍使用下述独立 JSON 来源规则。
 
@@ -62,11 +62,11 @@ I18n/<culture>/**/*.json          平铺或嵌套对象，叶值必须是字符�
 
 ## 外部文本覆盖
 
-新打包内容的 `pak/I18n/<culture>/**/*.json` 在启动时递归读取，整个 I18n 目录仅作为外置覆盖入口；不再添加 External 层。开发目录和旧 content v2 安装目录继续使用 `I18n/External/<culture>/**/*.json`。同 culture 内优先级是嵌入 UI → 包内游戏 → 外部 JSON；每层按 ordinal 相对路径排序，最后文件优先。损坏 JSON、非字符串叶值、无效 culture 或不可读取的外部文件记入 `GameContent.Localization.Diagnostics` 并跳过，Sample 输出诊断；外部树不跟随 reparse point。默认语言完整性只检查包内文本，不能靠外部文件补齐。
+新打包内容的 `pak/I18n/<culture>/**/*.json` 在启动时递归读取，整个 I18n 目录仅作为外置覆盖入口；不再添加 External 层。开发目录使用 `I18n/External/<culture>/**/*.json`。同 culture 内优先级是嵌入 UI → 包内游戏 → 外部 JSON；每层按 ordinal 相对路径排序，最后文件优先。损坏 JSON、非字符串叶值、无效 culture 或不可读取的外部文件记入 `GameContent.Localization.Diagnostics` 并跳过，Sample 输出诊断；外部树不跟随 reparse point。默认语言完整性只检查包内文本，不能靠外部文件补齐。
 
 外部新增语言自动进入 Sample 设置语言列表，显示 culture 的本地名称。外部来源不会修改人物 metadata，也不进入资源 provider。宿主可通过 `AvaloniaPlayerLocalization.AttachGame(content, additionalSources)` 或中立 `CreateResolver` 的 `additional` 参数提供更高优先级的自定义 JSON 来源；其加载方式由宿主自行实现。修改文件后重新启动生效，不提供文件监听热更新。
 
-新导出与安装器保留空 I18n 目录，galpak ZIP 显式保存该空目录；旧格式安装仍创建 I18n/External。复用相同安装时保留用户文件。不同/损坏包仍拒绝覆盖既有目录，因此不会删除翻译；没有新增覆盖更新协议。新 galpak 不包含外置翻译，安装器拒绝将 I18n 子文件作为 v3 payload。
+新导出与安装器保留空 I18n 目录，galpak ZIP 显式保存该空目录；复用相同安装时保留用户文件。不同/损坏包仍拒绝覆盖既有目录，因此不会删除翻译；没有新增覆盖更新协议。新 galpak 不包含外置翻译，安装器拒绝将 I18n 子文件作为 v3 payload。
 
 ## 首次启动
 
@@ -76,7 +76,7 @@ Avalonia Sample 在载入游戏内容和玩家变量后、显示标题和创建 
 
 确认后将所选 locale 与启动次数一起提交到 profile 的 `player-variables.json`，成功写盘才更新内存和 culture；每次成功启动加一，计数在 Int32 上限饱和。取消选择退出窗口；关闭窗口会取消等待；取消、内容加载失败或写盘失败不会提交启动次数。后续启动跳过选择页，恢复可用的已保存语言；已移除语言回退到游戏默认/首个可用语言。没有游戏目录的 bootstrap 启动不计数。
 
-现有“清空游戏数据”会重置玩家变量并重启，因此下次再次显示首次选择。Sample 默认 profile 位于用户 `LocalApplicationData/GalNet/<project identity digest>/`，身份来自 game.pak 内的 projectId（旧安装读取 content.json）；与安装位置和 buildId 无关。开发目录无内容身份时使用绝对路径摘要，开发版可用 `--profile` 显式指定；用户主动共享 profile 时也会共享偏好。该流程只在 Sample 宿主实现，Headless 不显示首次选择页。设置切换不强制重启：UI 即时刷新，已显示的人物名、对话、选项和 NVL 历史保持原文，后续条目使用新语言。
+现有“清空游戏数据”会重置玩家变量并重启，因此下次再次显示首次选择。Sample 默认 profile 位于用户 `LocalApplicationData/GalNet/<project identity digest>/`，身份来自 game.pak 内的 projectId；与安装位置和 buildId 无关。开发目录无内容身份时使用绝对路径摘要，开发版可用 `--profile` 显式指定；用户主动共享 profile 时也会共享偏好。该流程只在 Sample 宿主实现，Headless 不显示首次选择页。设置切换不强制重启：UI 即时刷新，已显示的人物名、对话、选项和 NVL 历史保持原文，后续条目使用新语言。
 
 资源的区域变体可由 `AssetLocaleResolver` 通过宿主选择的目录规则定位；这与文本的 `ITextResolver` 相互独立。
 

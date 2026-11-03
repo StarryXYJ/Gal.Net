@@ -19,21 +19,14 @@ namespace GeneralTest.Presentation;
 public sealed class SampleAotPreparationTests
 {
     [Test]
-    public void InputPreferencesKeepTheExistingWireFormatAndAddTheNewHistoryDefaultWithoutReflectionMetadata()
+    public void InputPreferencesRoundTripWithoutMigration()
     {
-        const string legacy = """{"Version":1,"EastConfirms":true,"Bindings":{"advance":[{"Device":1,"Gesture":"East"}],"toggle.auto":[{"Device":0,"Gesture":"Shift+A"}],"toggle.ui":[{"Device":2,"Gesture":"TwoFingerTap"}]}}""";
-        using var settings = new PlayerInputSettings();
-        settings.Restore(legacy);
-        Assert.That(settings.EastConfirms, Is.True);
-        Assert.That(settings.Resolve(PlayerInputDevice.Gamepad, "East"), Is.EqualTo("advance"));
-        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "Shift+A"), Is.EqualTo("toggle.auto"));
-        Assert.That(settings.Resolve(PlayerInputDevice.Touch, "TwoFingerTap"), Is.EqualTo("toggle.ui"));
-        using var original = JsonDocument.Parse(legacy);
-        using var saved = JsonDocument.Parse(settings.Serialize());
-        var migrated = System.Text.Json.Nodes.JsonNode.Parse(saved.RootElement.GetRawText())!;
-        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
-        migrated["Bindings"]!.AsObject().Remove("open.history");
-        Assert.That(JsonElement.DeepEquals(original.RootElement, JsonSerializer.SerializeToElement(migrated)), Is.True);
+        using var original = new PlayerInputSettings();
+        var json = original.Serialize();
+        using var restored = new PlayerInputSettings();
+        restored.Restore(json);
+        Assert.That(JsonElement.DeepEquals(JsonDocument.Parse(json).RootElement, JsonDocument.Parse(restored.Serialize()).RootElement), Is.True);
+        Assert.That(restored.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
     }
 
     [TestCase("null")]

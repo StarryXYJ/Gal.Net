@@ -279,3 +279,5 @@ PropertyFieldBinding 和通用结构子绑定转发 HostContext、可见性、�
 默认 Avalonia 会话依赖 IAvaloniaPlayerSettings 与 IPlayerStartup，不要求项目使用默认 GameSettings DTO 或自动字段 UI。设置接口只暴露模块输入及接入/保存/窗口生命周期，SettingsChanged 更新当前运行；IPlayerSettingsService 可供默认页面使用，手写页面可直接绑定项目模型。
 
 AvaloniaGameHostOptions.AttachPlayer 借用已准备的玩家服务和 profile；AttachRun 借用每次 Prepare 后的 Engine。绑定由宿主按运行→玩家→资源的依赖顺序释放，同时实现 IAsyncDisposable 时优先异步排空。业务活动、覆盖层和自定义保存语义归项目服务/模块，不属于默认页面注册协议。
+
+输入配置恢复只接受当前有效配置，不补缺失动作；无效 JSON、保留键或冲突绑定回退默认配置。缺失动作视为未绑定。

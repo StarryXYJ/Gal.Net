@@ -12,7 +12,7 @@
            PakFileProvider(Assets/Paks/**/*.pak) ─ GUID -> PAK bytes
 ```
 
-`.galpak` 是带 `pak/` 外层的 ZIP 运输容器。v3 固定入口 game.pak 包含安装清单、content 描述、设置、人物和 Gallery 等内部文档；localization.pak 每种语言一个逻辑文本条目。`GameInstallation` 验证并安装后，Storage 从文档包构造中立内容对象，Graph/Group 从普通资源 PAK 加载。文档包使用 Assets 的独立固定 document 类型目录，不贡献普通资源 provider，也不受资源补丁替换。旧 v1/v2 galpak 与 content v2 散文档读取保持兼容。桌面 Sample 默认选择应用同级 `pak/`，应用根与托管依赖所在的 `lib/` 分离；此定位策略属于 Sample 组合根，不进入共享内容加载器。详见 [资源](../content/assets.md) 与 [文件格式](../content/file-formats.md)。
+`.galpak` 是带 `pak/` 外层的 ZIP 运输容器。固定入口 game.pak 包含安装清单、content 描述、设置、人物和 Gallery 等内部文档；localization.pak 每种语言一个逻辑文本条目。`GameInstallation` 验证并安装后，Storage 从文档包构造中立内容对象，Graph/Group 从普通资源 PAK 加载。文档包使用 Assets 的独立固定 document 类型目录，不贡献普通资源 provider，也不受资源补丁替换。旧归档和 content v2 散文档不受支持，必须重新导出。桌面 Sample 默认选择应用同级 `pak/`，应用根与托管依赖所在的 `lib/` 分离；此定位策略属于 Sample 组合根，不进入共享内容加载器。详见 [资源](../content/assets.md) 与 [文件格式](../content/file-formats.md)。
 
 ## 游戏运行
 

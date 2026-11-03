@@ -18,18 +18,6 @@ public static class GameProfilePaths
         {
             if (File.Exists(Path.Combine(gameDirectory, PackedGameDocuments.GameFileName)))
                 identity = "project:" + InstalledGameDescriptor.Read(gameDirectory).ProjectId;
-            else
-            {
-                var descriptor = Path.Combine(gameDirectory, "content.json");
-                if (File.Exists(descriptor))
-                {
-                    using var json = JsonDocument.Parse(File.ReadAllBytes(descriptor));
-                    if (json.RootElement.ValueKind == JsonValueKind.Object
-                        && json.RootElement.TryGetProperty("projectId", out var id)
-                        && id.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(id.GetString()))
-                        identity = "project:" + id.GetString();
-                }
-            }
         }
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or JsonException)
         {

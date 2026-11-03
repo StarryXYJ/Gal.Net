@@ -77,8 +77,8 @@ public sealed class ResourceOverlayProvider : IAssetProvider
         public string Name => "assets";
         public IEnumerable<string> AssetIds => files.Keys;
         public bool Contains(string id) => files.ContainsKey(id.Trim());
-        public IGameFile? GetAsset(string id) => files.GetValueOrDefault(id.Trim());
-        public IGameFile? GetAssetByPath(string path) => files.Values.FirstOrDefault(file => StringComparer.OrdinalIgnoreCase.Equals(file.Path, AssetPathHelper.Normalize(path)));
+        public IGameFile? GetAsset(string id, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return files.GetValueOrDefault(id.Trim()); }
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return files.Values.FirstOrDefault(file => StringComparer.OrdinalIgnoreCase.Equals(file.Path, AssetPathHelper.Normalize(path))); }
         public void Dispose() { }
     }
     private sealed class SourceFile(ResourceFileSource source, string? id = null, string? path = null, AssetMeta? metadata = null) : IGameFile, IAssetOverrideFile, IAssetFileSource

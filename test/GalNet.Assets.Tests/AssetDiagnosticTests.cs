@@ -259,8 +259,8 @@ public sealed class AssetDiagnosticTests
         public string Name => "assets";
         public IEnumerable<string> AssetIds => [file.Id];
         public bool Contains(string assetId) => assetId == file.Id;
-        public IGameFile? GetAsset(string assetId) => error is not null ? throw error : Contains(assetId) ? file : null;
-        public IGameFile? GetAssetByPath(string path) => path == file.Path ? GetAsset(file.Id) : null;
+        public IGameFile? GetAsset(string assetId, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return error is not null ? throw error : Contains(assetId) ? file : null; }
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return path == file.Path ? GetAsset(file.Id, ct) : null; }
         public void Dispose() { }
     }
 }

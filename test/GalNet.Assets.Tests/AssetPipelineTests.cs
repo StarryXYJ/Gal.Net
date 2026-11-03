@@ -263,7 +263,7 @@ public sealed class AssetPipelineTests
     }
 
     [Test]
-    public void Legacy_archive_implementations_keep_working_with_cancellation_overloads()
+    public void Archive_lookups_observe_cancellation()
     {
         var file = new GameFile("audio", "a.ogg", "audio", new AssetMeta { Id = "audio", Path = "a.ogg", TypeId = "audio" }, []);
         using IArchive archive = new InlineArchive([file]);
@@ -382,8 +382,8 @@ public sealed class AssetPipelineTests
         public string Name => "assets";
         public IEnumerable<string> AssetIds => _files.Keys;
         public bool Contains(string assetId) => _files.ContainsKey(assetId);
-        public IGameFile? GetAsset(string assetId) => _files.GetValueOrDefault(assetId);
-        public IGameFile? GetAssetByPath(string path) => _files.Values.SingleOrDefault(file => file.Path == path);
+        public IGameFile? GetAsset(string assetId, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return _files.GetValueOrDefault(assetId); }
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return _files.Values.SingleOrDefault(file => file.Path == path); }
         public void Dispose() { }
     }
 }

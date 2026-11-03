@@ -31,8 +31,10 @@ public sealed class GameInstallation
         }
 
         if (!Directory.Exists(fullPath)) throw new DirectoryNotFoundException($"Game directory was not found: {fullPath}");
-        return new GameInstallation(fullPath, File.Exists(Path.Combine(fullPath, GalNet.Assets.PackedGameDocuments.GameFileName))
-            || Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any());
+        var packed = File.Exists(Path.Combine(fullPath, GalNet.Assets.PackedGameDocuments.GameFileName));
+        if (!packed && (File.Exists(Path.Combine(fullPath, "content.json")) || Directory.EnumerateFiles(fullPath, "*.galnet", SearchOption.TopDirectoryOnly).Any()))
+            throw new InvalidDataException("Legacy installed content is unsupported. Re-export the game.");
+        return new GameInstallation(fullPath, packed);
     }
 
     public IGameContentProvider CreateContentProvider(IResourceTypeCatalog resourceTypes, IGalleryTypeCatalog galleryTypes, GameContentLoadOptions? options = null) => IsPackaged

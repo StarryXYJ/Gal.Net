@@ -104,7 +104,7 @@ public sealed class ToolOperationCatalog
                 [new CliParameter("package-file", "string", "Input .galpak archive.", true, true),
                  new("--output", "string", "New output directory for installed content.", true)],
                 readOnly: false, requiresProject: false),
-            Route("game.inspect", "game inspect", "Reads the packed or legacy installed content identity and package descriptors.",
+            Route("game.inspect", "game inspect", "Reads the packed installed content identity and package descriptors.",
                 [new CliParameter("content-directory", "string", "Installed content root (for example app/pak).", true, true)], requiresProject: false),
             Route("distribution.compose", "compose", "Verifies a pure Windows/Linux x64 runtime and complete content, then creates a game ZIP/tar.gz without a compiler or SDK.",
                 [new CliParameter("--runtime", "string", "Pure runtime ZIP/tar.gz or directory with application layout and release manifest.", true),

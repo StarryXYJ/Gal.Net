@@ -99,8 +99,8 @@ public sealed class PakFileProvider : IAssetProvider
         public IEnumerable<string> AssetIds => [];
         public EmptyArchive(string name) => Name = name;
         public bool Contains(string assetId) => false;
-        public IGameFile? GetAsset(string assetId) => null;
-        public IGameFile? GetAssetByPath(string path) => null;
+        public IGameFile? GetAsset(string assetId, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return null; }
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return null; }
         public void Dispose() { }
     }
 }

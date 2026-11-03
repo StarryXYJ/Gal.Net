@@ -1,8 +1,7 @@
-using System.Text.Json;
+using GalNet.Core.Serialization;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Core.Assets;
-using GalNet.Core.Serialization;
 
 namespace GalNet.Storage.FileSystem;
 
@@ -14,36 +13,31 @@ internal sealed class InstalledPackageSet
     private readonly List<ResourceOverrideSource> _overrides = [];
     private readonly IResourceTypeCatalog _types;
     public GameContentManifest Manifest { get; }
-    public PackedGamePackage? GamePackage { get; private init; }
-    public PackedDocumentSet? Localization { get; private set; }
+    public PackedGamePackage GamePackage { get; }
+    public PackedDocumentSet Localization { get; }
     public HashSet<string> InstalledStories { get; } = new(StringComparer.Ordinal);
-    private InstalledPackageSet(GameContentManifest manifest, IResourceTypeCatalog types) { Manifest = manifest; _types = types; }
+    private InstalledPackageSet(PackedGamePackage gamePackage, PackedDocumentSet localization, IResourceTypeCatalog types)
+    { GamePackage = gamePackage; Localization = localization; Manifest = gamePackage.Manifest; _types = types; }
     public IReadOnlyList<IAssetProvider> CreateProviders() => [new ResourceOverlayProvider(_paks.SelectMany(pak =>
         pak.Index.Select(file => new ResourceFileSource(file, new PakFileProvider(pak.Path, "assets", _types, expectedSha256: pak.Hash)))).ToArray(), _overrides, _types)];
 
     public static InstalledPackageSet Load(string root, IResourceTypeCatalog types)
     {
         var packedPath = Path.Combine(root, PackedGameDocuments.GameFileName);
-        var packed = File.Exists(packedPath) ? PackedGameDocuments.ReadGame(File.ReadAllBytes(packedPath)) : null;
-        var path = Path.Combine(root, GameContentManifest.FileName);
-        if (packed is null && !File.Exists(path)) throw new InvalidDataException("Installed content requires game.pak or a legacy content.json. Re-export the game.");
-        var manifest = packed?.Manifest ?? JsonCodec.Deserialize<GameContentManifest>(File.ReadAllText(path), new JsonSerializerOptions(JsonSerializerDefaults.Web)
-        { AllowDuplicateProperties = false, UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow })
-            ?? throw new InvalidDataException("Missing content manifest.");
-        if (manifest.Version != (packed is null ? 2 : 3) || manifest.GraphId != StoryResourceIds.Graph || string.IsNullOrWhiteSpace(manifest.ProjectId)
+        if (!File.Exists(packedPath)) throw new InvalidDataException("Installed content requires game.pak. Re-export the game.");
+        var packed = PackedGameDocuments.ReadGame(File.ReadAllBytes(packedPath));
+        var manifest = packed.Manifest;
+        if (manifest.Version != 3 || manifest.GraphId != StoryResourceIds.Graph || string.IsNullOrWhiteSpace(manifest.ProjectId)
             || !Hash(manifest.BuildId) || manifest.BasePaks is not { Count: > 0 } || manifest.Stories is null)
             throw new InvalidDataException("Unsupported or incomplete content manifest.");
-        var result = new InstalledPackageSet(manifest, types) { GamePackage = packed };
-        if (packed is not null)
-        {
-            var expected = manifest.LocalizationPak!;
-            var bytes = File.ReadAllBytes(Path.Combine(root, PackedGameDocuments.LocalizationFileName));
-            if (bytes.LongLength != expected.Size || CryptoHelper.HashSHA256(bytes) != expected.Sha256)
-                throw new InvalidDataException("Packed localization failed integrity verification.");
-            result.Localization = PackedGameDocuments.Read(bytes);
-            if (result.Localization.Descriptor.ProjectId != manifest.ProjectId || result.Localization.Descriptor.BuildId != manifest.BuildId)
-                throw new InvalidDataException("Packed localization belongs to another content build.");
-        }
+        var expectedLocalization = manifest.LocalizationPak!;
+        var localizationBytes = File.ReadAllBytes(Path.Combine(root, PackedGameDocuments.LocalizationFileName));
+        if (localizationBytes.LongLength != expectedLocalization.Size || CryptoHelper.HashSHA256(localizationBytes) != expectedLocalization.Sha256)
+            throw new InvalidDataException("Packed localization failed integrity verification.");
+        var localization = PackedGameDocuments.Read(localizationBytes);
+        if (localization.Descriptor.ProjectId != manifest.ProjectId || localization.Descriptor.BuildId != manifest.BuildId)
+            throw new InvalidDataException("Packed localization belongs to another content build.");
+        var result = new InstalledPackageSet(packed, localization, types);
         var filePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var index = 0; index < manifest.BasePaks.Count; index++)
         {

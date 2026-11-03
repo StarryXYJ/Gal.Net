@@ -55,6 +55,20 @@ public sealed class PackedDocumentTests
     }
 
     [Test]
+    public void LegacyInstalledDirectoriesAreRejected()
+    {
+        Directory.CreateDirectory(Installed);
+        File.WriteAllText(Path.Combine(Installed, "content.json"), "{\"version\":2}");
+        var types = BuiltinResourceTypes.CreateCatalog();
+        Assert.ThrowsAsync<InvalidDataException>(() => GameInstallation.OpenAsync(Installed));
+        Assert.Throws<InvalidDataException>(() => InstalledGameDescriptor.Read(Installed));
+        Assert.ThrowsAsync<InvalidDataException>(() => new InstalledGameContentProvider(Installed, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync());
+        File.Delete(Path.Combine(Installed, "content.json"));
+        File.WriteAllText(Path.Combine(Installed, "old.galnet"), "{}");
+        Assert.ThrowsAsync<InvalidDataException>(() => GameInstallation.OpenAsync(Installed));
+    }
+
+    [Test]
     public async Task BuiltInDocumentsAndLanguagesArePackedWithDeterministicMerging()
     {
         await Export();

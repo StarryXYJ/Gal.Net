@@ -12,7 +12,7 @@ public sealed class CompressionHelperTests
         var compressed = CompressionHelper.Compress(SampleData, CompressionMode.Deflate);
         Assert.That(compressed.Length, Is.LessThan(SampleData.Length));
 
-        var decompressed = CompressionHelper.Decompress(compressed, CompressionMode.Deflate);
+        var decompressed = CompressionHelper.Decompress(new MemoryStream(compressed), CompressionMode.Deflate, SampleData.Length);
         Assert.That(decompressed, Is.EqualTo(SampleData));
     }
 
@@ -20,7 +20,7 @@ public sealed class CompressionHelperTests
     public void Compress_GZip_Decompress_ReturnsOriginal()
     {
         var compressed = CompressionHelper.Compress(SampleData, CompressionMode.GZip);
-        var decompressed = CompressionHelper.Decompress(compressed, CompressionMode.GZip);
+        var decompressed = CompressionHelper.Decompress(new MemoryStream(compressed), CompressionMode.GZip, SampleData.Length);
         Assert.That(decompressed, Is.EqualTo(SampleData));
     }
 
@@ -28,7 +28,7 @@ public sealed class CompressionHelperTests
     public void Compress_Brotli_Decompress_ReturnsOriginal()
     {
         var compressed = CompressionHelper.Compress(SampleData, CompressionMode.Brotli);
-        var decompressed = CompressionHelper.Decompress(compressed, CompressionMode.Brotli);
+        var decompressed = CompressionHelper.Decompress(new MemoryStream(compressed), CompressionMode.Brotli, SampleData.Length);
         Assert.That(decompressed, Is.EqualTo(SampleData));
     }
 
@@ -49,7 +49,7 @@ public sealed class CompressionHelperTests
     [Test]
     public void Decompress_EmptyData_ReturnsEmpty()
     {
-        var decompressed = CompressionHelper.Decompress([], CompressionMode.Brotli);
+        var decompressed = CompressionHelper.Decompress(new MemoryStream(), CompressionMode.Brotli, 0);
         Assert.That(decompressed, Is.Empty);
     }
 
@@ -61,7 +61,7 @@ public sealed class CompressionHelperTests
         // Data smaller than threshold should still compress
         var tiny = "ab"u8.ToArray();
         var compressed = CompressionHelper.Compress(tiny, mode);
-        var decompressed = CompressionHelper.Decompress(compressed, mode);
+        var decompressed = CompressionHelper.Decompress(new MemoryStream(compressed), mode, tiny.Length);
         Assert.That(decompressed, Is.EqualTo(tiny));
     }
 
@@ -69,7 +69,7 @@ public sealed class CompressionHelperTests
     public async Task CompressAsync_DecompressAsync_ReturnsOriginal()
     {
         var compressed = await CompressionHelper.CompressAsync(SampleData, CompressionMode.Brotli);
-        var decompressed = await CompressionHelper.DecompressAsync(compressed, CompressionMode.Brotli);
+        var decompressed = await CompressionHelper.DecompressAsync(new MemoryStream(compressed), CompressionMode.Brotli, SampleData.Length);
         Assert.That(decompressed, Is.EqualTo(SampleData));
     }
 
