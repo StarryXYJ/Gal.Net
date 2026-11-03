@@ -28,6 +28,7 @@ public partial class EditorSettingsPanelView : UserControl
         button.SetCurrentValue(ContentControl.ContentProperty, vm.L["Settings.Shortcuts.Capture"]);
         root.AddHandler(KeyDownEvent, OnCaptureKeyDown, RoutingStrategies.Tunnel);
         root.AddHandler(PointerPressedEvent, OnCapturePointerDown, RoutingStrategies.Tunnel);
+        if (root is Window window) window.Deactivated += OnCaptureWindowDeactivated;
     }
 
     private void OnCaptureKeyDown(object? sender, KeyEventArgs args)
@@ -42,6 +43,7 @@ public partial class EditorSettingsPanelView : UserControl
     }
 
     private void OnCapturePointerDown(object? sender, PointerPressedEventArgs args) => CancelCapture();
+    private void OnCaptureWindowDeactivated(object? sender, EventArgs args) => CancelCapture();
 
     private void CancelCapture()
     {
@@ -49,6 +51,7 @@ public partial class EditorSettingsPanelView : UserControl
         {
             _captureRoot.RemoveHandler(KeyDownEvent, OnCaptureKeyDown);
             _captureRoot.RemoveHandler(PointerPressedEvent, OnCapturePointerDown);
+            if (_captureRoot is Window window) window.Deactivated -= OnCaptureWindowDeactivated;
         }
         if (_captureButton is not null && _captureItem is not null)
             _captureButton.SetCurrentValue(ContentControl.ContentProperty, _captureItem.GestureText);
