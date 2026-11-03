@@ -11,11 +11,13 @@ public sealed class SaveSlotCollection : IDisposable
     private readonly IGameSessionService _session;
     private readonly Func<int, Task> _save;
     private readonly Func<int, Task> _load;
+    private readonly bool _loadPreviewsSynchronously;
     private bool _isSaveMode;
     public ObservableCollection<GameSaveSlotRowViewModel> Slots { get; } = [];
-    public SaveSlotCollection(IGameSessionService session, Func<int, Task> save, Func<int, Task> load)
+    public SaveSlotCollection(IGameSessionService session, Func<int, Task> save, Func<int, Task> load, bool loadPreviewsSynchronously = true)
     {
         _session = session; _save = save; _load = load;
+        _loadPreviewsSynchronously = loadPreviewsSynchronously;
         ((INotifyCollectionChanged)session.SaveSlots).CollectionChanged += OnSlotsChanged;
     }
     public void Refresh(bool isSaveMode) { _isSaveMode = isSaveMode; RebuildRows(); }
@@ -46,7 +48,8 @@ public sealed class SaveSlotCollection : IDisposable
         slot, _isSaveMode, _save,
         slotIndex => _load(slotIndex),
         _session is ISaveSlotNamingSession { CanRenameSlots: true } naming
-            ? (slotIndex, name) => naming.RenameSlotAsync(slotIndex, name) : null);
+            ? (slotIndex, name) => naming.RenameSlotAsync(slotIndex, name) : null,
+        _loadPreviewsSynchronously);
     private void RebuildRows()
     {
         foreach (var row in Slots) row.Dispose();

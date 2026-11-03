@@ -22,6 +22,100 @@ namespace GeneralTest.Presentation;
 
 public sealed partial class GameThemeTests
 {
+    private sealed class ControlledGalleryPage(GalNet.Avalonia.GameView.Services.GalleryMediaService media)
+        : GalNet.Sample.CrossPlatform.ViewModels.GalleryGridPageViewModel(null!, media)
+    {
+        public List<TaskCompletionSource<global::Avalonia.Media.Imaging.Bitmap?>> Loads { get; } = [];
+        protected override Task<global::Avalonia.Media.Imaging.Bitmap?> LoadThumbnailAsync(GalleryItemData item, CancellationToken cancellationToken)
+        {
+            var result = new TaskCompletionSource<global::Avalonia.Media.Imaging.Bitmap?>();
+            Loads.Add(result);
+            return result.Task;
+        }
+        protected override Task OpenDetailAsync(GalleryItemData item, CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
+    [Test]
+    public async Task GalleryPublishesImmediatelyAndDrainsCancelledLoadsOnDisposal()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch(async () =>
+        {
+            using var media = new GalNet.Avalonia.GameView.Services.GalleryMediaService(null!);
+            var page = new ControlledGalleryPage(media);
+            var data = new GalleryTypeData(new GalleryTypeRegistration { TypeId = "cg", ResourceTypeId = "image" },
+                Enumerable.Range(0, 25).Select(index => new GalleryItemData(new GalleryItem { Id = index }, true)).ToArray());
+            await page.ActivateAsync(data);
+            Assert.That(page.Pages.Items, Has.Count.EqualTo(12));
+            Assert.That(page.Pages.Items[0].IsThumbnailLoading, Is.True);
+            page.Pages.CurrentPage = 2;
+            page.Pages.CurrentPage = 1;
+            Assert.That(page.Loads, Has.Count.EqualTo(3));
+            page.Loads[0].SetResult(CreateGalleryArtwork());
+            await Task.Yield();
+            Assert.That(page.Pages.Items[0].Thumbnail, Is.Null);
+            Assert.That(page.Pages.Items[0].IsThumbnailLoading, Is.True);
+            var disposal = page.DisposeAsync().AsTask();
+            Assert.That(disposal.IsCompleted, Is.False);
+            page.Loads[1].SetResult(null);
+            page.Loads[2].SetResult(null);
+            await disposal;
+            Assert.That(page.Thumbnails.Items, Is.Empty);
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task GalleryAndAudioPaginationKeepOnlyTwelveRenderedRowsAndRetainPlaybackState()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch(async () =>
+        {
+            await using var provider = CreateServices(new TemplateAppearance()).BuildServiceProvider();
+            await using var scope = provider.CreateAsyncScope();
+            var services = scope.ServiceProvider;
+            var gallery = services.GetRequiredService<CgGalleryPageViewModel>();
+            var audio = services.GetRequiredService<AudioGalleryPageViewModel>();
+            for (var index = 0; index < 25; index++)
+            {
+                gallery.Thumbnails.Items.Add(new(new(new GalleryItem { Id = index }, true), $"Image {index}"));
+                audio.State.Items.Add(new(new(new GalleryItem { Id = index }, true), $"Audio {index}"));
+            }
+            gallery.Thumbnails.Items[0].IsThumbnailLoading = true;
+            audio.State.Items[0].IsPlaying = true;
+            var semi = new Semi.Avalonia.SemiTheme();
+            var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
+            Application.Current!.Styles.Add(semi); Application.Current.Styles.Add(ursa);
+            var root = new Border { Classes = { "galnet-player" } };
+            root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                root.Child = services.GetRequiredService<IPageViewFactory>().Create(gallery);
+                window.UpdateLayout();
+                Assert.That(root.GetVisualDescendants().OfType<Border>().Count(x => x.Name == "GalleryCard"), Is.EqualTo(12));
+                var skeleton = root.GetVisualDescendants().OfType<Ursa.Controls.Skeleton>().Single(x => x.IsVisible);
+                Assert.That(skeleton.Bounds.Width, Is.GreaterThan(0));
+                Assert.That(skeleton.GetVisualDescendants().Any(), Is.True, "The Ursa loading template must be applied.");
+                var pager = root.GetVisualDescendants().OfType<Ursa.Controls.Pagination>().Single();
+                Click(window, pager.GetVisualDescendants().OfType<Ursa.Controls.PaginationButton>().Single(x => x.Name == "PART_NextButton"));
+                window.UpdateLayout();
+                Assert.That(gallery.Pages.CurrentPage, Is.EqualTo(2));
+                Assert.That(gallery.Pages.Items.Select(x => x.Id), Is.EqualTo(Enumerable.Range(12, 12)));
+                root.Child = services.GetRequiredService<IPageViewFactory>().Create(audio);
+                window.UpdateLayout();
+                Assert.That(root.GetVisualDescendants().OfType<AudioGalleryRow>().Count(), Is.EqualTo(12));
+                pager = root.GetVisualDescendants().OfType<Ursa.Controls.Pagination>().Single();
+                Click(window, pager.GetVisualDescendants().OfType<Ursa.Controls.PaginationButton>().Single(x => x.Name == "PART_NextButton"));
+                window.UpdateLayout();
+                Assert.That(audio.Pages.CurrentPage, Is.EqualTo(2));
+                Assert.That(audio.State.Items[0].IsPlaying, Is.True);
+                Assert.That(audio.Pages.Items.Select(x => x.Id), Is.EqualTo(Enumerable.Range(12, 12)));
+            }
+            finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
     [TestCase(360)]
     [TestCase(1000)]
     [TestCase(1920)]

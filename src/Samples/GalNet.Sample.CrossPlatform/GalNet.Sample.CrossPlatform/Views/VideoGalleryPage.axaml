@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ursa="https://irihi.tech/ursa"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
              x:Class="GalNet.Sample.CrossPlatform.Views.VideoGalleryPage"
@@ -13,10 +14,13 @@
           <Button Grid.Column="1" Classes="player-back" Content="{text:PlayerText Common.Back, 'Back'}" Command="{Binding BackCommand}" x:Name="PageBackButton" VerticalAlignment="Center" />
         </Grid>
         <Border Grid.Row="1" Classes="player-page-rule" />
-        <ScrollViewer Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}" HorizontalScrollBarVisibility="Disabled">
-          <ItemsControl x:Name="Items" Classes="player-card-grid" ItemsSource="{Binding Thumbnails.Items}"
+        <Grid Grid.Row="2" RowDefinitions="*,Auto" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <ItemsControl x:Name="Items" Classes="player-card-grid" ItemsSource="{Binding Pages.Items}"
                         ItemTemplate="{DynamicResource GalleryCardTemplate}" />
         </ScrollViewer>
+        <ursa:Pagination Grid.Row="1" HorizontalAlignment="Center" CurrentPage="{Binding Pages.CurrentPage, Mode=TwoWay}" TotalCount="{Binding Pages.TotalCount}" PageSize="{Binding Pages.PageSize}" IsVisible="{Binding Pages.HasMultiplePages}" />
+        </Grid>
       </Grid>
     </Border>
   </Grid>

@@ -18,6 +18,8 @@ public class GalleryBenchmarks : IDisposable
 {
     private GalleryMediaService _media = null!;
     private CgGalleryPageViewModel _model = null!;
+    private Semi.Avalonia.SemiTheme _semi = null!;
+    private Ursa.Themes.Semi.UrsaSemiTheme _ursa = null!;
 
     [Params(100, 1000)] public int ItemCount { get; set; }
 
@@ -26,6 +28,9 @@ public class GalleryBenchmarks : IDisposable
     {
         if (Application.Current is null)
             AppBuilder.Configure<Application>().UseSkia().UseHeadless(new AvaloniaHeadlessPlatformOptions { UseHeadlessDrawing = false }).SetupWithoutStarting();
+        _semi = new(); _ursa = new();
+        Application.Current!.Styles.Add(_semi);
+        Application.Current.Styles.Add(_ursa);
         _media = new GalleryMediaService(null!);
         _model = new CgGalleryPageViewModel(null!, _media);
         for (var index = 0; index < ItemCount; index++)
@@ -47,8 +52,8 @@ public class GalleryBenchmarks : IDisposable
         {
             window.Show(); window.UpdateLayout();
             var cards = window.GetVisualDescendants().OfType<Border>().Count(control => control.Name == "GalleryCard");
-            if (_model.Thumbnails.Items.Count != ItemCount || cards < 1 || cards > ItemCount)
-                throw new InvalidOperationException($"Expected {ItemCount} items and a nonempty card viewport, found {cards} cards.");
+            if (_model.Thumbnails.Items.Count != ItemCount || cards != SampleCustomization.PageSize)
+                throw new InvalidOperationException($"Expected {ItemCount} items and {SampleCustomization.PageSize} cards, found {cards} cards.");
             return cards;
         }
         finally { window.Close(); }
@@ -68,6 +73,7 @@ public class GalleryBenchmarks : IDisposable
     {
         _model?.Dispose();
         _media?.Dispose();
+        if (Application.Current is { } app) { app.Styles.Remove(_ursa); app.Styles.Remove(_semi); }
         GC.SuppressFinalize(this);
     }
 }
