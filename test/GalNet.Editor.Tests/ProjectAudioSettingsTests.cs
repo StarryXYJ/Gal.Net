@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Avalonia;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Parameters;
 using GalNet.Core.Configuration;
@@ -121,6 +122,14 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "settings-map-expanded.png")); }
                 var row = map.GetVisualDescendants().OfType<Grid>().Single(grid => grid.Classes.Contains("structured-map-item"));
                 Assert.That(row.ColumnDefinitions.Count, Is.EqualTo(3));
+                var keyInput = row.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "MapKey");
+                var pickerButton = picker.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "PickerButton");
+                var removeButton = row.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "remove");
+                var resetButton = row.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "UseDefault");
+                double Center(Control control) => control.TranslatePoint(new Avalonia.Point(0, control.Bounds.Height / 2), row)!.Value.Y;
+                Assert.That(Center(keyInput), Is.EqualTo(Center(pickerButton)).Within(1));
+                Assert.That(Center(removeButton), Is.EqualTo(Center(pickerButton)).Within(1));
+                Assert.That(Center(resetButton), Is.EqualTo(Center(pickerButton)).Within(1));
                 window.Width = 600; TimelinePump(window); row.BringIntoView(); TimelinePump(window);
                 Assert.That(row.ColumnDefinitions.Count, Is.EqualTo(2));
                 if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } narrowArtifacts)

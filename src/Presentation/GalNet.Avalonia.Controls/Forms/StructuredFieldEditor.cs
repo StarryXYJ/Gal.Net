@@ -220,7 +220,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         {
             var original = pair.Key;
             var row = new Grid { ColumnSpacing = 8, RowSpacing = 6, Classes = { "structured-map-item" } };
-            var key = new TextBox { Name = "MapKey", Text = original, Watermark = KeyText };
+            var key = new TextBox { Name = "MapKey", Text = original, Watermark = KeyText, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Top };
             async Task Rename()
             {
                 if (!Available(generation) || key.Text == original) return;
@@ -243,8 +243,9 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
                 var candidate = MapValues(); candidate.Remove(original);
                 await Submit(JsonCodec.SerializeToElement(candidate), generation, CancellationToken.None);
             });
+            remove.VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Top;
             var descriptor = _shape.Element!;
-            var value = new SchemaForm { Depth = Context.Depth + 1, ShowLabels = false, Schema = [descriptor], Registry = Context.Registry, Binding = _ => Bind(descriptor, original, null) };
+            var value = new SchemaForm { Depth = Context.Depth + 1, ShowLabels = false, Schema = [descriptor], Registry = Context.Registry, Binding = _ => Bind(descriptor, original, null), VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center };
             row.Children.Add(value);
             void LayoutMap(bool narrow)
             {
