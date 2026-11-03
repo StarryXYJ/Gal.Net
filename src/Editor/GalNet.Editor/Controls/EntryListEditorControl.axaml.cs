@@ -208,13 +208,14 @@ public partial class EntryListEditorControl : ReorderableListControl
             breakpoint.Click += async (_, _) => await debug.ToggleBreakpointAsync(vm.GroupId, target.StableId);
             menu.Items.Add(breakpoint);
         }
-        Add("Entry.Menu.Copy", "Ctrl+C", () => CopySelectionAsync(), selected);
+        if (menu.Items.Count > 0) menu.Items.Add(new Separator());
         Add("Entry.Menu.Cut", "Ctrl+X", () => CopySelectionAsync(cut: true), selected);
+        Add("Entry.Menu.Copy", "Ctrl+C", () => CopySelectionAsync(), selected);
         Add("Entry.Menu.Paste", "Ctrl+V", PasteSelectionAsync);
         Add("Entry.Menu.Duplicate", "Ctrl+D", () => RunEntryAction(model => model.DuplicateSelectionAsync()), selected);
-        Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => model.DeleteSelectionAsync()), selected);
-        menu.Items.Add(new Separator());
         Add("Entry.Menu.SelectAll", "Ctrl+A", () => { ItemsListBox.SelectAll(); return Task.CompletedTask; });
+        menu.Items.Add(new Separator());
+        Add("Entry.Menu.Delete", "Delete", () => RunEntryAction(model => model.DeleteSelectionAsync()), selected);
         menu.ShowAt((Control?)row ?? ItemsListBox); args.Handled = true;
     }
 

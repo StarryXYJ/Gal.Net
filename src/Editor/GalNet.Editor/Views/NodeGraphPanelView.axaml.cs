@@ -388,8 +388,10 @@ public partial class NodeGraphPanelView : UserControl
             IsEnabled = e.Node.CanDelete
         };
         deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteNodeAsync(e.Node));
-        menu.Items.Add(deleteItem);
+        if (menu.Items.Count > 0) menu.Items.Add(new Separator());
         AddGraphActions(menu);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
         e.OriginalEventArgs.Handled = true;
@@ -419,8 +421,9 @@ public partial class NodeGraphPanelView : UserControl
         var menu = new MenuFlyout();
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += (_, _) => RunGraphAction(workspace => workspace.DeleteEdge(edge));
-        menu.Items.Add(deleteItem);
         AddGraphActions(menu);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(control, true);
         e.Handled = true;
@@ -432,8 +435,10 @@ public partial class NodeGraphPanelView : UserControl
         if (debugTarget is not null) AddDebugJump(menu, debugTarget);
         var deleteItem = new MenuItem { Header = Workspace?.Localize("Graph.Menu.Delete") ?? "Delete" };
         deleteItem.Click += async (_, _) => await RunGraphAction(async workspace => await workspace.DeleteSelectionAsync());
-        menu.Items.Add(deleteItem);
+        if (menu.Items.Count > 0) menu.Items.Add(new Separator());
         AddGraphActions(menu);
+        menu.Items.Add(new Separator());
+        menu.Items.Add(deleteItem);
         menu.Placement = PlacementMode.Pointer;
         menu.ShowAt(target ?? Viewport, true);
     }

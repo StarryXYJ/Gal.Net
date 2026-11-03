@@ -41,6 +41,7 @@ public partial class TimelinePanelView
             Add("EarlierTimelineEvent", "Timeline.Event.Earlier", () => vm.Session.OrderEvent(rows[0], -1));
             Add("LaterTimelineEvent", "Timeline.Event.Later", () => vm.Session.OrderEvent(rows[0], 1));
         }
+        if (menu.Items.Count > 0) menu.Items.Add(new Separator());
         Add("DeleteTimelineEvents", "Timeline.Event.Delete", vm.Session.DeleteSelectedEvents);
         FlyoutBase.SetAttachedFlyout(anchor, menu);
         menu.Closed += (_, _) => { if (ReferenceEquals(FlyoutBase.GetAttachedFlyout(anchor), menu)) FlyoutBase.SetAttachedFlyout(anchor, null); };
