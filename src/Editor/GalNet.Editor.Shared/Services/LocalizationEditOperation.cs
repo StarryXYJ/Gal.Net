@@ -24,6 +24,8 @@ public sealed class LocalizationEditOperation
     private readonly Dictionary<string, byte[]> _removedSaved = [];
     public long RetainedBytes => _patches.Sum(patch => patch.Before.Data.LongLength + patch.After.LongLength) + _removedSaved.Values.Sum(bytes => bytes.LongLength)
         + JsonSerializer.SerializeToUtf8Bytes(_entries).LongLength + JsonSerializer.SerializeToUtf8Bytes(_options).LongLength + JsonSerializer.SerializeToUtf8Bytes(_groups).LongLength;
+    public IReadOnlyList<SceneAuthorAddress> EntryTargets => _entries.Select(entry => new SceneAuthorAddress(entry.GroupId, entry.EntryId)).ToArray();
+    public bool HasNonEntryTargets => _options.Length != 0 || _groups.Length != 0;
 
     internal LocalizationEditOperation(IProjectContentSession content, Action requireActive, IEnumerable<LocalizationFilePatch> patches,
         IEditorDocumentService? documents = null, IEnumerable<LocalizationEntryPatch>? entries = null, IEnumerable<LocalizationOptionPatch>? options = null, IEnumerable<LocalizationGroupMetadataPatch>? groups = null)

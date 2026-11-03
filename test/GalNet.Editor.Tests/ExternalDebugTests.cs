@@ -142,7 +142,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
                 Assert.That(view.GetVisualDescendants().OfType<TabControl>().Single().Items.Count, Is.EqualTo(3));
                 var initialBuild = hotReload.PublishedBuild;
-                future.Condition = "true";
+                await SetGameText(project, group.Id, future.Source, "Changed future line");
                 Dispatcher.UIThread.RunJobs();
                 Assert.Multiple(() =>
                 {
@@ -162,7 +162,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Assert.That(revisions.ActivationCount, Is.EqualTo(1));
                 });
 
-                entry.Condition = "true";
+                await SetGameText(project, group.Id, entry.Source, "Changed current line");
                 var directlyApplied = hotReload.PublishedBuild;
                 await workspace.SaveAsync();
                 await Until(() => revisions.InstallCount == 2 && panel.HasPendingContent && !panel.Busy);

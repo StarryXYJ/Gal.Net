@@ -52,6 +52,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private string? _savedConfiguration;
     private string? _operationStatus;
     private bool _autoReloadRequested;
+    private bool _externalContentChanged;
+    private readonly List<AuthorChangeSet> _contentChanges = [];
     private bool _closed;
     private readonly IDisposable? _closing;
     public IEditorLocalizationService L { get; }
@@ -117,6 +119,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         _client.Changed += OnClientChanged;
         _hotReload.Changed += OnHotReloadChanged;
         _content.Changed += OnProjectContentChanged;
+        _content.ExternalReloaded += OnExternalReloaded;
         _documents.DocumentChanged += OnAuthorChanged;
         Refresh();
     }
@@ -164,10 +167,18 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Refresh();
         if (Busy && _operationStatus is { } operationStatus) Status = operationStatus;
     });
-    private void OnAuthorCommitted(AuthorChangeSet _)
+    private void OnAuthorCommitted(AuthorChangeSet change)
     {
+        _contentChanges.Add(change);
         _autoReloadRequested = true;
-        OnAuthorChanged();
+        ContentChanged = true;
+        UpdateHighlights();
+        Dispatcher.UIThread.Post(TryAutoHotReload);
+    }
+    private void OnExternalReloaded()
+    {
+        _externalContentChanged = true;
+        _autoReloadRequested = true;
         Dispatcher.UIThread.Post(TryAutoHotReload);
     }
     private void OnAuthorChanged()
@@ -327,6 +338,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         _publishedBuild = result;
         _authorSignature = result.AuthorSignature;
         _autoReloadRequested = false;
+        _externalContentChanged = false;
+        _contentChanges.Clear();
         ContentChanged = Signature() != _authorSignature;
         UpdateHighlights();
     }
@@ -348,7 +361,9 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     [RelayCommand]
     private Task HotReloadAsync() => RunAsync(async () =>
     {
-        if (await _hotReload.BuildAndApplyAsync(key => SetOperationStatus(L[key])) is { } impact)
+        var changes = new DebugContentChangeScope(_externalContentChanged || _contentChanges.Count == 0 || _contentChanges.Any(change => change.UnknownScope),
+            _contentChanges.SelectMany(change => change.Groups).ToArray());
+        if (await _hotReload.BuildAndApplyAsync(changes, key => SetOperationStatus(L[key])) is { } impact)
             ShowHotReloadNotice(impact);
     });
     [RelayCommand] private Task ApplyPendingContentAsync() => RunAsync(async () =>
@@ -437,6 +452,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     {
         _closed = true; _client.Changed -= OnClientChanged; _hotReload.Changed -= OnHotReloadChanged;
         _content.Changed -= OnProjectContentChanged;
+        _content.ExternalReloaded -= OnExternalReloaded;
         _documents.DocumentChanged -= OnAuthorChanged; _authorChanges.Committed -= OnAuthorCommitted;
         foreach (var row in PlayerVariables.Concat(SaveVariables)) row.Invalidate();
         await _client.DisconnectAsync(); _closing?.Dispose();

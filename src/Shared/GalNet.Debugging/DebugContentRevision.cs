@@ -70,18 +70,28 @@ public static class DebugContentImpactClassifier
         DebugContentManifest candidate,
         DebugContentPosition position)
     {
-        var impact = Classify(current, candidate, position);
-        if (impact != DebugContentImpact.Direct)
-            throw new InvalidOperationException("Only a direct content revision has a stable candidate boundary.");
+        Validate(current);
+        Validate(candidate);
         var groupId = position.CurrentGroupId ?? throw new InvalidOperationException("There is no current Group to map.");
         var before = current.Groups.SingleOrDefault(group => string.Equals(group.Id, groupId, StringComparison.Ordinal))
             ?? throw new InvalidDataException($"Current debug content does not contain Group '{groupId}'.");
         var after = candidate.Groups.SingleOrDefault(group => string.Equals(group.Id, groupId, StringComparison.Ordinal))
             ?? throw new InvalidDataException($"Candidate debug content does not contain Group '{groupId}'.");
         var prefixCount = ExecutedPrefixCount(before, position);
-        if (after.Entries.Length < prefixCount)
+        if (!KeepsExecutedPrefix(before, after, position))
             throw new InvalidDataException("Candidate content does not preserve the executed author boundary.");
         return prefixCount == 0 ? 0 : after.Entries[prefixCount - 1].End;
+    }
+
+    public static int ExecutedAuthorEntryCount(DebugContentManifest content, DebugContentPosition position)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        ArgumentNullException.ThrowIfNull(position);
+        Validate(content);
+        var groupId = position.CurrentGroupId ?? throw new InvalidOperationException("There is no current Group.");
+        var group = content.Groups.SingleOrDefault(item => string.Equals(item.Id, groupId, StringComparison.Ordinal))
+            ?? throw new InvalidDataException($"Debug content does not contain Group '{groupId}'.");
+        return ExecutedPrefixCount(group, position);
     }
 
     public static DebugContentImpact Classify(

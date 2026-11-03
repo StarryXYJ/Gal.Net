@@ -3,6 +3,7 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using GalNet.Debugging;
+using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Shared.Services;
 using GalNet.Runtime.Engine;
@@ -16,6 +17,7 @@ public sealed class DebugContentHotReloadService(
     IEditorDocumentService documents)
 {
     private ProjectContentBuildResult? _pendingBuild;
+    private DebugContentChangeScope? _pendingChanges;
 
     public event Action? Changed;
     public ProjectContentBuildResult? PublishedBuild { get; private set; }
@@ -31,7 +33,8 @@ public sealed class DebugContentHotReloadService(
         return build;
     }
 
-    public async Task<DebugContentImpact?> BuildAndApplyAsync(Action<string>? reportStage = null, CancellationToken cancellationToken = default)
+    public async Task<DebugContentImpact?> BuildAndApplyAsync(DebugContentChangeScope changes,
+        Action<string>? reportStage = null, CancellationToken cancellationToken = default)
     {
         var candidate = await preparation.BuildAsync(reportStage).ConfigureAwait(false);
         if (!IsCurrent(candidate)) return null;
@@ -40,21 +43,22 @@ public sealed class DebugContentHotReloadService(
         await client.SendAsync("content.install", new DebugContentInstallRequest(candidate.OutputPath,
             manifest.ContentFingerprint, manifest.ContractFingerprint), cancellationToken: cancellationToken).ConfigureAwait(false);
 
-        var impact = Classify(candidate);
+        var impact = Classify(candidate, changes);
         if (impact == DebugContentImpact.Direct)
             await ActivateAsync(candidate, returnToGroupStart: false, cancellationToken).ConfigureAwait(false);
         else
-            SetPending(candidate, impact);
+            SetPending(candidate, changes, impact);
         return impact;
     }
 
     public async Task<DebugContentImpact> ApplyPendingAsync(CancellationToken cancellationToken = default)
     {
         var candidate = _pendingBuild ?? throw new InvalidOperationException("There is no pending debug content update.");
-        var impact = Classify(candidate);
+        var changes = _pendingChanges ?? throw new InvalidOperationException("There is no pending debug content scope.");
+        var impact = Classify(candidate, changes);
         if (impact == DebugContentImpact.RestartGame)
         {
-            SetPending(candidate, impact);
+            SetPending(candidate, changes, impact);
             return impact;
         }
 
@@ -65,7 +69,8 @@ public sealed class DebugContentHotReloadService(
     public async Task<DebugContentImpact> RestartGameAsync(CancellationToken cancellationToken = default)
     {
         var candidate = _pendingBuild ?? throw new InvalidOperationException("There is no pending debug content update.");
-        if (Classify(candidate) != DebugContentImpact.RestartGame)
+        var changes = _pendingChanges ?? throw new InvalidOperationException("There is no pending debug content scope.");
+        if (Classify(candidate, changes) != DebugContentImpact.RestartGame)
         {
             return await ApplyPendingAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -76,13 +81,26 @@ public sealed class DebugContentHotReloadService(
         return DebugContentImpact.Direct;
     }
 
-    private DebugContentImpact Classify(ProjectContentBuildResult candidate)
+    private DebugContentImpact Classify(ProjectContentBuildResult candidate, DebugContentChangeScope changes)
     {
         var current = PublishedBuild?.Manifest ?? throw new InvalidOperationException("No running debug content is available.");
+        if (string.Equals(current.ContentFingerprint, candidate.Manifest!.ContentFingerprint, StringComparison.Ordinal))
+            return DebugContentImpact.Direct;
+        if (changes.Global) return DebugContentImpact.RestartGame;
         var state = client.State ?? throw new InvalidOperationException("No active game state is available.");
         var position = new DebugContentPosition(state.NodeId, state.EntryIndex, state.ActiveEntryIds,
             state.VisitedGroups ?? []);
-        var impact = DebugContentImpactClassifier.Classify(current, candidate.Manifest!, position);
+        var executed = DebugContentImpactClassifier.ExecutedAuthorEntryCount(current, position);
+        var visited = position.VisitedGroups.ToHashSet(StringComparer.Ordinal);
+        var impact = DebugContentImpact.Direct;
+        foreach (var change in changes.Groups)
+        {
+            if (string.Equals(change.GroupId, position.CurrentGroupId, StringComparison.Ordinal))
+            {
+                if (change.FirstIndex < executed) impact = DebugContentImpact.ReturnGroupStart;
+            }
+            else if (visited.Contains(change.GroupId)) return DebugContentImpact.RestartGame;
+        }
         return impact == DebugContentImpact.ReturnGroupStart && !state.CachedGroups.Contains(state.NodeId)
             ? DebugContentImpact.RestartGame
             : impact;
@@ -116,9 +134,10 @@ public sealed class DebugContentHotReloadService(
             throw new NotSupportedException($"The debug App does not support '{method}'. Restart it with the current Developer build.");
     }
 
-    private void SetPending(ProjectContentBuildResult build, DebugContentImpact impact)
+    private void SetPending(ProjectContentBuildResult build, DebugContentChangeScope changes, DebugContentImpact impact)
     {
         _pendingBuild = build;
+        _pendingChanges = changes;
         PendingImpact = impact;
         Changed?.Invoke();
     }
@@ -133,6 +152,9 @@ public sealed class DebugContentHotReloadService(
     private void ClearPending()
     {
         _pendingBuild = null;
+        _pendingChanges = null;
         PendingImpact = null;
     }
 }
+
+public sealed record DebugContentChangeScope(bool Global, IReadOnlyList<AuthorGroupChange> Groups);
