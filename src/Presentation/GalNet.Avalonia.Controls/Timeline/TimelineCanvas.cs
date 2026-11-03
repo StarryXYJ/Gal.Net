@@ -13,9 +13,12 @@ namespace GalNet.Game.Controls.Timeline;
 public sealed partial class TimelineCanvas : Control
 {
     public static readonly StyledProperty<TimelineCanvasModel?> ModelProperty = AvaloniaProperty.Register<TimelineCanvas, TimelineCanvasModel?>(nameof(Model));
+    public static readonly StyledProperty<double> LabelFontSizeProperty = AvaloniaProperty.Register<TimelineCanvas, double>(nameof(LabelFontSize), 11);
     public static readonly StyledProperty<bool> IsRulerProperty = AvaloniaProperty.Register<TimelineCanvas, bool>(nameof(IsRuler));
     public TimelineCanvasModel? Model { get => GetValue(ModelProperty); set => SetValue(ModelProperty, value); }
     public bool IsRuler { get => GetValue(IsRulerProperty); set => SetValue(IsRulerProperty, value); }
+    public double LabelFontSize { get => GetValue(LabelFontSizeProperty); set => SetValue(LabelFontSizeProperty, value); }
+    static TimelineCanvas() => AffectsRender<TimelineCanvas>(LabelFontSizeProperty);
     private TimelineCanvasModel? _observed;
     private Point? _origin, _boxEnd;
     private bool _keyPress, _deselected, _drag, _seeking, _extend;
@@ -44,14 +47,14 @@ public sealed partial class TimelineCanvas : Control
         base.Render(context); if (Model is not { } model) return;
         context.DrawRectangle(Brushes.Transparent, null, new Rect(Bounds.Size));
         var grid = new Pen(Brushes.SlateGray, .4);
-        var requested = Math.Max(1, 70 / model.PixelsPerFrame); var power = Math.Pow(10, Math.Floor(Math.Log10(requested)));
+        var requested = Math.Max(1, Math.Max(70, 70 * LabelFontSize / 11) / model.PixelsPerFrame); var power = Math.Pow(10, Math.Floor(Math.Log10(requested)));
         var step = (long)(new[] { 1d, 2d, 5d, 10d }.First(value => value * power >= requested) * power);
         var last = Math.Min(int.MaxValue, model.StartFrame + Bounds.Width / model.PixelsPerFrame);
         for (var frame = (long)(Math.Floor(model.StartFrame / step) * step); frame <= last; frame += step)
         {
             var x = X((int)frame); context.DrawLine(grid, new Point(x, 0), new Point(x, Bounds.Height));
             if (IsRuler) context.DrawText(new FormattedText(frame.ToString(CultureInfo.CurrentCulture), CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
-                new Typeface(FontFamily.Default), 11, TextElement.GetForeground(this) ?? Brushes.Gray), new Point(x + 3, 3));
+                new Typeface(FontFamily.Default), LabelFontSize, TextElement.GetForeground(this) ?? Brushes.Gray), new Point(x + 3, 3));
         }
         if (!IsRuler)
         {

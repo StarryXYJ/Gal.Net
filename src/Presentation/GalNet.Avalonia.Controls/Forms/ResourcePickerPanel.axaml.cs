@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
@@ -14,6 +15,8 @@ public sealed record ResourcePickerItem(string Id, string Label, string Detail, 
 /// <summary>Assets and scene instances share search, cards, keyboard navigation and confirmation.</summary>
 public partial class ResourcePickerPanel : UserControl
 {
+    public static readonly StyledProperty<double> BadgeFontSizeProperty = AvaloniaProperty.Register<ResourcePickerPanel, double>(nameof(BadgeFontSize), 10);
+    public double BadgeFontSize { get => GetValue(BadgeFontSizeProperty); set => SetValue(BadgeFontSizeProperty, value); }
     private IReadOnlyList<ResourcePickerItem> _items = [];
     private bool _refreshing;
     public IReadOnlyList<ResourcePickerItem> Results { get; private set; } = [];

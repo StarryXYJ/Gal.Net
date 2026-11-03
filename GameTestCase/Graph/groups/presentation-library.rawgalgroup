@@ -23,11 +23,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.chapter-text",
-        "position": "Center",
-        "styleName": "chapter",
         "blocking": true,
-        "holdSeconds": 1.2
+        "content": "demo.chapter-text",
+        "holdSeconds": 1.2,
+        "position": "Center",
+        "styleName": "chapter"
       }
     },
     {
@@ -51,9 +51,9 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bg",
         "assetId": "a1000000000000000000000000000001",
-        "displayMode": "Fill"
+        "displayMode": "Fill",
+        "handleId": "library-bg"
       }
     },
     {
@@ -61,8 +61,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-alice",
         "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "handleId": "library-alice",
         "transform": {
           "x": -400,
           "y": 80
@@ -75,8 +75,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bob",
         "assetId": "a1000000000000000000000000000004",
+        "handleId": "library-bob",
         "transform": {
           "x": 400,
           "y": 80
@@ -89,11 +89,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.chapter.content",
-        "position": "Center",
-        "styleName": "chapter",
         "blocking": true,
-        "holdSeconds": 2
+        "content": "group.presentation-library.entry.chapter.content",
+        "holdSeconds": 2,
+        "position": "Center",
+        "styleName": "chapter"
       }
     },
     {
@@ -101,8 +101,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.intro.content"
+        "content": "group.presentation-library.entry.intro.content",
+        "speaker": "guide"
       }
     },
     {
@@ -110,11 +110,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-0.content",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-0.content",
+        "holdSeconds": 4,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -122,11 +122,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-1.content",
-        "position": "Left",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-1.content",
+        "holdSeconds": 4,
+        "position": "Left",
+        "styleName": "location"
       }
     },
     {
@@ -134,11 +134,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-2.content",
-        "position": "BottomLeft",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-2.content",
+        "holdSeconds": 4,
+        "position": "BottomLeft",
+        "styleName": "location"
       }
     },
     {
@@ -146,11 +146,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-3.content",
-        "position": "TopCenter",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-3.content",
+        "holdSeconds": 4,
+        "position": "TopCenter",
+        "styleName": "location"
       }
     },
     {
@@ -158,11 +158,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-4.content",
-        "position": "Center",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-4.content",
+        "holdSeconds": 4,
+        "position": "Center",
+        "styleName": "location"
       }
     },
     {
@@ -170,11 +170,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-5.content",
-        "position": "BottomCenter",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-5.content",
+        "holdSeconds": 4,
+        "position": "BottomCenter",
+        "styleName": "location"
       }
     },
     {
@@ -182,11 +182,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-6.content",
-        "position": "TopRight",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-6.content",
+        "holdSeconds": 4,
+        "position": "TopRight",
+        "styleName": "location"
       }
     },
     {
@@ -194,11 +194,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-7.content",
-        "position": "Right",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-7.content",
+        "holdSeconds": 4,
+        "position": "Right",
+        "styleName": "location"
       }
     },
     {
@@ -206,11 +206,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.position-8.content",
-        "position": "BottomRight",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 4
+        "content": "group.presentation-library.entry.position-8.content",
+        "holdSeconds": 4,
+        "position": "BottomRight",
+        "styleName": "location"
       }
     },
     {
@@ -226,11 +226,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.replacement.content",
-        "position": "TopRight",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 2
+        "content": "group.presentation-library.entry.replacement.content",
+        "holdSeconds": 2,
+        "position": "TopRight",
+        "styleName": "location"
       }
     },
     {
@@ -238,8 +238,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.cards.content"
+        "content": "group.presentation-library.entry.cards.content",
+        "speaker": "guide"
       }
     }
   ]

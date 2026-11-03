@@ -35,7 +35,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             stop.Source.Parameters["playbackHandleId"] = JsonSerializer.SerializeToElement("missing-reference");
             stop.Source.Parameters["future"] = JsonSerializer.Deserialize<JsonElement>("{\"number\":9007199254740993,\"values\":[null,true]}");
             layer.IsParametersExpanded = animate.IsParametersExpanded = timeline.IsParametersExpanded = false;
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = stop;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = stop; stop.IsParametersExpanded = true;
             var entries = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = entries, Width = 1200, Height = 950 }; window.Show(); TimelinePump(window);
             var history = scope.GetRequiredService<EditorHistories>().Content; history.Clear(); var text = scope.GetRequiredService<IEditorLocalizationService>();
             var catalog = scope.GetRequiredService<SceneTargetCatalog>();

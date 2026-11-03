@@ -37,7 +37,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page, UseCommonFields = common };
             var inspector = new DtoEditorHost { Item = entry.DetailForm!.Item, Registry = page.FieldEditors };
             inspector.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Controls/AuthorFormStyles.axaml") });
@@ -200,7 +200,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ShowColorLayer).Single();
             entry.Source.Parameters["transform"] = JsonSerializer.Deserialize<JsonElement>("{\"x\":2,\"opaque\":{\"n\":9007199254740993}}");
             entry.Source.Parameters["color"] = JsonSerializer.SerializeToElement("#80112233");
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1000, Height = 760 }; window.Show(); TimelinePump(window);
             try
             {
@@ -285,7 +285,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayTimeline).Single(); entry.Source.Parameters.Remove("timeline");
             var other = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.Wait).Single();
             var factory = project.Services.GetRequiredService<EditorDockFactory>(); var layout = factory.CreateLayout(); factory.InitLayout(layout); factory.OpenGroupEditor(group);
-            var page = TimelineDockables(layout).Select(item => item.Context).OfType<GroupEditorPanelViewModel>().Single();
+            var page = TimelineDockables(layout).Select(item => item.Context).OfType<GroupEditorPanelViewModel>().Single(); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1000, Height = 750 }; window.Show(); TimelinePump(window);
             try
             {

@@ -25,7 +25,7 @@ public sealed class GameRestorePoint
         ArgumentNullException.ThrowIfNull(snapshot);
         if (snapshot.Version != GameSnapshot.CurrentFormatVersion)
             throw new InvalidDataException($"Unsupported save version '{snapshot.Version}'.");
-        if (snapshot.Variables is null || snapshot.States is null || snapshot.EntryIndex < 0)
+        if (snapshot.Variables is null || snapshot.States is null || snapshot.VisitedGroups is null || snapshot.EntryIndex < 0)
             throw new InvalidDataException("Invalid save position or state collections.");
         var identities = new HashSet<string>(StringComparer.Ordinal);
         foreach (var (name, variable) in snapshot.Variables)

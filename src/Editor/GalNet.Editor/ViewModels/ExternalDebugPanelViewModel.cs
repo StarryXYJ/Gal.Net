@@ -23,6 +23,7 @@ using GalNet.Editor.Abstraction.Changes;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
+using GalNet.Editor.Services;
 using GalNet.Editor.Shared.Services;
 using GalNet.Runtime.Engine;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +36,8 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private readonly ExternalGameDebugClient _client;
     private readonly IProjectService _projects;
     private readonly IEditorDocumentService _documents;
-    private readonly ProjectDebugPreparation _preparation;
+    private readonly DebugContentHotReloadService _hotReload;
+    private readonly IProjectContentSession _content;
     private readonly EditorWorkspaceViewModel _workspace;
     private readonly AuthorChangeJournal _authorChanges;
     private readonly IFileDialogService _files;
@@ -46,8 +48,12 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     private string? _breakpointRun;
     private string? _runIdentity;
     private string? _authorSignature;
+    private ProjectContentBuildResult? _publishedBuild;
     private string? _savedConfiguration;
     private string? _operationStatus;
+    private bool _autoReloadRequested;
+    private bool _externalContentChanged;
+    private readonly List<AuthorChangeSet> _contentChanges = [];
     private bool _closed;
     private readonly IDisposable? _closing;
     public IEditorLocalizationService L { get; }
@@ -80,13 +86,24 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     public bool CanStep => CanLocate && Supports("step") && _client.State?.Paused == true;
     public bool CanStop => HasRun && Supports("stop");
     public bool CanSetBreakpoint => CanLocate && Supports("breakpoints");
+    public bool CanHotReload => CanControl && Supports("content.install");
+    public bool HasPendingContent => _hotReload.HasPending;
+    public bool CanApplyPendingContent => !Busy && _hotReload.PendingImpact == DebugContentImpact.ReturnGroupStart;
+    public bool CanRestartForContent => !Busy && _hotReload.PendingImpact == DebugContentImpact.RestartGame;
+    public string PendingContentMessage => L[_hotReload.PendingImpact switch
+    {
+        DebugContentImpact.ReturnGroupStart => "Debug.HotReload.ReturnRequired",
+        DebugContentImpact.RestartGame => "Debug.HotReload.RestartRequired",
+        _ => "Debug.HotReload.Applied"
+    }];
     private bool Supports(string method) => _client.Host?.Run?.Capabilities.Contains(method) == true;
     public GameDebugState? RuntimeState => _client.State;
 
     public ExternalDebugPanelViewModel(ExternalGameDebugClient client, IProjectService projects, IEditorDocumentService documents,
-        ProjectDebugPreparation preparation, EditorWorkspaceViewModel workspace, IFileDialogService files, IEditorLocalizationService localization, EditorHistories histories)
+        DebugContentHotReloadService hotReload, IProjectContentSession content, EditorWorkspaceViewModel workspace,
+        IFileDialogService files, IEditorLocalizationService localization, EditorHistories histories)
     {
-        _client = client; _projects = projects; _documents = documents; _preparation = preparation; _workspace = workspace; _files = files; L = localization;
+        _client = client; _projects = projects; _documents = documents; _hotReload = hotReload; _content = content; _workspace = workspace; _files = files; L = localization;
         if (projects.Current is { } project)
         {
             try
@@ -100,6 +117,9 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         _authorChanges = histories.Content.AuthorChanges;
         _authorChanges.Committed += OnAuthorCommitted;
         _client.Changed += OnClientChanged;
+        _hotReload.Changed += OnHotReloadChanged;
+        _content.Changed += OnProjectContentChanged;
+        _content.ExternalReloaded += OnExternalReloaded;
         _documents.DocumentChanged += OnAuthorChanged;
         Refresh();
     }
@@ -107,6 +127,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     {
         if (!value) _operationStatus = null;
         NotifyControls();
+        if (!value) TryAutoHotReload();
     }
     partial void OnContentChangedChanged(bool value) => NotifyControls();
     private void NotifyControls()
@@ -115,6 +136,30 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         OnPropertyChanged(nameof(CanControl)); OnPropertyChanged(nameof(CanLocate));
         OnPropertyChanged(nameof(CanPause)); OnPropertyChanged(nameof(CanResume)); OnPropertyChanged(nameof(CanStep));
         OnPropertyChanged(nameof(CanStop)); OnPropertyChanged(nameof(CanSetBreakpoint));
+        OnPropertyChanged(nameof(CanHotReload)); OnPropertyChanged(nameof(HasPendingContent));
+        OnPropertyChanged(nameof(CanApplyPendingContent)); OnPropertyChanged(nameof(CanRestartForContent));
+        OnPropertyChanged(nameof(PendingContentMessage));
+    }
+    private void OnHotReloadChanged() => Dispatcher.UIThread.Post(() =>
+    {
+        if (_closed) return;
+        if (_hotReload.PublishedBuild is { } build && !ReferenceEquals(_publishedBuild, build)) CommitSourceMap(build);
+        NotifyControls();
+    });
+    private void ShowHotReloadNotice(DebugContentImpact impact)
+    {
+        if (_closed) return;
+        var key = impact switch
+        {
+            DebugContentImpact.Direct => "Debug.HotReload.Applied",
+            DebugContentImpact.ReturnGroupStart => "Debug.HotReload.ReturnRequired",
+            _ => "Debug.HotReload.RestartRequired"
+        };
+        Status = L[key];
+        if ((Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is Views.MainWindow window)
+            window.ShowToast(Status, impact == DebugContentImpact.Direct
+                ? Avalonia.Controls.Notifications.NotificationType.Success
+                : Avalonia.Controls.Notifications.NotificationType.Information);
     }
     private void OnClientChanged() => Dispatcher.UIThread.Post(() =>
     {
@@ -122,11 +167,40 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         Refresh();
         if (Busy && _operationStatus is { } operationStatus) Status = operationStatus;
     });
-    private void OnAuthorCommitted(AuthorChangeSet _) => OnAuthorChanged();
+    private void OnAuthorCommitted(AuthorChangeSet change)
+    {
+        _contentChanges.Add(change);
+        _autoReloadRequested = true;
+        ContentChanged = true;
+        UpdateHighlights();
+        Dispatcher.UIThread.Post(TryAutoHotReload);
+    }
+    private void OnExternalReloaded()
+    {
+        _externalContentChanged = true;
+        _autoReloadRequested = true;
+        Dispatcher.UIThread.Post(TryAutoHotReload);
+    }
     private void OnAuthorChanged()
     {
         if (_authorSignature is not null) ContentChanged = Signature() != _authorSignature;
         UpdateHighlights();
+    }
+    private void OnProjectContentChanged()
+    {
+        var changed = _content.IsDirty || _content.HasEditsSincePublication;
+        Dispatcher.UIThread.Post(() =>
+        {
+            if (_closed) return;
+            if (changed) _autoReloadRequested = true;
+            TryAutoHotReload();
+        });
+    }
+    private void TryAutoHotReload()
+    {
+        if (_closed || !_autoReloadRequested || _content.IsDirty || _content.IsPublishing || Busy || !CanHotReload) return;
+        _autoReloadRequested = false;
+        _ = HotReloadAsync();
     }
     private void Refresh()
     {
@@ -181,7 +255,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     }
     private void UpdateHighlights()
     {
-        var state = !ContentChanged && _authorSignature is not null ? _client.State : null;
+        var state = _authorSignature is not null ? _client.State : null;
         foreach (var node in _workspace.Nodes)
         {
             node.IsDebugCurrent = state?.NodeId == node.Id;
@@ -247,8 +321,13 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     });
     private async Task<string> PrepareAsync()
     {
-        var result = await _preparation.PrepareAsync(key => SetOperationStatus(L[key]));
+        var result = await _hotReload.PrepareAsync(key => SetOperationStatus(L[key]));
         if (_closed) throw new OperationCanceledException("The debug project was closed.");
+        CommitSourceMap(result);
+        return result.OutputPath;
+    }
+    private void CommitSourceMap(ProjectContentBuildResult result)
+    {
         _sources.Clear(); _positions.Clear(); _spans.Clear(); _breakpointRun = null;
         foreach (var entry in result.SourceEntries)
         {
@@ -256,9 +335,13 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             _spans[(entry.GroupId, entry.EntryId)] = new(entry.GroupId, entry.Start, entry.End);
             foreach (var primitive in entry.PrimitiveIds) _sources[(entry.GroupId, primitive)] = entry.EntryId;
         }
+        _publishedBuild = result;
         _authorSignature = result.AuthorSignature;
+        _autoReloadRequested = false;
+        _externalContentChanged = false;
+        _contentChanges.Clear();
         ContentChanged = Signature() != _authorSignature;
-        return result.OutputPath;
+        UpdateHighlights();
     }
     private string Signature() => ProjectAuthorIdentity.Compute(_documents.CurrentDocument, _documents.LoadedProject.GroupEntries);
     [RelayCommand] private Task StartGameAsync() => CommandAsync("start");
@@ -275,6 +358,18 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
         await _client.SendAsync("step", span);
     });
     [RelayCommand] private Task GroupEndAsync() => CommandAsync("groupEnd");
+    [RelayCommand]
+    private Task HotReloadAsync() => RunAsync(async () =>
+    {
+        var changes = new DebugContentChangeScope(_externalContentChanged || _contentChanges.Count == 0 || _contentChanges.Any(change => change.UnknownScope),
+            _contentChanges.SelectMany(change => change.Groups).ToArray());
+        if (await _hotReload.BuildAndApplyAsync(changes, key => SetOperationStatus(L[key])) is { } impact)
+            ShowHotReloadNotice(impact);
+    });
+    [RelayCommand] private Task ApplyPendingContentAsync() => RunAsync(async () =>
+        ShowHotReloadNotice(await _hotReload.ApplyPendingAsync()));
+    [RelayCommand] private Task RestartForContentAsync() => RunAsync(async () =>
+        ShowHotReloadNotice(await _hotReload.RestartGameAsync()));
     [RelayCommand] private Task DisconnectAsync() => RunAsync(_client.DisconnectAsync);
     [RelayCommand] private Task CancelAsync() => CommandAsync("cancel");
     internal Task CommandAsync(string method, object? arguments = null, string? run = null, long? generation = null) =>
@@ -355,7 +450,10 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     }
     private async Task CloseProjectAsync()
     {
-        _closed = true; _client.Changed -= OnClientChanged; _documents.DocumentChanged -= OnAuthorChanged; _authorChanges.Committed -= OnAuthorCommitted;
+        _closed = true; _client.Changed -= OnClientChanged; _hotReload.Changed -= OnHotReloadChanged;
+        _content.Changed -= OnProjectContentChanged;
+        _content.ExternalReloaded -= OnExternalReloaded;
+        _documents.DocumentChanged -= OnAuthorChanged; _authorChanges.Committed -= OnAuthorCommitted;
         foreach (var row in PlayerVariables.Concat(SaveVariables)) row.Invalidate();
         await _client.DisconnectAsync(); _closing?.Dispose();
     }

@@ -300,7 +300,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     {
         if (!_attached.Add(entry)) return;
         entry.IsPendingMove = _authoring.IsPendingMove(GroupId, entry.StableId);
-        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, !isNew || Workspace.ExpandNewEntries);
+        entry.IsParametersExpanded = _expanded.GetValueOrDefault(entry.StableId, isNew && Workspace.ExpandNewEntries);
         _expanded[entry.StableId] = entry.IsParametersExpanded;
         entry.PropertyChanged += OnEntryPropertyChanged;
         Configure(entry);

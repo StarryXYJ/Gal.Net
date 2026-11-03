@@ -40,8 +40,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "demo.welcome"
+        "content": "demo.welcome",
+        "speaker": "guide"
       }
     },
     {
@@ -138,7 +138,7 @@
       "parameters": {
         "dimension": "expression",
         "handleId": "teacher",
-        "value": "shy"
+        "value": "shock"
       }
     },
     {

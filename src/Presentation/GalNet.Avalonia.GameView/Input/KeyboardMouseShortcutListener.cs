@@ -21,7 +21,6 @@ public sealed class KeyboardMouseShortcutListener : IDisposable
     private readonly Action _releaseHold;
     private readonly HashSet<Key> _pressed = [];
     private TopLevel? _topLevel;
-    private long _holdRequest;
     private bool _disposed;
 
     public KeyboardMouseShortcutListener(Control root, PlayerInputSettings settings, Func<bool> canReceive,
@@ -91,14 +90,6 @@ public sealed class KeyboardMouseShortcutListener : IDisposable
         CancelHold();
         if (action is null) return;
         e.Handled = true;
-        if (action == "hold.quick")
-        {
-            // Give a modifier time to become a chord (e.g. Ctrl+S) without starting quick mode.
-            var request = _holdRequest;
-            await Task.Delay(160);
-            if (request != _holdRequest || !_pressed.Contains(e.Key) ||
-                !CanReceive || !AcceptKeyboard(_topLevel?.FocusManager?.GetFocusedElement(), e.Key)) return;
-        }
         await _dispatch(action);
     }
 
@@ -129,7 +120,7 @@ public sealed class KeyboardMouseShortcutListener : IDisposable
         await _dispatch(action);
     }
 
-    private void CancelHold() { ++_holdRequest; _releaseHold(); }
+    private void CancelHold() => _releaseHold();
     public void Reset() { _pressed.Clear(); CancelHold(); }
     private void LostFocus(object? sender, RoutedEventArgs e) => Reset();
     private void Deactivated(object? sender, EventArgs e) => Reset();

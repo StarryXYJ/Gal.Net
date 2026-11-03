@@ -7,11 +7,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.chapter-masks",
-        "position": "Center",
-        "styleName": "chapter",
         "blocking": true,
-        "holdSeconds": 1.2
+        "content": "demo.chapter-masks",
+        "holdSeconds": 1.2,
+        "position": "Center",
+        "styleName": "chapter"
       }
     },
     {
@@ -43,9 +43,9 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bg",
         "assetId": "a1000000000000000000000000000001",
-        "displayMode": "Fill"
+        "displayMode": "Fill",
+        "handleId": "library-bg"
       }
     },
     {
@@ -53,8 +53,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-alice",
         "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "handleId": "library-alice",
         "transform": {
           "x": -400,
           "y": 80
@@ -67,8 +67,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bob",
         "assetId": "a1000000000000000000000000000004",
+        "handleId": "library-bob",
         "transform": {
           "x": 400,
           "y": 80
@@ -81,8 +81,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "demo.mask-lead"
+        "content": "demo.mask-lead",
+        "speaker": "guide"
       }
     },
     {
@@ -90,9 +90,7 @@
       "type": "effect.apply",
       "condition": "",
       "parameters": {
-        "program": "06bae8b1e0705da98b58fd66b896e109",
         "instanceId": "portrait-clip",
-        "targetHandleId": "library-alice",
         "parameters": {
           "mode": "Ellipse",
           "centerX": 0.29,
@@ -101,7 +99,9 @@
           "height": 0.8,
           "feather": 0.04,
           "progress": 1
-        }
+        },
+        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "targetHandleId": "library-alice"
       }
     },
     {
@@ -109,8 +109,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.clip-mask.content"
+        "content": "group.presentation-library.entry.clip-mask.content",
+        "speaker": "guide"
       }
     },
     {
@@ -126,14 +126,14 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mask-LetterboxIn",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 60,
         "instanceId": "library-mask",
         "motion": "LetterboxIn",
-        "durationFrames": 60,
         "parameters": {
           "feather": 0.025
-        }
+        },
+        "playbackHandleId": "mask-LetterboxIn",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -141,8 +141,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mask-LetterboxIn-note.content"
+        "content": "group.presentation-library.entry.mask-LetterboxIn-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -150,14 +150,14 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mask-LetterboxOut",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 60,
         "instanceId": "library-mask",
         "motion": "LetterboxOut",
-        "durationFrames": 60,
         "parameters": {
           "feather": 0.025
-        }
+        },
+        "playbackHandleId": "mask-LetterboxOut",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -165,8 +165,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mask-LetterboxOut-note.content"
+        "content": "group.presentation-library.entry.mask-LetterboxOut-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -174,14 +174,14 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mask-Blink",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 120,
         "instanceId": "library-mask",
         "motion": "Blink",
-        "durationFrames": 120,
         "parameters": {
           "feather": 0.025
-        }
+        },
+        "playbackHandleId": "mask-Blink",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -189,8 +189,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mask-Blink-note.content"
+        "content": "group.presentation-library.entry.mask-Blink-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -198,14 +198,14 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mask-Close",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 60,
         "instanceId": "library-mask",
         "motion": "Close",
-        "durationFrames": 60,
         "parameters": {
           "feather": 0.025
-        }
+        },
+        "playbackHandleId": "mask-Close",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -221,14 +221,14 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mask-Open",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 60,
         "instanceId": "library-mask",
         "motion": "Open",
-        "durationFrames": 60,
         "parameters": {
           "feather": 0.025
-        }
+        },
+        "playbackHandleId": "mask-Open",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -236,8 +236,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mask-Open-note.content"
+        "content": "group.presentation-library.entry.mask-Open-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -245,11 +245,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "group.presentation-library.entry.overlay-card.content",
-        "position": "TopRight",
-        "styleName": "location",
         "blocking": false,
-        "holdSeconds": 5
+        "content": "group.presentation-library.entry.overlay-card.content",
+        "holdSeconds": 5,
+        "position": "TopRight",
+        "styleName": "location"
       }
     },
     {
@@ -257,12 +257,12 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "overlay-Close",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 60,
         "instanceId": "library-overlay",
         "motion": "Close",
         "overlay": true,
-        "durationFrames": 60
+        "playbackHandleId": "overlay-Close",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -278,12 +278,12 @@
       "type": "preset.mask",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "overlay-Open",
-        "program": "06bae8b1e0705da98b58fd66b896e109",
+        "durationFrames": 60,
         "instanceId": "library-overlay",
         "motion": "Open",
         "overlay": true,
-        "durationFrames": 60
+        "playbackHandleId": "overlay-Open",
+        "program": "06bae8b1e0705da98b58fd66b896e109"
       }
     },
     {
@@ -291,8 +291,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.overlay-note.content"
+        "content": "group.presentation-library.entry.overlay-note.content",
+        "speaker": "guide"
       }
     }
   ]

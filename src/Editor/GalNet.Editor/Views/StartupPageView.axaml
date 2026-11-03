@@ -12,7 +12,7 @@
     <Grid RowDefinitions="Auto,*,Auto" Background="{DynamicResource SemiColorBackground0}">
         <StackPanel Grid.Row="0" HorizontalAlignment="Left" Margin="10,10,0,40">
             <TextBlock Text="{loc:Localize App.Title}"
-                       FontSize="36" FontWeight="Bold"
+                       FontSize="{DynamicResource Editor.Font.Hero}" FontWeight="Bold"
                        Foreground="{DynamicResource SemiColorText0}"
                        HorizontalAlignment="Center" />
         </StackPanel>
@@ -25,7 +25,7 @@
                         Width="260" Height="48"
                         Background="{DynamicResource SemiColorPrimary}"
                         Foreground="{DynamicResource SemiColorText0}"
-                        FontSize="16" FontWeight="SemiBold"
+                        FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="SemiBold"
                         CornerRadius="6" />
 
                 <Button Content="{loc:Localize Startup.OpenProject}"
@@ -33,7 +33,7 @@
                         Width="260" Height="48"
                         Background="{DynamicResource SemiColorBackground3}"
                         Foreground="{DynamicResource SemiColorText0}"
-                        FontSize="16" FontWeight="SemiBold"
+                        FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="SemiBold"
                         CornerRadius="6" />
 
                 <Separator Margin="0,12"
@@ -42,7 +42,7 @@
                            Width="260" />
 
                 <TextBlock Text="{loc:Localize Startup.RecentProjects}"
-                           FontSize="13"
+                           FontSize="{DynamicResource Editor.Font.Body}"
                            Foreground="{DynamicResource SemiColorText3}"
                            HorizontalAlignment="Center"
                            Margin="0,4,0,0" />
@@ -64,7 +64,7 @@
                                 <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
                                     <TextBlock Grid.Row="0" Grid.Column="0"
                                                Text="{Binding Name}"
-                                               FontSize="14" FontWeight="SemiBold"
+                                               FontSize="{DynamicResource Editor.Font.Emphasis}" FontWeight="SemiBold"
                                                Foreground="{DynamicResource SemiColorText0}" />
                                     <Button Grid.Row="0" Grid.Column="1" Grid.RowSpan="2"
                                             Content="{loc:Localize Startup.OpenRecent}"
@@ -72,13 +72,13 @@
                                             CommandParameter="{Binding}"
                                             Background="Transparent"
                                             Foreground="{DynamicResource SemiColorLink}"
-                                            FontSize="12"
+                                            FontSize="{DynamicResource Editor.Font.Detail}"
                                             Margin="8,0,0,0"
                                             Padding="8,4" />
 
                                     <TextBlock Grid.Row="1" Grid.Column="0"
                                                Text="{Binding Path}"
-                                               FontSize="11"
+                                               FontSize="{DynamicResource Editor.Font.Caption}"
                                                Foreground="{DynamicResource SemiColorText3}"
                                                TextTrimming="CharacterEllipsis" />
                                 </Grid>
@@ -93,7 +93,7 @@
                 Background="{DynamicResource SemiColorBackground1}"
                 Padding="12,8">
             <TextBlock Text="{loc:Localize Startup.Footer}"
-                       FontSize="11"
+                       FontSize="{DynamicResource Editor.Font.Caption}"
                        Foreground="{DynamicResource SemiColorText3}"
                        HorizontalAlignment="Center" />
         </Border>

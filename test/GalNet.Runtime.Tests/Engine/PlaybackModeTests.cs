@@ -16,6 +16,28 @@ namespace GeneralTest.Runtime;
 public class PlaybackModeTests
 {
     [Test]
+    public async Task DebugAllReadAllowsQuickAndSkippingWithoutPreMarkingProgress()
+    {
+        var first = new ReadingWait();
+        var second = new ReadingWait();
+        var progress = new MemoryProgress();
+        using var view = Registration().RegisterInstruction("test.text", context => context.Entry.StableId == "line-0" ? first : second).BuildView();
+        await using var engine = new GameEngine(GraphOf("test.text", "test.text"), view, progress: progress, playbackOptions: Settings(5000));
+        using var debug = engine.AttachDebugging();
+        await engine.AdvanceAsync();
+        await debug.SetTreatAllTextAsReadAsync(true);
+        Assert.That(progress.IsRead("main", "line-0"), Is.False);
+        await engine.SetPlaybackModeAsync(PlaybackMode.Quick);
+        Assert.That(engine.PlaybackMode, Is.EqualTo(PlaybackMode.Quick));
+        await debug.SetTreatAllTextAsReadAsync(false);
+        Assert.That(engine.PlaybackMode, Is.EqualTo(PlaybackMode.Manual));
+        await debug.SetTreatAllTextAsReadAsync(true);
+        await engine.SkipToUnreadAsync().WaitAsync(TimeSpan.FromSeconds(2));
+        Assert.That(engine.State, Is.EqualTo(GameEngineState.Completed));
+        Assert.That(progress.IsRead("main", "line-0"), Is.False);
+        Assert.That(progress.IsRead("main", "line-1"), Is.False);
+    }
+    [Test]
     public async Task ExplicitOptionsUpdateStopsQuickAtUnreadTextAndRejectsInvalidInputWithoutFaulting()
     {
         var line = new ReadingWait();

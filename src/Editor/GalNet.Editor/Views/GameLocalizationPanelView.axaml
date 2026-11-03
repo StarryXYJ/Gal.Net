@@ -34,7 +34,7 @@
             <PathIcon Width="16" Height="16" Data="{StaticResource PanelLanguageIcon}"/>
             <Button.Flyout><Flyout><ScrollViewer MaxHeight="480"><StackPanel Width="350" Spacing="8">
               <TextBlock Text="{loc:Localize Uiux.I18n.Languages}" FontWeight="SemiBold"/>
-              <TextBlock Text="{loc:Localize Uiux.I18n.VisibleColumns}" Foreground="{DynamicResource SemiColorText2}" FontSize="12"/>
+              <TextBlock Text="{loc:Localize Uiux.I18n.VisibleColumns}" Foreground="{DynamicResource SemiColorText2}" FontSize="{DynamicResource Editor.Font.Detail}"/>
               <StackPanel x:Name="LanguageManagerRows" Spacing="2"/>
               <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4">
                 <AutoCompleteBox x:Name="NewLocalizationLanguage" Text="{Binding NewLanguage, Mode=TwoWay}" ItemsSource="{Binding LanguageOptions}" ValueMemberBinding="{Binding Code}" FilterMode="None" IsTextCompletionEnabled="False" MinimumPrefixLength="0" MaxDropDownHeight="220" PlaceholderText="{loc:Localize Uiux.I18n.SearchLanguage}">
@@ -42,7 +42,7 @@
                 </AutoCompleteBox>
                 <Button x:Name="AddLocalizationLanguage" Grid.Column="1" Theme="{StaticResource EditorIconButton}" Command="{Binding AddLanguageCommand}" ToolTip.Tip="{loc:Localize I18n.Add}" AutomationProperties.Name="{loc:Localize I18n.Add}"><PathIcon Width="16" Height="16" Data="{StaticResource AddIcon}"/></Button>
               </Grid>
-              <TextBlock Text="{loc:Localize Uiux.I18n.RemoveHint}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorText2}" FontSize="12"/>
+              <TextBlock Text="{loc:Localize Uiux.I18n.RemoveHint}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorText2}" FontSize="{DynamicResource Editor.Font.Detail}"/>
               <StackPanel IsVisible="{Binding CanChangeDevelopmentLanguage}" Spacing="6">
                 <TextBlock Text="{Binding PreviewMessage}" TextWrapping="Wrap"/>
                 <Button x:Name="ApplyDevelopmentLanguage" Content="{loc:Localize I18n.ApplyDevelopment}" Command="{Binding ChangeDevelopmentLanguageCommand}"/>

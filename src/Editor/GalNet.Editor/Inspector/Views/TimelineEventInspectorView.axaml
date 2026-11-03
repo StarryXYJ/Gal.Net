@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
  xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:forms="using:GalNet.Game.Controls.Forms"
  xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.TimelineEventInspectorView" x:DataType="vm:TimelineEventInspectorViewModel">
- <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/></UserControl.Styles>
+ <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/><StyleInclude Source="avares://GalNet.Editor/Inspector/Views/InspectorFormStyles.axaml"/></UserControl.Styles>
  <ScrollViewer HorizontalScrollBarVisibility="Disabled"><StackPanel Margin="10" Spacing="8">
   <TextBlock Text="{Binding Label}" TextWrapping="Wrap" FontWeight="SemiBold"/>
   <forms:DtoEditorHost Name="TimelineEventForm" Item="{Binding Draft.Item}" Registry="{Binding FieldEditors}"/>

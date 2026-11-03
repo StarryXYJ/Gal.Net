@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Security.Cryptography;
 using GalNet.Assets;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
@@ -150,7 +151,9 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
             foreach (var entry in raw.Entries)
             {
                 var primitives = compilation.SourceMap[entry.Id];
-                mappings.Add(new(group.Id, entry.Id, offset, offset + primitives.Count, Array.AsReadOnly(primitives.ToArray())));
+                var compiledEntries = compiled.Entries.Skip(offset).Take(primitives.Count).ToArray();
+                var contentSha256 = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(compiledEntries, JsonOptions)));
+                mappings.Add(new(group.Id, entry.Id, offset, offset + primitives.Count, Array.AsReadOnly(primitives.ToArray()), contentSha256));
                 offset += primitives.Count;
             }
             authors.Add(group.Id, raw.Entries.Select(entry => new EditorEntryData
@@ -248,6 +251,8 @@ public sealed record ProjectContentBuildResult(string OutputPath, int CompiledGr
     public IReadOnlyList<GalNet.Editor.Abstraction.Commands.ToolDiagnostic> Diagnostics { get; init; } = [];
     [JsonIgnore] public IReadOnlyList<ProjectCompiledSourceEntry> SourceEntries { get; init; } = [];
     [JsonIgnore] public string AuthorSignature { get; init; } = "";
+    [JsonIgnore] public GalNet.Debugging.DebugContentManifest? Manifest { get; init; }
 }
 
-public sealed record ProjectCompiledSourceEntry(string GroupId, string EntryId, int Start, int End, IReadOnlyList<string> PrimitiveIds);
+public sealed record ProjectCompiledSourceEntry(string GroupId, string EntryId, int Start, int End,
+    IReadOnlyList<string> PrimitiveIds, string ContentSha256 = "");

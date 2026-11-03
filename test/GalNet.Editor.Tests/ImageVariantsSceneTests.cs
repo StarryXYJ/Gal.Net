@@ -108,7 +108,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             select.Source.Parameters["dimension"] = JsonSerializer.SerializeToElement("d1"); select.Source.Parameters["value"] = JsonSerializer.SerializeToElement("weap");
             select.Source.Parameters["future"] = JsonSerializer.Deserialize<JsonElement>("[9007199254740993,null]");
             foreach (var item in group.Entries) item.IsParametersExpanded = ReferenceEquals(item, show);
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = show;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = show; show.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1200, Height = 1100 }; window.Show(); TimelinePump(window);
             try
             {

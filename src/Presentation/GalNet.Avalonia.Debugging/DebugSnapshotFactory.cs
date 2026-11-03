@@ -16,6 +16,7 @@ public static class DebugSnapshotFactory
             Version = source.Version,
             ContentBuildId = source.ContentBuildId,
             StoryPackages = source.StoryPackages.ToArray(),
+            VisitedGroups = source.VisitedGroups.ToArray(),
             NodeId = source.NodeId,
             EntryIndex = kind == DebugSaveKind.GalGroupStart ? 0 : source.EntryIndex,
             Variables = source.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value)),

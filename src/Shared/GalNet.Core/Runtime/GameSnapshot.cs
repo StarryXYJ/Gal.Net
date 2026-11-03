@@ -3,7 +3,7 @@ namespace GalNet.Core.Runtime;
 /// <summary>Persisted runtime state needed to resume a game and rebuild its visible scene.</summary>
 public sealed class GameSnapshot
 {
-    public const int CurrentFormatVersion = 5;
+    public const int CurrentFormatVersion = 6;
 
     /// <summary>Persisted save format version. Older formats are intentionally rejected.</summary>
     public int Version { get; init; } = CurrentFormatVersion;
@@ -16,6 +16,9 @@ public sealed class GameSnapshot
     public string ContentBuildId { get; init; } = "";
     public string[] StoryPackages { get; init; } = [];
 
+    /// <summary>Groups naturally entered by this run, in first-entry order.</summary>
+    public string[] VisitedGroups { get; init; } = [];
+
     /// <summary>Save-scoped variable values captured for this snapshot.</summary>
     public Dictionary<string, GalNet.Core.Variable.Variable> Variables { get; init; } = [];
 
@@ -23,6 +26,18 @@ public sealed class GameSnapshot
     [System.Text.Json.Serialization.JsonRequired]
     public Dictionary<string, StateSection> States { get; init; } = new(StringComparer.Ordinal);
 
+    /// <summary>The natural entrance to the current group, when available.</summary>
+    public GroupEntranceSnapshot? GroupEntrance { get; set; }
+
     /// <summary>Optional host-owned save data. Execution does not interpret or restore these attachments.</summary>
     public Dictionary<string, System.Text.Json.JsonElement> Attachments { get; init; } = new(StringComparer.Ordinal);
+}
+
+/// <summary>A single group entrance without recursively embedding another save.</summary>
+public sealed class GroupEntranceSnapshot
+{
+    public string NodeId { get; init; } = "";
+    public Dictionary<string, GalNet.Core.Variable.Variable> Variables { get; init; } = [];
+    [System.Text.Json.Serialization.JsonRequired]
+    public Dictionary<string, StateSection> States { get; init; } = new(StringComparer.Ordinal);
 }

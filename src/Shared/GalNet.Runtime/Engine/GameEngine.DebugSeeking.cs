@@ -9,8 +9,7 @@ namespace GalNet.Runtime.Engine;
 public enum DebugReplayBehavior { Unsupported, Scene, Ignore }
 public sealed class GameDebugOptions
 {
-    public long MaxEntrancePayloadBytes { get; init; } = 64L * 1024 * 1024;
-    public int MaxEntranceGroups { get; init; } = 256;
+    public bool TreatAllTextAsRead { get; init; }
     public IReadOnlyDictionary<string, DebugReplayBehavior> Instructions { get; init; } = new Dictionary<string, DebugReplayBehavior>();
     public Func<IGameContext, CancellationToken, Task>? SynchronizePresentation { get; init; }
 }
@@ -36,6 +35,7 @@ public sealed partial class GameEngine
         private Queue<GameDebugRouteEdge> _route = new();
         internal bool Replaying => _seek is not null;
         internal bool SuppressReadProgress => _preparingReplay || Replaying;
+        internal bool CapturingNaturalEntrance => !_suppressEntrance && !Replaying;
 
         internal void OnExternalRestore(bool debugRestore)
         {
@@ -45,17 +45,12 @@ public sealed partial class GameEngine
             Interlocked.Increment(ref _generation);
             if (!debugRestore)
             {
-                CancelSeek(); _entrances.Clear(); _lastReplay = null;
+                CancelSeek(); _lastReplay = null;
                 _seek = null; _route.Clear(); _preparingReplay = false; _suppressEntrance = false;
             }
             Paused = debugRestore;
         }
-        internal void CaptureEntrance(string group)
-        {
-            if (_suppressEntrance) { _suppressEntrance = false; return; }
-            if (Replaying) return;
-            if (_engine.EntryIndex == 0) _entrances.Capture(group, CaptureScene);
-        }
+        internal void OnGroupEntry() => _suppressEntrance = false;
         private GameSnapshot CaptureScene()
         {
             var snapshot = _engine._runtime.CreateSnapshot();
@@ -84,7 +79,13 @@ public sealed partial class GameEngine
         }
         public void CancelSeek() => _seekCancellation?.Cancel();
 
-        public async Task SeekAsync(long generation, GameDebugSeek target, CancellationToken cancellationToken = default)
+        public Task SeekAsync(long generation, GameDebugSeek target, CancellationToken cancellationToken = default) =>
+            SeekCoreAsync(generation, target, false, cancellationToken);
+
+        public Task SeekGroupStartAsync(long generation, string group, CancellationToken cancellationToken = default) =>
+            SeekCoreAsync(generation, new(group, 0, []), true, cancellationToken);
+
+        private async Task SeekCoreAsync(long generation, GameDebugSeek target, bool restoreEntranceVariables, CancellationToken cancellationToken)
         {
             await _seeks.WaitAsync(cancellationToken).ConfigureAwait(false);
             var cancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
@@ -115,7 +116,14 @@ public sealed partial class GameEngine
                     var start = target.Route.FirstOrDefault()?.From ?? target.GroupId;
                     var targetEnd = target.TargetEnd ?? Math.Min(target.EntryIndex + 1, group.Entries.Count);
                     if (targetEnd < target.EntryIndex || targetEnd > group.Entries.Count) throw new ArgumentException("Invalid target author span.", nameof(target));
-                    if (target.InitialScene)
+                    if (restoreEntranceVariables)
+                    {
+                        if (target.GroupId != _engine.CurrentNodeId || target.EntryIndex != 0 || target.Route.Length != 0 ||
+                            _engine._currentGroupEntrance is not { } entrance || entrance.NodeId != target.GroupId)
+                            throw new InvalidOperationException("The current group has no saved entrance snapshot.");
+                        baseline = new GameSnapshot { NodeId = entrance.NodeId, States = entrance.States, Variables = entrance.Variables };
+                    }
+                    else if (target.InitialScene)
                     {
                         if (target.Route.Length != 0) throw new ArgumentException("An isolated test start cannot include a route.", nameof(target));
                         baseline = new GameSnapshot { NodeId = target.GroupId, EntryIndex = 0, States = _initialScene.States };
@@ -125,9 +133,9 @@ public sealed partial class GameEngine
                         baseline = _engine._runtime.CreateSnapshot();
                         fromCurrent = true;
                     }
-                    else if (_entrances.TryGet(start, out var entrance))
+                    else if (_engine._currentGroupEntrance is { } savedEntrance && savedEntrance.NodeId == start && start == _engine.CurrentNodeId)
                     {
-                        baseline = entrance;
+                        baseline = new GameSnapshot { NodeId = savedEntrance.NodeId, States = savedEntrance.States, Variables = savedEntrance.Variables };
                         cacheHit = true;
                     }
                     else if (_initialScene.NodeId == start) baseline = SnapshotCopy.Clone(_initialScene);
@@ -162,7 +170,7 @@ public sealed partial class GameEngine
                         NodeId = baseline.NodeId,
                         EntryIndex = baseline.EntryIndex,
                         States = baseline.States,
-                        Variables = current.Variables
+                        Variables = restoreEntranceVariables ? baseline.Variables : current.Variables
                     });
                 }
                 finally { _engine._dispatchGate.Release(); }

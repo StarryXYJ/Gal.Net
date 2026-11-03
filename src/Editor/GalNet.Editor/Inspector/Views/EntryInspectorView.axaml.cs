@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using GalNet.Editor.Inspector.ViewModels;
@@ -9,13 +11,22 @@ namespace GalNet.Editor.Inspector.Views;
 public partial class EntryInspectorView : UserControl
 {
     private EntryInspectorViewModel? _model;
+    private TopLevel? _topLevel;
     public EntryInspectorView()
     {
         InitializeComponent();
         SizeChanged += (_, _) => ShaderPreviewPanel.MaxHeight = Math.Max(40, Bounds.Height * 0.5);
         DataContextChanged += (_, _) => Connect();
-        AttachedToVisualTree += (_, _) => Connect();
-        DetachedFromVisualTree += (_, _) => Disconnect();
+        AttachedToVisualTree += (_, _) => { Connect(); _topLevel = TopLevel.GetTopLevel(this); _topLevel?.AddHandler(InputElement.PointerPressedEvent, OnPointerPressed, RoutingStrategies.Tunnel); };
+        DetachedFromVisualTree += (_, _) => { _topLevel?.RemoveHandler(InputElement.PointerPressedEvent, OnPointerPressed); _topLevel = null; Disconnect(); };
+    }
+    private void OnPointerPressed(object? sender, PointerPressedEventArgs args)
+    {
+        if (_topLevel?.FocusManager?.GetFocusedElement() is not Control focused ||
+            !focused.GetSelfAndVisualAncestors().Contains(this)) return;
+        var row = focused.GetSelfAndVisualAncestors().OfType<FieldEditorRow>().FirstOrDefault(item => item.Context?.DraftState is not null);
+        if (row?.Context?.DraftState is not { } draft || args.Source is Control source && source.GetSelfAndVisualAncestors().Contains(row)) return;
+        _ = draft.CommitPendingAsync();
     }
     private void Disconnect() { if (_model is not null) _model.PropertyChanged -= Changed; _model = null; }
     private void Connect() { Disconnect(); _model = DataContext as EntryInspectorViewModel; if (_model is not null) { _model.PropertyChanged += Changed; FocusRequestedField(); } }

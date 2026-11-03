@@ -20,6 +20,9 @@ public sealed class EditorSettings
     /// <summary>Avalonia 主题</summary>
     public string Theme { get; set; } = "Violet";
 
+    /// <summary>Editor body font size in device-independent pixels.</summary>
+    public double FontSize { get; set; } = 12;
+
     /// <summary>Last automatically saved editor dock view.</summary>
     [JsonConverter(typeof(EmbeddedJsonStringConverter))]
     public string? LastDockLayout { get; set; }
@@ -36,7 +39,7 @@ public sealed class EditorSettings
     public bool AutoSaveProject { get; set; } = true;
 
     /// <summary>Whether newly inserted Group entries show their parameter fields.</summary>
-    public bool ExpandNewEntries { get; set; } = true;
+    public bool ExpandNewEntries { get; set; }
 
     /// <summary>Stable UI command ID to Avalonia gesture text. Empty text disables the shortcut.</summary>
     public Dictionary<string, string> GestureOverrides { get; set; } = new(StringComparer.OrdinalIgnoreCase);

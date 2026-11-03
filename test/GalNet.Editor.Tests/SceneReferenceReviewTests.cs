@@ -28,6 +28,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, consumer.Source, consumer.Type, new() { ["handleId"] = JsonSerializer.SerializeToElement(handle) });
             var author = scope.GetRequiredService<GroupEntryAuthoringService>(); var history = scope.GetRequiredService<EditorHistories>().Content;
             var query = scope.GetRequiredService<ProjectSceneTargets>(); history.Clear();
+            var problems = scope.GetRequiredService<ProblemsPanelViewModel>();
+            creator.Condition = "save.flag";
+            Assert.That(query.Diagnostics().Any(issue => issue.Code == "scene.reference.possible" && issue.Owner.EntryId == consumer.StableId), Is.True);
+            Assert.That(problems.Problems.Any(problem => problem.SceneReference?.Code == "scene.reference.possible" && problem.Target?.EntryId == consumer.StableId), Is.False);
+            creator.Condition = ""; history.Clear();
             var preview = author.PrepareDelete(group.Id, [creator.StableId])!;
             Assert.That(history.CanUndo, Is.False); Assert.That(group.Entries, Has.Count.EqualTo(2));
             Assert.That(preview.Impact.References.Single().After.Code, Is.EqualTo("scene.reference.missing"));
@@ -36,12 +41,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             Assert.Throws<EditorOperationException>(preview.Commit);
             Assert.That(history.UndoText, Is.EqualTo(staleCursor)); Assert.That(group.Entries, Has.Count.EqualTo(2));
             await history.UndoAsync(); history.Clear();
-            var problems = scope.GetRequiredService<ProblemsPanelViewModel>(); problems.ValidateCommand.Execute(null);
+            problems.ValidateCommand.Execute(null);
             preview = author.PrepareDelete(group.Id, [creator.StableId])!; preview.Commit();
             Assert.That(query.Diagnostics().Any(issue => issue.Code == "scene.reference.missing" && issue.Owner.EntryId == consumer.StableId), Is.True);
-            Assert.That(problems.Problems.Any(problem => problem.IsWarning && problem.Target?.EntryId == consumer.StableId && problem.Message == scope.GetRequiredService<IEditorLocalizationService>()["Scene.Diagnostic.scene.reference.missing"]), Is.True);
+            Assert.That(problems.Problems.Any(problem => problem.IsError && problem.Target?.EntryId == consumer.StableId && problem.Message == scope.GetRequiredService<IEditorLocalizationService>()["Scene.Diagnostic.scene.reference.missing"]), Is.True);
             problems.ValidateCommand.Execute(null);
-            Assert.That(problems.Problems.Any(problem => problem.IsError && problem.Target?.EntryId == consumer.StableId), Is.False, "Missing scene targets are warnings, not compile/value validation errors.");
+            Assert.That(problems.Problems.Any(problem => problem.IsError && problem.SceneReference?.Code == "scene.reference.missing" && problem.Target?.EntryId == consumer.StableId), Is.True);
             Assert.That(problems.Problems.Single(problem => problem.SceneReference?.Code == "scene.reference.missing").SceneReference!.Revision, Is.EqualTo(query.Revision));
             Assert.Throws<EditorOperationException>(preview.Commit);
             await history.UndoAsync(); Assert.That(query.Diagnostics().Any(issue => issue.Code == "scene.reference.missing"), Is.False);

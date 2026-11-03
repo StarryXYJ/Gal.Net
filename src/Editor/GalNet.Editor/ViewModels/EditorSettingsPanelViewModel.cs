@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using Avalonia;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,6 +11,7 @@ using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Services;
+using GalNet.Editor.Themes;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -40,7 +42,10 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     private bool _autoSaveProject = true;
 
     [ObservableProperty]
-    private bool _expandNewEntries = true;
+    private bool _expandNewEntries;
+
+    [ObservableProperty]
+    private double _fontSize = EditorTypography.DefaultSize;
 
     public ObservableCollection<ThemeSelectionItem> AvailableThemes { get; } = [];
     public ObservableCollection<CultureInfo> AvailableCultures { get; } = [];
@@ -101,6 +106,7 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
                           ?? AvailableCultures.FirstOrDefault();
         AutoSaveProject = settings.AutoSaveProject;
         ExpandNewEntries = settings.ExpandNewEntries;
+        FontSize = EditorTypography.Normalize(settings.FontSize);
         _loading = false;
     }
 
@@ -171,6 +177,17 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         _editorSettings.SaveSettings();
         L.ApplyCulture(value);
 
+        SetStatus(new("Settings.Saved"));
+    }
+
+    partial void OnFontSizeChanged(double value)
+    {
+        if (_loading) return;
+        var size = EditorTypography.Normalize(value);
+        if (size != value) { FontSize = size; return; }
+        _editorSettings.GetSettings().FontSize = size;
+        if (Application.Current is { } app) EditorTypography.Apply(app.Resources, size);
+        _editorSettings.SaveSettings();
         SetStatus(new("Settings.Saved"));
     }
 

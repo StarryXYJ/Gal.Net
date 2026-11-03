@@ -61,7 +61,8 @@ public partial class GameLocalizationPanelView : UserControl
             manager.Children.Add(visible);
             if (source)
             {
-                var label = new TextBlock { Text = model.Service.Text["I18n.Source"], VerticalAlignment = VerticalAlignment.Center, FontSize = 12 };
+                var label = new TextBlock { Text = model.Service.Text["I18n.Source"], VerticalAlignment = VerticalAlignment.Center };
+                label.Bind(TextBlock.FontSizeProperty, this.GetResourceObservable("Editor.Font.Detail"));
                 Grid.SetColumn(label, 1); Grid.SetColumnSpan(label, 2); manager.Children.Add(label);
             }
             else
@@ -125,7 +126,8 @@ public partial class GameLocalizationPanelView : UserControl
         var labels = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
         var title = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis };
         title.Bind(TextBlock.TextProperty, new Binding(nameof(row.Title))); labels.Children.Add(title);
-        var slot = new TextBlock { FontSize = 11, TextTrimming = TextTrimming.CharacterEllipsis };
+        var slot = new TextBlock { TextTrimming = TextTrimming.CharacterEllipsis };
+        slot.Bind(TextBlock.FontSizeProperty, this.GetResourceObservable("Editor.Font.Caption"));
         slot.Bind(TextBlock.TextProperty, new Binding(nameof(row.Slot)));
         slot.Bind(TextBlock.ForegroundProperty, this.GetResourceObservable("SemiColorText2"));
         slot.IsVisible = row.Slot.Length > 0; labels.Children.Add(slot);
@@ -148,7 +150,8 @@ public partial class GameLocalizationPanelView : UserControl
             navigate.Flyout = new Flyout { Content = new ScrollViewer { Content = locations, MaxHeight = 300 } };
             navigate.Flyout.ShowAt(navigate);
         };
-        var count = new TextBlock { FontSize = 10, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
+        var count = new TextBlock { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false };
+        count.Bind(TextBlock.FontSizeProperty, this.GetResourceObservable("Editor.Font.Micro"));
         count.Bind(TextBlock.TextProperty, new Binding(nameof(row.ReferenceCount))); Grid.SetColumn(count, 1); context.Children.Add(count);
         var frozen = new Border { Name = "LocalizationContext", Child = context, RenderTransform = _contextOffset, ZIndex = 1 };
         frozen.Bind(BackgroundProperty, this.GetResourceObservable("SemiColorBackground0"));

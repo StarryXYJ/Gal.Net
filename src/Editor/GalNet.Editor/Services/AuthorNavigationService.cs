@@ -28,8 +28,8 @@ public sealed class AuthorNavigationService(EditorWorkspaceViewModel workspace, 
             var node = workspace.Nodes.FirstOrDefault(item => item.Id == nodeId);
             if (node is null || target.EntryId is { } entryId && !node.Entries.Any(item => item.StableId == entryId)) return false;
             var entry = node.Entries.FirstOrDefault(item => item.StableId == target.EntryId);
-            if (entry is not null) entry.IsParametersExpanded = true;
             dock.NavigateLocalization(nodeId, target.EntryId);
+            if (entry is not null) entry.IsParametersExpanded = true;
             dock.ShowInspector();
         }
         else if (target.File is { } path)

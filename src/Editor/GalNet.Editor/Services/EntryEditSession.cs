@@ -91,6 +91,7 @@ public sealed partial class EntryEditSession : IDisposable
         if (!state.CanCommit) return Error("Composing");
         if (!state.IsDirty) return null;
         if (state.IsConflicted || !draft.Owner.IsCurrent || draft.Owner.Type != draft.Type || draft.Owner.DraftIncarnation != draft.Incarnation) return Error("Conflict");
+        var revision = state.Revision;
         try
         {
             FieldValue candidate;
@@ -122,7 +123,7 @@ public sealed partial class EntryEditSession : IDisposable
                     candidate = new(patch.Value);
                 }
                 var result = await draft.Owner.CommitParameterAsync(draft.Root, candidate, CancellationToken.None);
-                if (result is null) state.Clear();
+                if (result is null && state.Revision == revision) state.Clear();
                 return result;
             }
             finally { if (textDraft is not null) _texts.Release(textDraft); }

@@ -51,12 +51,12 @@
                            TextTrimming="CharacterEllipsis" />
                 <TextBlock Grid.Row="1"
                            Text="{loc:Localize KindLabelKey}"
-                           FontSize="11"
+                           FontSize="{DynamicResource Editor.Font.Caption}"
                            Foreground="{DynamicResource SemiColorText2}" />
                 <TextBlock Grid.Row="2"
                            Text="{loc:Localize Graph.Kind.Entry}"
                            Margin="0,8,0,0"
-                           FontSize="11"
+                           FontSize="{DynamicResource Editor.Font.Caption}"
                            FontWeight="SemiBold"
                            IsVisible="{Binding IsEntryNode}" />
             </Grid>

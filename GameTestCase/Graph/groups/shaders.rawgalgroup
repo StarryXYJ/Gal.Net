@@ -7,11 +7,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.chapter-shaders",
-        "position": "Center",
-        "styleName": "chapter",
         "blocking": true,
-        "holdSeconds": 1.2
+        "content": "demo.chapter-shaders",
+        "holdSeconds": 1.2,
+        "position": "Center",
+        "styleName": "chapter"
       }
     },
     {
@@ -633,9 +633,9 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bg",
         "assetId": "a1000000000000000000000000000001",
-        "displayMode": "Fill"
+        "displayMode": "Fill",
+        "handleId": "library-bg"
       }
     },
     {
@@ -643,8 +643,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-alice",
         "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "handleId": "library-alice",
         "transform": {
           "x": -400,
           "y": 80
@@ -657,8 +657,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bob",
         "assetId": "a1000000000000000000000000000004",
+        "handleId": "library-bob",
         "transform": {
           "x": 400,
           "y": 80
@@ -672,11 +672,11 @@
       "condition": "",
       "parameters": {
         "instanceId": "library-distortion",
-        "program": "a498f8b0221355e69ea7bf32b9028400",
         "parameters": {
           "strength": 12,
           "mode": "Ripple"
-        }
+        },
+        "program": "a498f8b0221355e69ea7bf32b9028400"
       }
     },
     {
@@ -716,8 +716,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.distortion-note.content"
+        "content": "group.presentation-library.entry.distortion-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -725,8 +725,8 @@
       "type": "animation.stop",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-distortion-time",
-        "mode": "CompleteImmediately"
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "library-distortion-time"
       }
     },
     {
@@ -743,10 +743,10 @@
       "condition": "",
       "parameters": {
         "instanceId": "library-radialBlur",
-        "program": "17be677c2c2c5795b0ac8f4400065545",
         "parameters": {
           "strength": 0.3
-        }
+        },
+        "program": "17be677c2c2c5795b0ac8f4400065545"
       }
     },
     {
@@ -754,8 +754,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.radialBlur-note.content"
+        "content": "group.presentation-library.entry.radialBlur-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -772,11 +772,11 @@
       "condition": "",
       "parameters": {
         "instanceId": "library-film",
-        "program": "25bf866f4ab6578ca6646c62f638fb32",
         "parameters": {
           "strength": 0.8,
           "grain": 0.3
-        }
+        },
+        "program": "25bf866f4ab6578ca6646c62f638fb32"
       }
     },
     {
@@ -816,8 +816,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.film-note.content"
+        "content": "group.presentation-library.entry.film-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -825,8 +825,8 @@
       "type": "animation.stop",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-film-time",
-        "mode": "CompleteImmediately"
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "library-film-time"
       }
     },
     {
@@ -843,10 +843,10 @@
       "condition": "",
       "parameters": {
         "instanceId": "library-glitch",
-        "program": "c00b818c04ca593493e52fb96598fa30",
         "parameters": {
           "strength": 0.7
-        }
+        },
+        "program": "c00b818c04ca593493e52fb96598fa30"
       }
     },
     {
@@ -886,8 +886,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.glitch-note.content"
+        "content": "group.presentation-library.entry.glitch-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -895,8 +895,8 @@
       "type": "animation.stop",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-glitch-time",
-        "mode": "CompleteImmediately"
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "library-glitch-time"
       }
     },
     {
@@ -913,10 +913,10 @@
       "condition": "",
       "parameters": {
         "instanceId": "library-pixelate",
-        "program": "8a4f9dead06a50deaa7a806e549ab4c6",
         "parameters": {
           "blockSize": 24
-        }
+        },
+        "program": "8a4f9dead06a50deaa7a806e549ab4c6"
       }
     },
     {
@@ -924,8 +924,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.pixelate-note.content"
+        "content": "group.presentation-library.entry.pixelate-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -942,12 +942,12 @@
       "condition": "",
       "parameters": {
         "instanceId": "library-spotlight",
-        "program": "9ee6516aa64155bdbf9ac66c0e5197b2",
         "parameters": {
           "strength": 0.8,
           "radius": 0.25,
           "feather": 0.12
-        }
+        },
+        "program": "9ee6516aa64155bdbf9ac66c0e5197b2"
       }
     },
     {
@@ -955,8 +955,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.spotlight-note.content"
+        "content": "group.presentation-library.entry.spotlight-note.content",
+        "speaker": "guide"
       }
     },
     {

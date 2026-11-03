@@ -37,7 +37,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var wait = workspace.InsertEntriesInto(second, 0, 1, BuiltinEntryIds.Wait).Single();
             var baseline = wait.Parameters;
             using var page1 = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, first.Id);
-            using var page2 = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, second.Id);
+            using var page2 = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, second.Id); text.IsParametersExpanded = true; wait.IsParametersExpanded = true;
             var view1 = new EntryListEditorControl { DataContext = page1 }; var view2 = new EntryListEditorControl { DataContext = page2 };
             var window1 = new Window { Content = view1, Width = 1100, Height = 700 }; var window2 = new Window { Content = view2, Width = 1100, Height = 700 };
             window1.Show(); window2.Show(); Dispatcher.UIThread.RunJobs();

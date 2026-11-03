@@ -26,7 +26,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page };
             var window = new Window { Content = view, Width = 1000, Height = 1000 }; window.Show(); TimelinePump(window);
             try

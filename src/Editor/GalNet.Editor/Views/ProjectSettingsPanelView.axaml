@@ -10,7 +10,7 @@
     <UserControl.Styles><StyleInclude Source="/Controls/AuthorFormStyles.axaml" /></UserControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Name="ProjectSettingsTitle" Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
-                   FontSize="16" FontWeight="Bold"
+                   FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 

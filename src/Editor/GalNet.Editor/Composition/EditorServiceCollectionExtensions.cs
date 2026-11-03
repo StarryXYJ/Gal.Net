@@ -38,6 +38,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<ProjectSchemaSession>();
         services.AddScoped<ExternalGameDebugClient>();
         services.AddScoped<ProjectDebugPreparation>();
+        services.AddScoped<DebugContentHotReloadService>();
         services.AddScoped<ExternalDebugPanelViewModel>();
         services.AddScoped<IEntryCatalog>(sp => sp.GetRequiredService<ProjectSchemaSession>().Catalog);
         services.AddEditorCoreServices();
