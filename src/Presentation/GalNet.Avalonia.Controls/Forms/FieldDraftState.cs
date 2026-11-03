@@ -7,6 +7,8 @@ public sealed class FieldDraftState(Func<string> readSource)
 {
     private readonly List<Func<bool>> _guards = [];
     private bool _conflicted;
+    public bool IsSubmitting { get; private set; }
+    public int Revision { get; private set; }
     public bool CanCommit => _guards.All(guard => guard());
     public IDisposable RegisterGuard(Func<bool> canCommit)
     {
@@ -27,13 +29,29 @@ public sealed class FieldDraftState(Func<string> readSource)
     public void CheckSource() { if (IsConflicted) _conflicted = true; }
     public Func<Task<ValueIssue?>>? Commit { get; set; }
     public Func<FieldDescriptor, string, FieldDraftState>? Child { get; set; }
+    public async Task CommitPendingAsync()
+    {
+        if (IsSubmitting || !IsDirty || !CanCommit || Commit is null) return;
+        IsSubmitting = true;
+        var revision = Revision;
+        try
+        {
+            var issue = await Commit();
+            if (issue is not null && IsDirty && Revision == revision) Update(Text, true, issue, JsonText);
+        }
+        catch (Exception error)
+        {
+            if (IsDirty && Revision == revision) Update(Text, true, new("field.commit", error.Message), JsonText);
+        }
+        finally { IsSubmitting = false; }
+    }
     public event Action? Changed;
 
     public void Update(string text, bool dirty, ValueIssue? issue, bool jsonText)
     {
         if (Text == text && IsDirty == dirty && Equals(Issue, issue) && JsonText == jsonText) return;
         if (dirty && !IsDirty) Baseline = readSource();
-        Text = text; IsDirty = dirty; Issue = issue; JsonText = jsonText;
+        Text = text; IsDirty = dirty; Issue = issue; JsonText = jsonText; Revision++;
         if (!dirty) { Baseline = null; _conflicted = false; }
         Changed?.Invoke();
     }

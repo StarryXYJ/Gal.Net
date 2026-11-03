@@ -27,6 +27,81 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task PendingFieldCommitDoesNotSubmitTwiceOrReplaceNewerInput()
+    {
+        var gate = new TaskCompletionSource<GalNet.Core.Parameters.ValueIssue?>();
+        var state = new FieldDraftState(() => "source"); var calls = 0;
+        state.Update("first", true, null, false);
+        state.Commit = () => { calls++; return gate.Task; };
+        var pending = state.CommitPendingAsync();
+        await state.CommitPendingAsync();
+        state.Update("newer", true, null, false);
+        gate.SetResult(new("invalid", "old error")); await pending;
+        Assert.That(calls, Is.EqualTo(1));
+        Assert.That(state.Text, Is.EqualTo("newer"));
+        Assert.That(state.Issue, Is.Null);
+        Assert.That(state.IsDirty, Is.True);
+    }
+
+    [Test]
+    public async Task InspectorTextCommitsWhenAnotherEntryIsClicked()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "InspectorBlur"), "Blur", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var first = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Text).Single();
+            var second = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.Wait).Single();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            page.SelectedEntry = first;
+            using var inspector = new EntryInspectorViewModel(page);
+            var groupView = new GroupEditorPanelView { DataContext = page }; var details = new EntryInspectorView { DataContext = inspector };
+            var content = new Grid { ColumnDefinitions = new("*,400") }; content.Children.Add(groupView); Grid.SetColumn(details, 1); content.Children.Add(details);
+            var window = new Window { Content = content, Width = 1200, Height = 800 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var input = details.GetVisualDescendants().OfType<TextBox>().Single(box => box.Name == "GameTextInput");
+                input.Focus(); input.Text = "失焦提交正文";
+                var list = groupView.GetVisualDescendants().OfType<ListBox>().Single(box => box.Name == "ItemsListBox");
+                var row = (Control)list.ContainerFromItem(second)!;
+                var firstRow = (Control)list.ContainerFromItem(first)!;
+                Assert.That(firstRow.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("entryDelete")).Opacity, Is.EqualTo(1));
+                Assert.That(row.GetVisualDescendants().OfType<Button>().Single(button => button.Classes.Contains("entryDelete")).Opacity, Is.Zero);
+                var selectedSurface = firstRow.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("debugEntry"));
+                var otherSurface = row.GetVisualDescendants().OfType<Border>().Single(border => border.Classes.Contains("debugEntry"));
+                Assert.That(selectedSurface.Background, Is.Not.Null);
+                Assert.That(selectedSurface.Background, Is.Not.EqualTo(otherSurface.Background), "The selected entry remains identifiable behind its content.");
+                Click(window, row);
+                var texts = project.Services.GetRequiredService<GameTextAuthoringService>();
+                await PumpCharacterUi(() => first.Source.Parameters.TryGetValue("content", out var value) && texts.Read(value.GetString()!) == "失焦提交正文");
+                Assert.That(page.SelectedEntry, Is.SameAs(second));
+                var edits = project.Services.GetRequiredService<EntryEditSession>();
+                Assert.That(edits.PendingCount, Is.Zero);
+                var numericRow = details.GetVisualDescendants().OfType<FieldEditorRow>().Single(item => item.Context?.Field.Id == "duration");
+                var number = numericRow.GetVisualDescendants().OfType<NumericUpDown>().Single();
+                var numberInput = number.GetVisualDescendants().OfType<TextBox>().Single();
+                numberInput.Focus(); numberInput.Text = "invalid";
+                Click(window, (Control)list.ContainerFromItem(first)!);
+                Assert.That(edits.PendingCount, Is.EqualTo(1), "Invalid input remains recoverable after selecting another entry.");
+                Assert.That(edits.Pending.Single().State.Text, Is.EqualTo("invalid"));
+                Click(window, (Control)list.ContainerFromItem(second)!);
+                numericRow = details.GetVisualDescendants().OfType<FieldEditorRow>().Single(item => item.Context?.Field.Id == "duration");
+                number = numericRow.GetVisualDescendants().OfType<NumericUpDown>().Single();
+                numberInput = number.GetVisualDescendants().OfType<TextBox>().Single();
+                numberInput.Focus(); numberInput.Text = "250";
+                Click(window, (Control)list.ContainerFromItem(first)!);
+                await PumpCharacterUi(() => second.Source.Parameters.TryGetValue("duration", out var value) && value.ToString() == "250");
+                Assert.That(edits.PendingCount, Is.Zero);
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task UiuxVariableEditorsMountCompletionControlsAndSaveOtherValidDrafts()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
@@ -165,6 +240,20 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             }
             try
             {
+                void CheckInspectorRows(bool stacked)
+                {
+                    var rows = details.GetVisualDescendants().OfType<FieldEditorRow>().Where(row => row.IsEffectivelyVisible).ToArray();
+                    Assert.That(rows.Any(row => row.Context?.Field.Id == "duration"), Is.True);
+                    foreach (var row in rows.Where(row => row.Editor is not StructuredFieldEditor))
+                    {
+                        var label = row.GetVisualDescendants().OfType<ContentControl>().Single(item => item.Name == "FieldLabel");
+                        var editor = row.GetVisualDescendants().OfType<ContentControl>().Single(item => item.Name == "FieldEditor");
+                        Assert.That(Grid.GetRow(editor), Is.EqualTo(stacked ? 1 : 0));
+                        Assert.That(Grid.GetColumn(editor), Is.EqualTo(stacked ? 0 : 1));
+                        Assert.That(label.IsVisible, Is.True);
+                    }
+                }
+                CheckInspectorRows(false);
                 foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark, EditorThemeVariant.Violet, EditorThemeVariant.Aurora })
                 {
                     foreach (var animated in window.GetVisualDescendants().OfType<Avalonia.Animation.Animatable>()) animated.ClearValue(Avalonia.Animation.Animatable.TransitionsProperty);
@@ -189,6 +278,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     Capture("uiux-group-" + theme.Key + "-1200.png");
                 }
                 window.Width = 960; window.Height = 640; TimelinePump(window);
+                CheckInspectorRows(true);
                 Assert.That(groupView.GetVisualDescendants().OfType<SchemaForm>().SelectMany(form => form.Contexts).Any(context => context.Field.Id == "duration"), Is.True);
                 Capture("uiux-group-960.png");
                 window.Content = null;

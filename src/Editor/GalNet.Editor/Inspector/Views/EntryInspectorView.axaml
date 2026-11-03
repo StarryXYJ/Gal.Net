@@ -3,14 +3,18 @@
  xmlns:controls="using:GalNet.Editor.Controls" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
  x:Class="GalNet.Editor.Inspector.Views.EntryInspectorView" x:DataType="vm:EntryInspectorViewModel"
  Background="{DynamicResource SemiColorBackground0}" Foreground="{DynamicResource SemiColorText0}">
- <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/></UserControl.Styles>
+ <UserControl.Styles>
+  <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
+  <StyleInclude Source="avares://GalNet.Editor/Inspector/Views/InspectorFormStyles.axaml"/>
+ </UserControl.Styles>
  <Grid RowDefinitions="*,Auto,Auto">
  <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
   <StackPanel Margin="10" Spacing="8">
-   <SelectableTextBlock Text="{Binding TargetDescription}" TextWrapping="Wrap" FontWeight="SemiBold"/>
    <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasMultipleSelection}"><TextBlock Text="{loc:Localize Uiux.Entry.Selected}"/><TextBlock Text="{Binding SelectionCount}"/><TextBlock Text="{loc:Localize Uiux.Entry.ActiveOnly}"/></StackPanel>
-   <TextBlock Text="{loc:Localize Uiux.Entry.Condition}"/>
-   <controls:ConditionEditorControl Name="EntryConditionInput" Text="{Binding Entry.Condition}" Suggestions="{Binding Page.ConditionSuggestions}" ValidationVariables="{Binding Page.ValidationVariables}"/>
+   <forms:FieldEditorRow ShowActions="False">
+    <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Uiux.Entry.Condition}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+    <forms:FieldEditorRow.Editor><controls:ConditionEditorControl Name="EntryConditionInput" Text="{Binding Entry.Condition}" Suggestions="{Binding Page.ConditionSuggestions}" ValidationVariables="{Binding Page.ValidationVariables}"/></forms:FieldEditorRow.Editor>
+   </forms:FieldEditorRow>
    <TextBlock Text="{loc:Localize Entry.UnknownTypePreserved}" IsVisible="{Binding Entry.IsUnknownType}" TextWrapping="Wrap"/>
    <TextBlock Text="{loc:Localize Entry.UnknownParametersPreserved}" IsVisible="{Binding Entry.HasUnknownParameters}" TextWrapping="Wrap"/>
    <forms:DtoEditorHost Name="EntryDetails" Item="{Binding Form.Item}" Registry="{Binding FieldEditors}"/>

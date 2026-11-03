@@ -13,9 +13,12 @@
         <Style Selector="controls|EntryTypePicker">
             <Setter Property="MinWidth" Value="140" />
         </Style>
-        <Style Selector="Border.debugEntry"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
+        <Style Selector="Border.debugEntry"><Setter Property="Background" Value="{DynamicResource SemiColorBackground1}"/><Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/><Setter Property="BorderThickness" Value="1"/></Style>
+        <Style Selector="ListBoxItem:selected Border.debugEntry"><Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/></Style>
         <Style Selector="Border.debugEntry.debugCurrent"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorSuccess}"/><Setter Property="BorderThickness" Value="3"/></Style>
         <Style Selector="Border.pendingMove"><Setter Property="Opacity" Value="0.65"/></Style>
+        <Style Selector="Button.entryDelete"><Setter Property="Opacity" Value="0"/><Setter Property="IsHitTestVisible" Value="False"/><Setter Property="Focusable" Value="False"/></Style>
+        <Style Selector="ListBoxItem:pointerover Button.entryDelete, ListBoxItem:selected Button.entryDelete"><Setter Property="Opacity" Value="1"/><Setter Property="IsHitTestVisible" Value="True"/><Setter Property="Focusable" Value="True"/></Style>
         <Style Selector="Button.entryProblems"><Setter Property="Foreground" Value="{DynamicResource SemiColorWarning}"/></Style>
         <Style Selector="Button.entryProblems.error"><Setter Property="Foreground" Value="{DynamicResource SemiColorDanger}"/></Style>
     </controls:ReorderableListControl.Styles>
@@ -26,9 +29,12 @@
                 <Button Name="CancelEntryMove" Content="{loc:Localize Entry.MoveCancel}" Command="{Binding CancelPendingMoveCommand}" IsVisible="{Binding HasPendingMove}" Margin="0,0,6,0"/>
             </StackPanel>
             <TextBox Width="170" Text="{Binding SearchText}" PlaceholderText="{loc:Localize Uiux.Entry.Search}" Margin="0,0,6,0" />
-            <controls:EntryTypePicker x:Name="InsertPicker" ButtonLabel="{loc:Localize Entry.Add}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" Margin="0,0,6,0" />
-            <controls:EntryTypePicker x:Name="AppendPicker" ButtonLabel="{loc:Localize Entry.AppendBatch}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" TypeConfirmed="OnAppendTypeConfirmed" Margin="0,0,6,0" />
-            <NumericUpDown x:Name="BatchCount" Width="90" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" Margin="0,0,6,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}" />
+            <controls:EntryTypePicker x:Name="InsertPicker" MinWidth="0" ButtonLabel="{loc:Localize Entry.Add}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" Opened="OnInsertPickerOpened" Closed="OnInsertPickerClosed" TypeConfirmed="OnInsertTypeConfirmed" Margin="0,0,6,0" />
+            <controls:EntryTypePicker x:Name="AppendPicker" MinWidth="0" ButtonLabel="{loc:Localize Entry.AppendBatch}" Options="{Binding EntryTypes}" ShortcutService="{Binding ShortcutService}" TypeConfirmed="OnAppendTypeConfirmed" Margin="0,0,6,0" />
+            <StackPanel Orientation="Horizontal" Margin="0,0,6,0">
+                <TextBlock Text="{loc:Localize Uiux.Entry.Count}" VerticalAlignment="Center" Margin="0,0,4,0" ToolTip.Tip="{loc:Localize Entry.BatchCount}"/>
+                <NumericUpDown x:Name="BatchCount" Width="72" Minimum="1" Maximum="1000" Increment="1" FormatString="0" Value="{Binding BatchAddCount,Mode=TwoWay}" ToolTip.Tip="{loc:Localize Entry.BatchCount}" AutomationProperties.Name="{loc:Localize Entry.BatchCount}" />
+            </StackPanel>
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.ExpandAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.ExpandAll}" Command="{Binding ExpandAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronDownRegular}"/></Button>
             <Button Theme="{DynamicResource EditorIconButton}" ToolTip.Tip="{loc:Localize Uiux.Entry.CollapseAll}" AutomationProperties.Name="{loc:Localize Uiux.Entry.CollapseAll}" Command="{Binding CollapseAllCommand}" Margin="0,0,6,0"><PathIcon Width="16" Height="16" Data="{StaticResource ChevronUpRegular}"/></Button>
         </WrapPanel>
@@ -48,11 +54,10 @@
                             Classes.pendingMove="{Binding IsPendingMove}"
                             Classes.debugCurrent="{Binding IsDebugCurrent}"
                             Padding="6"
-                            Background="{DynamicResource SemiColorBackground1}"
                             CornerRadius="6">
                         <StackPanel>
                         <!-- Match the field editors' 130-DIP label column plus 8-DIP spacing. -->
-                        <Grid ColumnDefinitions="24,98,Auto,*,Auto,Auto"
+                        <Grid ColumnDefinitions="24,98,Auto,*,Auto,32"
                               ColumnSpacing="8">
                             <Border Padding="6,0"
                                     VerticalAlignment="Center"
@@ -97,6 +102,7 @@
                                 </Grid>
                             </ToggleButton>
                             <Button Grid.Column="5"
+                                    Classes="entryDelete"
                                     Theme="{DynamicResource EditorIconButton}"
                                     ToolTip.Tip="{loc:Localize Entry.Remove}"
                                     AutomationProperties.Name="{loc:Localize Entry.Remove}"

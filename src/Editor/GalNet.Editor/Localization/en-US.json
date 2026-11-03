@@ -725,6 +725,7 @@
   "Files.New": "Create",
   "Files.ClearSearch": "Clear search",
   "Entry.SearchTypes": "Search entry types",
+  "Uiux.Entry.Count": "Count",
   "Entry.BatchCount": "Number of entries to add or append",
   "Entry.AnchorMissing": "The insertion target was removed. Select it again.",
   "Entry.Type.dialogue.text": "Text",

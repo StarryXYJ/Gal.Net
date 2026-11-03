@@ -1,18 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+ xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
  x:Class="GalNet.Editor.Inspector.Views.ResourceMetadataEditor" x:DataType="vm:ResourceMetadataEditorViewModel">
  <StackPanel Spacing="6" IsEnabled="{Binding !Busy}">
-  <TextBlock Text="{loc:Localize Resource.Name}" />
-  <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-   <TextBox Text="{Binding Name, Mode=TwoWay}" LostFocus="OnCommit" />
-   <Button Grid.Column="1" Content="{loc:Localize Resource.Translate}" Command="{Binding TranslateCommand}" />
-  </Grid>
-  <TextBlock Text="{loc:Localize Resource.GalleryId}" />
-  <TextBox Text="{Binding UnlockId, Mode=TwoWay}" PlaceholderText="{loc:Localize Resource.GalleryEmpty}" LostFocus="OnCommit" />
+  <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Resource.Name}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor>
+   <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6"><TextBox Text="{Binding Name, Mode=TwoWay}" LostFocus="OnCommit" /><Button Grid.Column="1" Content="{loc:Localize Resource.Translate}" Command="{Binding TranslateCommand}" /></Grid>
+  </forms:FieldEditorRow.Editor></forms:FieldEditorRow>
+  <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Resource.GalleryId}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><TextBox Text="{Binding UnlockId, Mode=TwoWay}" PlaceholderText="{loc:Localize Resource.GalleryEmpty}" LostFocus="OnCommit" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
   <TextBlock Text="{loc:Localize Resource.GalleryHelp}" FontSize="12" Foreground="{DynamicResource SemiColorText2}" TextWrapping="Wrap" />
   <StackPanel IsVisible="{Binding IsGroup}" Spacing="6">
-   <TextBlock Text="{loc:Localize Resource.Cover}" />
-   <ComboBox ItemsSource="{Binding CoverOptions}" SelectedItem="{Binding SelectedCover}" LostFocus="OnCommit" HorizontalAlignment="Stretch" />
+   <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Resource.Cover}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox ItemsSource="{Binding CoverOptions}" SelectedItem="{Binding SelectedCover}" LostFocus="OnCommit" HorizontalAlignment="Stretch" /></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
   </StackPanel>
   <TextBlock Text="{Binding Error}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}" TextWrapping="Wrap" />
  </StackPanel>

@@ -725,6 +725,7 @@
   "Files.New": "新規作成",
   "Files.ClearSearch": "検索をクリア",
   "Entry.SearchTypes": "エントリの種類を検索",
+  "Uiux.Entry.Count": "数量",
   "Entry.BatchCount": "挿入・追加するエントリ数",
   "Entry.AnchorMissing": "挿入位置が削除されました。選び直してください。",
   "Entry.Type.dialogue.text": "テキスト",

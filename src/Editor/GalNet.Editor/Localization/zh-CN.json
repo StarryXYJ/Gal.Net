@@ -725,6 +725,7 @@
   "Files.New": "新建",
   "Files.ClearSearch": "清空搜索",
   "Entry.SearchTypes": "搜索条目类型",
+  "Uiux.Entry.Count": "数量",
   "Entry.BatchCount": "添加或追加的条目数量",
   "Entry.AnchorMissing": "插入位置已被删除，请重新选择。",
   "Entry.Type.dialogue.text": "文本",

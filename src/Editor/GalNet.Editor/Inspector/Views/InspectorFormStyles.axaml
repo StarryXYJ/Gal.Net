@@ -1,0 +1,6 @@
+<Styles xmlns="https://github.com/avaloniaui" xmlns:forms="using:GalNet.Game.Controls.Forms">
+ <Style Selector="forms|FieldEditorRow">
+  <Setter Property="NarrowWidth" Value="300"/>
+  <Setter Property="LabelWidth" Value="110"/>
+ </Style>
+</Styles>

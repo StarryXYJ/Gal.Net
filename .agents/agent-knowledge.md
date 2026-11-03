@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [Inspector 切换先于失焦提交](lessons/L-20261103-03-entry-inspector-click-before-blur.md)：Group pointer tunnel 可先释放旧表单；点击字段外时先由项目草稿提交，保留组字/冲突保护和异步新输入。
 - [调试热重载由内容发布自动触发](lessons/L-20261103-02-debug-hot-reload-publication-trigger.md)：已保存/原子发布的作者内容变化自动构建、分类并提示；顶部菜单和面板按钮只是手动重试入口。历史事务的 Committed 回调仍在捕获锁内，需投递到事务退出后再构建。
 - [调试内容更新用对象状态而非版本协议](lessons/L-20261103-01-debug-update-object-state.md)：本地完整候选热更新由 Editor applied/pending 与客户端 run/latest 对象引用表达；run/generation/位置负责原子安全。不要预加内容 revision、响应对账、请求序号、退休上限或资源依赖图。
 - 2026-11-02 Sample P9：一级设置分类选中改半粗体、无持续底色，保留GroupHeadingSize；设备Tab用Action字号/常规字重/浅灰选中底，正文零Padding。此规则局部替代P8的Tab禁加粗，工具栏仍不加粗或下划线。Sample模板预留半粗体宽度防止英文标题切换位移；共享默认标题用DataTemplates允许样式覆盖。141项回归通过，见[总结](../features/F-20261102-06-player-layout-polish/summary.md)。
