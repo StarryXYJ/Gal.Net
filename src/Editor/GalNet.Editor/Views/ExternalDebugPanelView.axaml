@@ -71,7 +71,7 @@
   <Expander Grid.Row="1" Header="{loc:Localize Debug.Configuration}" Margin="8,4" HorizontalAlignment="Stretch">
    <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8" Margin="0,4,0,8">
     <StackPanel Spacing="4"><TextBlock Text="{loc:Localize Debug.Executable}" FontSize="{DynamicResource Editor.Font.Detail}"/>
-     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4"><TextBox Text="{Binding Executable}" MinWidth="0" ToolTip.Tip="{Binding Executable}"/>
+     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4"><TextBox Text="{Binding Executable}" GotFocus="OnApplicationFocus" LostFocus="OnApplicationLostFocus" MinWidth="0" ToolTip.Tip="{Binding Executable}"/>
       <Button Theme="{StaticResource DebugIconButton}" Command="{Binding BrowseCommand}"  Grid.Column="1" ToolTip.Tip="{loc:Localize Debug.Executable}" AutomationProperties.Name="{loc:Localize Debug.Executable}"><PathIcon Data="{StaticResource DebugBrowseIcon}"/></Button>
      </Grid>
     </StackPanel>

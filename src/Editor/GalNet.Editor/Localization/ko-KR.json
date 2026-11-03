@@ -1,4 +1,9 @@
 {
+  "Settings.DefaultApplication": "기본 게임 앱",
+  "Settings.DefaultContracts": "기본 계약 디렉터리",
+  "Settings.OfferDefaultApplication": "이 앱을 편집기 기본 앱으로 설정할까요?",
+  "Common.Yes": "예",
+  "Common.No": "아니요",
   "Entry.Type.text.card": "텍스트 카드",
   "Entry.Type.audio.duck": "음성 더킹",
   "Entry.Type.preset.mask": "형상 마스크 / 눈 깜박임 / 레터박스",

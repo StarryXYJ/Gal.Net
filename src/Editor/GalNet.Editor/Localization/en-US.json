@@ -1,4 +1,9 @@
 {
+  "Settings.DefaultApplication": "Default game app",
+  "Settings.DefaultContracts": "Default contracts directory",
+  "Settings.OfferDefaultApplication": "Also use this app as the editor default?",
+  "Common.Yes": "Yes",
+  "Common.No": "No",
   "Entry.Type.text.card": "Text card",
   "Entry.Type.audio.duck": "Voice ducking",
   "Entry.Type.preset.mask": "Shape mask / blink / letterbox",

@@ -19,6 +19,7 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
     private readonly IProjectService _projectService;
     private readonly IEditorPageFactory _editorPageFactory;
     private readonly IFileDialogService _dialogs;
+    private readonly IEditorSettingsService _settings;
 
     [ObservableProperty]
     private string _projectName = "NewGalProject";
@@ -70,13 +71,16 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
         INavigationService navigation,
         IProjectService projectService,
         IEditorPageFactory editorPageFactory,
-        IFileDialogService dialogs, IEditorLocalizationService localization)
+        IFileDialogService dialogs, IEditorLocalizationService localization, IEditorSettingsService settings)
     {
         _navigation = navigation;
         _projectService = projectService;
         _editorPageFactory = editorPageFactory;
         _dialogs = dialogs;
+        _settings = settings;
         _localization = localization;
+        ContractsDirectory = settings.GetSettings().DefaultContractsDirectory ?? "";
+        ApplicationPath = settings.GetSettings().DefaultApplicationPath ?? "";
         _localization.PropertyChanged += OnCultureChanged;
         Title = _localization["Startup.NewProject"];
     }
@@ -130,11 +134,13 @@ public partial class NewProjectPanelViewModel : PageViewModelBase, IDisposable
         }
     }
 
+    public Task OfferDefaultApplicationAsync() => DefaultApplicationPrompt.OfferAsync(_settings, _localization, ApplicationPath);
+
     [RelayCommand]
     private async Task BrowseApplicationAsync()
     {
         var selected = await _dialogs.OpenFilePickerAsync(_localization["NewProject.BrowseApplication"], false);
-        if (selected.Count > 0) ApplicationPath = selected[0];
+        if (selected.Count > 0) { ApplicationPath = selected[0]; await DefaultApplicationPrompt.OfferAsync(_settings, _localization, selected[0]); }
     }
 
     [RelayCommand]

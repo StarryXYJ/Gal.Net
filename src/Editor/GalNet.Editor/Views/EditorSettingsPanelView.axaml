@@ -37,6 +37,10 @@
                   <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.FontSize}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
                   <forms:FieldEditorRow.Editor><NumericUpDown Name="EditorFontSize" Minimum="10" Maximum="18" Increment="1" FormatString="0" Width="120" HorizontalAlignment="Left" Value="{Binding FontSize, Mode=TwoWay}"/></forms:FieldEditorRow.Editor>
                 </forms:FieldEditorRow>
+                <TextBlock Text="{loc:Localize Settings.DefaultApplication}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox Text="{Binding DefaultApplicationPath}" /><Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseDefaultApplicationCommand}" /></Grid>
+                <TextBlock Text="{loc:Localize Settings.DefaultContracts}" />
+                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox Text="{Binding DefaultContractsDirectory}" /><Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseDefaultContractsCommand}" /></Grid>
                 <CheckBox Name="ExpandNewEntries" Content="{loc:Localize Settings.ExpandNewEntries}" IsChecked="{Binding ExpandNewEntries,Mode=TwoWay}"/>
                 <!-- Auto-save is intentionally forced on for the current editor experience. -->
 

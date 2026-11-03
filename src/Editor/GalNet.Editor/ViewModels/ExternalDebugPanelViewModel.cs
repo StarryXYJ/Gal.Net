@@ -270,11 +270,19 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             }
         }
     }
+    public Task OfferDefaultApplicationAsync() => _projects.Current?.Services.GetService<IEditorSettingsService>() is { } settings
+        ? DefaultApplicationPrompt.OfferAsync(settings, L, Executable) : Task.CompletedTask;
+
     [RelayCommand]
     private async Task BrowseAsync()
     {
         var selected = await _files.OpenFilePickerAsync(L["Debug.Executable"], false);
-        if (selected.FirstOrDefault() is { } path) Executable = path;
+        if (selected.FirstOrDefault() is { } path)
+        {
+            Executable = path;
+            if (_projects.Current?.Services.GetService<IEditorSettingsService>() is { } settings)
+                await DefaultApplicationPrompt.OfferAsync(settings, L, path);
+        }
     }
     [RelayCommand]
     private void SaveConfiguration()

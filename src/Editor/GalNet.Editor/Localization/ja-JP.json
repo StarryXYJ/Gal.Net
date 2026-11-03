@@ -1,4 +1,9 @@
 {
+  "Settings.DefaultApplication": "既定のゲームアプリ",
+  "Settings.DefaultContracts": "既定の契約ディレクトリ",
+  "Settings.OfferDefaultApplication": "このアプリをエディターの既定に設定しますか？",
+  "Common.Yes": "はい",
+  "Common.No": "いいえ",
   "Entry.Type.text.card": "テキストカード",
   "Entry.Type.audio.duck": "音声ダッキング",
   "Entry.Type.preset.mask": "形状マスク／瞬き／黒帯",

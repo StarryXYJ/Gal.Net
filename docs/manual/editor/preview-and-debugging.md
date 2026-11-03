@@ -6,6 +6,8 @@ Editor 的旧内嵌 Preview 已移除，游戏测试统一使用本页的外部�
 
 ## Editor 操作
 
+编辑器设置可保存默认游戏 App 和契约目录，选择 App 时会尝试自动定位契约，也可以手动指定。新建项目会预填这些默认值，并允许单独修改。项目中选择 App 时，如果编辑器默认 App 未设置或文件已不存在，会询问是否设为默认；已有项目的契约和启动配置不会随默认值改变。
+
 新建项目时，可以在契约目录上方选择游戏 App EXE。契约框为空时自动定位配套契约；创建项目只复制契约及其托管依赖，并自动保存所选 App 为调试可执行文件。手动填写的契约目录会保留。找不到或找到多份契约时需手动指定，不会静默改用默认契约。
 
 仓库中 Debug 构建 Sample 后，可直接选择 `src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/bin/Debug/net10.0/GalNet.Sample.CrossPlatform.Desktop.exe`，无需先运行契约导出脚本。普通构建读取 EXE 同级 DLL，当前发行包读取同级 `lib/`。联调发行包使用 Developer 构建；选择 App 不会自动为玩家包启用调试。之后重建若改变契约字节，仍需同步项目 `Contracts/` 并重新打开项目。

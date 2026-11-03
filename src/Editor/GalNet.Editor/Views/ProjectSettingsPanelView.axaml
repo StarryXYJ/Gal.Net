@@ -44,7 +44,7 @@
                 <TextBlock Text="{loc:Localize Debug.Configuration}" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <StackPanel Spacing="6">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                            <TextBox Text="{Binding DebugExecutable}" PlaceholderText="{loc:Localize Debug.Executable}"/>
+                            <TextBox Text="{Binding DebugExecutable}" GotFocus="OnApplicationFocus" LostFocus="OnApplicationLostFocus" PlaceholderText="{loc:Localize Debug.Executable}"/>
                             <Button Grid.Column="1" Content="…" Command="{Binding BrowseDebugExecutableCommand}" ToolTip.Tip="{loc:Localize Debug.Executable}"/>
                         </Grid>
                         <TextBox Text="{Binding DebugArguments}" PlaceholderText="{loc:Localize Debug.Arguments}" AcceptsReturn="True" MinHeight="50"/>

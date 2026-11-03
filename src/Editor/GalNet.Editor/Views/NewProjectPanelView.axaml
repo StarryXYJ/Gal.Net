@@ -22,7 +22,7 @@
 
             <TextBlock Text="{loc:Localize NewProject.Application}" />
             <Grid ColumnDefinitions="*,Auto">
-                <TextBox Name="ApplicationPathInput" Text="{Binding ApplicationPath}" PlaceholderText="{loc:Localize NewProject.ApplicationHint}" />
+                <TextBox Name="ApplicationPathInput" Text="{Binding ApplicationPath}" GotFocus="OnApplicationFocus" LostFocus="OnApplicationLostFocus" PlaceholderText="{loc:Localize NewProject.ApplicationHint}" />
                 <Button Name="BrowseApplicationButton" Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseApplicationCommand}" Margin="8,0,0,0" />
             </Grid>
 

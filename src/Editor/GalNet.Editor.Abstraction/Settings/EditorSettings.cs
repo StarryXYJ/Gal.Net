@@ -36,6 +36,9 @@ public sealed class EditorSettings
     /// <summary>最近项目列表最大保留数</summary>
     public int MaxRecentProjects { get; set; } = 10;
 
+    public string DefaultApplicationPath { get; set; } = "";
+    public string DefaultContractsDirectory { get; set; } = "";
+
     public bool AutoSaveProject { get; set; } = true;
 
     /// <summary>Whether newly inserted Group entries show their parameter fields.</summary>

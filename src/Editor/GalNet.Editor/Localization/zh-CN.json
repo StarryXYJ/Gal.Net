@@ -1,4 +1,9 @@
 {
+  "Settings.DefaultApplication": "默认游戏 App",
+  "Settings.DefaultContracts": "默认契约目录",
+  "Settings.OfferDefaultApplication": "是否同时将此 App 设为编辑器默认 App？",
+  "Common.Yes": "是",
+  "Common.No": "否",
   "Entry.Type.text.card": "文本卡",
   "Entry.Type.audio.duck": "语音压低背景声",
   "Entry.Type.preset.mask": "形状遮罩／眨眼／黑边",
