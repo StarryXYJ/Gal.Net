@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [调试清单拓扑摘要边界](lessons/L-20261103-01-debug-manifest-topology-digest.md)：Graph 拓扑摘要必须排除节点名称/坐标/源路径和 Group Entry 内容；真实构建回归应分别证明作者表现变化不改摘要、节点/边变化会改摘要，避免安全热更新被误升为重开。
 - 2026-11-02 Sample P9：一级设置分类选中改半粗体、无持续底色，保留GroupHeadingSize；设备Tab用Action字号/常规字重/浅灰选中底，正文零Padding。此规则局部替代P8的Tab禁加粗，工具栏仍不加粗或下划线。Sample模板预留半粗体宽度防止英文标题切换位移；共享默认标题用DataTemplates允许样式覆盖。141项回归通过，见[总结](../features/F-20261102-06-player-layout-polish/summary.md)。
 - 2026-11-02 手柄导航：Start 进入/退出工具栏，动态几何循环，不写死按钮/列数；GameShell.SetNavigationScope 显式交接壳外模态，Sample 标记 PlayerNavigation.IsToolbar/IsDefault/IsTarget。ChoiceList 高亮不提交，确认/指针点击才提交；共享字段下拉预览须阻断写入。见 [实现记录](../features/F-20261102-07-gamepad-navigation/design.md) 与 [焦点/提交 lesson](lessons/L-20261102-12-choice-focus-and-commit.md)。
 - 2026-11-02 Sample P8：设置Tab零水平Padding、项间距24，首项文字与页标题对齐；Tab/游戏工具栏交互只变背景，不加下划线或加粗。普通按钮hover/pressed为轻/重中性灰，保持文字；Mono主按钮按下不再近黑。工具栏固定浅色字、灰底反馈、保留键盘边框；合并旧重复样式，取消Fluent继承的按压缩放及过渡。137项回归通过。见 [总结](../features/F-20261102-06-player-layout-polish/summary.md)与[基础主题变换经验](lessons/L-20261102-11-inherited-button-press-motion.md)。

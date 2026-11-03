@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Contracts.Builtins.Gallery;
@@ -59,12 +60,41 @@ public sealed class ProjectContentBuilderTests
             Assert.That(first.Manifest.Groups.Single().Entries.Single().ContentSha256, Has.Length.EqualTo(64));
         });
 
+        var graphPath = Path.Combine(_root, "Graph", "graph.json");
+        var layout = JsonNode.Parse(await File.ReadAllTextAsync(graphPath))!;
+        layout["nodes"]![0]!["name"] = "Renamed in Editor";
+        layout["nodes"]![0]!["x"] = 120;
+        await File.WriteAllTextAsync(graphPath, layout.ToJsonString());
+        var layoutChanged = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
+        Assert.That(layoutChanged.Manifest!.GraphSha256, Is.EqualTo(first.Manifest.GraphSha256),
+            "Editor-only Graph presentation must not be mistaken for runtime topology.");
+
         var source = Path.Combine(_root, "Graph", "groups", "source.rawgalgroup");
         await File.WriteAllTextAsync(source, (await File.ReadAllTextAsync(source)).Replace(
             "\"parameters\"", "\"condition\": \"true\", \"parameters\"", StringComparison.Ordinal));
         var changed = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
         Assert.That(changed.OutputPath, Is.Not.EqualTo(first.OutputPath));
         Assert.That(Directory.Exists(first.OutputPath), Is.True);
+        Assert.That(changed.Manifest!.GraphSha256, Is.EqualTo(first.Manifest.GraphSha256),
+            "Entry content must not be mistaken for Graph topology.");
+
+        var graph = JsonNode.Parse(await File.ReadAllTextAsync(graphPath))!;
+        graph["nodes"]!.AsArray().Add(new JsonObject
+        {
+            ["id"] = "ending", ["type"] = "Group", ["name"] = "Ending", ["file"] = "groups/ending.rawgalgroup"
+        });
+        graph["edges"]!.AsArray().Add(new JsonObject
+        {
+            ["id"] = "edge", ["fromNodeId"] = "opening", ["fromOutlet"] = 0, ["toNodeId"] = "ending"
+        });
+        await File.WriteAllTextAsync(graphPath, graph.ToJsonString());
+        await File.WriteAllTextAsync(Path.Combine(_root, "Graph", "groups", "ending.rawgalgroup"), """
+            { "version": 2, "kind": "Raw", "entries": [
+              { "id": "ending", "type": "dialogue.text", "parameters": { "speaker": "guide", "content": "group.opening.entry.line.content" } }
+            ] }
+            """);
+        var topologyChanged = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
+        Assert.That(topologyChanged.Manifest!.GraphSha256, Is.Not.EqualTo(first.Manifest.GraphSha256));
     }
 
     [Test]
