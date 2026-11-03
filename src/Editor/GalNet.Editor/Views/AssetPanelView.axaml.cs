@@ -45,7 +45,7 @@ public partial class AssetPanelView : UserControl
     {
         if (sender is not Control { DataContext: ProjectFileItem item } control || DataContext is not AssetPanelViewModel vm) return;
         var properties = args.GetCurrentPoint(control).Properties;
-        if (properties.IsRightButtonPressed) vm.Select(item);
+        if (properties.IsRightButtonPressed && !vm.SelectedEntries.Contains(item)) vm.Select(item);
         if (!properties.IsLeftButtonPressed || !item.CanEdit) return;
         var paths = vm.SelectedEntries.Contains(item) ? vm.SelectedEntries.Select(entry => entry.Path).ToArray() : [item.Path];
         _pending = (args, args.GetPosition(this), paths);

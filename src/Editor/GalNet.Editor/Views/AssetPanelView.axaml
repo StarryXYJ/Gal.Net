@@ -57,13 +57,15 @@
       <ListBox x:Name="FileGrid" Grid.Column="2" ItemsSource="{Binding Entries}" SelectionMode="Multiple" SelectedItems="{Binding SelectedEntries,Mode=OneWay}" DragDrop.AllowDrop="True" DragDrop.DragOver="OnGridDragOver" DragDrop.Drop="OnGridDrop">
         <ListBox.Styles><Style Selector="ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/></Style></ListBox.Styles>
         <ListBox.ContextMenu><ContextMenu>
-          <MenuItem Header="{loc:Localize Files.Import}" Command="{Binding ImportCommand}" />
           <MenuItem Header="{loc:Localize Asset.Menu.Paste}" Command="{Binding PasteCommand}" />
+          <Separator />
           <MenuItem Header="{loc:Localize Files.New}">
             <MenuItem Header="{loc:Localize Asset.Menu.NewFolder}" Command="{Binding NewFolderCommand}" />
             <MenuItem Header="{loc:Localize Files.NewText}" Command="{Binding NewFileCommand}" />
             <MenuItem Header="{loc:Localize Variants.New}" Command="{Binding NewVariantsCommand}" />
           </MenuItem>
+          <MenuItem Header="{loc:Localize Files.Import}" Command="{Binding ImportCommand}" />
+          <Separator />
           <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding RefreshCommand}" />
           <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding ShowInExplorerCommand}" />
         </ContextMenu></ListBox.ContextMenu>
@@ -72,24 +74,27 @@
           <Border Width="{Binding #Root.DataContext.ItemWidth}" Height="{Binding #Root.DataContext.ItemHeight}" Margin="2" Padding="5" ToolTip.Tip="{Binding Name}" DoubleTapped="OnEntryDoubleTapped" PointerPressed="OnEntryPressed" PointerMoved="OnEntryMoved" DragDrop.AllowDrop="True" DragDrop.DragOver="OnTargetDragOver" DragDrop.DragLeave="OnTargetDragLeave" DragDrop.Drop="OnTargetDrop">
             <Border.ContextMenu><ContextMenu>
               <MenuItem Header="{loc:Localize Asset.Menu.Open}" Command="{Binding #Root.DataContext.OpenCommand}" CommandParameter="{Binding}" />
-              <MenuItem Header="{loc:Localize Asset.Menu.Rename}" Command="{Binding #Root.DataContext.BeginRenameCommand}" CommandParameter="{Binding}" IsEnabled="{Binding #Root.DataContext.CanRename}" />
-              <MenuItem Header="{loc:Localize Asset.Menu.Copy}" Command="{Binding #Root.DataContext.CopySelectedCommand}" IsEnabled="{Binding #Root.DataContext.CanChangeSelection}" />
+              <Separator />
               <MenuItem Header="{loc:Localize Asset.Menu.Cut}" Command="{Binding #Root.DataContext.CutSelectedCommand}" IsEnabled="{Binding #Root.DataContext.CanChangeSelection}" />
+              <MenuItem Header="{loc:Localize Asset.Menu.Copy}" Command="{Binding #Root.DataContext.CopySelectedCommand}" IsEnabled="{Binding #Root.DataContext.CanChangeSelection}" />
               <MenuItem Header="{loc:Localize Asset.Menu.Paste}" Command="{Binding #Root.DataContext.PasteCommand}" />
               <MenuItem Header="{loc:Localize Files.Duplicate}" Command="{Binding #Root.DataContext.DuplicateCommand}" IsEnabled="{Binding #Root.DataContext.CanChangeSelection}" />
-              <MenuItem Header="{loc:Localize Files.Import}" Command="{Binding #Root.DataContext.ImportCommand}" />
+              <Separator />
               <MenuItem Header="{loc:Localize Files.New}">
                 <MenuItem Header="{loc:Localize Asset.Menu.NewFolder}" Command="{Binding #Root.DataContext.NewFolderCommand}" />
                 <MenuItem Header="{loc:Localize Files.NewText}" Command="{Binding #Root.DataContext.NewFileCommand}" />
                 <MenuItem Header="{loc:Localize Variants.New}" Command="{Binding #Root.DataContext.NewVariantsCommand}" />
               </MenuItem>
-              <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding #Root.DataContext.RefreshCommand}" />
+              <MenuItem Header="{loc:Localize Files.Import}" Command="{Binding #Root.DataContext.ImportCommand}" />
               <Separator />
+              <MenuItem Header="{loc:Localize Asset.Menu.Rename}" Command="{Binding #Root.DataContext.BeginRenameCommand}" CommandParameter="{Binding}" IsEnabled="{Binding #Root.DataContext.CanRename}" />
               <MenuItem Header="{loc:Localize Asset.Menu.Delete}" Command="{Binding #Root.DataContext.DeleteSelectedCommand}" IsEnabled="{Binding #Root.DataContext.CanChangeSelection}" />
+              <Separator />
               <MenuItem Header="{loc:Localize Asset.Menu.OpenInExplorer}" Command="{Binding #Root.DataContext.ShowInExplorerCommand}" CommandParameter="{Binding}" />
+              <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding #Root.DataContext.RefreshCommand}" />
             </ContextMenu></Border.ContextMenu>
             <Grid RowDefinitions="*,Auto">
-              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><PathIcon Data="{Binding IconGeometry}" Width="38" Height="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
+              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><PathIcon Data="{Binding IconGeometry}" IsVisible="{Binding !HasThumbnail}" Width="38" Height="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
               <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding #Root.DataContext.IsListView}"><PathIcon Data="{Binding IconGeometry}" Width="16" Height="16"/><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SemiColorText2}" FontSize="{DynamicResource Editor.Font.Caption}"/></StackPanel>
               <TextBlock Grid.Row="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" IsVisible="{Binding !IsRenaming}" />
               <TextBox Grid.Row="1" Text="{Binding #Root.DataContext.RenameText,Mode=TwoWay}" IsVisible="{Binding IsRenaming}" AttachedToVisualTree="OnRenameAttached" PropertyChanged="OnRenamePropertyChanged" KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />
