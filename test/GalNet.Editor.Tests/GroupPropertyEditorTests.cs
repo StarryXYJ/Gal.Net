@@ -396,6 +396,21 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }
     }
 
+    [TestCase("{}")]
+    [TestCase("[]")]
+    [TestCase("{\"a\":null}")]
+    [TestCase("[1,\"two\"]")]
+    public void UntypedUninferableValuesKeepTheExistingSourceEditor(string value)
+    {
+        var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding(value);
+        var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+        using var context = new FieldEditorContext(field, binding, registry);
+        using var lease = registry.Resolve(field)(context);
+        Assert.That(lease.Control, Is.TypeOf<TextBox>());
+        Assert.That(((TextBox)lease.Control).Text, Is.EqualTo(value));
+        Assert.That(binding.Commits, Is.Zero);
+    }
+
     [Test]
     public async Task UntypedHomogeneousListUsesStructuredRowsAndKeepsOtherValues()
     {

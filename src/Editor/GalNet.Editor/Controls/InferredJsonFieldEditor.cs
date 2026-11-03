@@ -48,6 +48,7 @@ internal static class InferredJsonFieldEditor
                     if (fields.Count >= 200 || string.IsNullOrWhiteSpace(property.Name) || !names.Add(property.Name) || Infer(property.Value, depth + 1) is not { } member) return null;
                     fields.Add(new(property.Name, member, labelKey: property.Name));
                 }
+                if (fields.Count == 0) return null;
                 return new ValueDescriptor(typeof(JsonElement)).WithStructure(ValueStructure.Object(fields));
             }
             default: return null;
