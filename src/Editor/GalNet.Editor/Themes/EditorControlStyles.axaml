@@ -6,6 +6,12 @@
   </Style>
   <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/></Style>
   <Style Selector="SelectableTextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/></Style>
+  <Style Selector="ToolTip">
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
   <Style Selector="TextBox">
     <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
     <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
