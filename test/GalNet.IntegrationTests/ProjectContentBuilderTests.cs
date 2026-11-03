@@ -7,6 +7,7 @@ using GalNet.Core.Entry;
 using GalNet.Core.Graph;
 using GalNet.Editor.Shared.Services;
 using GalNet.Storage.FileSystem;
+using GalNet.Debugging;
 
 namespace GeneralTest.Editor;
 
@@ -38,6 +39,32 @@ public sealed class ProjectContentBuilderTests
         await File.WriteAllTextAsync(Path.Combine(_root, "Graph", "groups", "source.rawgalgroup"), "changed after build");
         Assert.That(result.AuthorSignature, Is.EqualTo(signature));
         Assert.That(result.AuthorSignature, Has.Length.EqualTo(64));
+    }
+
+    [Test]
+    public async Task DebugRevisionBuildsImmutableReusableDirectories()
+    {
+        await WriteProjectAsync("groups/source.rawgalgroup", "opening");
+        var builder = new ProjectContentBuilder(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()));
+
+        var first = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
+        var second = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(second.OutputPath, Is.EqualTo(first.OutputPath));
+            Assert.That(first.Manifest, Is.Not.Null);
+            Assert.That(DebugContentManifestStore.Read(first.OutputPath).Revision, Is.EqualTo(first.Manifest!.Revision));
+            Assert.That(first.Manifest!.ContentFingerprint, Is.EqualTo(DebugContentIdentity.Compute(first.OutputPath)));
+            Assert.That(first.Manifest.Groups.Single().Entries.Single().ContentSha256, Has.Length.EqualTo(64));
+        });
+
+        var source = Path.Combine(_root, "Graph", "groups", "source.rawgalgroup");
+        await File.WriteAllTextAsync(source, (await File.ReadAllTextAsync(source)).Replace(
+            "\"parameters\"", "\"condition\": \"true\", \"parameters\"", StringComparison.Ordinal));
+        var changed = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
+        Assert.That(changed.OutputPath, Is.Not.EqualTo(first.OutputPath));
+        Assert.That(Directory.Exists(first.OutputPath), Is.True);
     }
 
     [Test]

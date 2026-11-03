@@ -27,12 +27,14 @@ public sealed class ProjectDebugPreparation(IProjectService projects, IEntryCata
         client.RecordDiagnostic($"Project save completed in {timer.ElapsedMilliseconds} ms.");
         timer.Restart();
         reportStage?.Invoke("Debug.BuildingContent");
-        var output = Path.Combine(project.RootPath, "Output", "Debug");
-        client.RecordDiagnostic($"Building test content at {output}.");
-        var result = await Task.Run(() => new ProjectContentBuilder(catalog, configurations: project.Configurations).BuildAsync(project.RootPath, output, token), token);
+        var output = Path.Combine(project.RootPath, "Output", "Debug", "Revisions");
+        client.RecordDiagnostic($"Building immutable test content under {output}.");
+        var result = await Task.Run(() => DebugContentRevisionBuilder.BuildAsync(
+            new ProjectContentBuilder(catalog, configurations: project.Configurations),
+            project.RootPath, project.Id, schemas.Context.Fingerprint, token), token);
         RequireCurrent();
         client.RecordDiagnostic($"Test content and author source map built in {timer.ElapsedMilliseconds} ms for {result.CompiledGroupCount} Group(s).");
-        client.Listen(new(project.Id, DebugContentIdentity.Compute(result.OutputPath), schemas.Context.Fingerprint));
+        client.Listen(new(project.Id, result.Manifest!.ContentFingerprint, schemas.Context.Fingerprint));
         return result;
 
         void RequireCurrent()
