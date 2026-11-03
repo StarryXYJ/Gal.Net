@@ -86,7 +86,7 @@ Group 节点 DTO 可保存可选字符串 `storyPackage`；空字符串属于本
 
 传入 `.galpak` 时，`GameInstallation.OpenAsync` 先读取固定 `pak/game.pak` 入口和内部安装清单，校验声明路径、条目大小与 SHA-256，再原子安装到包文件旁的 `pak/`。`GalpakInstaller.InstallAsync` 显式目标表示实际内容根，目标为 `app/pak` 时不会再追加 `pak`；返回实际内容根。普通解压工具选择解压到应用目录同样得到 `app/pak`。相同安装可复用并保留外置翻译/补丁；不同或损坏内容不会覆盖现有目录。只接受完整 v4 安装索引，不提供旧版归档兼容；旧内容需重新导出。
 
-运行时只装载 content 描述中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。包内 content.json v3 保存固定 graphId、projectId、buildId、basePaks、stories 和 localizationPak；每个文件描述路径、大小、SHA-256。Graph 和编译 Group 经普通资源 provider 加载，配置/人物/文本从文档包读取。旧 content v2 安装目录仍按散文件读取；发现 game.pak 时优先使用且损坏报错，不回退到散文件。旧 GPAK v2 或 loose Graph 发行内容仍需重新导出。
+运行时只装载 content 描述中声明并校验的基础分片，额外丢入 Assets/Paks 的文件不贡献覆盖。包内 content.json v3 保存固定 graphId、projectId、buildId、basePaks、stories 和 localizationPak；每个文件描述路径、大小、SHA-256。Graph 和编译 Group 经普通资源 provider 加载，配置/人物/文本从文档包读取。安装目录必须包含 game.pak；旧 content v2 散文件目录不受支持，损坏的打包文档直接报错。旧 GPAK v2 或 loose Graph 发行内容仍需重新导出。
 
 正常导出将全部剧情分片封装在 galpak 内的 `pak/StoryPatches/<buildId>/*.pak`，不再旁置；目录导出放在目标内容根内同一路径。两种导出的文档与载荷一致。安装完整归档时任何已声明分片缺失都会拒绝；安装后运行仍允许整个剧情包零分片表示未安装，存在部分分片、哈希错误、用途/项目/构建不匹配或依赖缺失都拒绝。以头部而非文件名识别分片，缺席 Group 沿正常出口跳过；纯空 Group 推进循环拒绝。剧情目录按构建隔离，旧基础包不会采用新构建的剧情片段。
 

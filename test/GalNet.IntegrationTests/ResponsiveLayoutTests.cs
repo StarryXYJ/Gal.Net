@@ -275,9 +275,11 @@ public sealed class ResponsiveLayoutTests
     [TestCase(320, 1)]
     [TestCase(760, 3)]
     [TestCase(1100, 4)]
+    [TestCase(1500, 6)]
     public Task TilesUseAvailableWidth(int width, int columns) => SampleUiTests.RunAsync(() =>
     {
         var grid = new GalNet.Sample.CrossPlatform.Views.AdaptiveCardGrid();
+        grid.Resources.Add("GalNet.Theme.CardColumns", 6);
         for (var index = 0; index < 8; index++) grid.Children.Add(new Border { Height = 210 });
         grid.Measure(new Size(width, double.PositiveInfinity));
         Assert.That(grid.Columns, Is.EqualTo(columns));

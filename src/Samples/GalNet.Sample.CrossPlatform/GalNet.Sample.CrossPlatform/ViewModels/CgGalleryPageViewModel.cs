@@ -7,6 +7,6 @@ namespace GalNet.Sample.CrossPlatform.ViewModels;
 public sealed class CgGalleryPageViewModel(IGameNavigationService navigation, GalleryMediaService media)
     : GalleryGridPageViewModel(navigation, media)
 {
-    public override Task ActivateAsync(GalleryTypeData gallery, CancellationToken cancellationToken = default) => Thumbnails.ActivateAsync(gallery, Media.LoadImageThumbnailAsync, cancellationToken);
+    protected override Task<global::Avalonia.Media.Imaging.Bitmap?> LoadThumbnailAsync(GalleryItemData item, CancellationToken cancellationToken) => Media.LoadImageThumbnailAsync(item, cancellationToken);
     protected override Task OpenDetailAsync(GalleryItemData item, CancellationToken cancellationToken) => Navigation.NavigateAsync<CgGalleryImagePageViewModel, GalleryItemData>(item, cancellationToken);
 }

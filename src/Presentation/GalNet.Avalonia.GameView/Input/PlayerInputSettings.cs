@@ -166,19 +166,7 @@ public sealed class PlayerInputSettings : ObservableObject, IDisposable
         try
         {
             var parsed = json is null ? null : JsonSerializer.Deserialize(json, PlayerInputJsonContext.Default.PlayerInputConfiguration);
-            // Start is now shell navigation. Remove old bindings without discarding other preferences.
-            if (parsed?.Bindings is { } bindings)
-                foreach (var id in bindings.Keys.ToArray())
-                    if (bindings[id] is { } values)
-                        bindings[id] = values.Where(binding => binding is null || binding.Device != PlayerInputDevice.Gamepad ||
-                            binding.Gesture is null || !binding.Gesture.Split('+').Contains("Start")).ToArray()!;
             var restored = parsed is not null && Validate(parsed) is null ? parsed : Defaults();
-            // Older preferences had no default history binding. Preserve explicit unbinding and conflicts.
-            if (!restored.Bindings.ContainsKey("open.history"))
-            {
-                var occupied = restored.Bindings.Values.SelectMany(bindings => bindings).ToHashSet();
-                restored.Bindings["open.history"] = Defaults().Bindings["open.history"].Where(binding => !occupied.Contains(binding)).ToArray();
-            }
             Apply(restored);
         }
         catch (JsonException) { Apply(Defaults()); }

@@ -171,35 +171,7 @@ public sealed class GameLocalizationLoadingTests
     }
 
     [Test]
-    public async Task ProjectAndInstalledProvidersReadEquivalentTextSources()
-    {
-        Directory.CreateDirectory(Path.Combine(_root, "Graph"));
-        File.WriteAllText(Path.Combine(_root, "Graph", "graph.json"), """{"nodes":[],"edges":[],"rootNodeId":""}""");
-        File.WriteAllText(Path.Combine(_root, "I18n", "catalog", "characters.json"), """[{"id":"guide","displayNameKey":"character.guide.name"}]""");
-        Directory.CreateDirectory(Path.Combine(_root, "I18n", "zh-CN"));
-        File.WriteAllText(Path.Combine(_root, "I18n", "zh-CN", "characters.json"), """{"character":{"guide":{"name":"向导"}}}""");
-        var types = BuiltinResourceTypes.CreateCatalog();
-        var galleries = BuiltinGalleryTypes.CreateCatalog(types);
-        File.WriteAllText(Path.Combine(_root, "gallery.json"), JsonSerializer.Serialize(
-            new GalleryConfiguration { Types = galleries.Types.ToList(), Items = [] }, JsonSerializerOptions.Web));
-        var project = await new ProjectGameContentProvider(_root, types, galleries).LoadAsync();
-        PrepareInstalledStory(types);
-        var installed = await new InstalledGameContentProvider(_root, types, galleries).LoadAsync();
-        Assert.Multiple(() =>
-        {
-            Assert.That(installed.Localization.Sources, Is.EqualTo(project.Localization.Sources));
-            Assert.That(installed.Localization.Characters.GetRequired("guide"), Is.EqualTo(project.Localization.Characters.GetRequired("guide")));
-        });
-        var cultures = new CultureService();
-        using var resolver = new AvaloniaPlayerLocalization(cultures);
-        resolver.AttachGame(installed);
-        cultures.SetCulture("zh-CN");
-        Assert.That(resolver.Resolve("character.guide.name"), Is.EqualTo("向导"));
-    }
-
-    [TestCase(false)]
-    [TestCase(true)]
-    public async Task ConfigurationSchemasAndCultureProjectionAreExplicitAtTheLoadingBoundary(bool installed)
+    public async Task ConfigurationSchemasAndCultureProjectionAreExplicitAtTheLoadingBoundary()
     {
         Directory.CreateDirectory(Path.Combine(_root, "Graph"));
         File.WriteAllText(Path.Combine(_root, "Graph", "graph.json"), """{"nodes":[],"edges":[],"rootNodeId":""}""");
@@ -210,10 +182,7 @@ public sealed class GameLocalizationLoadingTests
         var galleries = BuiltinGalleryTypes.CreateCatalog(types);
         File.WriteAllText(Path.Combine(_root, "gallery.json"), JsonSerializer.Serialize(
             new GalleryConfiguration { Types = galleries.Types.ToList(), Items = [] }, JsonSerializerOptions.Web));
-        if (installed) PrepareInstalledStory(types);
-        IGameContentProvider Provider(GameContentLoadOptions? options = null) => installed
-            ? new InstalledGameContentProvider(_root, types, galleries, options)
-            : new ProjectGameContentProvider(_root, types, galleries, options);
+        IGameContentProvider Provider(GameContentLoadOptions? options = null) => new ProjectGameContentProvider(_root, types, galleries, options);
         var opaque = await Provider().LoadAsync();
         Assert.That(opaque.Configuration.Sections["custom"].Version, Is.EqualTo(8));
         Assert.ThrowsAsync<InvalidDataException>(async () => await Provider(new() { Configurations = DefaultProjectConfiguration.Schema }).LoadAsync());
@@ -229,19 +198,4 @@ public sealed class GameLocalizationLoadingTests
         Assert.That(observed, Is.True);
     }
 
-    private void PrepareInstalledStory(IResourceTypeCatalog types)
-    {
-        Directory.CreateDirectory(Path.Combine(_root, "Assets", "Paks"));
-        var buildId = new string('a', 64);
-        var bytes = PakBuilder.Build("assets", StoryResourceCompiler.Compile(_root, new TargetProfileEntryCatalog([])), types,
-            descriptor: new() { ProjectId = "test", BuildId = buildId });
-        File.WriteAllText(Path.Combine(_root, GameContentManifest.FileName),
-            JsonSerializer.Serialize(new GameContentManifest
-            {
-                ProjectId = "test",
-                BuildId = buildId,
-                BasePaks = [new("Assets/Paks/000-base.pak", CryptoHelper.HashSHA256(bytes), bytes.LongLength)]
-            }, JsonSerializerOptions.Web));
-        File.WriteAllBytes(Path.Combine(_root, "Assets/Paks/000-base.pak"), bytes);
-    }
 }

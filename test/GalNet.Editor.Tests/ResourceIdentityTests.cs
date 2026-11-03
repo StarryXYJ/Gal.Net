@@ -275,8 +275,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         public string Name => "assets";
         public IEnumerable<string> AssetIds => [file.Id];
         public bool Contains(string id) => id == file.Id;
-        public IGameFile? GetAsset(string id) => Contains(id) ? file : null;
-        public IGameFile? GetAssetByPath(string path) => file.Path == path ? file : null;
+        public IGameFile? GetAsset(string id, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return Contains(id) ? file : null; }
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return file.Path == path ? file : null; }
         public void Dispose() { }
     }
     private sealed class ResourceDecoded : IDisposable { public bool Disposed { get; private set; } public void Dispose() => Disposed = true; }

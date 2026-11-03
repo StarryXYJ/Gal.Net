@@ -3,6 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:text="using:GalNet.Avalonia.GameView.MarkupExtensions"
              xmlns:controls="using:GalNet.Game.Controls"
+             xmlns:ursa="https://irihi.tech/ursa"
              xmlns:local="using:GalNet.Avalonia.GameView.Page"
              xmlns:sharedvm="using:GalNet.Avalonia.GameView.ViewModels"
              xmlns:vm="using:GalNet.Sample.CrossPlatform.ViewModels"
@@ -19,15 +20,21 @@
         <Border Grid.Row="1" Classes="player-page-rule" />
         <Grid RowDefinitions="*,Auto" RowSpacing="18" Grid.Row="2" Margin="{DynamicResource GalNet.Theme.ContentMargin}">
           <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl Classes="player-card-grid" ItemsSource="{Binding Slots}" VerticalAlignment="Top">
+            <ItemsControl Classes="player-card-grid" ItemsSource="{Binding Pages.Items}" VerticalAlignment="Top">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="sharedvm:GameSaveSlotRowViewModel">
-                  <controls:SaveSlotCard Margin="7" Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding ActivateCommand}" />
+                  <Grid Margin="7">
+                    <controls:SaveSlotCard Preview="{Binding Preview}" SlotIndex="{Binding SlotIndex}" Timestamp="{Binding Timestamp}" Description="{Binding Description}" IsEmpty="{Binding IsEmpty}" IsCorrupt="{Binding IsCorrupt}" CanRename="{Binding CanRename}" RenameCommand="{Binding RenameCommand}" RenameError="{Binding RenameError}" Command="{Binding ActivateCommand}" />
+                    <ursa:Skeleton Margin="1,1,1,84" IsLoading="True" IsActive="True" IsVisible="{Binding IsPreviewLoading}" IsHitTestVisible="False" />
+                  </Grid>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
           </ScrollViewer>
-          <TextBlock Grid.Row="1" Text="{text:PlayerText SaveSlots.Hint, 'Saves are managed by the current game host.'}" Opacity="0.45" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" />
+          <StackPanel Grid.Row="1" Spacing="12">
+            <ursa:Pagination Name="SavePagination" HorizontalAlignment="Center" CurrentPage="{Binding Pages.CurrentPage, Mode=TwoWay}" TotalCount="{Binding Pages.TotalCount}" PageSize="{Binding Pages.PageSize}" IsVisible="{Binding Pages.HasMultiplePages}" />
+            <TextBlock Text="{text:PlayerText SaveSlots.Hint, 'Saves are managed by the current game host.'}" Opacity="0.45" FontSize="{DynamicResource GalNet.Theme.AuxiliaryFontSize}" />
+          </StackPanel>
         </Grid>
       </Grid>
     </Border>

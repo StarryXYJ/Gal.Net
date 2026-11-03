@@ -54,7 +54,7 @@ IAssetProvider / IArchive / IGameFile
 | 输入 | 内容 provider | 资源 provider |
 | --- | --- | --- |
 | 开发编译目录 | `ProjectGameContentProvider` 经资源 ID 加载剧情，读取 settings/I18n，并从 Assets metadata 编译 Gallery | `CompiledStoryAssetProvider(Graph/)` + `LocalFileProvider(Assets/)` |
-| 已安装包目录 | `InstalledGameContentProvider` 优先读取 game.pak 内的内容、配置和 Gallery 文档，按资源 ID 加载唯一 Graph；内置文本来自 localization.pak。旧 content v2 散文件目录仅按其明确支持路径加载 | 清单声明的完整基础/剧情 PAK，经 ResourceOverlayProvider 应用独立资源覆盖 |
+| 已安装包目录 | `InstalledGameContentProvider` 读取 game.pak 内的内容、配置和 Gallery 文档，按资源 ID 加载唯一 Graph；内置文本来自 localization.pak。不支持旧 content v2 散文件目录 | 清单声明的完整基础/剧情 PAK，经 ResourceOverlayProvider 应用独立资源覆盖 |
 
 同一宿主在创建内容 provider、资源 provider、Preview 与导出器时必须传入同一对冻结 `IResourceTypeCatalog` / `IGalleryTypeCatalog`。不能在下游入口重新创建 built-in catalog，否则插件注册无法贯穿完整路径。
 
@@ -74,7 +74,7 @@ Group 依赖从编译后 primitive 参数的字段契约收集。`FieldAttribute
 
 数据块可使用 `none`、`deflate`、`gzip` 或 `brotli`；`PakBuilder` 默认选择 Brotli，并会跳过过小数据的压缩。写出按资源 ID 稳定排序，重新计算实际 payload 的 hash，不沿用可能过时的 IGameFile.Hash；控制映射按原 ID 排序，无归档名/时间戳写入。旧 enum PAK 和 v2 格式不受支持，需重新导出。
 
-读取条目时按声明的原始长度限制解压输出，分块检查超出、截断与取消，再校验 SHA-256；不会先按不可信声明分配整块输出。该长度限制不是进程总内存预算。`IArchive` 保留原成员并提供带取消参数的默认重载；默认实现只在委托旧实现前检查取消，实际 I/O/解压过程中是否可取消由具体实现决定。旧无长度 byte[] 解压 API 不因此获得长度上限。
+读取条目时按声明的原始长度限制解压输出，分块检查超出、截断与取消，再校验 SHA-256；不会先按不可信声明分配整块输出。该长度限制不是进程总内存预算。`IArchive` 查询方法统一接受取消令牌；实现须在查询前检查取消，执行 I/O 或解压的实现还须在工作过程中检查。
 
 PAK provider 读取完成后可把新缓冲独占交给内部 `DeserializeOwned`，归档以只读切片复用数据区，调用方不得再修改或复用该缓冲。公开 `Archive.Deserialize(byte[])` 仍隔离调用方输入，防止后续修改破坏已校验快照；这不是公开的可变零拷贝契约。归档当前仍持有单个 PAK 的内存，不代表随机文件读取或整体内存预算已经实现。
 

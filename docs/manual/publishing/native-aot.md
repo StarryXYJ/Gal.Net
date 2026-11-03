@@ -66,7 +66,7 @@ resources.Add<ProjectMeta>("project.data", ProjectJsonContext.Default, ".custom"
 
 ## 验收边界
 
-Sample 共享 UI 已完成一轮 AOT 准备：输入配置使用源生成 JSON 元数据，数值约束和共享表单 JSON 操作使用显式元数据，GamePage 内容绑定使用类型化 CompiledBinding；内置视觉效果按项目 shader 资源显式创建，不扫描程序集发现工厂。输入配置 wire 格式保持兼容。这些改进不等于桌面或 iOS Sample 已支持 NativeAOT，也尚无量化性能或包体收益数据。
+Sample 共享 UI 已完成一轮 AOT 准备：输入配置使用源生成 JSON 元数据，数值约束和共享表单 JSON 操作使用显式元数据，GamePage 内容绑定使用类型化 CompiledBinding；内置视觉效果按项目 shader 资源显式创建，不扫描程序集发现工厂。输入配置采用当前 wire 格式。这些改进不等于桌面或 iOS Sample 已支持 NativeAOT，也尚无量化性能或包体收益数据。
 
 可独立验证这部分在 JSON 反射关闭时的行为：
 

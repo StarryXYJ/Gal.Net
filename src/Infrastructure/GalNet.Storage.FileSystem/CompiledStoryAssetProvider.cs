@@ -33,13 +33,14 @@ public sealed class CompiledStoryAssetProvider : IAssetProvider
         public string Name => name;
         public IEnumerable<string> AssetIds => files.Keys;
         public bool Contains(string assetId) => files.ContainsKey(assetId.Trim());
-        public IGameFile? GetAsset(string assetId)
+        public IGameFile? GetAsset(string assetId, CancellationToken ct = default)
         {
+            ct.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(_disposed, this);
             return files.GetValueOrDefault(assetId.Trim());
         }
-        public IGameFile? GetAssetByPath(string path) => files.Values.FirstOrDefault(file =>
-            string.Equals(file.Path, path.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase));
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return files.Values.FirstOrDefault(file =>
+            string.Equals(file.Path, path.Replace('\\', '/'), StringComparison.OrdinalIgnoreCase)); }
         public void Dispose() => _disposed = true;
     }
 }

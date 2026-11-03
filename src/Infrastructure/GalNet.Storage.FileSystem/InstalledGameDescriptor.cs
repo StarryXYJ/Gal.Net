@@ -1,19 +1,16 @@
-using System.Text.Json;
-using GalNet.Assets;
 using GalNet.Core.Serialization;
+using GalNet.Assets;
 
 namespace GalNet.Storage.FileSystem;
 
-/// <summary>Reads a content identity from its fixed packed entry, with legacy directory compatibility.</summary>
+/// <summary>Reads a content identity from its fixed packed entry.</summary>
 public static class InstalledGameDescriptor
 {
     public static GameContentManifest Read(string directory)
     {
         var packed = Path.Combine(directory, PackedGameDocuments.GameFileName);
-        if (File.Exists(packed)) return PackedGameDocuments.ReadGame(File.ReadAllBytes(packed)).Manifest;
-        return JsonCodec.Deserialize<GameContentManifest>(File.ReadAllText(Path.Combine(directory, GameContentManifest.FileName)),
-            new JsonSerializerOptions(JsonSerializerDefaults.Web) { AllowDuplicateProperties = false })
-            ?? throw new InvalidDataException("Missing content descriptor.");
+        if (!File.Exists(packed)) throw new InvalidDataException("Installed content requires game.pak. Re-export the game.");
+        return PackedGameDocuments.ReadGame(File.ReadAllBytes(packed)).Manifest;
     }
 
     internal static void EnsureExtensionDirectories(string directory, string buildId)

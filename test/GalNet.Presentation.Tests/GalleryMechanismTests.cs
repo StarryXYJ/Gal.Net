@@ -15,6 +15,28 @@ namespace GeneralTest.Presentation;
 [NonParallelizable]
 public sealed class GalleryMechanismTests
 {
+    [Test]
+    public Task RevisitedRowsKeepTheirNewLoadingStateWhenAnOldDecodeFinishes() => OnUi(async () =>
+    {
+        using var media = new GalleryMediaService(new Session());
+        using var thumbnails = new GalleryThumbnailCollection(media);
+        thumbnails.Prepare(Gallery(1));
+        var row = thumbnails.Items.Single();
+        var oldResult = new TaskCompletionSource<Bitmap?>();
+        var newResult = new TaskCompletionSource<Bitmap?>();
+        var oldLoad = thumbnails.LoadAsync([row], (_, _) => oldResult.Task, default);
+        var newLoad = thumbnails.LoadAsync([row], (_, _) => newResult.Task, default);
+        Assert.That(row.IsThumbnailLoading, Is.True);
+        oldResult.SetResult(new RenderTargetBitmap(new PixelSize(8, 8)));
+        await oldLoad;
+        Assert.That(row.Thumbnail, Is.Null);
+        Assert.That(row.IsThumbnailLoading, Is.True);
+        newResult.SetResult(new RenderTargetBitmap(new PixelSize(8, 8)));
+        await newLoad;
+        Assert.That(row.Thumbnail, Is.Not.Null);
+        Assert.That(row.IsThumbnailLoading, Is.False);
+    });
+
     [TestCase(false)]
     [TestCase(true)]
     public Task PendingThumbnailCannotPublishAfterReplacementOrDisposal(bool replace) => OnUi(async () =>

@@ -100,17 +100,17 @@ public sealed class PlayerInputTests
     }
 
     [Test]
-    public void HistoryDefaultIsAddedToOlderConfigurationsWithoutStealingAnExistingWheelBinding()
+    public void RestoreDoesNotMigrateMissingBindingsAndRejectsReservedStart()
     {
         using var settings = Settings();
-        var older = settings.Configuration;
-        older.Bindings.Remove("open.history");
-        settings.Restore(System.Text.Json.JsonSerializer.Serialize(older));
-        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
-        older.Bindings["toggle.quick"] = [new(PlayerInputDevice.KeyboardMouse, "WheelUp")];
-        settings.Restore(System.Text.Json.JsonSerializer.Serialize(older));
-        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("toggle.quick"));
+        var configuration = settings.Configuration;
+        configuration.Bindings.Remove("open.history");
+        settings.Restore(System.Text.Json.JsonSerializer.Serialize(configuration));
         Assert.That(settings.GetBindings("open.history", PlayerInputDevice.KeyboardMouse), Is.Empty);
+        configuration.Bindings["toggle.quick"] = [new(PlayerInputDevice.Gamepad, "Start")];
+        settings.Restore(System.Text.Json.JsonSerializer.Serialize(configuration));
+        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
+        Assert.That(settings.Resolve(PlayerInputDevice.Gamepad, "Start"), Is.Null);
     }
     private static PlayerInputSettings Settings()
     {

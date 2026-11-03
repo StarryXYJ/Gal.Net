@@ -16,7 +16,7 @@
 | `State` | 按注册类型/ID 存储的通用 GameState；契约可选择 keySpace 共享跨表身份索引 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 当前版本为 5，旧版本直接拒绝，不提供迁移兼容。它包含 NodeId、EntryIndex、Save 变量、ContentBuildId、StoryPackages 与 States（稳定 StateId → section version / JSON payload）。安装内容校验基础构建与准备时已安装的全部剧情包，缺少记录包不通过跳过降级恢复；开发目录构建标识为空。模块仍显式注册数据表及恢复器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷报错。builtin.animations、builtin.layers 以及音频 tracks/seffects 的 section version 为 2；音频还注册 channels 状态。各表按实际注册版本校验，不能把所有其他表统一视为版本 1。每份存档包含全部注册表（含空表），不写 CLR 类型名、Task 或后端对象。
+`GameSnapshot` 当前版本为 6，旧版本直接拒绝，不提供迁移兼容。它包含 NodeId、EntryIndex、Save 变量、ContentBuildId、StoryPackages 与 States（稳定 StateId → section version / JSON payload）。安装内容校验基础构建与准备时已安装的全部剧情包，缺少记录包不通过跳过降级恢复；开发目录构建标识为空。模块仍显式注册数据表及恢复器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷报错。builtin.animations、builtin.layers 以及音频 tracks/seffects 的 section version 为 2；音频还注册 channels 状态。各表按实际注册版本校验，不能把所有其他表统一视为版本 1。每份存档包含全部注册表（含空表），不写 CLR 类型名、Task 或后端对象。
 
 差分 Layer 保存逻辑图集 ID、完整请求、最后保护集合、变体键、解析原因及可选 UsesResourceOverride（缺省 false）。解码检查来源互斥与状态结构，ValidateState 按会话图集解析。普通内容核对实际变体/图片/原因，不一致拒绝；明确的图集资源覆盖在安装或移除后，以选择意图重算候选状态的显示缓存和标记，保留输入存档及旧运行根。未知维度/值仍报错。展示恢复在呈现前复核；定义在准备阶段异步加载，show/select 同步。继续选择保留曾因缺组合而未显示的服装等意图。
 
