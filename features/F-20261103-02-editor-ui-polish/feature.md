@@ -106,6 +106,8 @@
 
 [第十七轮](round-17.md)：工作区右键菜单分组。
 
+[第十八轮](round-18.md)：Ursa 标题按钮背景修正。
+
 ## 相关资料
 
 - [已有 Editor UI/UX feature](../F-20261023-01-editor-uiux/feature.md)：此前界面、问题定位等已实施；本次是后续反馈，不覆盖其记录。

@@ -47,15 +47,21 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         }, CancellationToken.None);
     }
 
-    [Test]
-    public async Task CaptionThemeKeepsTransparentIdleAndPointerFeedback()
+    [TestCase("PART_MinimizeButton")]
+    [TestCase("PART_MaximizeButton")]
+    [TestCase("PART_CloseButton")]
+    [TestCase("PART_FullScreenButton")]
+    [TestCase("PART_PopoverFullScreenButton")]
+    [TestCase("PART_PopoverCloseButton")]
+    public async Task CaptionThemeKeepsTransparentIdleAndPointerFeedback(string name)
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
         await ui.Dispatch<bool>(() =>
         {
             PrepareGroupTheme();
-            var button = new Button { Width = 60, Height = 32, Content = "×", Theme = (ControlTheme)Application.Current!.FindResource("CaptionButton")! };
+            var button = new Button { Name = name, Width = 60, Height = 32, Content = "×", Theme = (ControlTheme)Application.Current!.FindResource("CaptionButton")! };
             var window = new Window { Width = 300, Height = 200, Content = button };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Themes/EditorControlStyles.axaml") });
             window.Show(); TimelinePump(window);
             try
             {

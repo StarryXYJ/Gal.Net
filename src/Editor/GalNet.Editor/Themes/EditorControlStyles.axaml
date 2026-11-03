@@ -36,6 +36,9 @@
     <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
   </Style>
+  <Style Selector="Button#PART_MinimizeButton, Button#PART_MaximizeButton, Button#PART_CloseButton, Button#PART_FullScreenButton, Button#PART_PopoverFullScreenButton, Button#PART_PopoverCloseButton">
+    <Setter Property="themes:EditorButton.IsIcon" Value="True"/>
+  </Style>
   <Style Selector="Button:not(.editor-icon)">
     <Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/>
     <Setter Property="BorderBrush" Value="Transparent"/>
