@@ -60,6 +60,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             window.Show(); TimelinePump(window);
             try
             {
+                var rows = view.GetVisualDescendants().OfType<FieldEditorRow>().Where(row => row.IsEffectivelyVisible).ToArray();
+                Assert.That(rows, Has.Length.GreaterThanOrEqualTo(5), "Default app and contract fields follow the same responsive layout.");
+                Assert.That(rows.All(row => row.LabelWidth == 150), Is.True);
                 var row = view.FindControl<FieldEditorRow>("ThemeRow")!;
                 var label = row.GetVisualDescendants().OfType<ContentControl>().Single(control => control.Name == "FieldLabel");
                 var input = row.GetVisualDescendants().OfType<ContentControl>().Single(control => control.Name == "FieldEditor");

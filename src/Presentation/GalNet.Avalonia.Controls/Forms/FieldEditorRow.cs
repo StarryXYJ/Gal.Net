@@ -97,6 +97,7 @@ public sealed class FieldEditorRow : Grid
         _narrow = narrow;
         var showLabel = ShowLabel && Editor is not StructuredFieldEditor && Editor is not ContentControl { Content: StructuredFieldEditor };
         _label.IsVisible = showLabel;
+        _editor.HorizontalContentAlignment = Editor is CheckBox ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
         _actions.IsVisible = ShowActions;
         ColumnDefinitions = narrow || !showLabel ? new("*,Auto") : new ColumnDefinitions { new(LabelWidth, GridUnitType.Pixel), new(1, GridUnitType.Star), new(GridLength.Auto) };
         RowDefinitions = new(narrow && showLabel ? "Auto,Auto,Auto" : "Auto,Auto");

@@ -46,7 +46,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear();
                 var input = inspector.GetVisualDescendants().OfType<ComboBox>().Single(control => control.Name == "AudioEffectTypeInput");
-                Assert.That(input.Items.Count, Is.EqualTo(4));
+                Assert.That(input.Items.Count, Is.EqualTo(GalNet.Contracts.Builtins.Audio.SEffectCatalog.Builtins.Definitions.Count));
                 var reverb = input.Items.Cast<object>().Single(item => item.ToString() == project.Services.GetRequiredService<IEditorLocalizationService>()["Audio.Type.seffect.reverb"]);
                 input.SelectedItem = reverb; TimelinePump(window);
                 Assert.That(entry.Source.Parameters["id"].GetString(), Is.EqualTo("seffect.reverb"));
