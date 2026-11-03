@@ -13,8 +13,11 @@
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
-        <TabControl Grid.Row="1" TabStripPlacement="Left">
-          <TabItem Header="{loc:Localize Settings.Editor.Title}">
+        <Grid Grid.Row="1">
+        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorBackground1}" CornerRadius="6" IsHitTestVisible="False" />
+        <TabControl TabStripPlacement="Left" Background="Transparent">
+          <TabItem MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M12 2L14 4L17 3L18 6L21 7L20 10L22 12L20 14L21 17L18 18L17 21L14 20L12 22L10 20L7 21L6 18L3 17L4 14L2 12L4 10L3 7L6 6L7 3L10 4Z M12 8A4 4 0 1 0 12 16A4 4 0 1 0 12 8"/><TextBlock Text="{loc:Localize Settings.Editor.Title}"/></StackPanel></TabItem.Header>
           <ScrollViewer>
             <StackPanel Spacing="8" Margin="12,0,0,0">
                 <forms:FieldEditorRow Name="ThemeRow" ShowActions="False" LabelWidth="150">
@@ -51,7 +54,8 @@
             </StackPanel>
           </ScrollViewer>
           </TabItem>
-          <TabItem Name="ShortcutsTab" Header="{loc:Localize Settings.Shortcuts}">
+          <TabItem Name="ShortcutsTab" MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M2 5H22V19H2Z M4 7V9H6V7Z M8 7V9H10V7Z M12 7V9H14V7Z M16 7V9H18V7Z M4 11V13H6V11Z M8 11V13H10V11Z M12 11V13H14V11Z M16 11V13H20V11Z M6 15V17H18V15Z"/><TextBlock Text="{loc:Localize Settings.Shortcuts}"/></StackPanel></TabItem.Header>
           <ScrollViewer>
             <StackPanel Spacing="8" Margin="12,0,0,0">
                 <Grid ColumnDefinitions="*,Auto">
@@ -84,6 +88,7 @@
           </ScrollViewer>
           </TabItem>
         </TabControl>
+        </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding StatusText}"

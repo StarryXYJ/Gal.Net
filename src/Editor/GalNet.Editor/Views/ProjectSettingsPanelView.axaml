@@ -34,8 +34,11 @@
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
-        <TabControl Grid.Row="1" TabStripPlacement="Left">
-          <TabItem Header="{loc:Localize Settings.Project.Title}">
+        <Grid Grid.Row="1">
+        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorBackground1}" CornerRadius="6" IsHitTestVisible="False" />
+        <TabControl TabStripPlacement="Left" Background="Transparent">
+          <TabItem MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M3 4H10L12 6H21V19H3Z M5 8V17H19V8Z"/><TextBlock Text="{loc:Localize Settings.Project.Title}"/></StackPanel></TabItem.Header>
         <ScrollViewer Name="SettingsForm" LostFocus="OnSettingsFocusLost">
             <StackPanel Spacing="8" Margin="12,0,0,0">
                 <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
@@ -58,7 +61,8 @@
             </StackPanel>
         </ScrollViewer>
           </TabItem>
-          <TabItem Header="{loc:Localize Debug.Configuration}">
+          <TabItem MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M6 3L21 12L6 21Z"/><TextBlock Text="{loc:Localize Debug.Configuration}"/></StackPanel></TabItem.Header>
               <ScrollViewer>
                 <StackPanel Margin="12" Spacing="6">
                 <TextBlock Text="{loc:Localize Debug.Configuration}" FontWeight="SemiBold" Margin="0,8,0,0"/>
@@ -78,6 +82,7 @@
         </ScrollViewer>
           </TabItem>
         </TabControl>
+        </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
