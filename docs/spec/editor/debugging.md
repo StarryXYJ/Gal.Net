@@ -14,7 +14,7 @@ CLI/Editor/App 应使用同一份项目契约构建产物，包括默认只含�
 
 内容更新协议只包含安装最新候选、激活最新候选、激活并返回当前 Group 开头三类操作，不公开内容版本号。Editor 在项目内容保存或原子结构发布后自动构建、安装、分类并提示；Direct 自动激活，Return/Restart 保留待处理动作，菜单和面板热更新按钮仅用于手动重试。App 只保存当前运行内容和最新候选两个对象引用。命令继续按 run ID、generation、当前 Group/index 和活动 primitive 校验原子边界。成功后 Editor 才切换源码/断点映射；失败或超时保留旧映射，不做响应丢失后的内容版本对账。
 
-调试存档保存自然经过的 Group ID 序列；Seek 和回放不追加。首期不处理环。非 Entry Graph、Assets、I18n 与 settings 变化统一保守要求重新开始，不分析资源使用位置；新 Run 使用最新完整候选，已有资源对象按正常生命周期释放。
+调试存档保存自然经过的 Group ID 序列；Seek 和回放不追加。首期不处理环。Editor UI 修改按作者事务已知的 Group/Entry 范围分类，构建产物不负责反推变化位置；因此 Entry 本地化文本仍按 Entry 分类。Editor 内无 Entry 范围的 Graph、资源、settings 等变化，以及文件监听发现的外部重载，统一要求重新开始，不分析资源使用位置。新 Run 使用最新完整候选，已有资源对象按正常生命周期释放。
 
 在仓库根目录运行 `./scripts/contracts/export-sample-contracts.ps1`（可选 `-Configuration Release`），会先构建 Avalonia Sample，再将配套契约及依赖 DLL 导出到根目录 `out/Contracts`。该输出目录已被 Git 忽略。关闭 Editor 项目，将导出的 DLL 复制到项目 `Contracts` 目录，重新打开项目，并使用脚本打印的对应 App 路径启动测试。
 

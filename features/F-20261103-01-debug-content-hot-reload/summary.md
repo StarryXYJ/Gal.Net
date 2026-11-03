@@ -20,7 +20,9 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 
 - 未经过 Group、当前 Group 未执行作者 Entry：直接替换。
 - 当前 Entry 或当前 Group 已执行前缀：提示返回 Group 开头应用。
-- 已离开 Group、非 Entry Graph、Assets、I18n、settings：提示重新开始并新建存档。
+- 已离开 Group：提示重新开始并新建存档。
+- Editor 内无 Entry 范围的 Graph、资源、settings 等变化，以及外部文件重载：统一提示重新开始。
+- Entry 本地化文本使用 Editor 已知的 Group/Entry 范围分类，不因写入 I18n 文件而被当作全局变化。
 - Contracts 改变：重启调试 App。
 - 首期不处理环，不迁移旧存档，不原地替换已持有媒体对象。
 
@@ -33,7 +35,7 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 - `GalNet.Debugging.Tests`：19/19。
 - `GalNet.Runtime.Tests`：128/128。
 - Debug 内容服务、构建器、Snapshot/primitive dispatch 定向集成：30/30。
-- Editor 真实 loopback 挂载 UI 测试：1/1，从作者保存/结构发布开始覆盖自动 Direct、ReturnGroupStart、RestartGame pending、源码映射提交与 generation 后续命令。
+- Editor 真实 loopback 挂载 UI 测试：1/1，从未来/当前 Entry 的本地化剧情文本保存及结构发布开始覆盖自动 Direct、ReturnGroupStart、RestartGame pending、源码映射提交与 generation 后续命令。
 
 仓库既有 analyzer/Avalonia warning 保留，无新增编译错误。
 
@@ -47,6 +49,7 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 - `4f825460`：Editor 协调、提示与闭环。
 - `d74f2478`：保留运行位置高亮并让三类结果始终显示在面板状态栏。
 - `674eaf27`：恢复保存/原子发布后的自动应用与即时提示。
+- `67ca5992`：改用 Editor 作者操作范围分类，外部/未知范围统一完整重开。
 
 ## 文档
 
@@ -56,4 +59,4 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 
 ## 未专项验证
 
-未执行真实 Developer Sample 窗口的媒体观感和移动平台验证。资源/I18n/settings 变化当前明确走重新开始路径，因此不声称已持有对象可在运行中原地更新。
+未执行真实 Developer Sample 窗口的媒体观感和移动平台验证。外部文件重载及无 Entry 范围的资源/settings 变化明确走重新开始路径，因此不声称已持有对象可在运行中原地更新。

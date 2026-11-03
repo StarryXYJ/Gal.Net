@@ -466,3 +466,4 @@
 
 - [ToolTip.IsEnabled 禁用目标](lessons/L-20261031-03-tooltip-enabled-target.md)：它是继承的 InputElement.IsEnabled，空提示用 Tip=null，不能绑定 HasName 来开关 tooltip；检查真实控件启用与点击状态。
 - [控制台输入取消与读取所有权](lessons/L-20261102-13-console-input-ownership.md)：WaitAsync 只取消等待，不取消底层 ReadLine；单会话串行拥有读取，取消后交接待完成结果。
+- [调试热重载以作者操作范围分类](lessons/L-20261103-04-debug-hot-reload-author-scope.md)：Editor UI 修改以 AuthorChangeJournal 的 Group/Entry 范围分类；构建产物不反推修改来源，外部重载和未知范围统一要求重新开始。

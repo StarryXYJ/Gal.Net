@@ -34,15 +34,16 @@ Editor 构建一份完整候选内容并先交给调试 App 保存，然后根�
 
 Runtime 报告当前 Group、下一编译 Entry、活动 primitive、自然经过的 Group ID 序列和已有 Group 入口缓存。它只提供一个原子 Graph 替换原语，以及已有的返回 Group 开头能力。
 
-## 3. 清单与分类
+## 3. 变化范围与分类
 
-调试清单记录项目/契约/内容身份、作者签名、每个稳定作者 Entry 的编译 span 与摘要，以及非 Entry 文件摘要。它没有 revision 字段。
+Editor UI 操作已有明确的作者变更范围，分类直接使用 `AuthorChangeJournal` 累积的 Group ID、最早 Entry index 和 Entry ID。构建仍生成完整候选，但不再根据候选文件摘要反推这次修改发生在哪里。本地化正文虽然落在 I18n 文件中，仍按其所属 Entry 分类。
 
-Editor 用当前运行清单解释编译位置和活动 primitive，再按稳定作者 Entry 比较候选：
+Editor 用当前运行清单解释编译位置和活动 primitive，再把已知修改范围与运行位置比较：
 
-- 已执行作者前缀必须保持相同，否则返回 Group 开头；
-- 已离开 Group 的内容必须保持相同，否则重新开始；
-- 非 Entry Graph、Assets、I18n 或 settings 变化统一保守要求重新开始；
+- 当前 Group 已执行作者前缀内有修改，返回 Group 开头；
+- 已离开 Group 有修改，重新开始；
+- 当前 Group 后续 Entry 或未经过 Group 的 Entry 修改直接应用；
+- Editor 内无 Entry 范围的 Graph、资源、settings 等修改，以及文件监听发现的外部重载，统一要求重新开始；
 - 直接替换时把当前作者边界映射到候选编译 index。
 
 不区分更细的拓扑变化种类，也不构建资源使用位置依赖图。

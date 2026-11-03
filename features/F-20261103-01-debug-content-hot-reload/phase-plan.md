@@ -39,13 +39,13 @@
 - 三种结果均由 Editor Panel 即时 Toast；顶部菜单和面板热更新按钮只保留为手动重试入口。
 - 只有命令成功才切换源码映射；失败保持旧运行和旧映射。
 
-证据：真实 loopback 挂载 UI 测试从作者保存/结构发布开始，覆盖自动 Direct、ReturnGroupStart、RestartGame pending，1/1 通过；Editor 构建通过。
+证据：真实 loopback 挂载 UI 测试从本地化剧情文本保存/结构发布开始，覆盖自动 Direct、ReturnGroupStart、RestartGame pending，1/1 通过；Editor 构建通过。
 
-提交：`4f825460`；自动触发修复：`674eaf27`。
+提交：`4f825460`；自动触发修复：`674eaf27`；作者范围分类修复：`67ca5992`。
 
 ## P5 — 文档与收尾（verified）
 
 - 已同步 feature 设计、Runtime/Editor spec 与 Editor 操作手册。
 - 审查中指出的内容版本状态机、主动对账、原因数组、环状态、重复入口布尔、请求序号、Notice 副本、额外菜单、资源依赖分析与退休上限均已删除或取消。
 
-未专项验证：真实 Developer Sample 窗口中的媒体资源观感和移动平台。资源/I18n/settings 变化当前保守要求重新开始游戏，不声称运行中原地替换已持有对象。
+未专项验证：真实 Developer Sample 窗口中的媒体资源观感和移动平台。Editor 内无 Entry 范围的资源/settings 等变化及外部文件重载统一要求重新开始游戏；Entry 本地化文本按作者范围分类。不声称运行中原地替换已持有对象。
