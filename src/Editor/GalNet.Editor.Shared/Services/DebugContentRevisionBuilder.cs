@@ -1,7 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using GalNet.Debugging;
-using GalNet.Editor.Abstraction.Documents;
 using GalNet.Storage.FileSystem;
 
 namespace GalNet.Editor.Shared.Services;
@@ -9,8 +8,6 @@ namespace GalNet.Editor.Shared.Services;
 /// <summary>Publishes one immutable, self-describing content revision for a local debug application.</summary>
 public static class DebugContentRevisionBuilder
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { PropertyNameCaseInsensitive = true };
-
     public static async Task<ProjectContentBuildResult> BuildAsync(
         ProjectContentBuilder builder,
         string projectRoot,
@@ -30,7 +27,8 @@ public static class DebugContentRevisionBuilder
         {
             var build = await builder.BuildAsync(root, candidate, cancellationToken).ConfigureAwait(false);
             var contentFingerprint = DebugContentIdentity.Compute(candidate);
-            var graphSha256 = ComputeGraphTopology(projectRoot);
+            var graphPath = Path.Combine(candidate, "Graph", "graph.json");
+            var graphSha256 = HashFile(graphPath);
             var groups = build.SourceEntries.GroupBy(entry => entry.GroupId, StringComparer.Ordinal)
                 .OrderBy(group => group.Key, StringComparer.Ordinal)
                 .Select(group => new DebugContentGroup(group.Key, group.OrderBy(entry => entry.Start).Select(entry =>
@@ -87,33 +85,6 @@ public static class DebugContentRevisionBuilder
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(new { contentFingerprint, contractFingerprint, authorSignature, groups });
         return Convert.ToHexString(SHA256.HashData(bytes));
-    }
-
-    private static string ComputeGraphTopology(string projectRoot)
-    {
-        var path = Path.Combine(projectRoot, "Graph", "graph.json");
-        var graph = JsonSerializer.Deserialize<EditorGraphDocument>(File.ReadAllBytes(path), Json)
-            ?? throw new InvalidDataException("Project Graph/graph.json is empty.");
-        var topology = new
-        {
-            graph.RootNodeId,
-            Nodes = graph.Nodes.OrderBy(node => node.Id, StringComparer.Ordinal).Select(node => new
-            {
-                node.Id,
-                node.Type,
-                node.StoryPackage,
-                node.Metadata,
-                node.BranchType,
-                node.Options,
-                node.Conditions
-            }),
-            Edges = graph.Edges.OrderBy(edge => edge.FromNodeId, StringComparer.Ordinal)
-                .ThenBy(edge => edge.FromOutlet).ThenBy(edge => edge.ToNodeId, StringComparer.Ordinal)
-                .Select(edge => new { edge.FromNodeId, edge.FromOutlet, edge.ToNodeId }),
-            graph.PlayerVariables,
-            graph.SaveVariables
-        };
-        return Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(topology)));
     }
 
     private static string HashFile(string path)
