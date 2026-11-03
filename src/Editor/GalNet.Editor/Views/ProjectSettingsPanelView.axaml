@@ -17,11 +17,15 @@
         <TabControl Grid.Row="1" TabStripPlacement="Left">
           <TabItem Header="{loc:Localize Settings.Project.Title}">
         <ScrollViewer Name="SettingsForm" LostFocus="OnSettingsFocusLost">
-            <StackPanel Spacing="8">
-                <TextBlock Text="{loc:Localize Settings.Project.Name}" />
-                <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
-                <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}" />
-                <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}" />
+            <StackPanel Spacing="8" Margin="12,0,0,0">
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.Project.Name}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><TextBox Name="ProjectNameInput" Text="{Binding ProjectName}"/></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}"/></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
                 <ItemsControl ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="services:ConfigurationSectionEditor">

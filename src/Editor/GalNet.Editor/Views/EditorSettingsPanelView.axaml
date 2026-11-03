@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:globalization="clr-namespace:System.Globalization;assembly=System.Runtime"
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+             xmlns:forms="using:GalNet.Game.Controls.Forms"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.EditorSettingsPanelView"
              x:DataType="vm:EditorSettingsPanelViewModel"
@@ -16,38 +17,26 @@
           <TabItem Header="{loc:Localize Settings.Editor.Title}">
           <ScrollViewer>
             <StackPanel Spacing="8" Margin="12,0,0,0">
-                <TextBlock Text="{loc:Localize Settings.Theme}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="{DynamicResource Editor.Font.Detail}" />
-                <ComboBox ItemsSource="{Binding AvailableThemes}"
-                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
-                          Foreground="{DynamicResource SemiColorText0}"
-                          Background="{DynamicResource SemiColorBackground2}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ThemeSelectionItem">
-                            <TextBlock Text="{Binding DisplayName}"
-                                       Foreground="{DynamicResource SemiColorText0}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-
-                <TextBlock Text="{loc:Localize Settings.UiLanguage}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="{DynamicResource Editor.Font.Detail}"
-                           Margin="0,4,0,0" />
-                <ComboBox ItemsSource="{Binding AvailableCultures}"
-                          SelectedItem="{Binding SelectedCulture, Mode=TwoWay}"
-                          Foreground="{DynamicResource SemiColorText0}"
-                          Background="{DynamicResource SemiColorBackground2}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="globalization:CultureInfo">
-                            <TextBlock Text="{Binding NativeName}"
-                                       Foreground="{DynamicResource SemiColorText0}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-                <TextBlock Text="{loc:Localize Settings.FontSize}" Foreground="{DynamicResource SemiColorText2}" Margin="0,4,0,0" />
-                <NumericUpDown Name="EditorFontSize" Minimum="10" Maximum="18" Increment="1" FormatString="0" Width="120" HorizontalAlignment="Left" Value="{Binding FontSize, Mode=TwoWay}" />
+                <forms:FieldEditorRow Name="ThemeRow" ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.Theme}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor>
+                    <ComboBox ItemsSource="{Binding AvailableThemes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:ThemeSelectionItem"><TextBlock Text="{Binding DisplayName}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.UiLanguage}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor>
+                    <ComboBox ItemsSource="{Binding AvailableCultures}" SelectedItem="{Binding SelectedCulture, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate><DataTemplate x:DataType="globalization:CultureInfo"><TextBlock Text="{Binding NativeName}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.FontSize}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><NumericUpDown Name="EditorFontSize" Minimum="10" Maximum="18" Increment="1" FormatString="0" Width="120" HorizontalAlignment="Left" Value="{Binding FontSize, Mode=TwoWay}"/></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
                 <CheckBox Name="ExpandNewEntries" Content="{loc:Localize Settings.ExpandNewEntries}" IsChecked="{Binding ExpandNewEntries,Mode=TwoWay}"/>
                 <!-- Auto-save is intentionally forced on for the current editor experience. -->
 

@@ -21,6 +21,33 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task SettingsFieldsReflowWithoutOverlappingAtNarrowWidth()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services();
+            var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "SettingsReflow"), "SettingsReflow", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            using var settings = project.Services.GetRequiredService<EditorSettingsPanelViewModel>();
+            var view = new EditorSettingsPanelView { DataContext = settings }; var window = new Window { Content = view, Width = 1000, Height = 700 };
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var row = view.FindControl<FieldEditorRow>("ThemeRow")!;
+                var label = row.GetVisualDescendants().OfType<ContentControl>().Single(control => control.Name == "FieldLabel");
+                var input = row.GetVisualDescendants().OfType<ContentControl>().Single(control => control.Name == "FieldEditor");
+                Assert.That(input.TranslatePoint(default, row)!.Value.X, Is.GreaterThan(label.TranslatePoint(default, row)!.Value.X));
+                window.Width = 420; TimelinePump(window);
+                Assert.That(input.TranslatePoint(default, row)!.Value.Y, Is.GreaterThan(label.TranslatePoint(default, row)!.Value.Y));
+                Assert.That(input.Bounds.Width, Is.GreaterThan(0));
+            }
+            finally { window.Close(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task CaptionThemeKeepsTransparentIdleAndPointerFeedback()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
