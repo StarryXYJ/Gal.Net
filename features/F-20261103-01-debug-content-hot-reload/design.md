@@ -2,181 +2,188 @@
 
 日期：2026-11-03。状态：ready-for-implementation。
 
-本设计实现 [feature.md](feature.md) 已确认的行为：未来内容直接采用新版；当前 Group 已执行前缀变化时返回 Group 开头；历史 Group 变化时重新开始游戏。首期不处理环路、程序代码和 Contracts 热替换。
+本设计实现 [feature.md](feature.md) 已确认的行为。核心边界是：Editor 判断改动影响并展示操作；客户端只同步运行事实、安装完整候选版本，并执行 Editor 指定的激活操作。首期不处理环路、程序代码和 Contracts 热替换。
 
 ## 1. 当前事实
 
-- `GameSnapshot` 已保存当前 `NodeId`、下一编译 Entry 的 `EntryIndex` 和当前 Group 最近自然入口的变量/状态快照；尚未保存已经自然进入过的 Group。
+- `GameSnapshot` 已保存当前 `NodeId`、下一编译 Entry 的 `EntryIndex` 和当前 Group 最近自然入口状态，尚未保存本次运行自然进入过的 Group ID 序列。
 - `DebugSession.SeekGroupStartAsync` 已能使用当前 Group 入口缓存恢复变量和场景，再从 Group 开头执行，不需要增加第二套回退运行时。
-- `GameEngine` 在构造时用 `GameGraphNavigator` 复制整张 Graph，之后按 Engine 生命周期保持拓扑和 Group 内容不变。
-- 调试执行已有 generation、旧请求拒绝、定位取消、展示收束和源码 Entry span。作者 Entry 可通过构建结果的 `SourceEntries` 映射到一段编译 primitive。
-- Editor 当前把 `Output/Debug` 整目录原子替换，并在作者变化后禁用旧源码映射；运行中的 App 不会重新打开该内容。
-- `GameResourceScope`、`AssetManager` 和呈现模块按整个玩家会话持有。`AssetManager` 以资源 ID 和目标类型缓存对象；直接换文件或清缓存无法同时保证旧句柄继续有效和后续 Acquire 读取新版。
-- App 顶部 Debug 菜单已有跳到 Group 开头、重新加载资源并重启、通知和宿主重启入口；当前桌面通知是模态消息，需要增加不阻断游戏的状态提示。
+- `GameEngine` 构造时复制完整 Graph，之后保持导航不变；活动 primitive 实例与 Graph 中尚未分发的 Entry 已经分离。
+- 调试执行已有 run、generation、定位取消和作者 Entry span。客户端能报告当前编译位置及活动 primitive stable ID，Editor 可用当前版本清单映射到作者 Entry。
+- Editor 已能构建 `Output/Debug/Revisions/<revision-id>/` 不可变候选并生成调试清单；P1 已实现纯清单差异分类。
+- `GameResourceScope` 和部分会话服务当前按整个玩家会话持有，因此资源切换需要明确所有权，不能覆盖正在读取的目录或提前释放旧对象。
 
-## 2. 设计原则
+## 2. 最小职责模型
 
-1. Editor 构建完整候选，App 独立打开并验证，最后在运行门内提交；任何失败都保留完整旧代。
-2. Runtime 只接受已经编译、已验证的 Graph 和明确的游标映射，不读取 Editor 文档或推断作者身份。
-3. 作者差异、资源引用和源码映射由 Editor 构建清单表达；运行位置、已经过 Group 和当前入口缓存由 App/Engine 提供。
-4. 一次提交切换 Graph、源码映射身份、文本/资源代次和调试 generation。不能让 Editor 与 App 分别“尽力更新”。
-5. 当前活动 primitive 继续拥有旧对象和旧资源；热更新只改变尚未分发的内容。
-6. 提示代表尚未满足的运行一致性要求，必须持续显示在菜单中；Toast 只是即时通知。
+整个功能只增加两个有状态协调服务，现有构建器、Engine 和 UI 保持各自原有职责。
 
-## 3. 不可变调试内容版本
+### 2.1 Editor：`DebugContentHotReloadService`
 
-### 3.1 输出布局
+一个 Editor 会话级服务负责完整工作流：
 
-调试构建不再覆盖正在使用的目录。`ProjectDebugPreparation` 在 `Output/Debug/Revisions/<revision-id>/` 发布不可变候选，并把该目录交给 App。初次启动和每次热更新使用同一种版本目录，没有“初次可变、后续不可变”两套加载语义。
+1. 调用现有调试构建能力生成不可变候选和清单；
+2. 将候选安装到客户端，使客户端始终持有最新完整版本；
+3. 读取客户端运行事实；
+4. 用当前运行版清单、最新候选清单和运行事实计算 `Direct`、`ReturnGroupStart` 或 `RestartGame`；
+5. 对 Direct 发出立即激活，对另外两类维护 Editor 待处理状态；
+6. 向 Editor Toast、顶部菜单和调试面板暴露同一个状态与命令；
+7. 成功激活后切换源码映射和断点映射。
 
-`revision-id` 由完整调试载荷指纹确定。指纹覆盖 Graph、Group、Assets、I18n、settings 和 Contracts 身份；当前 `DebugContentIdentity` 未覆盖 Assets，需要扩展。Contracts 字节变化生成不同契约身份并拒绝内容热更新，要求重启 App。
+构建器只负责构建，分类器保持纯函数，ViewModel 只绑定服务状态。它们不再分别维护热更新流程。
 
-Editor 不在 App 仍可能读取时删除版本目录。会话结束或 App 明确释放版本后再清理；异常退出后的旧版本由下一次调试准备做有界清理。清理仍只发生在 `Output/`。
+### 2.2 客户端：`DebugContentRevisionService`
 
-### 3.2 调试清单
+一个调试客户端会话级服务负责版本生命周期：
 
-每个候选包含不进入正式发行内容的调试清单，至少记录：
+- 验证并安装完整不可变候选；
+- 分别维护 `LatestRevision` 和当前运行绑定的 `RunRevision`；
+- 在客户端执行门内调用 Runtime 原子激活能力；
+- 返回 Group 开头时先激活最新版，再调用现有 Seek；
+- 新游戏创建时默认绑定最新版；
+- 持有当前、最新和必要的退休资源 scope，并负责最终释放；
+- 向 inspect 报告版本身份和运行事实。
 
-- project、revision、内容指纹和契约指纹；
-- 作者签名；
-- 每个 Group 的稳定作者 Entry 顺序、编译 span、primitive stable ID 和内容摘要；
-- Graph 节点/边摘要；
-- 每个资源的内容摘要、直接/间接作者使用位置，以及引用完整性；
-- settings、I18n、人物、Gallery、预载纹理和效果程序等会话级内容摘要。
+该服务不比较清单、不决定影响等级、不生成提示文案，也不维护 Editor 的待处理原因。
 
-清单由构建的同一冻结作者快照生成。资源使用位置复用 `ResourceReferenceIndex` 和现有依赖 metadata；动态引用或依赖不完整必须标记为未知，不能猜测成未来 Entry。
+### 2.3 Runtime、协议与 UI
 
-## 4. 运行进度模型
+- Runtime 不增加协调服务，只扩展 `DebugSession`：报告运行事实、替换不可变导航、推进 generation，并复用现有返回 Group 开头能力。
+- `GalNet.Debugging` 只放中立 DTO、清单、纯分类器和协议命令，不拥有流程状态。
+- Editor UI 只绑定 `DebugContentHotReloadService`。客户端 App 不显示本功能的 Toast、菜单状态或影响原因。
 
-`GameSnapshot` 增加按自然进入顺序去重的 `VisitedGroups`，并将格式升为 v6。Engine 在自然进入 Group 时登记；调试 Seek/回放不登记，也不覆盖自然入口。恢复存档时恢复该集合。首期不支持环，因此重复 Group 被校验为不受支持，不能静默缩成一次访问后继续热更新。
+## 3. 两个版本指针
 
-当前 Group、下一编译位置和入口状态继续分别使用 `NodeId`、`EntryIndex`、`GroupEntrance`。不再另存一份重复入口缓存。
+客户端明确区分：
 
-当 Engine 停在 Choice/Branch 而没有活动 Group 时，已经离开的 Group 都属于历史，尚未进入的后继 Group 属于未来；此时没有“当前 Group 前缀”操作。返回 Group 开头只在当前节点确为 Group 且入口缓存存在时可用。
+- `LatestRevision`：最近一次成功安装的完整候选；
+- `RunRevision`：当前 GameRun 实际执行的版本。
 
-调试状态另报告：
+每次 Editor 构建成功都先安装候选并更新 `LatestRevision`。安装本身不改变当前运行，也不需要先分类。若新的未激活候选覆盖旧候选，客户端可立即释放从未成为 RunRevision 的旧候选。
 
-- 当前已发布 revision；
-- 已经过 Group；
-- 当前活动作者 Entry/下一作者边界；
-- 待处理影响等级和原因；
-- 是否存在可返回的当前 Group 入口。
+| Editor 判定 | 安装后的激活行为 |
+| --- | --- |
+| `Direct` | 原子地将当前运行切换到 `LatestRevision` |
+| `ReturnGroupStart` | 当前运行继续使用旧版；Editor 提示用户，确认后原子激活最新版并返回当前 Group 开头 |
+| `RestartGame` | 当前运行继续使用旧版；Editor 提示用户，新游戏直接绑定最新版 |
 
-这些字段用于调试协议和 UI，不进入普通作者文档。
+因此不需要拼接“旧当前 Group + 新未来 Group”，也不需要在客户端保存影响原因。严格等级存在时，整个当前运行保持一个一致版本，直到完成对应动作。
 
-## 5. 差异与影响分类
+## 4. 运行事实
 
-定义三级影响，按 `RestartGame > ReturnGroupStart > Direct` 合并：
+客户端通过 inspect 回传以下最小事实：
+
+- run ID、generation、`RunRevision`、`LatestRevision`；
+- 当前节点/Group ID 和下一编译 Entry index；
+- 当前尚未完成的 primitive stable ID；
+- 按自然进入顺序排列的 Group ID 序列；
+- 当前 Group 是否有可用入口缓存；
+- 是否检测到 Group 重复自然进入。
+
+Group 序列只保存 ID，不保存 Graph、节点副本、边或状态快照。当前 Group 单独报告；Editor 将序列中除当前 Group 外的项视为历史 Group。调试 Seek、回放和断点定位不追加自然经过序列。
+
+首期不根据经过边精确分析拓扑修改。Graph topology、Choice/Branch、Group 增删或其他仅靠 Group ID 序列无法证明安全的变化，由 Editor 保守判为 `RestartGame`。
+
+`GameSnapshot` 升为 v6 并保存 Group ID 序列，使读档后 Editor 仍能正确分类。现有 `GroupEntrance` 继续是返回 Group 开头的唯一状态来源，不复制第二份入口缓存。
+
+## 5. Editor 影响分类
+
+影响等级按 `RestartGame > ReturnGroupStart > Direct` 合并：
 
 | 修改位置 | 影响 |
 | --- | --- |
-| 未自然进入的 Group 或当前 Group 尚未开始的作者 Entry | `Direct` |
-| 当前活动作者 Entry、当前 Group 已执行作者前缀 | `ReturnGroupStart` |
+| 未经过的 Group | `Direct` |
+| 当前 Group 尚未开始的作者 Entry | `Direct` |
+| 当前活动作者 Entry或当前 Group 已执行作者前缀 | `ReturnGroupStart` |
 | 已经离开的 Group | `RestartGame` |
+| Graph 拓扑或无法可靠归属的内容 | `RestartGame` |
 
-当前活动作者 Entry 的整个编译 span 都属于已执行前缀，即使其中还有 primitive 尚未分发。没有活动作者 Entry 时，`EntryIndex` 所在作者 Entry 是尚未开始的后缀。零展开作者 Entry 使用构建清单中的虚拟边界参与排序。
+Editor 使用当前 `RunRevision` 的清单解释客户端的编译 index 和活动 primitive ID，再与候选清单按稳定作者 Entry ID 对齐。Composite 展开的全部 primitive 归属同一个作者 Entry；活动作者 Entry 整体属于已执行前缀。
 
-新增、删除和调序先用稳定作者 Entry ID 对齐，再比较内容摘要和相对顺序。只要无法证明修改完全位于边界之后，就提升到 `ReturnGroupStart`；无法可靠归属到 Group 时提升到 `RestartGame`。
+新增、删除、调序和零展开 Entry 只要无法证明完全处于未来边界，就提升等级。普通资源变化按清单记录的作者使用位置采用最严格等级；动态引用、依赖不完整和会话级资源保守提升。
 
-Graph 变化按已经实际跨过的节点/边判断。已选择并离开的路径变化要求重新开始；当前 Group 尚未跨出的出口和未来拓扑可以直接更新。Branch/Choice 变化若无法由一次性、无环路径可靠归属，则要求重新开始。
+Contracts、模块程序集或程序代码身份变化不进入三级分类，直接要求重启调试 App。
 
-资源变化先把资源及其依赖闭包映射回作者使用位置，再采用这些位置中最严格的等级。以下内容首期直接要求重新开始游戏：
+## 6. 安装与激活协议
 
-- 动态引用或依赖不完整，无法证明使用位置；
-- settings、人物、Gallery catalog、默认视觉预载、全局效果程序注册等会话级内容；
-- 删除或改变资源类型、资源身份/metadata，使现有解码或恢复契约发生变化。
+协议采用简单的两段式操作。
 
-普通图片、音频、视频等内容字节变化，只要所有静态使用位置都在未来范围，就允许直接更新；当前或历史引用按相同位置规则提升。
+### 6.1 安装最新版
 
-## 6. Engine 内容换代
+`content.install` 只携带本机不可变候选目录及项目、revision、内容和契约身份。客户端独立复算身份、打开完整候选并验证 Graph 与 primitive 实现；成功后更新 `LatestRevision`，失败则保持原 Latest/Run 不变。
 
-### 6.1 准备
+安装成功不推进 Runtime generation，因为当前执行内容尚未改变。响应返回权威 `LatestRevision` 和 `RunRevision`，Editor 可在超时后通过 inspect 对账。
 
-App 在执行门外打开候选 `GameResourceScope`，解析完整 Graph，验证全部 primitive 实现、项目/契约身份、调试清单、资源索引和文本。准备结果拥有自己的资源和文件生命周期，不借用候选目录中的临时流。
+### 6.2 激活当前运行
 
-Runtime 增加只供显式调试会话使用的内容换代入口。它接收已经验证的候选 Graph、当前游标在候选中的目标位置、影响等级和 revision 身份，不依赖网络 DTO 或文件路径。
+Editor 分类后使用以下两个运行操作：
 
-### 6.2 提交
+- `content.activate`：用于 Direct，整体替换导航和新资源获取来源，并把下一作者边界映射到候选编译 index；
+- `content.activateAndSeekGroupStart`：用户确认返回时，先整体替换最新版，再复用现有入口缓存执行 Seek。
 
-提交在 `GameSession` 命令门和 Engine `_dispatchGate` 下串行执行，并再次核对 run、generation、旧 revision、当前 Node/Entry 和活动作者边界。若游戏在准备期间已经推进到不同边界，拒绝本次提交，由 Editor 用最新状态重新计算。
+重新开始不需要独立的内容激活命令。Editor 调用既有“开始新游戏”入口，客户端版本服务保证新 Run 使用 `LatestRevision`。若现有开始新游戏路径不能重建会话级资源，则由同一客户端版本服务扩展该路径，不另设第二个协调器。
 
-`GameGraphNavigator` 从一次构造的只读索引改为可准备、可整体替换的不可变快照。Engine 字段仍只指向一个当前快照，不逐节点原地修改。
+激活请求包含预期 run、generation、RunRevision、当前 Group/index 和活动 primitive ID。客户端只做技术前置条件校验：若游戏在分类后已推进，拒绝激活；Editor 重新 inspect 并分类。客户端不得自行把 Direct 改成 Return 或 Restart。
 
-- `Direct`：候选导航成为当前导航；当前 Group 的 `EntryIndex` 映射到候选中同一“下一作者边界”。已活动 primitive 继续完成，之后从候选后缀分发。
-- `ReturnGroupStart`：未来节点先采用候选；当前 Group 暂时保留旧版本并登记候选 Group。用户执行返回开头时，先提升候选当前 Group，再用现有入口缓存执行 `SeekGroupStartAsync`。
-- `RestartGame`：对未来执行安全的候选仍可发布，但保持“需要重新开始”标记；新游戏创建新 Engine 时完整采用最新候选并清除标记。首期无环保证不会再次自然进入已经离开的旧 Group。
+## 7. Runtime 原子换代
 
-每次成功提交推进调试 generation，取消旧 Seek/CatchUp，清除旧内容绑定的断点 span、中间追帧状态和迟到操作。当前 Group 的自然入口缓存只有在 `ReturnGroupStart` 时保留；普通内容换代不能将它误当作候选版本重新捕获。
+Runtime 只实现一个核心原语：在现有执行门内，用已验证候选导航替换当前不可变导航，并把当前游标设置到 Editor 提供的候选编译边界。
 
-提交失败释放候选，旧导航、资源代次、源码映射身份和 generation 全部保持不变。
+- 活动 primitive 实例继续正常结束，不被重建；
+- 下一次 Entry 分发读取候选导航；
+- 成功换代推进 generation，取消旧 Seek/CatchUp，清除旧 span 绑定的断点和迟到操作；
+- 失败时导航、游标和 generation 全部保持旧值；
+- 普通非调试运行不暴露换代入口。
 
-## 7. 资源与文本代次
+`activateAndSeekGroupStart` 在同一个客户端串行操作中先换代，再使用旧运行捕获的 Group 入口状态执行现有 Seek。若入口已失效，操作失败并回报 Editor；Editor 再提示重新开始，不由客户端自动降级。
 
-默认 Avalonia 组合增加调试期内容版本协调器和可换代资源门面。协调器保存“最新已发布候选”和“当前会话基础版本”；门面保存当前资源代次。新的 Acquire、文件物化和文本解析进入当前代；返回的外层 `AssetHandle`/媒体租约持有其来源代次，释放最后一个租约后才允许销毁退休代。
+## 8. 资源和文本
 
-解码器注册和诊断订阅由门面保存，并应用到每个新代。旧代退休时取消未交付加载，但不提前释放仍由活动 primitive、呈现恢复或媒体后端持有的对象。
+客户端版本服务拥有每个 revision 的完整 `GameResourceScope`。激活版本时只切换“后续新获取”的资源来源：
 
-ImageVariants、预载纹理、效果程序、Gallery 和项目配置在当前实现中按会话构造，不经普通 Acquire 动态查询。因此首期把这些变化分类为 `RestartGame`，不为热更新增加第二套可变全局注册表。
+- 已持有的图片、音频、视频和活动呈现对象继续使用旧对象；
+- 新 Acquire、文本解析和文件物化使用 RunRevision 对应 scope；
+- 不实现逐句柄退休协调器；曾成为 RunRevision 的旧 scope 保留到当前游戏结束后统一释放；
+- 从未激活且被更新候选替代的 scope 可立即释放；
+- 退休版本数量设置小上限，达到上限时安装仍可保留最新版，但 Direct 激活返回明确的容量错误，由 Editor 提示重新开始。
 
-当前 `StartNewGameAsync` 只更换 GameRun，仍会复用旧 `GameResourceScope`、Gallery、预载资源和项目配置，不能直接承担上述重建。调试协调器提供串行的“提升候选并开始新游戏”操作：先释放当前 Run，再将最新候选提升为会话基础版本，重建 visuals、Gallery resolver、文本与项目选项，按同一 profile 重新打开所需玩家服务，最后创建新 Run。它保留玩家全局数据和既有存档文件，但新运行从游戏入口开始；整个操作不重启 App 进程。
+Gallery catalog、预载纹理、全局效果注册、项目设置等会话级内容由 Editor 判为 `RestartGame`；新游戏路径通过同一个客户端版本服务重建相关会话对象。若某类对象实际上只能在 App 启动时建立，则清单将其标记为需要重启调试 App，不伪装成游戏内热更新。
 
-本功能只在 Developer/调试组合中启用。普通玩家运行继续直接持有单一 `GameResourceScope`，不增加文件监听或更新协议。
+## 9. Editor UI 与连续修改
 
-## 8. Editor、协议和 App UI
+Toast、顶部菜单和调试面板全部由 Editor 的同一个服务状态驱动：
 
-### 8.1 协议
+- Direct：激活成功后短暂提示“修改已应用”；
+- ReturnGroupStart：持续显示“返回当前 Group 开头应用修改”；
+- RestartGame：持续显示“重新开始游戏应用修改”。
 
-调试能力增加 `contentReload`。Editor 发送候选目录、revision/内容指纹、契约指纹和期望的 run/generation/旧 revision。App 独立计算指纹并加载清单，不能信任 Editor 声称的身份。
+连续构建始终安装最新候选。Editor 每次使用实际 `RunRevision` 与最新清单重新分类，因此新的保存可以升级、降低或解除旧要求。最旧构建迟到时按作者签名/请求序号丢弃，不能覆盖更新候选。
 
-成功响应包含新 generation、已发布 revision、影响等级、原因、当前/待提升 Group 和可用动作。`inspect` 同样返回这些字段，解决请求超时后“不知道是否已提交”的情况。
+只有客户端确认激活后，Editor 才把源码高亮、Entry 定位和断点映射切换到新版。RestartGame 在新 Run 建立并报告新版 RunRevision 后再切换。请求超时通过 inspect 的两个版本身份对账。
 
-协议只传身份和本机不可变目录，不在 4 MiB JSON 帧内传 Graph 或资源字节。远程设备和公网内容传输不在本期范围。
+## 10. 取舍与风险
 
-### 8.2 Editor
+### 不做客户端分类
 
-作者变化不再永久禁用调试操作。用户执行“构建并应用修改”后：
+客户端没有作者旧/新清单和 Editor 交互上下文。复制分类会形成两个权威结论，因此客户端只报告事实并验证命令前置条件。
 
-1. 捕获作者签名并构建不可变候选；
-2. 读取最新运行状态，计算建议影响；
-3. 发送候选，App 在提交前以实际状态复核；
-4. 只有成功响应后才切换 `_sources`、`_positions`、`_spans` 和作者签名；
-5. 重新把仍存在的作者断点映射到新版 span，删除项明确报告。
+### 不做部分 Graph 合并
 
-连续保存使用单调请求代次；旧构建完成时若作者签名已改变，只保留诊断，不发布到 App。首期提供显式命令，自动保存后应用可在稳定后另行启用，不改变核心协议。
+把新版未来 Group 与旧版当前/历史 Group 拼成临时 Graph，会增加节点合并、资源代次和多次更新覆盖规则。两个完整版本指针已经满足行为要求，故当前运行始终绑定单一完整版本。
 
-### 8.3 App 顶部菜单和提示
+### 不记录经过边
 
-App 接收提交结果后发出非模态 Toast，并在 Debug 菜单持续显示：
+首期产品规则以 Group 为单位，且不处理环。仅保存有序 Group ID 足够判断历史、当前和未来；拓扑变化统一重开，换取更小的存档与协议契约。
 
-- `ReturnGroupStart`：显示“返回当前 Group 开头应用修改”，启用现有返回能力的热更新动作；
-- `RestartGame`：显示“重新开始游戏应用修改”，调用调试协调器的“提升候选并开始新游戏”；普通仅剧情更新可以复用新 Run 路径，会话级变化重建相关资源，但都不重启 App 进程；
-- `Direct`：短暂提示修改已应用，无待处理菜单状态。
+### 主要风险
 
-重新开始级别覆盖返回开头。动作成功后重新检查待处理原因，只有满足条件才清除。构建失败只在 Editor 报告，App 继续旧版本。
+- 活动 Composite 的作者边界映射错误；必须由 Editor 清单映射而非客户端猜测。
+- 安装成功但响应丢失；inspect 必须返回 Latest/Run 两个身份。
+- 激活准备期间游戏推进；精确前置条件校验并拒绝旧命令。
+- 旧资源 scope 保留导致占用增长；采用小上限并明确要求重新开始。
 
-## 9. 候选方案与取舍
+## 11. 兼容与文档
 
-### 重建整个游戏运行
-
-可以复用现有 `RestartAsync`，实现简单，但会丢失当前状态并把所有修改都降级为重开，不能满足未来 Entry 直接生效，因此不采用为主流程。
-
-### 原地修改作者 Graph 或共享对象
-
-当前 Engine 会复制 Graph；让它继续借用可变作者对象会破坏并发、校验和快照边界，也无法原子回滚，因此不采用。
-
-### 发送差量文件或协议内字节
-
-差量需要新的补丁格式、回滚和大帧传输。本功能是同机开发调试，完整不可变目录的验证和失败恢复更直接，因此首期发送目录身份。
-
-### 每次更新创建第二个 Engine
-
-新 Engine 可以加载新 Graph，但迁移活动 primitive、入口缓存、调试暂停、呈现所有权和变量会形成另一套运行替换协议。现有 Engine 已有唯一执行门和回放能力，因此选择在调试门内替换不可变导航快照。
-
-## 10. 兼容、风险与文档
-
-- `GameSnapshot` 升至 v6；项目当前对不匹配格式明确拒绝，不增加旧 v5 的不完整经过记录迁移。正式实现后同步运行时存档规范。
-- 调试协议版本升级；旧 Editor/App 组合在握手时明确拒绝，不降级为内容热更新。
-- 最大风险是活动作者 Entry 边界判断、资源退休代泄漏、App 已提交但 Editor 超时，以及当前 Group 候选提升失败。阶段验证必须分别覆盖。
-- Contracts 指纹、项目 ID、候选路径安全、链接检查和完整内容指纹仍是发布前门禁。
-- 实现验证后同步 `docs/spec/runtime/execution.md`、`docs/spec/editor/debugging.md` 和 `docs/manual/editor/preview-and-debugging.md`；设计过程不提前改写正式事实。
-
+- `GameSnapshot` 升为 v6；旧格式按当前规则明确拒绝，不伪造经过序列。
+- 调试协议升级；旧 Editor/App 组合在握手时明确拒绝内容热更新。
+- 实现验证后同步 `docs/spec/runtime/execution.md`、`docs/spec/editor/debugging.md` 和 `docs/manual/editor/preview-and-debugging.md`。
+- Developer/调试组合才创建版本服务；发行 Player 保持单一内容 scope，不增加协议或文件监听。

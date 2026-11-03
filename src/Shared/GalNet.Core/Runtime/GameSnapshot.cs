@@ -3,7 +3,7 @@ namespace GalNet.Core.Runtime;
 /// <summary>Persisted runtime state needed to resume a game and rebuild its visible scene.</summary>
 public sealed class GameSnapshot
 {
-    public const int CurrentFormatVersion = 5;
+    public const int CurrentFormatVersion = 6;
 
     /// <summary>Persisted save format version. Older formats are intentionally rejected.</summary>
     public int Version { get; init; } = CurrentFormatVersion;
@@ -15,6 +15,9 @@ public sealed class GameSnapshot
     public int EntryIndex { get; init; }
     public string ContentBuildId { get; init; } = "";
     public string[] StoryPackages { get; init; } = [];
+
+    /// <summary>Groups naturally entered by this run, in first-entry order.</summary>
+    public string[] VisitedGroups { get; init; } = [];
 
     /// <summary>Save-scoped variable values captured for this snapshot.</summary>
     public Dictionary<string, GalNet.Core.Variable.Variable> Variables { get; init; } = [];

@@ -12,7 +12,8 @@ public sealed record GameDebugChoice(string Id, string[] Options);
 public sealed record GameDebugActiveEntry(string GroupId, string EntryId);
 public sealed record GameDebugState(long Generation, GameEngineState State, bool Paused, string NodeId, int EntryIndex,
     string[] ActiveEntryIds, GameDebugVariable[] Variables, GameDebugGroup[] Groups, string[] CachedGroups, string? Error, GameDebugChoice? Choice,
-    GameDebugActiveEntry[]? ActiveEntries = null, GameDebugCacheStats? Cache = null, GameDebugReplayStats? Replay = null);
+    GameDebugActiveEntry[]? ActiveEntries = null, GameDebugCacheStats? Cache = null, GameDebugReplayStats? Replay = null,
+    string[]? VisitedGroups = null, bool CanReturnGroupStart = false, bool RepeatedGroupVisit = false);
 
 public sealed partial class GameEngine
 {
@@ -71,7 +72,8 @@ public sealed partial class GameEngine
                     _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null,
                     _engine._active.Where(item => !item.Instance.IsCompleted)
                         .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray(),
-                    null, _lastReplay);
+                    null, _lastReplay, _engine._visitedGroups.ToArray(),
+                    _engine._currentGroupEntrance?.NodeId == _engine.CurrentNodeId, _engine._repeatedGroupVisit);
             }
             finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }

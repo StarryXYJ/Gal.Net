@@ -13,6 +13,7 @@ public static class SnapshotCopy
         EntryIndex = snapshot.EntryIndex,
         ContentBuildId = contentBuildId ?? snapshot.ContentBuildId,
         StoryPackages = (storyPackages ?? snapshot.StoryPackages).ToArray(),
+        VisitedGroups = snapshot.VisitedGroups.ToArray(),
         Variables = snapshot.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value), StringComparer.Ordinal),
         States = snapshot.States.ToDictionary(pair => pair.Key,
             pair => new StateSection(pair.Value.Version, pair.Value.Payload.Clone()), StringComparer.Ordinal),
