@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [列表 Enter 的 tunnel 路由](lessons/L-20261103-07-list-enter-tunnel-routing.md)：ListBox 可能先处理 Enter；导航需在 tunnel 阶段处理并排除行内按钮，验证实际点击/按键而非只调命令。
 - [标题按钮本地值压过交互状态](lessons/L-20261103-06-caption-local-value-priority.md)：Semi CaptionButton 常态已透明；全局普通按钮样式会覆盖它，标记标题按钮以排除该样式；不要设置本地背景或提高普通按钮样式优先级。
 - [默认折叠与问题定位](lessons/L-20261103-05-collapsed-group-navigation-order.md)：先打开 Group，再展开定位目标，避免面板首次 Attach 覆盖展开状态。
 - [Inspector 切换先于失焦提交](lessons/L-20261103-03-entry-inspector-click-before-blur.md)：Group pointer tunnel 可先释放旧表单；点击字段外时先由项目草稿提交，保留组字/冲突保护和异步新输入。

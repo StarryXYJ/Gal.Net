@@ -11,7 +11,7 @@
    <Button Content="{loc:Localize Uiux.Validation.Check}" Command="{Binding ValidateCommand}" Margin="0,0,8,0"/><TextBlock Text="{Binding Status}" VerticalAlignment="Center" Margin="0,0,8,0"/>
    <CheckBox VerticalAlignment="Center" Content="{loc:Localize Log.ErrorsOnly}" IsChecked="{Binding OnlyErrors}"/>
   </WrapPanel>
-  <ListBox Grid.Row="1" ItemsSource="{Binding VisibleProblems}" SelectedItem="{Binding SelectedProblem, Mode=TwoWay}" DoubleTapped="OnProblemDoubleTapped" KeyDown="OnProblemKeyDown">
+  <ListBox Name="ProblemsList" Grid.Row="1" ItemsSource="{Binding VisibleProblems}" SelectedItem="{Binding SelectedProblem, Mode=TwoWay}" DoubleTapped="OnProblemDoubleTapped">
    <ListBox.ItemTemplate><DataTemplate x:DataType="vm:AuthorProblem">
     <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8" RowSpacing="4">
      <TextBlock Text="{loc:Localize SeverityKey}" Classes="severity" Classes.error="{Binding IsError}" Classes.warning="{Binding IsWarning}"/>

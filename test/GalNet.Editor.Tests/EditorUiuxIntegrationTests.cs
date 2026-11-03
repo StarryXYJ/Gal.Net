@@ -3,6 +3,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.Markup.Xaml.Styling;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -450,12 +452,34 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var problems = project.Services.GetRequiredService<ProblemsPanelViewModel>(); problems.ValidateCommand.Execute(null);
             var issue = problems.Problems.First(problem => problem.Target?.EntryId == entry.StableId);
             Assert.That(issue.Target!.NodeId, Is.EqualTo(group.Id));
+            Assert.That(entry.ProblemCount, Is.GreaterThan(0));
+            var navigation = project.Services.GetRequiredService<AuthorNavigationService>();
+            var requests = 0; navigation.Requested += _ => requests++;
+            problems.Report("error", "navigation check", "test", issue.Target);
+            var view = new ProblemsPanelView { DataContext = problems };
+            var window = new Window { Content = view, Width = 800, Height = 500 }; window.Show(); TimelinePump(window);
+            try
+            {
+                var list = view.GetVisualDescendants().OfType<ListBox>().Single();
+                var row = list.GetVisualDescendants().OfType<ListBoxItem>().First(item => item.DataContext is AuthorProblem { Message: "navigation check" });
+                issue = (AuthorProblem)row.DataContext!;
+                var point = row.TranslatePoint(new Point(40, 12), window)!.Value;
+                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); TimelinePump(window);
+                Assert.That(problems.SelectedProblem, Is.SameAs(issue)); Assert.That(requests, Is.Zero, "Single click must not navigate.");
+                list.Focus(); window.KeyPress(Key.Enter, RawInputModifiers.None, PhysicalKey.Enter, null); TimelinePump(window);
+                Assert.That(requests, Is.EqualTo(1), "Enter navigates the selected problem.");
+                requests = 0;
+                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left);
+                window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left); TimelinePump(window);
+                Assert.That(requests, Is.EqualTo(1), "Double-click navigates once.");
+            }
+            finally { window.Close(); }
+            problems.ClearReports("test");
             problems.NavigateCommand.Execute(issue);
             var inspectorCount = TimelineDockables(layout).Count(item => item.Context is InspectorHostViewModel);
             problems.NavigateCommand.Execute(issue);
             Assert.That(TimelineDockables(layout).Count(item => item.Context is InspectorHostViewModel), Is.EqualTo(inspectorCount), "Repeated navigation reuses the unlocked inspector.");
             Assert.That(project.Services.GetRequiredService<EntrySelectionContext>().Current?.EntryId, Is.EqualTo(entry.StableId));
-            Assert.That(entry.ProblemCount, Is.GreaterThan(0));
             entry.Source.Parameters["duration"] = JsonSerializer.SerializeToElement(1f);
             problems.ValidateCommand.Execute(null);
             Assert.That(problems.Problems.Any(problem => problem.Target?.EntryId == entry.StableId), Is.False);

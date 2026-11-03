@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using GalNet.Editor.ViewModels;
 
@@ -8,7 +9,11 @@ namespace GalNet.Editor.Views;
 
 public partial class ProblemsPanelView : UserControl
 {
-    public ProblemsPanelView() => InitializeComponent();
+    public ProblemsPanelView()
+    {
+        InitializeComponent();
+        ProblemsList.AddHandler(KeyDownEvent, OnProblemKeyDown, RoutingStrategies.Tunnel);
+    }
     private void OnProblemDoubleTapped(object? sender, TappedEventArgs args)
     {
         if (args.Source is not Visual visual || visual.GetSelfAndVisualAncestors().OfType<Button>().Any()) return;
@@ -17,7 +22,8 @@ public partial class ProblemsPanelView : UserControl
     }
     private void OnProblemKeyDown(object? sender, KeyEventArgs args)
     {
-        if (args.Key != Key.Enter || sender is not ListBox { SelectedItem: AuthorProblem problem } || DataContext is not ProblemsPanelViewModel vm) return;
+        if (args.Key != Key.Enter || args.Source is Visual visual && visual.GetSelfAndVisualAncestors().OfType<Button>().Any()
+            || sender is not ListBox { SelectedItem: AuthorProblem problem } || DataContext is not ProblemsPanelViewModel vm) return;
         vm.NavigateCommand.Execute(problem); args.Handled = true;
     }
 }

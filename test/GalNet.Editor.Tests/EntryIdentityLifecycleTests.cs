@@ -98,8 +98,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var archive = inputs.Archives.Single(); Assert.That(inputs.CanRestore(archive), Is.True);
             var problems = scope.GetRequiredService<ProblemsPanelViewModel>();
             var recovery = problems.Problems.Single(problem => problem.InputText == "3.5"); Assert.That(recovery.HasRestore, Is.True);
-            var view = new ProblemsPanelView { DataContext = problems }; var window = new Window { Content = view, Width = 700, Height = 450 }; window.Show(); Dispatcher.UIThread.RunJobs();
-            Assert.That(view.GetVisualDescendants().OfType<TextBox>().Any(input => input.IsReadOnly && input.Text == "3.5"), Is.True); window.Close();
+            problems.SelectedProblem = recovery;
+            using var detail = new GalNet.Editor.Inspector.ViewModels.ProblemInspectorViewModel(problems);
+            var view = new GalNet.Editor.Inspector.Views.ProblemInspectorView { DataContext = detail };
+            var window = new Window { Content = view, Width = 700, Height = 450 }; window.Show(); Dispatcher.UIThread.RunJobs();
+            Assert.That(view.GetVisualDescendants().OfType<SelectableTextBlock>().Any(input => input.Text == "3.5"), Is.True); window.Close();
             inputs.RequestRestore(archive);
             var fresh = entry.DetailForm!.Binding(entry.DetailForm.Fields.Single()).Draft!;
             Assert.That(fresh, Is.Not.SameAs(old)); Assert.That(fresh.Text, Is.EqualTo("3.5")); Assert.That(fresh.IsConflicted, Is.False);
