@@ -54,7 +54,7 @@
             </StackPanel>
           </ScrollViewer>
           </TabItem>
-          <TabItem Header="{loc:Localize Settings.Shortcuts}">
+          <TabItem Name="ShortcutsTab" Header="{loc:Localize Settings.Shortcuts}">
           <ScrollViewer>
             <StackPanel Spacing="8" Margin="12,0,0,0">
                 <Grid ColumnDefinitions="*,Auto">
@@ -74,7 +74,7 @@
                                         <TextBlock Text="{Binding Category}" FontSize="{DynamicResource Editor.Font.Caption}" Foreground="{DynamicResource SemiColorText2}" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1">
-                                        <Button Content="{Binding GestureText}" HorizontalAlignment="Stretch" Click="OnCaptureShortcut" ToolTip.Tip="{loc:Localize Settings.Shortcuts.CaptureHint}" />
+                                        <Button Name="ShortcutCapture" Content="{Binding GestureText}" HorizontalAlignment="Stretch" Click="OnCaptureShortcut" ToolTip.Tip="{loc:Localize Settings.Shortcuts.CaptureHint}" />
                                         <TextBlock Text="{Binding ValidationMessage}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="{DynamicResource SemiColorDanger}" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <Button Grid.Column="2" Theme="{DynamicResource EditorIconButton}" Command="{Binding ResetCommand}" ToolTip.Tip="{loc:Localize Common.Reset}" AutomationProperties.Name="{loc:Localize Common.Reset}"><PathIcon Width="16" Height="16" Data="{StaticResource ResetIcon}" /></Button>
