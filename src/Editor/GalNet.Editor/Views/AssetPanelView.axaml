@@ -94,7 +94,7 @@
               <MenuItem Header="{loc:Localize Asset.Menu.Refresh}" Command="{Binding #Root.DataContext.RefreshCommand}" />
             </ContextMenu></Border.ContextMenu>
             <Grid RowDefinitions="*,Auto">
-              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><PathIcon Data="{Binding IconGeometry}" IsVisible="{Binding !HasThumbnail}" Width="38" Height="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
+              <Border Background="{DynamicResource SemiColorFill0}" CornerRadius="4" IsVisible="{Binding !#Root.DataContext.IsListView}"><Grid><PathIcon Name="FileTypeIcon" Data="{Binding IconGeometry}" IsVisible="{Binding !HasThumbnail}" Width="38" Height="38" HorizontalAlignment="Center" VerticalAlignment="Center" /><Image Source="{Binding Thumbnail}" Stretch="Uniform" /></Grid></Border>
               <StackPanel Orientation="Horizontal" Spacing="5" IsVisible="{Binding #Root.DataContext.IsListView}"><PathIcon Data="{Binding IconGeometry}" Width="16" Height="16"/><TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource SemiColorText2}" FontSize="{DynamicResource Editor.Font.Caption}"/></StackPanel>
               <TextBlock Grid.Row="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" IsVisible="{Binding !IsRenaming}" />
               <TextBox Grid.Row="1" Text="{Binding #Root.DataContext.RenameText,Mode=TwoWay}" IsVisible="{Binding IsRenaming}" AttachedToVisualTree="OnRenameAttached" PropertyChanged="OnRenamePropertyChanged" KeyDown="OnRenameKeyDown" LostFocus="OnRenameLostFocus" />

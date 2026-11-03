@@ -215,6 +215,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(vm.Entries.Single(item => item.Path == "Contracts").CanEdit, Is.False);
                 var notes = vm.Directories[0].Children.Single(node => node.Path == "notes"); tree.SelectedItem = notes; window.UpdateLayout();
                 Assert.That(vm.CurrentDirectory, Is.EqualTo("notes")); Assert.That(vm.Entries, Has.Count.EqualTo(3));
+                var previewItem = vm.Entries.Single(item => item.Name == "a.txt");
+                var fallback = view.GetVisualDescendants().OfType<PathIcon>().Single(icon => icon.Name == "FileTypeIcon" && ReferenceEquals(icon.DataContext, previewItem));
+                Assert.That(fallback.IsVisible, Is.True);
+                using (var bitmap = new Avalonia.Media.Imaging.WriteableBitmap(new PixelSize(1, 1), new Vector(96, 96), Avalonia.Platform.PixelFormat.Bgra8888, Avalonia.Platform.AlphaFormat.Premul))
+                {
+                    previewItem.Thumbnail = bitmap; window.UpdateLayout();
+                    Assert.That(fallback.IsVisible, Is.False, "A loaded thumbnail must hide the underlying type icon.");
+                    previewItem.Thumbnail = null; window.UpdateLayout();
+                    Assert.That(fallback.IsVisible, Is.True, "The fallback icon returns when no preview is available.");
+                }
                 var count = project.Services.GetRequiredService<EditorHistories>().Content.UndoDescription;
                 vm.ThumbnailSize = 120; vm.SearchText = "a.txt"; Assert.That(vm.Entries.Single().Name, Is.EqualTo("a.txt")); vm.SearchText = "";
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.UndoDescription, Is.EqualTo(count));
@@ -230,7 +240,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var point = first.TranslatePoint(new Point(12, 12), window)!.Value; window.MouseDown(point, MouseButton.Left); window.MouseUp(point, MouseButton.Left);
                 window.UpdateLayout(); second = grid.GetVisualDescendants().OfType<ListBoxItem>().Single(item => item.DataContext is ProjectFileItem { Name: "b.txt" });
                 point = second.TranslatePoint(new Point(12, 12), window)!.Value; window.MouseDown(point, MouseButton.Left, RawInputModifiers.Control); window.MouseUp(point, MouseButton.Left, RawInputModifiers.Control);
-                Assert.That(vm.SelectedEntries, Has.Count.EqualTo(2)); vm.CopySelectedCommand.Execute(null); vm.Navigate("notes/child"); await vm.PasteCommand.ExecuteAsync(null);
+                Assert.That(vm.SelectedEntries, Has.Count.EqualTo(2));
+                window.MouseDown(point, MouseButton.Right); window.MouseUp(point, MouseButton.Right); window.UpdateLayout();
+                Assert.That(vm.SelectedEntries.Select(entry => entry.Name), Is.EquivalentTo(new[] { "renamed.txt", "b.txt" }), "Right-clicking an already selected item must preserve the batch.");
+                vm.CopySelectedCommand.Execute(null); vm.Navigate("notes/child"); await vm.PasteCommand.ExecuteAsync(null);
                 Assert.That(vm.Entries.Select(item => item.Name), Is.EquivalentTo(new[] { "renamed.txt", "b.txt" }));
                 grid.SelectAll(); await vm.DeleteSelectedCommand.ExecuteAsync(null); Assert.That(vm.IsDeletePending, Is.True);
                 vm.CancelDeleteCommand.Execute(null); Assert.That(vm.Entries, Has.Count.EqualTo(2));
