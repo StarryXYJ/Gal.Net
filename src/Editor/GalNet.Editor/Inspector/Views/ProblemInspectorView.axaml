@@ -1,0 +1,12 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+ xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+ x:Class="GalNet.Editor.Inspector.Views.ProblemInspectorView" x:DataType="vm:ProblemInspectorViewModel">
+ <ScrollViewer><StackPanel Margin="12" Spacing="10">
+  <TextBlock Text="{Binding Problem.Message}" TextWrapping="Wrap" FontWeight="SemiBold"/>
+  <SelectableTextBlock Text="{Binding Problem.Source}" TextWrapping="Wrap" Foreground="{DynamicResource SemiColorText2}"/>
+  <SelectableTextBlock Text="{Binding Problem.Code}" TextWrapping="Wrap" IsVisible="{Binding Problem.HasCode}"/>
+  <TextBlock Text="{loc:Localize Problem.Details}" FontWeight="SemiBold" IsVisible="{Binding Problem.HasDetails}"/>
+  <SelectableTextBlock Text="{Binding Problem.Details}" TextWrapping="Wrap" IsVisible="{Binding Problem.HasDetails}"/>
+  <SelectableTextBlock Text="{Binding Problem.InputText}" TextWrapping="Wrap" IsVisible="{Binding Problem.HasInputText}"/>
+ </StackPanel></ScrollViewer>
+</UserControl>

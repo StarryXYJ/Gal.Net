@@ -47,7 +47,7 @@ P0 先建立基线与入口清单。P1–P3 以 P0 为前置，可以独立验�
 
 ## P3：Problems 与 Inspector
 
-**状态：planned。** 前置：P0 和现有 Dock/定位机制。模块：Problems、Inspector contribution/coordinator、导航及草稿会话。
+**状态：in-progress。** 见 [第三轮](round-3.md)，真实桌面和多个 Inspector 综合验证待完成。 前置：P0 和现有 Dock/定位机制。模块：Problems、Inspector contribution/coordinator、导航及草稿会话。
 
 - 单击/键盘选择显示问题详情；双击/Enter 定位。移除行内详情 expander，保留问题消息、来源和草稿恢复/丢弃。
 - 仅明确选择问题时跟随；沿用 Inspector 锁定，无额外提示。核实双击导航导致的焦点与详情切换；无目标、过期目标可查看信息而不错误跳转。

@@ -30,7 +30,7 @@ Inspector 根据活动内容贡献选择详情。旧内嵌 GamePreview 和 UiCus
 
 ## 焦点与输入
 
-Inspector 跟随当前文档的激活和焦点，工具面板焦点不应抢走作者来源；锁定 Inspector 保留目标。`EntrySelectionContext`、`TimelineEditSession` 等项目服务保存稳定选择和编辑来源，面板不借用已关闭 Group 页的字段控件。
+Inspector 跟随当前文档的激活和焦点，工具面板焦点不应抢走作者来源；选择 Problems 中的问题时，未锁定 Inspector 跟随显示详情，双击或 Enter 导航到来源。锁定 Inspector 保留目标。`EntrySelectionContext`、`TimelineEditSession` 等项目服务保存稳定选择和编辑来源，面板不借用已关闭 Group 页的字段控件。
 
 普通 Entry 输入草稿按项目会话保留，Timeline 专属工具仍有自己的确认/取消生命周期。具体规则见[Group](groups.md)、[历史与保存](history-and-save.md)。
 

@@ -190,7 +190,17 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
             var state = project.Services.GetRequiredService<EntryEditSession>().Get(entry, entry.DetailForm!.Fields.Single());
             state.Update("invalid", true, new GalNet.Core.Parameters.ValueIssue("value.type", "invalid"), false);
-            Assert.That(problems.Problems.Any(problem => problem.Target?.EntryId == entry.StableId), Is.True);
+            var issue = problems.Problems.First(problem => problem.Target?.EntryId == entry.StableId);
+            var host = (InspectorHostViewModel)TimelineDockables(root).Single(item => item.Context is InspectorHostViewModel).Context!;
+            problems.SelectedProblem = issue;
+            Assert.That(host.CurrentInspectorViewModel, Is.TypeOf<ProblemInspectorViewModel>());
+            var detail = (ProblemInspectorViewModel)host.CurrentInspectorViewModel!;
+            Assert.That(detail.Problem, Is.SameAs(issue));
+            host.IsLocked = true;
+            problems.SelectedProblem = new AuthorProblem("warning", "other", "source", null);
+            Assert.That(detail.Problem, Is.SameAs(issue));
+            host.IsLocked = false;
+            Assert.That(detail.Problem?.Message, Is.EqualTo("other"));
             state.Clear();
             factory.CloseDockable(TimelineDockables(root).Single(item => item.Context is InspectorHostViewModel));
             factory.ApplyWorkspacePreset("Writing");

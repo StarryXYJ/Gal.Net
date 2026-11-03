@@ -19,6 +19,7 @@ internal sealed class DockInspectorCoordinator
     private readonly Func<EditorWorkspaceViewModel?> _getWorkspace;
     private readonly List<InspectorHostViewModel> _hosts = [];
     private IDockable? _lastInspectableDockable;
+    private readonly Dictionary<ProblemsPanelViewModel, IDockable> _problemPanels = [];
 
     public IReadOnlyList<InspectorHostViewModel> Hosts => _hosts;
 
@@ -38,6 +39,8 @@ internal sealed class DockInspectorCoordinator
             inspector.Dispose();
         }
         _hosts.Clear();
+        foreach (var page in _problemPanels.Keys) page.PropertyChanged -= OnProblemSelectionChanged;
+        _problemPanels.Clear();
         _lastInspectableDockable = null;
     }
 
@@ -78,12 +81,25 @@ internal sealed class DockInspectorCoordinator
         if (dockable is null || !_panelByDockable.TryGetValue(dockable, out var panel))
             return;
 
+        if (dockable.Context is ProblemsPanelViewModel problems)
+        {
+            if (!_problemPanels.ContainsKey(problems)) problems.PropertyChanged += OnProblemSelectionChanged;
+            _problemPanels[problems] = dockable;
+            if (problems.SelectedProblem is null) return;
+        }
         if (panel.PanelId == EditorDockPanelIds.Inspector || panel.Inspector is null)
             return;
 
         _lastInspectableDockable = dockable;
         foreach (var inspector in _hosts)
             UpdateSingle(inspector, dockable, isInitialTarget: false);
+    }
+
+    private void OnProblemSelectionChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProblemsPanelViewModel.SelectedProblem) && sender is ProblemsPanelViewModel page
+            && page.SelectedProblem is not null && _problemPanels.TryGetValue(page, out var dockable) && dockable.Owner is not null)
+            UpdateFor(dockable);
     }
 
     public void InitializeFor(InspectorHostViewModel inspector, Func<IDockable?> findActiveInspectable)

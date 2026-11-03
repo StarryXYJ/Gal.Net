@@ -17,6 +17,7 @@ namespace GalNet.Editor.ViewModels;
 public sealed record AuthorProblem(string Severity, string Message, string Source, AuthorNavigationTarget? Target, Action? Discard = null)
 {
     public string? Code { get; init; }
+    public bool HasCode => !string.IsNullOrEmpty(Code);
     public FieldDescriptor? Field { get; init; }
     public IReadOnlyList<string>? FieldPath { get; init; }
     public PropertyPath? ValuePath { get; init; }
@@ -59,6 +60,7 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
     private string _fileStamp = "";
     public Task ValidationTask { get; private set; } = Task.CompletedTask;
     [ObservableProperty] private bool _onlyErrors;
+    [ObservableProperty] private AuthorProblem? _selectedProblem;
     public IEnumerable<AuthorProblem> VisibleProblems => Problems.Where(problem => !OnlyErrors || problem.IsError).OrderBy(problem => problem.IsError ? 0 : problem.IsWarning ? 1 : 2);
     partial void OnOnlyErrorsChanged(bool value) => OnPropertyChanged(nameof(VisibleProblems));
     private List<AuthorProblem> _validation = [];
