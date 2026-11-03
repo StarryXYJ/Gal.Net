@@ -38,6 +38,7 @@ public static class PlayerTypography
             // Preserve the existing desktop hierarchy while each alias follows its semantic role.
             ["MenuFontSize"] = sizes.Action * 20 / 18,
             ["GroupHeadingSize"] = sizes.Heading * 22 / 34,
+            ["SettingsCategoryFontSize"] = sizes.Heading * 24 / 34,
             ["HistoryHeadingSize"] = sizes.Heading * 30 / 34,
             ["HistoryFontSize"] = sizes.Body * 21 / 18,
             ["HistorySpeakerFontSize"] = sizes.Emphasis * 18 / 26,

@@ -15,6 +15,14 @@ public sealed partial class GameEngine
         private GameDebugSpan? _stepBoundary;
         private GameDebugSpan? _forcedTarget;
 
+        private void OnContentReplaced()
+        {
+            _breakpoints.Clear();
+            _skipBreakpoint = null;
+            _stepBoundary = null;
+            _forcedTarget = null;
+        }
+
         private void ValidateSpan(GameDebugSpan span)
         {
             if (_engine._navigation.FindNode(span.GroupId) is not Group group || span.Start < 0 ||

@@ -49,4 +49,4 @@ git -C wiki push
 
 `.github/workflows/docs.yml` 在文档相关 PR 中执行检查并生成 Wiki 预览 artifact；master 的相关 push 也运行。配置仓库 secret `DOCS_WIKI_TOKEN`（具备 Wiki 仓库写入权限）后，master 更新可自动发布；手动运行默认只检查，勾选 publish_wiki 才请求发布。PR 不接触发布凭据。
 
-没有正确凭据时仍执行检查并保留预览，明确显示未启用发布。Wiki 克隆/推送由 Git 完成，不通过把 Wiki 当成普通 GitHub API 仓库查询；不能假定默认主仓库 token 能写 Wiki。本次整理按用户选择只在本地提交和生成，远程发布另行进行。
+没有正确凭据时仍执行检查并保留预览，明确显示未启用发布。Wiki 克隆/推送由 Git 完成，不通过把 Wiki 当成普通 GitHub API 仓库查询；不能假定默认主仓库 token 能写 Wiki。需要远程发布时，先确认来源提交已推送，再检查并推送 Wiki 仓库。

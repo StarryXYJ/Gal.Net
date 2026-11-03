@@ -5,8 +5,8 @@ namespace GalNet.Storage.FileSystem;
 /// <summary>Compiled host policy. Binding identifies a game project, so that game's content can be updated.</summary>
 public sealed record GameLaunchPolicy(string Mode, string? BoundProjectId = null)
 {
-    public bool AllowsExternalContent => Mode != "Bound";
-    public bool AllowsDebugging => Mode == "Developer";
+    public bool AllowsExternalContent => Mode is not ("Bound" or "BoundDeveloper");
+    public bool AllowsDebugging => Mode is "Developer" or "BoundDeveloper";
 
     public static GameLaunchPolicy FromAssembly(Assembly assembly)
     {
@@ -17,8 +17,8 @@ public sealed record GameLaunchPolicy(string Mode, string? BoundProjectId = null
 
     public void ValidateContent(string? contentDirectory)
     {
-        if (Mode is not ("Developer" or "Player" or "Bound")) throw new InvalidDataException("Unknown player launch mode.");
-        if (Mode != "Bound") return;
+        if (Mode is not ("Developer" or "Player" or "Bound" or "BoundDeveloper")) throw new InvalidDataException("Unknown player launch mode.");
+        if (AllowsExternalContent) return;
         if (string.IsNullOrWhiteSpace(BoundProjectId) || string.IsNullOrWhiteSpace(contentDirectory))
             throw new InvalidDataException("A bound player requires its compiled game identity and game content.");
         if (!string.Equals(BoundProjectId, InstalledGameDescriptor.Read(contentDirectory).ProjectId, StringComparison.Ordinal))

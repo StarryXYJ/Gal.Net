@@ -6,6 +6,7 @@ using GalNet.Core.Configuration;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
 using GalNet.Contracts.Builtins.Audio;
+using GalNet.Editor.ViewModels;
 
 namespace GalNet.Editor.Services;
 
@@ -22,9 +23,19 @@ public sealed class ConfigurationSectionEditor : IDisposable
     private readonly Dictionary<string, Field> _fields;
     private bool _disposed;
     public string Id => _section.Id;
+    public string DisplayNameKey => _section.Id switch
+    {
+        "galnet.project" => "Settings.Project.Section.Project",
+        "galnet.packaging" => "Settings.Project.Section.Packaging",
+        "galnet.resourceOverrides" => "Settings.Project.Section.ResourceOverrides",
+        _ => _section.Id
+    };
     public DtoEditorItem Item { get; }
+    public DtoEditorItem DisplayItem { get; }
+    public ProjectAudioSettingsViewModel? AudioSettings { get; }
     public EditorRegistry Registry { get; }
-    public bool HasChanges => _fields.Values.Any(item => item.Draft.IsDirty || item.Pending is { } value && !Equal(item.Source(_baseline), value));
+    public event Action? AudioBusesChanged;
+    public bool HasChanges => AudioSettings?.HasInputDraft == true || _fields.Values.Any(item => item.Draft.IsDirty || item.Pending is { } value && !Equal(item.Source(_baseline), value));
 
     public ConfigurationSectionEditor(ConfigurationSection section, ProjectConfiguration configuration, EditorRegistry registry,
         IEditorLocalizationService localization, Func<bool> isCurrent, Action changed, Func<FieldDescriptor, bool> canEdit)
@@ -34,11 +45,8 @@ public sealed class ConfigurationSectionEditor : IDisposable
         catch (Exception error) when (error is System.IO.InvalidDataException or JsonException or ArgumentException)
         { _resolved = JsonSerializer.SerializeToElement(new { }); }
         _isCurrent = isCurrent; _changed = changed; _localization = localization; Registry = registry;
-        // Ordinary object/list DTOs use the shared JSON editor; no second reflection-based configuration form.
         var fields = section.Fields.Where(field => section.Id != "galnet.project" || field.Id is not ("targetLocale" or "availableLocales"))
-            .Select(Decorate).Select(field => field.Editor is null && !IsScalar(field.Value.ValueType)
-            ? new FieldDescriptor(field.Id, field.Value, field.IsRequired, field.DefaultValue, new(ValueEditorIds.Json), field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId)
-            : field).ToArray();
+            .Select(Decorate).ToArray();
         _fields = fields.ToDictionary(field => field.Id, field => new Field(this, field, canEdit(field)), StringComparer.Ordinal);
         Item = new(section.Id, null, fields, Binding, async (patch, token) =>
         {
@@ -46,25 +54,34 @@ public sealed class ConfigurationSectionEditor : IDisposable
                 if (await Binding(fields.Single(field => field.Id == id)).CommitAsync(value, token) is { } issue) return issue;
             return null;
         });
+        if (section.Id == DefaultProjectConfiguration.Section.Id)
+        {
+            AudioSettings = new(this, localization, changed);
+            DisplayItem = new(section.Id, null, fields.Where(field => field.Id is not ("audioBuses" or "audioTracks")).ToArray(), Binding);
+        }
+        else DisplayItem = Item;
     }
     private FieldDescriptor Decorate(FieldDescriptor field)
     {
-        if (_section.Id != "galnet.project") return field;
-        var label = field.Id switch
+        var label = _section.Id == "galnet.project" ? field.Id switch
         {
             "defaultWidth" => "Settings.Project.DefaultWidth",
             "defaultHeight" => "Settings.Project.DefaultHeight",
             "orientationPolicy" => "Settings.Project.OrientationPolicy",
             "defaultOrientation" => "Settings.Project.DefaultOrientation",
             "defaultVisualPrograms" => "Settings.Project.DefaultVisualPrograms",
+            "defaultWeatherTextures" => "Settings.Project.DefaultWeatherTextures",
             "saveSlotCount" => "Settings.Project.SaveSlotCount",
             "audioBuses" => "Settings.Project.AudioBuses",
             "audioTracks" => "Settings.Project.AudioTracks",
             _ => field.LabelKey
-        };
-        if (field.Id == "defaultVisualPrograms")
+        } : field.LabelKey ?? BuiltInFieldLabelKey(_section.Id, field.Id);
+        if (_section.Id != "galnet.project")
+            return label is null ? field : new(field.Id, field.Value, field.IsRequired, field.DefaultValue, field.Editor, label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
+        if (field.Id is "defaultVisualPrograms" or "defaultWeatherTextures")
         {
-            var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)))));
+            var editor = field.Id == "defaultWeatherTextures" ? "entry.imageasset" : "entry.effectprogramasset";
+            var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)), editor: new EditorHints(editor))));
             return new(field.Id, map, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
         }
         if (field.Id is not ("audioBuses" or "audioTracks"))
@@ -83,13 +100,29 @@ public sealed class ConfigurationSectionEditor : IDisposable
                 "playbackOrder" => "Settings.Project.PlaybackOrder", "repeat" => "Settings.Project.Repeat",
                 "overflowPolicy" => "Settings.Project.OverflowPolicy", "queueOverflowPolicy" => "Settings.Project.QueueOverflowPolicy", _ => null
             };
-            return new FieldDescriptor(id, new ValueDescriptor(property.PropertyType, jsonOptions: options), labelKey: key);
+            return new FieldDescriptor(id, new ValueDescriptor(property.PropertyType, jsonOptions: options),
+                editor: type == typeof(AudioTrackDefinition) && id == "busId" ? new EditorHints("project.audioBus") : null, labelKey: key);
         }).ToArray();
         var element = new FieldDescriptor("element", new ValueDescriptor(type, jsonOptions: options).WithStructure(ValueStructure.Object(members)));
         var value = field.Value.WithStructure(ValueStructure.Sequence(element));
         return new(field.Id, value, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
     }
-    private static bool IsScalar(Type type) => type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal);
+    private static string? BuiltInFieldLabelKey(string sectionId, string fieldId) => (sectionId, fieldId) switch
+    {
+        ("galnet.packaging", "maxPakBytes") => "Settings.Project.Packaging.MaxPakBytes",
+        ("galnet.packaging", "includeResources") => "Settings.Project.Packaging.IncludeResources",
+        ("galnet.packaging", "declaredCompleteResources") => "Settings.Project.Packaging.DeclaredCompleteResources",
+        ("galnet.resourceOverrides", "packages") => "Settings.Project.ResourceOverrides.Packages",
+        ("galnet.resourceOverrides", "additionalOriginals") => "Settings.Project.ResourceOverrides.AdditionalOriginals",
+        _ => null
+    };
+    public IReadOnlyList<(string Id, string Name)> AudioBuses()
+    {
+        if (!_fields.TryGetValue("audioBuses", out var field) || field.Read().Json is not { ValueKind: JsonValueKind.Array } values) return [];
+        return values.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.Object && item.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
+            .Select(item => (item.GetProperty("id").GetString() ?? "", item.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() ?? "" : ""))
+            .Where(item => item.Item1.Length > 0).DistinctBy(item => item.Item1, StringComparer.Ordinal).ToArray();
+    }
     public IFieldBinding Binding(FieldDescriptor field) => _fields[field.Id];
     public void RefreshLocalization()
     {
@@ -122,6 +155,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
             JsonSerializer.SerializeToElement(choice.Value))).ToArray());
     public async Task FlushAsync()
     {
+        if (AudioSettings is not null) await AudioSettings.FlushAsync();
         foreach (var field in _fields.Values.Where(field => field.Draft.IsDirty))
         {
             using var context = new FieldEditorContext(field.Descriptor, field, Registry);
@@ -141,7 +175,19 @@ public sealed class ConfigurationSectionEditor : IDisposable
     public static bool Equal(ProjectSectionData? left, ProjectSectionData? right) => left is null ? right is null
         : right is not null && left.Version == right.Version && JsonElement.DeepEquals(left.Data, right.Data);
     private static bool Equal(FieldValue left, FieldValue right) => left.Json is { } a ? right.Json is { } b && JsonElement.DeepEquals(a, b) : right.Json is null;
-    public void Dispose() { _disposed = true; foreach (var field in _fields.Values) field.Dispose(); }
+    internal ValueIssue? StageAudio(JsonElement buses, JsonElement tracks)
+    {
+        var bus = _fields["audioBuses"]; var track = _fields["audioTracks"];
+        if (!bus.IsEnabled || !track.IsEnabled) return new("settings.obsolete", "Configuration field is unavailable.");
+        var busChanged = !Equal(bus.Read(), new(buses)); var trackChanged = !Equal(track.Read(), new(tracks));
+        if (busChanged) bus.Stage(new(buses));
+        if (trackChanged) track.Stage(new(tracks));
+        if (busChanged || trackChanged) _changed();
+        if (busChanged) { bus.NotifyChanged(); AudioBusesChanged?.Invoke(); }
+        if (trackChanged) track.NotifyChanged();
+        return null;
+    }
+    public void Dispose() { _disposed = true; AudioSettings?.Dispose(); foreach (var field in _fields.Values) field.Dispose(); }
 
     private sealed class Field : IFieldBinding, IDisposable
     {
@@ -151,6 +197,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
         public FieldDescriptor Descriptor { get; }
         public FieldValue? Pending { get; private set; }
         public FieldDraftState Draft { get; }
+        public object? HostContext => _owner;
         public bool IsEnabled => _canEdit && !_owner._disposed && _owner._isCurrent();
         public bool IsVisible => Descriptor.Id != "defaultOrientation" || _owner.ShowDefaultOrientation;
         public object? Label => Descriptor.LabelKey ?? Descriptor.Id;
@@ -170,9 +217,11 @@ public sealed class ConfigurationSectionEditor : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             if (!IsEnabled) return Task.FromResult<ValueIssue?>(new("settings.obsolete", "Configuration field is unavailable."));
             Pending = value; _owner._changed(); Changed?.Invoke(this, EventArgs.Empty);
+            if (Descriptor.Id == "audioBuses") _owner.AudioBusesChanged?.Invoke();
             if (Descriptor.Id == "orientationPolicy") _owner.RefreshDefaultOrientationVisibility();
             return Task.FromResult<ValueIssue?>(null);
         }
+        public void Stage(FieldValue value) => Pending = value;
         public void RefreshLocalization()
         {
             _options = _owner.Options(Descriptor);

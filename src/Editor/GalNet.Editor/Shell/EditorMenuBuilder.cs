@@ -90,6 +90,7 @@ internal sealed class EditorMenuBuilder(EditorShortcutService shortcuts, EditorD
                     new() { HeaderKey = "Debug.Start", Command = DebugAction(vm => vm.StartGameCommand.ExecuteAsync(null)) },
                     new() { HeaderKey = "Debug.Stop", Command = DebugAction(vm => vm.StopGameCommand.ExecuteAsync(null)) },
                     new() { HeaderKey = "Debug.GroupEnd", Command = DebugAction(vm => vm.GroupEndCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.HotReload", Command = DebugAction(vm => vm.HotReloadCommand.ExecuteAsync(null)) },
                     new() { HeaderKey = "Debug.Panel", Command = commands.TogglePanel, CommandParameter = EditorDockPanelIds.ExternalDebug }
                 }
             },
@@ -118,7 +119,7 @@ internal sealed class EditorMenuBuilder(EditorShortcutService shortcuts, EditorD
 
     private AvaloniaList<MenuData> BuildLoadLayoutItems()
     {
-        var items = new AvaloniaList<MenuData> { new() { Header = "Default", Command = commands.LoadLayout, CommandParameter = "Default" } };
+        var items = new AvaloniaList<MenuData> { new() { HeaderKey = "Uiux.Layout.Default", Command = commands.LoadLayout, CommandParameter = "Default" } };
         foreach (var name in layouts.Names)
             items.Add(new MenuData { Header = name, Command = commands.LoadLayout, CommandParameter = name });
         return items;

@@ -37,7 +37,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page, UseCommonFields = common };
             var inspector = new DtoEditorHost { Item = entry.DetailForm!.Item, Registry = page.FieldEditors };
             inspector.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Controls/AuthorFormStyles.axaml") });
@@ -200,7 +200,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.ShowColorLayer).Single();
             entry.Source.Parameters["transform"] = JsonSerializer.Deserialize<JsonElement>("{\"x\":2,\"opaque\":{\"n\":9007199254740993}}");
             entry.Source.Parameters["color"] = JsonSerializer.SerializeToElement("#80112233");
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1000, Height = 760 }; window.Show(); TimelinePump(window);
             try
             {
@@ -285,7 +285,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayTimeline).Single(); entry.Source.Parameters.Remove("timeline");
             var other = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.Wait).Single();
             var factory = project.Services.GetRequiredService<EditorDockFactory>(); var layout = factory.CreateLayout(); factory.InitLayout(layout); factory.OpenGroupEditor(group);
-            var page = TimelineDockables(layout).Select(item => item.Context).OfType<GroupEditorPanelViewModel>().Single();
+            var page = TimelineDockables(layout).Select(item => item.Context).OfType<GroupEditorPanelViewModel>().Single(); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1000, Height = 750 }; window.Show(); TimelinePump(window);
             try
             {
@@ -387,6 +387,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         public FieldValue Value { get; private set; } = new(JsonSerializer.Deserialize<JsonElement>(json));
         public int Commits { get; private set; }
+        public void ReplaceExternally(string json) { Value = new(JsonSerializer.Deserialize<JsonElement>(json)); Changed?.Invoke(this, EventArgs.Empty); }
         public FieldValue Read() => Value;
         public event EventHandler? Changed;
         public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken token)
@@ -394,6 +395,146 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             token.ThrowIfCancellationRequested(); Value = value; Commits++; Changed?.Invoke(this, EventArgs.Empty);
             return Task.FromResult<ValueIssue?>(null);
         }
+    }
+
+    [TestCase("{}")]
+    [TestCase("[]")]
+    [TestCase("{\"a\":null}")]
+    [TestCase("[1,\"two\"]")]
+    [TestCase("{\"tiny\":1e-40}")]
+    [TestCase("{\"huge\":123456789012345678901234567890}")]
+    public void UntypedUninferableValuesKeepTheExistingSourceEditor(string value)
+    {
+        var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding(value);
+        var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+        using var context = new FieldEditorContext(field, binding, registry);
+        using var lease = registry.Resolve(field)(context);
+        Assert.That(lease.Control, Is.TypeOf<TextBox>());
+        Assert.That(((TextBox)lease.Control).Text, Is.EqualTo(value));
+        Assert.That(binding.Commits, Is.Zero);
+    }
+
+    [Test]
+    public async Task UntypedHomogeneousListUsesStructuredRowsAndKeepsOtherValues()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault();
+            var binding = new PropertyBinding("[{\"amount\":1,\"id\":\"first\"},{\"amount\":2,\"id\":\"second\"}]");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field)(context);
+            var window = new Window { Content = lease.Control, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.Controls/")) { Source = new Uri("avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var list = (StructuredFieldEditor)((ContentControl)lease.Control).Content!; list.IsExpanded = true; TimelinePump(window);
+                var row = list.GetVisualDescendants().OfType<StructuredFieldEditor>().First(editor => !ReferenceEquals(editor, list));
+                row.IsExpanded = true; TimelinePump(window);
+                var amount = row.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Single(item => item.Field.Id == "amount");
+                amount.Text = "3"; Assert.That(await amount.CommitTextAsync(), Is.True);
+                Assert.That(binding.Value.Json!.Value[0].GetProperty("amount").GetInt32(), Is.EqualTo(3));
+                Assert.That(binding.Value.Json.Value[0].GetProperty("id").GetString(), Is.EqualTo("first"));
+                Assert.That(binding.Value.Json.Value[1].GetProperty("amount").GetInt32(), Is.EqualTo(2));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task UntypedFieldUsesOneLabelAcrossStructuredAndFallbackViews()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(() =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding("{\"amount\":1}");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            var form = new SchemaForm { Schema = [field], Registry = registry, Binding = _ => binding };
+            var window = new Window { Content = form, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Controls/AuthorFormStyles.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var row = form.GetVisualDescendants().OfType<FieldEditorRow>().First();
+                var label = row.Children.OfType<ContentControl>().Single(control => control.Name == "FieldLabel");
+                Assert.That(label.IsVisible, Is.False, "The structured editor already displays its own label.");
+                binding.ReplaceExternally("[]"); TimelinePump(window);
+                Assert.That(label.IsVisible, Is.True, "The source fallback needs the outer label.");
+            }
+            finally { window.Close(); }
+            return Task.FromResult(true);
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task UntypedShapeChangeDoesNotDiscardPendingFieldInput()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(() =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding("{\"amount\":1}");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field)(context);
+            var window = new Window { Content = lease.Control, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.Controls/")) { Source = new Uri("avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var editor = (StructuredFieldEditor)((ContentControl)lease.Control).Content!; editor.IsExpanded = true; TimelinePump(window);
+                var amount = editor.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Single(item => item.Field.Id == "amount");
+                amount.Text = "3";
+                binding.ReplaceExternally("{\"amount\":1,\"added\":true}"); TimelinePump(window);
+                Assert.That(((ContentControl)lease.Control).Content, Is.SameAs(editor));
+                Assert.That(amount.Text, Is.EqualTo("3"));
+                Assert.That(amount.HasDraft, Is.True);
+            }
+            finally { window.Close(); }
+            return Task.FromResult(true);
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task UntypedObjectUsesStructuredFieldsAndPreservesSiblingValues()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme();
+            var registry = EditorFieldEditors.CreateDefault();
+            var binding = new PropertyBinding("{\"amount\":1,\"nested\":{\"name\":\"old\"},\"large\":9007199254740993}");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field)(context);
+            var window = new Window { Content = lease.Control, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.Controls/")) { Source = new Uri("avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var editor = (StructuredFieldEditor)((ContentControl)lease.Control).Content!; editor.IsExpanded = true; TimelinePump(window);
+                var form = editor.GetVisualDescendants().OfType<SchemaForm>().First();
+                var amount = form.Contexts.Single(item => item.Field.Id == "amount");
+                amount.Text = "2"; Assert.That(await amount.CommitTextAsync(), Is.True);
+                Assert.That(binding.Value.Json!.Value.GetProperty("amount").GetInt32(), Is.EqualTo(2));
+                Assert.That(binding.Value.Json.Value.GetProperty("large").GetRawText(), Is.EqualTo("9007199254740993"));
+                Assert.That(binding.Value.Json.Value.GetProperty("nested").GetProperty("name").GetString(), Is.EqualTo("old"));
+                Assert.That(binding.Commits, Is.EqualTo(1));
+                editor.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "JsonMode").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); TimelinePump(window);
+                var source = editor.GetVisualDescendants().OfType<TextBox>().Single();
+                source.Text = "{\"amount\":2,\"newField\":true}";
+                source.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
+                Assert.That(binding.Value.Json.Value.GetProperty("newField").GetBoolean(), Is.True, "Adding an untyped member must remain possible.");
+                TimelinePump(window);
+                var updated = (StructuredFieldEditor)((ContentControl)lease.Control).Content!;
+                updated.IsExpanded = true; TimelinePump(window);
+                Assert.That(updated.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Any(item => item.Field.Id == "newField"), Is.True, "New members must appear in the refreshed form.");
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
     }
 
     [Test]

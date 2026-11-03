@@ -2,7 +2,7 @@
 
 新建默认契约项目时，编辑器将 16 个 SkSL 模板和 5 个天气粒子纹理复制到 `Assets/Effects/Default/`，为每个项目生成资源 GUID。预览、运行和导出读取项目资产；升级编辑器不覆盖已有 shader。
 
-`galnet.project.defaultVisualPrograms` 保存默认 shader 用途绑定；`defaultWeatherTextures` 保存 Rain、Snow、Petals、Dust、Fireflies 的纹理绑定。编辑器插入预设或切换类型时填入实际 GUID；修改用途绑定不会追改已有 Entry。CLI / 外部作者需要显式填写资源引用。
+`galnet.project.defaultVisualPrograms` 保存默认 shader 用途绑定；`defaultWeatherTextures` 保存 Rain、Snow、Petals、Dust、Fireflies 的纹理绑定。编辑器插入预设或切换类型时填入实际 GUID；修改用途绑定不会追改已有 Entry。项目设置中的两组绑定可通过资源选择器分别选择效果程序和图片纹理；CLI / 外部作者需要显式填写资源引用。
 
 ## 旧项目补入
 

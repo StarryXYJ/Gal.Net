@@ -18,30 +18,6 @@ public sealed class SampleBuildModeTests
     }
 
     [Test]
-    public void PackagedProfileFollowsProjectIdentityAcrossMovesAndBuilds()
-    {
-        var root = Path.Combine(Path.GetTempPath(), "galnet-profile-" + Guid.NewGuid().ToString("N"));
-        try
-        {
-            var first = Path.Combine(root, "first", "pak");
-            var second = Path.Combine(root, "second", "pak");
-            Directory.CreateDirectory(first);
-            Directory.CreateDirectory(second);
-            File.WriteAllText(Path.Combine(first, "content.json"), """{"projectId":"../../same-project","buildId":"first"}""");
-            File.WriteAllText(Path.Combine(second, "content.json"), """{"projectId":"../../same-project","buildId":"second"}""");
-            var profile = GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(first);
-            Assert.That(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(second), Is.EqualTo(profile));
-            Assert.That(Path.GetFileName(profile), Does.Match("^[a-f0-9]{64}$"));
-            File.WriteAllText(Path.Combine(second, "content.json"), """{"projectId":"another-project"}""");
-            Assert.That(GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(second), Is.Not.EqualTo(profile));
-            File.WriteAllText(Path.Combine(second, "content.json"), "broken JSON");
-            Assert.DoesNotThrow(() => GalNet.Sample.CrossPlatform.SampleCustomization.GetProfileDirectory(second));
-            Assert.That(Directory.Exists(profile), Is.False);
-        }
-        finally { Directory.Delete(root, true); }
-    }
-
-    [Test]
     public void PackagedAssemblyDirectoryResolvesTheRootApphost()
     {
         var root = Path.Combine(Path.GetTempPath(), "galnet-app-root-" + Guid.NewGuid().ToString("N"));

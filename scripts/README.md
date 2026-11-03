@@ -4,6 +4,7 @@
 
 - `contracts/`：构建、部署和复现性检查项目 Contracts。
 - `samples/`：运行 Headless 与 CrossPlatform Sample。
+- `distribution/`：发行 Editor 附带的合包、源码构建合包与游戏绑定入口。
 - `performance/`：启动 benchmark、trace 分析和 native profile。
 - `maintenance/`：仓库代码量统计等维护工具。
 - `docs/`：正式文档导航、链接校验、完整 Wiki 生成与回归测试。

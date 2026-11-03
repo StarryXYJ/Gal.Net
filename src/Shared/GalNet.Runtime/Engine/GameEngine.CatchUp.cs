@@ -91,7 +91,7 @@ public sealed partial class GameEngine
                 if (!IsRunning || _restorationPending || _pendingChoice is not null) return;
                 if (_debugger?.Paused == true) throw new InvalidOperationException("Resume the debugger before starting player catch-up.");
                 if (_catchUpTarget == CatchUpTarget.GroupEnd && _navigation.FindNode(_runtime.CurrentNodeId) is not Group) return;
-                if (_catchUpTarget == CatchUpTarget.Unread && _active.Any(item => item.IsReading && !item.WasRead)) return;
+                if (_catchUpTarget == CatchUpTarget.Unread && _debugger?.TreatAllTextAsRead != true && _active.Any(item => item.IsReading && !item.WasRead)) return;
                 scopedRuntime = _dispatchRuntime;
                 SetPlaybackModeCore(PlaybackMode.Manual);
                 _catchUpActive = true;

@@ -520,6 +520,19 @@
           "VideoLAN.LibVLC.Windows": "[3.0.23.1, )"
         }
       },
+      "galnet.sample.headless": {
+        "type": "Project",
+        "dependencies": {
+          "GalNet.Contracts.Builtins": "[1.0.0, )",
+          "GalNet.Core": "[1.0.0, )",
+          "GalNet.GameHost": "[1.0.0, )",
+          "GalNet.Presentation.Abstractions": "[1.0.0, )",
+          "GalNet.Primitives.Builtins": "[1.0.0, )",
+          "GalNet.Project.Contracts": "[1.0.0, )",
+          "GalNet.Runtime": "[1.0.0, )",
+          "GalNet.Storage.FileSystem": "[1.0.0, )"
+        }
+      },
       "galnet.storage.filesystem": {
         "type": "Project",
         "dependencies": {

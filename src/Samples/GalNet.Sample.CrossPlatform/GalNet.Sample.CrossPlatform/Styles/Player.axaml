@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ursa="https://irihi.tech/ursa"
         xmlns:input="using:GalNet.Avalonia.GameView.Input"
         xmlns:controls="using:GalNet.Game.Controls"
         xmlns:page="using:GalNet.Avalonia.GameView.Page"
@@ -73,6 +74,7 @@
               <Button.Template><ControlTemplate><Border Background="Transparent" /></ControlTemplate></Button.Template>
             </Button>
             <Image Source="{Binding Thumbnail}" Stretch="UniformToFill" IsVisible="{Binding IsUnlocked}" IsHitTestVisible="False" />
+            <ursa:Skeleton IsLoading="True" IsActive="True" IsVisible="{Binding IsThumbnailLoading}" IsHitTestVisible="False" />
             <Border Background="{DynamicResource GalNet.Brush.SurfaceRaised}" IsVisible="{Binding IsLocked}" IsHitTestVisible="False">
               <TextBlock Text="{text:PlayerText Gallery.Locked, 'Locked'}" HorizontalAlignment="Center" VerticalAlignment="Center"
                          FontSize="{DynamicResource GalNet.Theme.BodyFontSize}" Opacity="0.7" />
@@ -142,13 +144,18 @@
     <Setter Property="Padding" Value="0,8" />
     <Setter Property="Margin" Value="0,0,24,0" />
   </Style>
+  <Style Selector=".galnet-player TabControl.settings-categories > TabItem">
+    <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.SettingsCategoryFontSize}" />
+    <Setter Property="Padding" Value="12,8" />
+    <Setter Property="Margin" Value="0,0,8,0" />
+  </Style>
   <Style Selector=".galnet-player TabControl.settings-categories">
     <Setter Property="ItemTemplate">
       <DataTemplate DataType="settings:SettingCategory">
         <Grid>
           <ContentControl Content="{Binding Label}" HorizontalAlignment="Left" />
           <!-- Reserve the selected weight's width without measuring or caching it in code. -->
-          <ContentControl Content="{Binding Label}" FontWeight="SemiBold" Opacity="0" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
+          <ContentControl Content="{Binding Label}" FontWeight="Bold" Opacity="0" IsHitTestVisible="False" AutomationProperties.AccessibilityView="Raw" />
         </Grid>
       </DataTemplate>
     </Setter>
@@ -162,7 +169,7 @@
     <Setter Property="Margin" Value="0,0,8,0" />
   </Style>
   <Style Selector=".galnet-player TabControl.settings-categories > TabItem:selected">
-    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="FontWeight" Value="Bold" />
   </Style>
   <Style Selector=".galnet-player TabItem:selected /template/ Border#PART_SelectedPipe">
     <Setter Property="IsVisible" Value="False" />
@@ -240,6 +247,21 @@
     <Setter Property="CornerRadius" Value="{DynamicResource GalNet.Theme.CornerRadius}" />
     <Setter Property="HorizontalAlignment" Value="Stretch" />
     <Setter Property="VerticalAlignment" Value="Stretch" />
+  </Style>
+  <Style Selector=".galnet-player Grid.player-page-header">
+    <Setter Property="MinHeight" Value="{DynamicResource GalNet.Theme.PageHeaderMinHeight}" />
+    <Setter Property="ColumnSpacing" Value="{DynamicResource GalNet.Theme.PageHeaderSpacing}" />
+  </Style>
+  <Style Selector=".galnet-player :is(TextBlock).player-page-title">
+    <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.HeadingSize}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+  <Style Selector=".galnet-player Border.player-page-rule">
+    <Setter Property="Height" Value="1" />
+    <Setter Property="Margin" Value="{DynamicResource GalNet.Theme.RuleMargin}" />
+    <Setter Property="Background" Value="{DynamicResource GalNet.Brush.Divider}" />
   </Style>
   <Style Selector=".galnet-player Button.player-back">
     <Setter Property="FontSize" Value="{DynamicResource GalNet.Theme.ActionFontSize}" />

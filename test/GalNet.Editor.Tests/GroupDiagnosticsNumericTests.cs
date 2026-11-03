@@ -202,11 +202,15 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             }
             var problemsView = new ProblemsPanelView { DataContext = problems };
             var problemsWindow = new Window { Content = problemsView, Width = 900, Height = 600 }; problemsWindow.Show(); TimelinePump(problemsWindow);
-            var problemButton = problemsView.GetVisualDescendants().OfType<Button>().Single(button =>
-                ReferenceEquals(button.Command, problems.NavigateCommand) && button.CommandParameter is AuthorProblem { Code: "value.range" });
-            Assert.That(problemButton.Bounds.Width, Is.GreaterThan(600));
-            var problemMessage = problemButton.GetVisualDescendants().OfType<TextBlock>().First();
-            Assert.That(problemMessage.TranslatePoint(default, problemsView)!.Value.X, Is.LessThan(90), "Actionable descriptions align with the row instead of centering in the panel.");
+            var problemList = problemsView.GetVisualDescendants().OfType<ListBox>().Single();
+            var row = problemList.GetVisualDescendants().OfType<ListBoxItem>()
+                .Single(item => item.DataContext is AuthorProblem { Code: "value.range" });
+            Assert.That(row.Bounds.Width, Is.GreaterThan(600));
+            var problemMessage = row.GetVisualDescendants().OfType<TextBlock>().First(text => text.Text == range.Message);
+            Assert.That(problemMessage.TranslatePoint(default, problemsView)!.Value.X, Is.LessThan(90), "Descriptions align with the row.");
+            problemList.SelectedItem = row.DataContext;
+            Assert.That(problems.SelectedProblem, Is.SameAs(row.DataContext));
+            Assert.That(problemsView.GetVisualDescendants().OfType<Expander>(), Is.Empty);
             CaptureNumericQa(problemsWindow, "group-problems.png"); problemsWindow.Close();
             authoring.SetParameters(group.Id, entry.Source, entry.Type, new() { [field.Id] = JsonSerializer.SerializeToElement(-2f) });
             authoring.SetParameters(group.Id, entry.Source, entry.Type, new() { [field.Id] = JsonSerializer.SerializeToElement(.5f) });

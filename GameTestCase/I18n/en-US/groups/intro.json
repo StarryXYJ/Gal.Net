@@ -18,5 +18,13 @@
   "group.intro.entry.nvl-append-history.content": "This is the second paragraph in the scrollable NVL history.",
   "group.intro.entry.nvl-append-after-clear.content": "The prior NVL history was cleared, then this paragraph was appended.",
   "group.intro.entry.intro-line-5.content": "Basic audio complete. Continue this chapter to compare the additional sound effects.",
-  "group.intro.entry.audio-save-checkpoint.content": "Save here and load the new save: the scene and gain effect return, and BGM stays paused. Advance to resume it from the beginning."
+  "group.intro.entry.audio-save-checkpoint.content": "Save here and load the new save: the scene and gain effect return, and BGM stays paused. Advance to resume it from the beginning.",
+  "group.intro.entry.demo-cue-variants-shy.content": "Next: switch the portrait expression and inspect the exact variant match.",
+  "group.intro.entry.demo-cue-variants-solo.content": "Next: request a combination that has no image and observe the fallback.",
+  "group.intro.entry.demo-cue-variants-return.content": "Next: return to the original pose and observe the remembered expression.",
+  "group.intro.entry.demo-cue-classroom-speech.content": "Next: request an unavailable background combination and observe its default.",
+  "group.intro.entry.demo-cue-classroom-teacher.content": "Next: select the teacher and observe the matching background.",
+  "group.intro.entry.demo-cue-variants-hide.content": "Next: hide and show the portrait again to demonstrate selection reset.",
+  "group.intro.entry.demo-cue-portrait-jitter.content": "Next: start a non-blocking bob, then switch the expression while it runs.",
+  "group.intro.entry.demo-cue-portrait-spin.content": "Next: watch a blocking portrait rotation. The story continues after it finishes."
 }

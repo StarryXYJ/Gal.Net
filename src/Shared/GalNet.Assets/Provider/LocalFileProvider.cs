@@ -237,17 +237,19 @@ public sealed class LocalFileProvider : IAssetProvider, IDisposable
 
         public bool Contains(string assetId) => _byId.ContainsKey(assetId);
 
-        public IGameFile? GetAsset(string assetId)
+        public IGameFile? GetAsset(string assetId, CancellationToken ct = default)
         {
+            ct.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(_disposed, this);
             return _byId.GetValueOrDefault(assetId);
         }
 
-        public IGameFile? GetAssetByPath(string path)
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default)
         {
+            ct.ThrowIfCancellationRequested();
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (_pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id))
-                return GetAsset(id);
+                return GetAsset(id, ct);
             return null;
         }
 

@@ -14,7 +14,7 @@
   <Thickness x:Key="GalNet.Theme.DialoguePadding">28</Thickness>
   <Thickness x:Key="GalNet.Theme.ChoicePadding">24,16</Thickness>
   <Thickness x:Key="GalNet.Theme.ChoiceMargin">0,7</Thickness>
-  <x:Int32 x:Key="GalNet.Theme.CardColumns">4</x:Int32>
+  <x:Int32 x:Key="GalNet.Theme.CardColumns">6</x:Int32>
   <x:Double x:Key="GalNet.Theme.PageHeaderSpacing">16</x:Double>
   <Thickness x:Key="GalNet.Theme.ContentMargin">0,20,0,0</Thickness>
   <Thickness x:Key="GalNet.Theme.RuleMargin">0,12,0,0</Thickness>

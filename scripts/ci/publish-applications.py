@@ -49,11 +49,24 @@ def msbuild_value(value):
     return "".join(f"%{ord(char):02X}" if char in "%$@();?*'," else char for char in str(value))
 
 
+def validate_game_contracts(content, directory):
+    contracts = content.get("contractFiles")
+    if not contracts:
+        raise ValueError("Game package is missing its contract identity.")
+    for entry in contracts:
+        name = entry["path"]
+        if "/" in name or "\\" in name or Path(name).name != name:
+            raise ValueError("Invalid game contract path: " + name)
+        path = directory / name
+        if not path.is_file() or path.stat().st_size != entry["size"] or sha256(path) != entry["sha256"]:
+            raise ValueError("Game package/player contract identity differs: " + name)
+
+
 def validate_sample_capabilities(root, role, dependencies):
     flavor = role.partition("-")[2]
-    if flavor not in ("Player", "Developer", "Bound"):
-        raise ValueError(f"Sample publish requires an explicit Player or Developer flavor: {role}")
-    enabled = flavor == "Developer"
+    if flavor not in ("Player", "Developer", "Bound", "BoundDeveloper"):
+        raise ValueError(f"Sample publish requires a valid player flavor: {role}")
+    enabled = flavor in ("Developer", "BoundDeveloper")
     names = {name.split("/")[0] for name in dependencies}
     required = {"GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport"}
     present = required & names
@@ -118,20 +131,41 @@ def validate_publish(root, role, target, self_contained=True):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", choices=TARGETS, required=True)
-    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--rid", "--target", dest="target", choices=TARGETS, required=True)
+    parser.add_argument("--out", "--output", dest="output", type=Path, required=True)
     parser.add_argument("--repository", type=Path, default=Path(__file__).resolve().parents[2])
     parser.add_argument("--dotnet", default="dotnet")
     parser.add_argument("--native-audio", type=Path)
     parser.add_argument("--package-apphosts", action="store_true", help="Also generate apphosts targeting lib/ for release packaging.")
     parser.add_argument("--deployment", choices=["SelfContained", "FrameworkDependent"], default="SelfContained")
-    parser.add_argument("--bind-game", action="store_true", help="Export GameTestCase and bind the non-debug player to its project identity.")
+    parser.add_argument("--framework", action="store_true", help="Require an installed .NET runtime instead of bundling it.")
+    parser.add_argument("--bind-game", action="store_true", help="Export GameTestCase and bind the player to its project identity.")
+    parser.add_argument("--pak", type=Path, help="Bind and include an existing .galpak game package.")
     parser.add_argument("--version", default="0.0.0-dev.1")
-    parser.add_argument("--flavors", nargs="+", choices=["Player", "Developer", "Bound"], default=["Player", "Developer"])
+    parser.add_argument("--flavors", nargs="+", choices=["Player", "Developer", "Bound", "BoundDeveloper"], default=None)
+    parser.add_argument("--debug", "--game-debug", dest="game_debug", action="store_true", help="Enable game debugging.")
     parser.add_argument("--update-locks", action="store_true", help="Explicit maintainer action; CI always uses locked restores.")
     args = parser.parse_args()
-    if "Bound" in args.flavors and (not args.bind_game or "Player" not in args.flavors):
-        parser.error("Bound publishing requires --bind-game and the Player flavor for the verified contract export.")
+    if args.pak and args.bind_game:
+        parser.error("Use --pak or --bind-game, not both.")
+    if args.pak:
+        args.pak = args.pak.resolve()
+        if args.pak.suffix.lower() != ".galpak" or not args.pak.is_file():
+            parser.error("--pak must name an existing .galpak file.")
+        args.package_apphosts = True
+    binding = args.bind_game or args.pak is not None
+    if args.framework:
+        args.deployment = "FrameworkDependent"
+    if args.game_debug and args.flavors is not None:
+        parser.error("Use --game-debug or --flavors, not both.")
+    if args.flavors is None:
+        args.flavors = (["Player", "BoundDeveloper"] if binding else ["Developer"]) if args.game_debug else (["Player", "Bound"] if binding else ["Player"])
+    if "Bound" in args.flavors and "BoundDeveloper" in args.flavors:
+        parser.error("Build Bound and BoundDeveloper in separate invocations.")
+    if any(f in args.flavors for f in ("Bound", "BoundDeveloper")) and (not binding or "Player" not in args.flavors):
+        parser.error("Bound publishing requires --pak (or --bind-game for the demo) and the Player flavor.")
+    if binding and not any(f in args.flavors for f in ("Bound", "BoundDeveloper")):
+        parser.error("A game package requires a bound flavor.")
     if not re.fullmatch(r"\d+\.\d+\.\d+(?:-(?:dev|preview)\.\d+)?", args.version):
         parser.error("Use a release or numbered dev/preview version.")
     repo, output = args.repository.resolve(), args.output.resolve()
@@ -175,41 +209,43 @@ def main():
         check_binary(native, args.target)
         report["nativeAudio"] = {"path": str(native), "sha256": sha256(native)}
         roles = [("Editor", None), ("CLI", None)] + [
-            ("CrossPlatform-" + flavor, flavor) for flavor in dict.fromkeys(args.flavors)]
+            ("CrossPlatform-" + flavor, flavor) for flavor in sorted(dict.fromkeys(args.flavors), key=lambda f: f in ("Bound", "BoundDeveloper"))]
         for role, flavor in roles:
-            if flavor == "Bound":
-                if not args.bind_game:
-                    raise ValueError("Bound publishes require --bind-game.")
-                source = output / "game-source/GameTestCase"
-                source.mkdir(parents=True)
-                for name in ("Assets", "Graph", "I18n", "settings.json"):
-                    item = repo / "GameTestCase" / name
-                    if item.is_dir():
-                        shutil.copytree(item, source / name)
-                    elif item.is_file():
-                        shutil.copyfile(item, source / name)
-                (source / "Contracts").mkdir()
-                for name in ("GalNet.Core.dll", "GalNet.Contracts.Builtins.dll", "GalNet.Project.Contracts.dll"):
-                    shutil.copyfile(output / "publish/CrossPlatform-Player" / name, source / "Contracts" / name)
+            if flavor in ("Bound", "BoundDeveloper"):
                 cli = [args.dotnet, str(output / "publish/CLI/GalNet.Editor.Headless.dll")]
-                run([*cli, "export", str(source), "--output", str(output / "game-package")],
-                    repo, environment, logs / "export-game.log", report["steps"])
-                exported = json.loads((logs / "export-game.log").read_text(encoding="utf-8-sig"))
-                package = Path(exported["data"]["packagePath"]).resolve()
-                if not package.is_relative_to(output / "game-package") or package.suffix != ".galpak":
-                    raise ValueError("Game export escaped its output directory.")
+                package = args.pak
+                if package is None:
+                    source = output / "game-source/GameTestCase"
+                    source.mkdir(parents=True)
+                    for name in ("Assets", "Graph", "I18n", "settings.json"):
+                        item = repo / "GameTestCase" / name
+                        if item.is_dir():
+                            shutil.copytree(item, source / name)
+                        elif item.is_file():
+                            shutil.copyfile(item, source / name)
+                    (source / "Contracts").mkdir()
+                    for name in ("GalNet.Core.dll", "GalNet.Contracts.Builtins.dll", "GalNet.Project.Contracts.dll"):
+                        shutil.copyfile(output / "publish/CrossPlatform-Player" / name, source / "Contracts" / name)
+                    run([*cli, "export", str(source), "--output", str(output / "game-package")],
+                        repo, environment, logs / "export-game.log", report["steps"])
+                    exported = json.loads((logs / "export-game.log").read_text(encoding="utf-8-sig"))
+                    package = Path(exported["data"]["packagePath"]).resolve()
+                    if not package.is_relative_to(output / "game-package") or package.suffix != ".galpak":
+                        raise ValueError("Game export escaped its output directory.")
                 report["gamePackage"] = str(package)
+                report["gameTestCaseBundled"] = args.bind_game
                 run([*cli, "galpak", "install", str(package), "--output", str(output / "content")],
                     repo, environment, logs / "install-game.log", report["steps"])
                 run([*cli, "game", "inspect", str(output / "content")],
                     repo, environment, logs / "inspect-game.log", report["steps"])
                 inspection = json.loads((logs / "inspect-game.log").read_text(encoding="utf-8-sig"))
                 if not inspection.get("success"):
-                    raise ValueError("GameTestCase inspection failed.")
+                    raise ValueError("Game package inspection failed.")
                 report["boundProjectId"] = inspection["data"]["projectId"]
                 if not re.fullmatch(r"[A-Za-z0-9_-]+", report["boundProjectId"]):
                     raise ValueError("Invalid bound project identity.")
                 report["content"] = inspection["data"]
+                validate_game_contracts(report["content"], output / "publish/CrossPlatform-Player")
             kind = role.split("-")[0]
             project = repo / PROJECTS[kind]
             properties = ["-p:Configuration=Release", "-p:PublishProfile=Desktop",
@@ -221,9 +257,8 @@ def main():
                           "-p:UseSharedCompilation=false",
                           "-p:NuGetAudit=false", "-m:1", "-nr:false"]
             if flavor:
-                enabled = "true" if flavor == "Developer" else "false"
                 properties += ["-p:GalNetPlayerMode=" + flavor]
-                if flavor == "Bound":
+                if flavor in ("Bound", "BoundDeveloper"):
                     properties += ["-p:GalNetBoundProjectId=" + report["boundProjectId"],
                                    "-p:GalNetGamePackage=" + msbuild_value(report["gamePackage"])]
             if args.package_apphosts:
@@ -237,7 +272,7 @@ def main():
             run([args.dotnet, "publish", str(project), "-c", "Release", "--no-restore", "-o", str(destination), *properties],
                 repo, environment, logs / (role + "-publish.log"), report["steps"])
             application = validate_publish(destination, role, args.target, args.deployment == "SelfContained")
-            application["boundProjectId"] = report.get("boundProjectId") if flavor == "Bound" else None
+            application["boundProjectId"] = report.get("boundProjectId") if flavor in ("Bound", "BoundDeveloper") else None
             report["applications"].append(application)
         for filename in ("GalNet.Core.dll", "GalNet.Contracts.Builtins.dll"):
             hashes = {application["contracts"][filename] for application in report["applications"]}
@@ -247,10 +282,9 @@ def main():
                                     for application in report["applications"] if application.get("flavor")}
         if len(cross_platform_contracts) != 1:
             raise ValueError("Strict project contract bytes differ between CrossPlatform player/developer publishes.")
-        if args.bind_game and "Bound" in args.flavors:
-            for entry in report["content"]["contractFiles"]:
-                if Path(entry["path"]).name != entry["path"] or sha256(output / "publish/CrossPlatform-Bound" / entry["path"]) != entry["sha256"]:
-                    raise ValueError("Exported content/runtime contract identity differs: " + entry["path"])
+        for flavor in ("Bound", "BoundDeveloper"):
+            if binding and flavor in args.flavors:
+                validate_game_contracts(report["content"], output / ("publish/CrossPlatform-" + flavor))
         report["passed"] = True
     except Exception as error:
         report["error"] = str(error)

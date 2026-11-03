@@ -35,7 +35,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, "custom.structure").Single();
             scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type,
                 new() { ["items"] = JsonSerializer.Deserialize<JsonElement>("""{"a/b~c":{"Title":"before","extension":9007199254740993},"0":{"Title":"other"}}""") });
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1100, Height = 850 };
             window.Show(); TimelinePump(window);
             var root = view.GetVisualDescendants().OfType<SchemaForm>().Single(form => form.Schema?.Any(field => field.Id == "items") == true);
@@ -88,7 +88,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 ["details"] = JsonSerializer.Deserialize<JsonElement>("{\"Title\":\"before\",\"opaque\":{\"keep\":true}}"),
                 ["numbers"] = JsonSerializer.Deserialize<JsonElement>("[3,4]")
             };
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1200, Height = 1000 }; window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
             try
             {

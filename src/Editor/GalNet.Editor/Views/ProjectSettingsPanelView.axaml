@@ -3,30 +3,69 @@
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              xmlns:services="using:GalNet.Editor.Services"
+             xmlns:controls="using:GalNet.Editor.Controls"
+             xmlns:views="using:GalNet.Editor.Views"
+             xmlns:converters="using:Avalonia.Data.Converters"
              xmlns:forms="using:GalNet.Game.Controls.Forms"
              x:Class="GalNet.Editor.Views.ProjectSettingsPanelView"
              x:DataType="vm:ProjectSettingsPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
-    <UserControl.Styles><StyleInclude Source="/Controls/AuthorFormStyles.axaml" /></UserControl.Styles>
+    <UserControl.Styles>
+        <StyleInclude Source="/Controls/AuthorFormStyles.axaml" />
+        <Style Selector="Border.structured-array-card">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+        <Style Selector="TextBlock.structured-item-title">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}" />
+        </Style>
+        <Style Selector="Grid.structured-map-item">
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style Selector="Grid.structured-map-item controls|AssetPicker">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </UserControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Name="ProjectSettingsTitle" Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
-                   FontSize="16" FontWeight="Bold"
+                   FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
-        <TabControl Grid.Row="1" TabStripPlacement="Left">
-          <TabItem Header="{loc:Localize Settings.Project.Title}">
+        <Grid Grid.Row="1">
+        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorFill0}" CornerRadius="6" IsHitTestVisible="False" />
+        <TabControl TabStripPlacement="Left" Background="Transparent">
+          <TabItem MinWidth="180">
+          <TabItem.Header>
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                  <PathIcon Width="16" Height="16" Data="M3 4H10L12 6H21V19H3Z M5 8V17H19V8Z"/>
+                  <TextBlock Text="{loc:Localize Settings.Project.Title}"/>
+              </StackPanel>
+          </TabItem.Header>
         <ScrollViewer Name="SettingsForm" LostFocus="OnSettingsFocusLost">
-            <StackPanel Spacing="8">
-                <TextBlock Text="{loc:Localize Settings.Project.Name}" />
-                <TextBox Name="ProjectNameInput" Text="{Binding ProjectName}" />
-                <TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}" />
-                <TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}" />
+            <StackPanel Spacing="8" Margin="12,0,0,0">
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.Project.Name}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><TextBox Name="ProjectNameInput" Text="{Binding ProjectName}"/></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.Project.TargetLanguage}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><TextBox Text="{Binding TargetLocale}" IsReadOnly="True" ToolTip.Tip="{loc:Localize I18n.UsePanel}"/></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
                 <ItemsControl ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="services:ConfigurationSectionEditor">
-                            <Expander Header="{Binding Id}" IsExpanded="True" HorizontalAlignment="Stretch">
-                                <forms:DtoEditorHost Item="{Binding Item}" Registry="{Binding Registry}" />
+                            <Expander Header="{loc:Localize DisplayNameKey, FallbackPath=Id}" IsExpanded="True" HorizontalAlignment="Stretch">
+                                <StackPanel>
+                                    <forms:DtoEditorHost Item="{Binding DisplayItem}" Registry="{Binding Registry}" />
+                                    <Panel IsVisible="{Binding AudioSettings, Converter={x:Static converters:ObjectConverters.IsNotNull}}">
+                                      <views:ProjectAudioSettingsView DataContext="{Binding AudioSettings}"/>
+                                    </Panel>
+                                </StackPanel>
                             </Expander>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
@@ -34,13 +73,14 @@
             </StackPanel>
         </ScrollViewer>
           </TabItem>
-          <TabItem Header="{loc:Localize Debug.Configuration}">
+          <TabItem MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M6 3L21 12L6 21Z"/><TextBlock Text="{loc:Localize Debug.Configuration}"/></StackPanel></TabItem.Header>
               <ScrollViewer>
                 <StackPanel Margin="12" Spacing="6">
                 <TextBlock Text="{loc:Localize Debug.Configuration}" FontWeight="SemiBold" Margin="0,8,0,0"/>
                     <StackPanel Spacing="6">
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
-                            <TextBox Text="{Binding DebugExecutable}" PlaceholderText="{loc:Localize Debug.Executable}"/>
+                            <TextBox Text="{Binding DebugExecutable}" GotFocus="OnApplicationFocus" LostFocus="OnApplicationLostFocus" PlaceholderText="{loc:Localize Debug.Executable}"/>
                             <Button Grid.Column="1" Content="…" Command="{Binding BrowseDebugExecutableCommand}" ToolTip.Tip="{loc:Localize Debug.Executable}"/>
                         </Grid>
                         <TextBox Text="{Binding DebugArguments}" PlaceholderText="{loc:Localize Debug.Arguments}" AcceptsReturn="True" MinHeight="50"/>
@@ -54,6 +94,7 @@
         </ScrollViewer>
           </TabItem>
         </TabControl>
+        </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"

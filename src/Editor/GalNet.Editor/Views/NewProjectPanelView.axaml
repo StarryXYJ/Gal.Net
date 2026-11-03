@@ -8,7 +8,7 @@
     <ScrollViewer>
         <StackPanel Margin="12" Spacing="10" MaxWidth="520" IsEnabled="{Binding !IsBusy}">
             <TextBlock Text="{loc:Localize Startup.NewProject}"
-                       FontSize="16"
+                       FontSize="{DynamicResource Editor.Font.Heading}"
                        FontWeight="SemiBold" />
 
             <TextBlock Text="{loc:Localize NewProject.Name}" />
@@ -22,7 +22,7 @@
 
             <TextBlock Text="{loc:Localize NewProject.Application}" />
             <Grid ColumnDefinitions="*,Auto">
-                <TextBox Name="ApplicationPathInput" Text="{Binding ApplicationPath}" PlaceholderText="{loc:Localize NewProject.ApplicationHint}" />
+                <TextBox Name="ApplicationPathInput" Text="{Binding ApplicationPath}" GotFocus="OnApplicationFocus" LostFocus="OnApplicationLostFocus" PlaceholderText="{loc:Localize NewProject.ApplicationHint}" />
                 <Button Name="BrowseApplicationButton" Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseApplicationCommand}" Margin="8,0,0,0" />
             </Grid>
 

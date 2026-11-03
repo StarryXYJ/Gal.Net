@@ -19,7 +19,7 @@
       "type": "Group",
       "name": "Text, variants and NVL",
       "x": 340,
-      "y": 260,
+      "y": 257.630081208495,
       "file": "groups/intro.rawgalgroup",
       "branchType": null,
       "options": null,
@@ -99,28 +99,40 @@
     {
       "id": "gallery-classroom",
       "type": "Group",
-      "name": "教室中的回忆",
+      "name": "\u6559\u5BA4\u4E2D\u7684\u56DE\u5FC6",
       "x": 360,
       "y": 740,
       "file": "groups/gallery-classroom.rawgalgroup",
       "metadata": {
-        "displayNameKey": "asset.gallery-classroom.name",
-        "galleryUnlockId": 400,
+        "Id": "",
+        "type": "",
+        "Path": "",
+        "DisplayNameKey": "asset.gallery-classroom.name",
+        "GalleryUnlockId": 400,
         "galleryPreviewAssetId": "a1000000000000000000000000000001"
-      }
+      },
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "gallery-evening",
       "type": "Group",
-      "name": "暮色中的回忆",
-      "x": 720,
-      "y": 740,
+      "name": "\u66AE\u8272\u4E2D\u7684\u56DE\u5FC6",
+      "x": 717.630081208495,
+      "y": 732.8902436254851,
       "file": "groups/gallery-evening.rawgalgroup",
       "metadata": {
-        "displayNameKey": "asset.gallery-evening.name",
-        "galleryUnlockId": 401,
+        "Id": "",
+        "type": "",
+        "Path": "",
+        "DisplayNameKey": "asset.gallery-evening.name",
+        "GalleryUnlockId": 401,
         "galleryPreviewAssetId": "a1000000000000000000000000000003"
-      }
+      },
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "presentation-library",
@@ -128,71 +140,98 @@
       "name": "Text cards",
       "x": 640,
       "y": 260,
-      "file": "groups/presentation-library.rawgalgroup"
+      "file": "groups/presentation-library.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "media",
       "type": "Group",
-      "file": "groups/media.rawgalgroup",
       "name": "Video",
       "x": 940,
-      "y": 260
+      "y": 260,
+      "file": "groups/media.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "audio",
       "type": "Group",
-      "file": "groups/audio.rawgalgroup",
       "name": "Audio and SEffects",
       "x": 1240,
-      "y": 260
+      "y": 260,
+      "file": "groups/audio.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "shaders",
       "type": "Group",
-      "file": "groups/shaders.rawgalgroup",
       "name": "Shaders and depth",
       "x": 1540,
-      "y": 260
+      "y": 260,
+      "file": "groups/shaders.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "masks",
       "type": "Group",
-      "file": "groups/masks.rawgalgroup",
       "name": "Masks and eyelids",
       "x": 1840,
-      "y": 260
+      "y": 260,
+      "file": "groups/masks.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "characters",
       "type": "Group",
-      "file": "groups/characters.rawgalgroup",
       "name": "Character direction",
       "x": 2140,
-      "y": 260
+      "y": 260,
+      "file": "groups/characters.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "weather",
       "type": "Group",
-      "file": "groups/weather.rawgalgroup",
       "name": "Particles and weather",
       "x": 2440,
-      "y": 260
+      "y": 260,
+      "file": "groups/weather.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "routes",
       "type": "Group",
-      "file": "groups/routes.rawgalgroup",
       "name": "Transition introduction",
       "x": 2740,
-      "y": 260
+      "y": 260,
+      "file": "groups/routes.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     },
     {
       "id": "transitions",
       "type": "Group",
-      "file": "groups/transitions.rawgalgroup",
       "name": "Transition comparison",
       "x": 4240,
-      "y": 260
+      "y": 260,
+      "file": "groups/transitions.rawgalgroup",
+      "branchType": null,
+      "options": null,
+      "conditions": null
     }
   ],
   "edges": [

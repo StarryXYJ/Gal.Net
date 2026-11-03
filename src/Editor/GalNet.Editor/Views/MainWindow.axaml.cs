@@ -54,7 +54,10 @@ public partial class MainWindow : UrsaWindow
     }
 
     public void ShowSuccessToast(string message) =>
-        _toastManager.Show(new Toast(message), showIcon: false, showClose: true, type: NotificationType.Success);
+        ShowToast(message, NotificationType.Success);
+
+    public void ShowToast(string message, NotificationType type) =>
+        _toastManager.Show(new Toast(message), showIcon: false, showClose: true, type: type);
 
     private async void OnClosing(object? sender, WindowClosingEventArgs args)
     {

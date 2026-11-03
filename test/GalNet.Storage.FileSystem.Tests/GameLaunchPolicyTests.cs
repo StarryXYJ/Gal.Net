@@ -18,15 +18,16 @@ public sealed class GameLaunchPolicyTests
         });
     }
 
-    [Test]
-    public void BoundModeRejectsOtherProjectsButAcceptsUpdatedBuildsOfItsOwnProject()
+    [TestCase("Bound", false)]
+    [TestCase("BoundDeveloper", true)]
+    public void BoundModeRejectsOtherProjectsButAcceptsUpdatedBuildsOfItsOwnProject(string mode, bool debugging)
     {
         var root = Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "galnet-binding-" + Guid.NewGuid().ToString("N"))).FullName;
         try
         {
-            var policy = new GameLaunchPolicy("Bound", "custom-game");
+            var policy = new GameLaunchPolicy(mode, "custom-game");
             Assert.That(policy.AllowsExternalContent, Is.False);
-            Assert.That(policy.AllowsDebugging, Is.False);
+            Assert.That(policy.AllowsDebugging, Is.EqualTo(debugging));
             foreach (var build in new[] { "first-build", "updated-build" })
             {
                 File.WriteAllText(Path.Combine(root, "content.json"), $$"""{"projectId":"custom-game","buildId":"{{build}}"}""");

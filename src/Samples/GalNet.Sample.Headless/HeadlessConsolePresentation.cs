@@ -9,11 +9,16 @@ namespace GalNet.Sample.Headless;
 internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, IChoicePresenter, ILayerPresenter, IAnimationPresenter, IEffectPresenter
 {
     private readonly float _textSpeed;
+    private readonly ConsoleInput _input;
     private volatile bool _skipCurrentTypewriter;
     private volatile bool _instantTypewriter;
     private int _advancePromptActive;
 
-    public ConsolePresentation(float textSpeed = 30f) => _textSpeed = textSpeed;
+    public ConsolePresentation(float textSpeed = 30f, TextReader? input = null)
+    {
+        _textSpeed = textSpeed;
+        _input = new(input ?? Console.In);
+    }
 
     private readonly TaskCompletionSource<Exception> _inputFailure = new(TaskCreationOptions.RunContinuationsAsynchronously);
     public Task<Exception> InputFailure => _inputFailure.Task;
@@ -111,7 +116,7 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
 
     public void SkipTypewriter(string widgetInstanceId) => _skipCurrentTypewriter = true;
 
-    public static async Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)
+    public async Task<int> WaitForChoiceAsync(string widgetInstanceId, string[] options, CancellationToken ct)
     {
         for (var index = 0; index < options.Length; index++)
             Console.WriteLine($"  {index + 1}. {options[index]}");
@@ -119,7 +124,7 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         while (true)
         {
             Console.Write("  Select: ");
-            var input = await Task.Run(Console.ReadLine).WaitAsync(ct);
+            var input = await _input.ReadLineAsync(ct);
             if (input is null)
                 throw new EndOfStreamException("Console input closed while waiting for a choice.");
             if (int.TryParse(input, out var selected) && selected >= 1 && selected <= options.Length) return selected - 1;
@@ -160,7 +165,7 @@ internal sealed class ConsolePresentation : IDialoguePresenter, INvlPresenter, I
         try
         {
             Console.Write("  >> ");
-            if (await Task.Run(Console.ReadLine).WaitAsync(cancellationToken) is null)
+            if (await _input.ReadLineAsync(cancellationToken) is null)
                 throw new EndOfStreamException("Console input closed while waiting to advance.");
             AdvanceRequested?.Invoke();
         }

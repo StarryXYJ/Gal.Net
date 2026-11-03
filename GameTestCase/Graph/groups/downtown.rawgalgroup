@@ -3,6 +3,15 @@
   "kind": "Raw",
   "entries": [
     {
+      "id": "demo-cue-cross-fade",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.downtown.entry.demo-cue-cross-fade.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "cross-fade",
       "type": "transition.crossFade",
       "condition": "",

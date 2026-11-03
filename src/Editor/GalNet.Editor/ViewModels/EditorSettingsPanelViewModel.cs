@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Globalization;
 using System.Linq;
+using Avalonia;
 using Avalonia.Input;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -10,6 +11,8 @@ using GalNet.Core.I18n;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Commands;
 using GalNet.Editor.Services;
+using GalNet.Editor.Themes;
+using GalNet.Editor.Shared.Services;
 using Serilog;
 
 namespace GalNet.Editor.ViewModels;
@@ -20,7 +23,11 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     private readonly IThemeRegistry _themeRegistry;
     private readonly IThemeService _themeService;
     private readonly EditorShortcutService _shortcutService;
+    private readonly IFileDialogService _dialogs;
     private bool _loading;
+    private string _autoContracts = "";
+    [ObservableProperty] private string _defaultApplicationPath = "";
+    [ObservableProperty] private string _defaultContractsDirectory = "";
     private readonly PropertyChangedEventHandler _localizationChanged;
 
     private EditorText? _statusMessage;
@@ -40,7 +47,10 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     private bool _autoSaveProject = true;
 
     [ObservableProperty]
-    private bool _expandNewEntries = true;
+    private bool _expandNewEntries;
+
+    [ObservableProperty]
+    private double _fontSize = EditorTypography.DefaultSize;
 
     public ObservableCollection<ThemeSelectionItem> AvailableThemes { get; } = [];
     public ObservableCollection<CultureInfo> AvailableCultures { get; } = [];
@@ -54,9 +64,10 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         IThemeRegistry themeRegistry,
         IThemeService themeService,
         EditorShortcutService shortcutService,
-        IEditorLocalizationService localization)
+        IEditorLocalizationService localization, IFileDialogService dialogs)
     {
         _editorSettings = editorSettings;
+        _dialogs = dialogs;
         _themeRegistry = themeRegistry;
         _themeService = themeService;
         _shortcutService = shortcutService;
@@ -101,7 +112,11 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
                           ?? AvailableCultures.FirstOrDefault();
         AutoSaveProject = settings.AutoSaveProject;
         ExpandNewEntries = settings.ExpandNewEntries;
+        FontSize = EditorTypography.Normalize(settings.FontSize);
+        DefaultContractsDirectory = settings.DefaultContractsDirectory ?? "";
+        DefaultApplicationPath = settings.DefaultApplicationPath ?? "";
         _loading = false;
+        try { if (!string.IsNullOrWhiteSpace(DefaultApplicationPath) && ProjectContractSource.FindForApplication(DefaultApplicationPath) == DefaultContractsDirectory) _autoContracts = DefaultContractsDirectory; } catch (Exception) { }
     }
 
     private void ReloadDisplayNames()
@@ -120,6 +135,39 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
             ReloadShortcuts(preserveDrafts: true);
         }
         finally { _loading = wasLoading; }
+    }
+
+    partial void OnDefaultApplicationPathChanged(string value)
+    {
+        if (_loading) return;
+        var settings = _editorSettings.GetSettings();
+        settings.DefaultApplicationPath = value;
+        if (string.IsNullOrWhiteSpace(DefaultContractsDirectory) || DefaultContractsDirectory == _autoContracts)
+        {
+            _autoContracts = "";
+            try { if (!string.IsNullOrWhiteSpace(value)) _autoContracts = ProjectContractSource.FindForApplication(value); }
+            catch (Exception) { }
+            DefaultContractsDirectory = _autoContracts;
+        }
+        _editorSettings.SaveSettings();
+    }
+
+    partial void OnDefaultContractsDirectoryChanged(string value)
+    {
+        if (_loading) return;
+        _editorSettings.GetSettings().DefaultContractsDirectory = value;
+        _editorSettings.SaveSettings();
+    }
+
+    [RelayCommand] private async System.Threading.Tasks.Task BrowseDefaultApplicationAsync()
+    {
+        var paths = await _dialogs.OpenFilePickerAsync(L["NewProject.BrowseApplication"], false);
+        if (paths.Count > 0) DefaultApplicationPath = paths[0];
+    }
+    [RelayCommand] private async System.Threading.Tasks.Task BrowseDefaultContractsAsync()
+    {
+        var path = await _dialogs.OpenFolderPickerAsync(L["NewProject.BrowseContracts"]);
+        if (path is not null) DefaultContractsDirectory = path;
     }
 
     partial void OnShortcutSearchTextChanged(string value) => ReloadShortcuts();
@@ -144,9 +192,13 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void ResetAllShortcuts()
     {
-        _shortcutService.ResetAll();
-        ReloadShortcuts();
-        SetStatus(new("Settings.Saved"));
+        try
+        {
+            _shortcutService.ResetAll();
+            ReloadShortcuts();
+            SetStatus(new("Settings.Saved"));
+        }
+        catch (Exception error) { Log.Error(error, "Failed to reset shortcuts"); SetStatus(new("Settings.SaveFailed")); }
     }
 
     partial void OnSelectedThemeChanged(ThemeSelectionItem? value)
@@ -171,6 +223,17 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
         _editorSettings.SaveSettings();
         L.ApplyCulture(value);
 
+        SetStatus(new("Settings.Saved"));
+    }
+
+    partial void OnFontSizeChanged(double value)
+    {
+        if (_loading) return;
+        var size = EditorTypography.Normalize(value);
+        if (size != value) { FontSize = size; return; }
+        _editorSettings.GetSettings().FontSize = size;
+        if (Application.Current is { } app) EditorTypography.Apply(app.Resources, size);
+        _editorSettings.SaveSettings();
         SetStatus(new("Settings.Saved"));
     }
 
@@ -253,22 +316,29 @@ public sealed partial class ShortcutSettingItemViewModel : ObservableObject
         ValidationMessage = Validate(value);
     }
 
-    [RelayCommand]
-    private void Apply()
+    public void ApplyGesture(string value)
     {
-        ValidationMessage = Validate(GestureText);
-        if (!string.IsNullOrEmpty(ValidationMessage)) return;
-        _service.SetGesture(
-            CommandId,
-            string.IsNullOrWhiteSpace(GestureText) ? null : KeyGesture.Parse(GestureText));
+        var issue = Validate(value);
+        if (!string.IsNullOrEmpty(issue)) { ValidationMessage = issue; return; }
+        try
+        {
+            _service.SetGesture(CommandId, string.IsNullOrWhiteSpace(value) ? null : KeyGesture.Parse(value));
+            GestureText = _definition.Gesture?.ToString() ?? "";
+            ValidationMessage = "";
+        }
+        catch (Exception) { ValidationMessage = _localization["Settings.SaveFailed"]; }
     }
 
     [RelayCommand]
     private void Reset()
     {
-        _service.ResetGesture(CommandId);
-        GestureText = _definition.Gesture?.ToString() ?? "";
-        ValidationMessage = "";
+        try
+        {
+            _service.ResetGesture(CommandId);
+            GestureText = _definition.Gesture?.ToString() ?? "";
+            ValidationMessage = "";
+        }
+        catch (Exception error) { ValidationMessage = error is InvalidOperationException ? error.Message : _localization["Settings.SaveFailed"]; }
     }
 
     private string Validate(string value)

@@ -234,15 +234,17 @@ public sealed class GamepadNavigationTests
     });
 
     [Test]
-    public void OldStartBindingIsRemovedWithoutLosingOtherPreferences()
+    public void ValidShoulderBindingRestoresAndReservedStartResetsConfiguration()
     {
         using var input = Settings();
         var config = PlayerInputSettings.Defaults();
-        config.Bindings["open.settings"] = [new(PlayerInputDevice.Gamepad, "Start")];
         config.Bindings["toggle.auto"] = [new(PlayerInputDevice.Gamepad, "LB")];
         input.Restore(System.Text.Json.JsonSerializer.Serialize(config));
-        Assert.That(input.Resolve(PlayerInputDevice.Gamepad, "Start"), Is.Null);
         Assert.That(input.Resolve(PlayerInputDevice.Gamepad, "LB"), Is.EqualTo("toggle.auto"));
+        config.Bindings["open.settings"] = [new(PlayerInputDevice.Gamepad, "Start")];
+        input.Restore(System.Text.Json.JsonSerializer.Serialize(config));
+        Assert.That(input.Resolve(PlayerInputDevice.Gamepad, "Start"), Is.Null);
+        Assert.That(input.Resolve(PlayerInputDevice.Gamepad, "LB"), Is.Null);
     }
 
     [Test]
@@ -277,15 +279,99 @@ public sealed class GamepadNavigationTests
     {
         using var input = Settings();
         var hidden = new TabControl { IsVisible = false, Items = { new TabItem { Header = "Wrong" } } };
-        var nested = new TabControl { Items = { new TabItem { Header = "A", Content = new Button { Content = "Inside" } }, new TabItem { Header = "B" }, new TabItem { Header = "C" } } };
+        var inside = new Button { Content = "Inside" };
+        var pager = new Ursa.Controls.Pagination { TotalCount = 25, PageSize = 12, CurrentPage = 1 };
+        var nested = new TabControl { Items = { new TabItem { Header = "A", Content = new StackPanel { Children = { inside, pager } } }, new TabItem { Header = "B" }, new TabItem { Header = "C" } } };
         var tabs = new TabControl { Items = { new TabItem { Header = "Outer", Content = nested }, new TabItem { Header = "Other" } } };
         var root = new StackPanel { Children = { hidden, tabs } };
         using var view = new View(root);
         using var router = new PlayerInputRouter(root, input, () => null, new Session(), () => { });
-        nested.GetVisualDescendants().OfType<Button>().Single().Focus();
+        inside.Focus();
         Tap(input, "LB"); Assert.That(nested.SelectedIndex, Is.EqualTo(2)); Assert.That(tabs.SelectedIndex, Is.Zero);
         Tap(input, "RB"); Assert.That(nested.SelectedIndex, Is.Zero);
+        Assert.That(pager.CurrentPage, Is.EqualTo(1), "The nearest tab takes priority over paging.");
+        ((TabItem)tabs.Items[0]!).Focus();
+        Tap(input, "RB"); Assert.That(tabs.SelectedIndex, Is.EqualTo(1));
+        Tap(input, "LB"); Assert.That(tabs.SelectedIndex, Is.Zero);
         return Task.CompletedTask;
+    });
+
+    [Test]
+    public Task SettingsShouldersFollowFocusedCategoryOrDeviceTabs() => Ui(async () =>
+    {
+        await using var host = await GalNet.Avalonia.GameHost.AvaloniaPlayerHost.CreateAsync(
+            GalNet.Sample.CrossPlatform.SampleCustomization.CreateHostOptions(), services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services));
+        var model = host.Services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SettingsPageViewModel>();
+        var page = host.Services.GetRequiredService<GalNet.Avalonia.GameView.Navigation.IPageViewFactory>().Create(model);
+        using var view = new View(page);
+        using var input = Settings();
+        using var router = new PlayerInputRouter(page, input, () => null, host.Services.GetRequiredService<IGameSessionService>(), () => { });
+        var categories = page.GetVisualDescendants().OfType<TabControl>().Single(x => x.Classes.Contains("settings-categories"));
+        categories.SelectedIndex = 1;
+        view.Window.UpdateLayout();
+        var devices = page.GetVisualDescendants().OfType<TabControl>().Single(x => x.Classes.Contains("input-device-tabs"));
+        var deviceTab = (Control)devices.ContainerFromIndex(0)!;
+        Assert.That(deviceTab.Focus(), Is.True);
+        Tap(input, "RB");
+        Assert.That(devices.SelectedIndex, Is.EqualTo(1));
+        Assert.That(categories.SelectedIndex, Is.EqualTo(1));
+        Assert.That(((Control)categories.ContainerFromIndex(1)!).Focus(), Is.True);
+        Tap(input, "RB");
+        Assert.That(categories.SelectedIndex, Is.EqualTo(2));
+    });
+
+    [Test]
+    public Task ShoulderButtonsPageAllSampleCollectionsAndRespectBoundaries() => Ui(async () =>
+    {
+        await using var host = await GalNet.Avalonia.GameHost.AvaloniaPlayerHost.CreateAsync(
+            GalNet.Sample.CrossPlatform.SampleCustomization.CreateHostOptions(), services => GalNet.Sample.CrossPlatform.SampleCustomization.ConfigureServices(services));
+        var services = host.Services;
+        var saves = services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SaveSlotsPageViewModel>();
+        saves.Slots.Clear();
+        for (var index = 0; index < 25; index++) saves.Slots.Add(new(new(index, default, "", true, false), true, _ => Task.CompletedTask, _ => Task.CompletedTask));
+        var cg = services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.CgGalleryPageViewModel>();
+        var video = services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.VideoGalleryPageViewModel>();
+        var scene = services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.SceneGalleryPageViewModel>();
+        var audio = services.GetRequiredService<GalNet.Sample.CrossPlatform.ViewModels.AudioGalleryPageViewModel>();
+        foreach (var gallery in new GalNet.Sample.CrossPlatform.ViewModels.GalleryGridPageViewModel[] { cg, video, scene })
+            for (var index = 0; index < 25; index++)
+                gallery.Thumbnails.Items.Add(new(new(new GalNet.Contracts.Builtins.Gallery.GalleryItem { Id = index }, true)));
+        for (var index = 0; index < 25; index++)
+            audio.State.Items.Add(new(new(new GalNet.Contracts.Builtins.Gallery.GalleryItem { Id = index }, true)));
+        audio.State.Items[0].IsPlaying = true;
+        var factory = services.GetRequiredService<GalNet.Avalonia.GameView.Navigation.IPageViewFactory>();
+        var semi = new Semi.Avalonia.SemiTheme(); var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
+        Application.Current!.Styles.Add(semi); Application.Current.Styles.Add(ursa);
+        try
+        {
+            foreach (var (page, current) in new (GalNet.Avalonia.GameView.Navigation.PageViewModelBase, Func<int>)[]
+            {
+                (saves, () => saves.Pages.CurrentPage), (cg, () => cg.Pages.CurrentPage),
+                (video, () => video.Pages.CurrentPage), (scene, () => scene.Pages.CurrentPage), (audio, () => audio.Pages.CurrentPage)
+            })
+            {
+                var pageView = factory.Create(page);
+                using var view = new View(pageView);
+                using var input = Settings();
+                using var router = new PlayerInputRouter(pageView, input, () => null, services.GetRequiredService<IGameSessionService>(), () => { });
+                var pager = pageView.GetVisualDescendants().OfType<Ursa.Controls.Pagination>().Single();
+                Assert.That(pager.PageCount, Is.EqualTo(3), page.GetType().Name);
+                var rowButton = pageView.GetVisualDescendants().OfType<Button>().First(button => button.IsEffectivelyVisible && button.IsEffectivelyEnabled &&
+                    (button.Name is "PART_Activate" or "GalleryActivate" || button.GetVisualAncestors().OfType<GalNet.Avalonia.GameView.Controls.AudioGalleryRow>().Any()));
+                Assert.That(rowButton.Focus(), Is.True, page.GetType().Name);
+                Tap(input, "LB"); Assert.That(current(), Is.EqualTo(1));
+                Tap(input, "RB"); view.Window.UpdateLayout(); Assert.That(current(), Is.EqualTo(2));
+                Assert.That(view.Focused, Is.InstanceOf<Control>());
+                var focused = (Control)view.Focused!;
+                Assert.That(pageView.IsVisualAncestorOf(focused), Is.True, "Focus must remain within the current page.");
+                Assert.That(focused.IsEffectivelyVisible && focused.IsEffectivelyEnabled, Is.True, "Focus must remain usable after changing page.");
+                Tap(input, "RB"); view.Window.UpdateLayout(); Assert.That(current(), Is.EqualTo(3));
+                Tap(input, "RB"); Assert.That(current(), Is.EqualTo(3));
+                Tap(input, "LB"); Assert.That(current(), Is.EqualTo(2));
+            }
+            Assert.That(audio.State.Items[0].IsPlaying, Is.True);
+        }
+        finally { Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
     });
 
     [Test]

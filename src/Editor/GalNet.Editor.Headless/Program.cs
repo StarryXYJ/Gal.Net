@@ -42,6 +42,28 @@ internal static class Program
                 WriteJson(new ToolResult(_operationId, true, new GalpakInstallReport(directory), []));
                 return 0;
             }
+            if (_operationId == "localization.convert")
+            {
+                var inputPath = invocation.Positionals[0];
+                var info = new FileInfo(inputPath);
+                if (info.Length > 8 * 1024 * 1024) throw new InvalidDataException("Exchange file exceeds 8 MiB.");
+                var input = LocalizationExchange.Parse(await File.ReadAllTextAsync(inputPath), "en-US");
+                if (input.ProjectId is null) throw new InvalidDataException("Expected a translation template, not flat runtime JSON.");
+                var translations = input.Rows.Where(row => row.Translation is not null).ToDictionary(row => row.Key, row => row.Translation!, StringComparer.Ordinal);
+                var json = JsonSerializer.Serialize(translations, new JsonSerializerOptions { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+                var output = Path.GetFullPath(invocation.Get("--output")!);
+                if (!Path.GetFileName(output).Equals(input.TargetLocale + ".json", StringComparison.OrdinalIgnoreCase))
+                    throw new InvalidDataException("Output filename must match the target culture, for example ja-JP.json.");
+                var temporary = output + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                try
+                {
+                    await File.WriteAllTextAsync(temporary, json, new System.Text.UTF8Encoding(false));
+                    File.Move(temporary, output, false);
+                }
+                finally { if (File.Exists(temporary)) File.Delete(temporary); }
+                WriteJson(new ToolResult(_operationId, true, new { output, targetLocale = input.TargetLocale, total = input.Rows.Length, translated = translations.Count, missing = input.Rows.Length - translations.Count }, []));
+                return 0;
+            }
             if (_operationId == "game.inspect")
             {
                 var descriptor = InstalledGameDescriptor.Read(invocation.Positionals[0]);

@@ -33,7 +33,8 @@ public sealed class ProjectClosePrompt(IEditorLocalizationService localization) 
             buttons.Children.Add(button);
         }
         var question = new TextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap };
-        var summary = new TextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontSize = 12 };
+        var summary = new TextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        summary.Bind(TextBlock.FontSizeProperty, dialog.GetResourceObservable("Editor.Font.Detail"));
         bindings.Add(LocalizedBindings.Bind(question, TextBlock.TextProperty, localization, "Close.Question", projectName));
         bindings.Add(LocalizedBindings.Bind(summary, TextBlock.TextProperty, localization, "Close.Summary"));
         dialog.Content = new StackPanel { Margin = new Thickness(20), Spacing = 20, Children = { question, summary, buttons } };

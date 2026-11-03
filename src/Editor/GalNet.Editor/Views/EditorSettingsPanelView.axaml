@@ -2,83 +2,93 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:globalization="clr-namespace:System.Globalization;assembly=System.Runtime"
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
+             xmlns:forms="using:GalNet.Game.Controls.Forms"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              x:Class="GalNet.Editor.Views.EditorSettingsPanelView"
              x:DataType="vm:EditorSettingsPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Grid.Row="0" Text="{loc:Localize Settings.Editor.Title}"
-                   FontSize="16" FontWeight="Bold"
+                   FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="8">
-                <TextBlock Text="{loc:Localize Settings.Theme}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12" />
-                <ComboBox ItemsSource="{Binding AvailableThemes}"
-                          SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
-                          Foreground="{DynamicResource SemiColorText0}"
-                          Background="{DynamicResource SemiColorBackground2}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="vm:ThemeSelectionItem">
-                            <TextBlock Text="{Binding DisplayName}"
-                                       Foreground="{DynamicResource SemiColorText0}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
-
-                <TextBlock Text="{loc:Localize Settings.UiLanguage}"
-                           Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
-                           Margin="0,4,0,0" />
-                <ComboBox ItemsSource="{Binding AvailableCultures}"
-                          SelectedItem="{Binding SelectedCulture, Mode=TwoWay}"
-                          Foreground="{DynamicResource SemiColorText0}"
-                          Background="{DynamicResource SemiColorBackground2}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate x:DataType="globalization:CultureInfo">
-                            <TextBlock Text="{Binding NativeName}"
-                                       Foreground="{DynamicResource SemiColorText0}" />
-                        </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+        <Grid Grid.Row="1">
+        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorFill0}" CornerRadius="6" IsHitTestVisible="False" />
+        <TabControl TabStripPlacement="Left" Background="Transparent">
+          <TabItem MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M12 2L14 4L17 3L18 6L21 7L20 10L22 12L20 14L21 17L18 18L17 21L14 20L12 22L10 20L7 21L6 18L3 17L4 14L2 12L4 10L3 7L6 6L7 3L10 4Z M12 8A4 4 0 1 0 12 16A4 4 0 1 0 12 8"/><TextBlock Text="{loc:Localize Settings.Editor.Title}"/></StackPanel></TabItem.Header>
+          <ScrollViewer>
+            <StackPanel Spacing="8" Margin="12,0,0,0">
+                <forms:FieldEditorRow Name="ThemeRow" ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.Theme}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor>
+                    <ComboBox ItemsSource="{Binding AvailableThemes}" SelectedItem="{Binding SelectedTheme, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:ThemeSelectionItem"><TextBlock Text="{Binding DisplayName}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.UiLanguage}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor>
+                    <ComboBox ItemsSource="{Binding AvailableCultures}" SelectedItem="{Binding SelectedCulture, Mode=TwoWay}" HorizontalAlignment="Stretch">
+                      <ComboBox.ItemTemplate><DataTemplate x:DataType="globalization:CultureInfo"><TextBlock Text="{Binding NativeName}"/></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                  </forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.FontSize}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><NumericUpDown Name="EditorFontSize" Minimum="10" Maximum="18" Increment="1" FormatString="0" Width="120" HorizontalAlignment="Left" Value="{Binding FontSize, Mode=TwoWay}"/></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.DefaultApplication}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox Text="{Binding DefaultApplicationPath}"/><Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseDefaultApplicationCommand}"/></Grid></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
+                <forms:FieldEditorRow ShowActions="False" LabelWidth="150">
+                  <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Settings.DefaultContracts}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
+                  <forms:FieldEditorRow.Editor><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBox Text="{Binding DefaultContractsDirectory}"/><Button Grid.Column="1" Content="{loc:Localize Common.Browse}" Command="{Binding BrowseDefaultContractsCommand}"/></Grid></forms:FieldEditorRow.Editor>
+                </forms:FieldEditorRow>
                 <CheckBox Name="ExpandNewEntries" Content="{loc:Localize Settings.ExpandNewEntries}" IsChecked="{Binding ExpandNewEntries,Mode=TwoWay}"/>
                 <!-- Auto-save is intentionally forced on for the current editor experience. -->
 
-                <Separator Margin="0,10,0,6" />
+            </StackPanel>
+          </ScrollViewer>
+          </TabItem>
+          <TabItem Name="ShortcutsTab" MinWidth="180">
+          <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M2 5H22V19H2Z M4 7V9H6V7Z M8 7V9H10V7Z M12 7V9H14V7Z M16 7V9H18V7Z M4 11V13H6V11Z M8 11V13H10V11Z M12 11V13H14V11Z M16 11V13H20V11Z M6 15V17H18V15Z"/><TextBlock Text="{loc:Localize Settings.Shortcuts}"/></StackPanel></TabItem.Header>
+          <ScrollViewer>
+            <StackPanel Spacing="8" Margin="12,0,0,0">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="{loc:Localize Settings.Shortcuts}" FontWeight="SemiBold"
                                Foreground="{DynamicResource SemiColorText0}" VerticalAlignment="Center" />
                     <Button Grid.Column="1" Content="{loc:Localize Settings.Shortcuts.ResetAll}"
-                            Command="{Binding ResetAllShortcutsCommand}" />
+                            Click="OnResetAll" />
                 </Grid>
                 <TextBox Text="{Binding ShortcutSearchText, Mode=TwoWay}" PlaceholderText="{loc:Localize Settings.SearchCommands}" />
                 <ItemsControl ItemsSource="{Binding Shortcuts}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ShortcutSettingItemViewModel">
                             <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="0,7">
-                                <Grid ColumnDefinitions="2*,1.2*,1.2*,Auto,Auto" ColumnSpacing="8">
-                                    <StackPanel>
+                                <Grid ColumnDefinitions="2*,1*,Auto" ColumnSpacing="12">
+                                    <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource SemiColorText0}" />
-                                        <TextBlock Text="{Binding CommandId}" FontSize="10" Foreground="{DynamicResource SemiColorText2}" />
+                                        <TextBlock Text="{Binding Category}" FontSize="{DynamicResource Editor.Font.Caption}" Foreground="{DynamicResource SemiColorText2}" />
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="{Binding Category}" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource SemiColorText2}" />
-                                    <StackPanel Grid.Column="2">
-                                        <TextBox Text="{Binding GestureText, Mode=TwoWay}" />
-                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="10" Foreground="OrangeRed" />
+                                    <StackPanel Grid.Column="1">
+                                        <Button Name="ShortcutCapture" Content="{Binding GestureText}" HorizontalAlignment="Stretch" Click="OnCaptureShortcut" ToolTip.Tip="{loc:Localize Settings.Shortcuts.CaptureHint}" />
+                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="{DynamicResource SemiColorDanger}" TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <Button Grid.Column="3" Content="{loc:Localize Common.Apply}" Command="{Binding ApplyCommand}" />
-                                    <Button Grid.Column="4" Content="{loc:Localize Common.Reset}" Command="{Binding ResetCommand}" />
+                                    <Button Grid.Column="2" Theme="{DynamicResource EditorIconButton}" Command="{Binding ResetCommand}" ToolTip.Tip="{loc:Localize Common.Reset}" AutomationProperties.Name="{loc:Localize Common.Reset}"><PathIcon Width="16" Height="16" Data="{StaticResource ResetIcon}" /></Button>
                                 </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
-        </ScrollViewer>
+          </ScrollViewer>
+          </TabItem>
+        </TabControl>
+        </Grid>
 
         <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding StatusText}"

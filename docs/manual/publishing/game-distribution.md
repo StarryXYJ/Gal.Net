@@ -44,8 +44,19 @@ Linux 另需 `--media-directory <准备好的目录>`，其中包含 native、li
 
 契约身份也受源码字节、构建配置和源码路径上下文影响，不能只看 `--version`。可靠流程是先发布所选应用，把实际发布的 Core/Builtins/Project.Contracts 完整闭包交给 `project create --contracts` 或作者项目，再使用同一源码/配置/版本执行 build-compose。换构建宿主或源码快照后，应重新核对三份 DLL hash；不一致时使用该构建的契约重新导出内容。Windows 与 Linux 原生 SDK 均已有实际源码合包证据，Linux 还验证了遵守上述协议的仓库外独立 csproj；这不承诺任意工程布局或跨宿主重编译工件可互换。
 
-需要联调时，在 `scripts/ci/publish-applications.py` 使用 `--flavors Developer`。Developer 开启游戏调试和启动参数，Player 允许外部内容，Bound 绑定游戏且关闭参数；三种模式均通过正式跨平台封装流程验证，不分发 PDB。见 [应用发布矩阵](../../../scripts/ci/README-applications.md)。
+需要联调时，在 `scripts/ci/publish-applications.py` 使用 `--debug`；同时传入 `--bind-game` 可构建绑定 GameTestCase 的调试播放器。BoundDeveloper 接受调试启动参数，但仍校验加载内容的项目身份。正式发布仍封装 Developer、Player、Bound 三种模式，均不分发 PDB。见 [应用发布矩阵](../../../scripts/ci/README-applications.md)。
 
 完整版无需用户安装 .NET；系统 DLL、Avalonia/Skia/HarfBuzz 与 VLC 视频插件都是体积来源。R2R 保留 IL 并增加预编译代码，不能按 AOT 的体积预期评估。DLL 数量主要来自 VLC 插件，不能仅按扩展名删除；当前保留 x64 插件能力集合。Editor 与 CLI 先独立发布，再将字节一致的重名文件合并到同一目录，依赖冲突会明确失败，不覆盖另一程序的依赖。
 
 应用封装会核对版本、源码 commit、完整文件哈希、部署方式与契约字节身份，最终使用 `cross-platform-release.py seal` 封存矩阵。具体参数见 [引擎发布](engine-release.md) 与 [应用发布矩阵](../../../scripts/ci/README-applications.md)。归档检查不能代替真实桌面/设备的启动、正常退出、存读档和音视频验收。
+
+## 维护者构建绑定游戏
+
+仓库内的 CrossPlatform Sample 可从现有游戏包构建：
+
+```powershell
+python scripts/ci/publish-applications.py --rid win-x64 --out output/game-raw --pak path/to/game.galpak
+python scripts/release/cross-platform-release.py desktop --raw output/game-raw --out output/game-bundle --game-only
+```
+
+`--debug` 启用游戏调试；`--framework` 不包含 .NET 运行时。Linux 的 `--rid linux-x64` 封装还需 `--media` 指向准备好的私有媒体目录。脚本构建的是仓库 Sample 宿主，游戏包必须由该目标构建字节一致的契约导出；它会安装校验包、提取项目身份并核对契约，不能用它构建任意自定义宿主。Android 可运行 `pwsh scripts/ci/publish-android-sample.ps1 -Out output/android -Pak path/to/game.galpak`；省略 `-Pak` 时使用 GameTestCase。Android 构建还需要对应 workload 和 NDK，并校验目标契约。移动端调试暂未接通。

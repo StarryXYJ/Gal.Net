@@ -16,7 +16,7 @@
 | `State` | 按注册类型/ID 存储的通用 GameState；契约可选择 keySpace 共享跨表身份索引 |
 | 变量存储 | Player / Save 作用域变量与表达式求值 |
 
-`GameSnapshot` 当前版本为 5，旧版本直接拒绝，不提供迁移兼容。它包含 NodeId、EntryIndex、Save 变量、ContentBuildId、StoryPackages 与 States（稳定 StateId → section version / JSON payload）。安装内容校验基础构建与准备时已安装的全部剧情包，缺少记录包不通过跳过降级恢复；开发目录构建标识为空。模块仍显式注册数据表及恢复器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷报错。builtin.animations、builtin.layers 以及音频 tracks/seffects 的 section version 为 2；音频还注册 channels 状态。各表按实际注册版本校验，不能把所有其他表统一视为版本 1。每份存档包含全部注册表（含空表），不写 CLR 类型名、Task 或后端对象。
+`GameSnapshot` 当前版本为 6，旧版本直接拒绝，不提供迁移兼容。它包含 NodeId、EntryIndex、Save 变量、ContentBuildId、StoryPackages 与 States（稳定 StateId → section version / JSON payload）。安装内容校验基础构建与准备时已安装的全部剧情包，缺少记录包不通过跳过降级恢复；开发目录构建标识为空。模块仍显式注册数据表及恢复器，未注册类型、重复 ID、缺失/未知 section、版本不符及无效载荷报错。builtin.animations、builtin.layers 以及音频 tracks/seffects 的 section version 为 2；音频还注册 channels 状态。各表按实际注册版本校验，不能把所有其他表统一视为版本 1。每份存档包含全部注册表（含空表），不写 CLR 类型名、Task 或后端对象。
 
 差分 Layer 保存逻辑图集 ID、完整请求、最后保护集合、变体键、解析原因及可选 UsesResourceOverride（缺省 false）。解码检查来源互斥与状态结构，ValidateState 按会话图集解析。普通内容核对实际变体/图片/原因，不一致拒绝；明确的图集资源覆盖在安装或移除后，以选择意图重算候选状态的显示缓存和标记，保留输入存档及旧运行根。未知维度/值仍报错。展示恢复在呈现前复核；定义在准备阶段异步加载，show/select 同步。继续选择保留曾因缺组合而未显示的服装等意图。
 
@@ -46,6 +46,8 @@ Save scope 随存档槽保存和恢复；Player scope 由宿主变量服务独�
 ## 已读进度提交边界
 
 存档槽、玩家变量和已读进度的文件写入共用替换工具：每次写入使用同目录下独立临时文件，成功写完并检查取消后替换目标，失败时清理本次临时文件。各服务继续负责自身的锁、数据快照和提交时机；进度 revision 只在替换成功后推进。
+
+文件存档先写入唯一名称的预览图，再原子替换包含该预览文件名的存档记录；提交失败时旧记录和旧预览保持可用，成功后尽力清理旧图。旧存档没有预览文件名时继续读取旧的固定名称 PNG；中断或清理失败可能留下无引用图片，删除存档槽时一并清理。玩家变量文件无法解析时明确报告损坏，不将其当成空配置。
 
 `ReadProgressIndex` 在 Runtime 中维护内存索引与 revision。文件实现 MarkRead 不执行磁盘 I/O，默认每 2 秒批量写入；同一个进度实例串行化 flush/clear，写入期间的新标记保留 dirty 状态。后台失败由 LastPersistenceError 暴露并在下个周期重试。Engine StopAsync 在执行与 continuation 退出后等待 FlushAsync，失败仍发布 Stopped 并向调用者传播；Sample 保存前 flush，销毁进度实例时取消定时器并完成最终提交。强制终止可能丢失自上次成功 flush 以来的标记（正常 I/O 时最多一个周期，持续失败时不保证时间上限）。存档槽恢复不回滚玩家已读进度。
 

@@ -44,12 +44,20 @@ public partial class ProjectSettingsPanelViewModel : ObservableObject, IDisposab
     partial void OnDebugWorkingDirectoryChanged(string value) => SaveDebugAutomatically();
     private void SaveDebugAutomatically() { if (!_loading && IsCurrent) SaveDebugConfiguration(); }
 
+    public Task OfferDefaultApplicationAsync() => _projects.Current?.Services.GetService<IEditorSettingsService>() is { } settings
+        ? DefaultApplicationPrompt.OfferAsync(settings, L, DebugExecutable) : Task.CompletedTask;
+
     [RelayCommand]
     private async Task BrowseDebugExecutableAsync()
     {
         if (_projects.Current?.Services.GetService<IFileDialogService>() is not { } dialogs) return;
         var paths = await dialogs.OpenFilePickerAsync(L["Debug.Executable"], false);
-        if (paths.Count > 0 && IsCurrent) DebugExecutable = paths[0];
+        if (paths.Count > 0 && IsCurrent)
+        {
+            DebugExecutable = paths[0];
+            if (_projects.Current?.Services.GetService<IEditorSettingsService>() is { } settings)
+                await DefaultApplicationPrompt.OfferAsync(settings, L, paths[0]);
+        }
     }
 
     [RelayCommand]

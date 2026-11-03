@@ -37,38 +37,52 @@ public sealed class EditorShortcutService
                 throw new InvalidOperationException($"Shortcut '{gesture}' is already assigned to '{conflict.Id}' in context '{command.Context}'.");
         }
 
-        command.Gesture = gesture;
-        var settings = _settingsService.GetSettings();
-        settings.GestureOverrides[command.Id] = gesture?.ToString() ?? "";
-        _settingsService.SaveSettings();
-        ShortcutsChanged?.Invoke();
+        Update(command, gesture, removeOverride: false);
     }
 
     public void ResetGesture(string commandId)
     {
         var command = Find(commandId);
-        command.Gesture = command.DefaultGesture;
-        _settingsService.GetSettings().GestureOverrides.Remove(command.Id);
-        _settingsService.SaveSettings();
+        if (command.DefaultGesture is { } gesture && FindConflict(commandId, command.Context, gesture) is { } conflict)
+            throw new InvalidOperationException($"Shortcut '{gesture}' is already assigned to '{conflict.Id}'.");
+        Update(command, command.DefaultGesture, removeOverride: true);
+    }
+
+    private void Update(IEditorShortcutCommandDefinition command, KeyGesture? gesture, bool removeOverride)
+    {
+        var settings = _settingsService.GetSettings();
+        var hadOverride = settings.GestureOverrides.TryGetValue(command.Id, out var previous);
+        if (removeOverride) settings.GestureOverrides.Remove(command.Id);
+        else settings.GestureOverrides[command.Id] = gesture?.ToString() ?? "";
+        try { _settingsService.SaveSettings(); }
+        catch
+        {
+            if (hadOverride) settings.GestureOverrides[command.Id] = previous!;
+            else settings.GestureOverrides.Remove(command.Id);
+            throw;
+        }
+        command.Gesture = gesture;
         ShortcutsChanged?.Invoke();
     }
 
     public void ResetAll()
     {
-        _settingsService.GetSettings().GestureOverrides.Clear();
-        foreach (var command in _commands)
-            command.Gesture = command.DefaultGesture;
-        _settingsService.SaveSettings();
+        var settings = _settingsService.GetSettings();
+        var previous = settings.GestureOverrides.ToArray();
+        settings.GestureOverrides.Clear();
+        try { _settingsService.SaveSettings(); }
+        catch { foreach (var pair in previous) settings.GestureOverrides[pair.Key] = pair.Value; throw; }
+        foreach (var command in _commands) command.Gesture = command.DefaultGesture;
         ShortcutsChanged?.Invoke();
     }
 
     public IEditorShortcutCommandDefinition? FindConflict(
-        string commandId,
-        string context,
-        KeyGesture gesture) =>
+        string commandId, string context, KeyGesture gesture) =>
         _commands.FirstOrDefault(command =>
             command.Id != commandId &&
-            command.Context.Equals(context, StringComparison.OrdinalIgnoreCase) &&
+            (command.Context.Equals(context, StringComparison.OrdinalIgnoreCase) ||
+             command.Context.Equals("Global", StringComparison.OrdinalIgnoreCase) ||
+             context.Equals("Global", StringComparison.OrdinalIgnoreCase)) &&
             command.Gesture?.Equals(gesture) == true);
 
     public bool TryExecute(KeyGesture gesture, string context = "Global")

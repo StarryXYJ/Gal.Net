@@ -18,6 +18,7 @@ using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Runtime.Engine;
+using GalNet.Editor.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GeneralTest.Editor;
@@ -36,8 +37,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var project = await projects.CreateAsync(Path.Combine(_root, "ExternalDebug"), "Debug", new(), Contracts());
             var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
             var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
-            var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Text).Single();
+            var authored = workspace.InsertEntriesInto(group, 0, 2, BuiltinEntryIds.Text).ToArray();
+            var entry = authored[0];
+            var future = authored[1];
             await SetGameText(project, group.Id, entry.Source, "Test line");
+            await SetGameText(project, group.Id, future.Source, "Future line");
             var panel = project.Services.GetRequiredService<ExternalDebugPanelViewModel>();
             var view = new ExternalDebugPanelView { DataContext = panel };
             var window = new Window { Content = view, Width = 1200, Height = 700 };
@@ -54,6 +58,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await panel.WaitForApplicationCommand.ExecuteAsync(null);
                 Assert.That(panel.Error, Is.Empty);
                 var client = project.Services.GetRequiredService<ExternalGameDebugClient>();
+                var hotReload = project.Services.GetRequiredService<DebugContentHotReloadService>();
                 Assert.That(client.Invitation, Is.Not.Null);
                 using var gameView = new GameRegistration().UseCatalog(project.Services.GetRequiredService<IEntryCatalog>())
                     .RegisterInstruction(BuiltinEntryIds.Text, _ => new DebugTextWait()).BuildView();
@@ -61,12 +66,17 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 {
                     RootNodeId = group.Id,
                     Nodes = { new Group { Id = group.Id, Entries = { new PrimitiveEntry(BuiltinEntryIds.Text,
-                    JsonSerializer.SerializeToElement(new { content = "Test line" })) { StableId = entry.StableId + "#1" } } } }
+                    JsonSerializer.SerializeToElement(new { content = "Test line" })) { StableId = entry.StableId + "#1" },
+                    new PrimitiveEntry(BuiltinEntryIds.Text, JsonSerializer.SerializeToElement(new { content = "Future line" }))
+                    { StableId = future.StableId + "#1" } } } }
                 };
                 await using var engine = new GameEngine(graph, gameView);
                 engine.Runtime.SetVariable("save.score", 4);
                 engine.Runtime.SetVariable("player.unlocked", false);
-                using var adapter = new EngineDebugRun(engine, new() { Instructions = new Dictionary<string, DebugReplayBehavior> { [BuiltinEntryIds.Text] = DebugReplayBehavior.Scene } });
+                var revisions = new TestContentRevisions(graph);
+                using var adapter = new EngineDebugRun(engine,
+                    new() { Instructions = new Dictionary<string, DebugReplayBehavior> { [BuiltinEntryIds.Text] = DebugReplayBehavior.Scene } },
+                    content: revisions);
                 await using var host = new GameDebugHost();
                 using var binding = host.AttachRun(adapter);
                 await host.ConnectAsync(client.Invitation!);
@@ -81,7 +91,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var toolbar = view.FindControl<WrapPanel>("DebugToolbar")!;
                 var launch = view.FindControl<Button>("LaunchDebugApp")!;
                 var stop = view.FindControl<Button>("StopDebugGame")!;
-                Assert.That(toolbar.GetVisualDescendants().OfType<Button>().Count(), Is.EqualTo(10));
+                Assert.That(toolbar.GetVisualDescendants().OfType<Button>().Count(), Is.EqualTo(11));
                 Assert.That(launch.Content, Is.TypeOf<PathIcon>());
                 Assert.That(ToolTip.GetTip(launch), Is.Not.Null);
                 Assert.That(stop.IsEffectivelyEnabled, Is.True);
@@ -131,9 +141,53 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(view.FindControl<Border>("DebugErrorDetails")!.IsVisible, Is.True);
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
                 Assert.That(view.GetVisualDescendants().OfType<TabControl>().Single().Items.Count, Is.EqualTo(3));
+                var initialBuild = hotReload.PublishedBuild;
+                await SetGameText(project, group.Id, future.Source, "Changed future line");
+                Dispatcher.UIThread.RunJobs();
+                Assert.Multiple(() =>
+                {
+                    Assert.That(panel.ContentChanged, Is.True);
+                    Assert.That(group.IsDebugCurrent, Is.True, "Editing must not hide the running Group.");
+                    Assert.That(entry.IsDebugCurrent, Is.True, "Editing must not hide the Entry still running from published content.");
+                });
+                await workspace.SaveAsync();
+                await Until(() => revisions.InstallCount == 1 && !panel.Busy);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(panel.Error, Is.Empty);
+                    Assert.That(panel.Status, Is.EqualTo(panel.L["Debug.HotReload.Applied"]));
+                    Assert.That(hotReload.PublishedBuild, Is.Not.SameAs(initialBuild));
+                    Assert.That(panel.HasPendingContent, Is.False);
+                    Assert.That(revisions.InstallCount, Is.EqualTo(1));
+                    Assert.That(revisions.ActivationCount, Is.EqualTo(1));
+                });
+
+                await SetGameText(project, group.Id, entry.Source, "Changed current line");
+                var directlyApplied = hotReload.PublishedBuild;
+                await workspace.SaveAsync();
+                await Until(() => revisions.InstallCount == 2 && panel.HasPendingContent && !panel.Busy);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(panel.Error, Is.Empty);
+                    Assert.That(panel.Status, Is.EqualTo(panel.L["Debug.HotReload.ReturnRequired"]));
+                    Assert.That(panel.HasPendingContent, Is.True);
+                    Assert.That(panel.CanApplyPendingContent, Is.True);
+                    Assert.That(hotReload.PublishedBuild, Is.SameAs(directlyApplied), "Source maps must stay on the running content while an update is pending.");
+                    Assert.That(revisions.InstallCount, Is.EqualTo(2));
+                    Assert.That(revisions.ActivationCount, Is.EqualTo(1));
+                });
+                await panel.ApplyPendingContentCommand.ExecuteAsync(null);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(panel.Error, Is.Empty);
+                    Assert.That(panel.HasPendingContent, Is.False);
+                    Assert.That(hotReload.PublishedBuild, Is.Not.SameAs(directlyApplied));
+                    Assert.That(revisions.ActivationCount, Is.EqualTo(2));
+                });
                 await panel.SeekAsync(group.Id, entry.StableId);
                 Assert.That(engine.EntryIndex, Is.Zero);
-                Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(11));
+                Assert.That(engine.Runtime.GetVariable("score")!.AsInt(), Is.EqualTo(4),
+                    "Returning to the Group entrance restores its cached initial state.");
                 await Until(() => panel.RuntimeState?.Paused == true && client.Host?.Run?.Generation == adapter.Info.Generation && !panel.Busy);
                 await panel.ToggleBreakpointAsync(group.Id, entry.StableId);
                 Assert.That(panel.Error, Is.Empty);
@@ -143,6 +197,19 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(engine.EntryIndex, Is.EqualTo(1));
                 Assert.That(panel.HasError, Is.False);
                 Assert.That(project.Services.GetRequiredService<EditorHistories>().Content.IsDirty, Is.False);
+                await workspace.AddNodeAsync(GraphNodeKind.LinearGroup, 500, 200);
+                var beforeRestartRequirement = hotReload.PublishedBuild;
+                await workspace.SaveAsync();
+                await Until(() => revisions.InstallCount == 3 && panel.HasPendingContent && !panel.Busy);
+                Assert.Multiple(() =>
+                {
+                    Assert.That(panel.Error, Is.Empty);
+                    Assert.That(panel.HasPendingContent, Is.True);
+                    Assert.That(panel.CanRestartForContent, Is.True);
+                    Assert.That(hotReload.PublishedBuild, Is.SameAs(beforeRestartRequirement));
+                    Assert.That(revisions.InstallCount, Is.EqualTo(3));
+                    Assert.That(revisions.ActivationCount, Is.EqualTo(2));
+                });
                 await panel.DisconnectCommand.ExecuteAsync(null);
                 await Until(() => !panel.HasRun);
             }
@@ -156,5 +223,37 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         public override bool IsSkippable => true;
         protected override void OnDispatch() { }
         protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode) { if (mode == PrimitiveInvocationMode.CatchUp) TryComplete(); }
+    }
+
+    private sealed class TestContentRevisions(Graph graph) : IDebugContentController
+    {
+        private Graph _latestGraph = graph;
+        public int InstallCount { get; private set; }
+        public int ActivationCount { get; private set; }
+
+        public Task InstallAsync(DebugContentInstallRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var manifest = DebugContentManifestStore.Read(request.Directory);
+            if (manifest.ContentFingerprint != request.ContentFingerprint) throw new InvalidDataException("Content fingerprint mismatch.");
+            _latestGraph = new Graph
+            {
+                RootNodeId = graph.RootNodeId,
+                Nodes = manifest.Groups.Select(group => (Node)new Group
+                {
+                    Id = group.Id,
+                    Entries = group.Entries.SelectMany(source => source.PrimitiveIds.Select(id =>
+                        (GalNet.Core.Entry.Entry)new PrimitiveEntry(BuiltinEntryIds.Text,
+                            JsonSerializer.SerializeToElement(new { content = id })) { StableId = id })).ToList()
+                }).ToList(),
+                Edges = graph.Edges
+            };
+            InstallCount++;
+            return Task.CompletedTask;
+        }
+
+        public Graph GetLatestGraph() => _latestGraph;
+
+        public void CommitActivation() => ActivationCount++;
     }
 }

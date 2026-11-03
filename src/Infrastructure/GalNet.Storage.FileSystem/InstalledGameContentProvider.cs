@@ -35,14 +35,11 @@ public sealed class InstalledGameContentProvider : IGameContentProvider
             packages.InstalledStories, packages.Manifest.Stories.Select(story => story.PackageId).ToHashSet(StringComparer.Ordinal));
         graph.ContentBuildId = packages.Manifest.BuildId;
         graph.InstalledStoryPackages = packages.InstalledStories.Order(StringComparer.Ordinal).ToArray();
-        var documents = packages.GamePackage?.Documents;
-        var gallery = documents is null ? GalleryFileLoader.LoadGenerated(Path.Combine(_directory, "gallery.json"), _galleryTypes)
-            : GalleryFileLoader.LoadGeneratedJson(documents.GetText("gallery.json"), _galleryTypes, "game.pak/gallery.json");
-        var settings = documents is null ? GameProjectConfigurationLoader.Load(_directory, _options.Configurations)
-            : GameProjectConfigurationLoader.LoadJson(documents.GetText("settings.json"), _options.Configurations, "game.pak/settings.json");
+        var documents = packages.GamePackage.Documents;
+        var gallery = GalleryFileLoader.LoadGeneratedJson(documents.GetText("gallery.json"), _galleryTypes, "game.pak/gallery.json");
+        var settings = GameProjectConfigurationLoader.LoadJson(documents.GetText("settings.json"), _options.Configurations, "game.pak/settings.json");
         var culture = _options.SelectDefaultCulture?.Invoke(settings);
-        var localization = documents is null ? GameLocalizationLoader.Load(_directory, graph, culture, cancellationToken)
-            : GameLocalizationLoader.LoadPacked(_directory, graph, documents, packages.Localization!, culture, cancellationToken);
+        var localization = GameLocalizationLoader.LoadPacked(_directory, graph, documents, packages.Localization, culture, cancellationToken);
         GameLocalizationLoader.ValidateResourceNames(localization, (await assets.GetFilesAsync(ct: cancellationToken)).Select(file => file.Metadata));
         return new GameContent { Graph = graph, Gallery = gallery, Configuration = settings, Localization = localization };
     }, cancellationToken);

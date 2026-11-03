@@ -50,7 +50,7 @@ public sealed class EditorWorkspaceViewModelTests
             foreach (var key in new[] { "AddIcon", "DeleteRegularIcon", "ChevronUpRegular", "ChevronDownRegular" })
                 Application.Current!.Resources[key] = StreamGeometry.Parse("M0,0 L8,8");
             var panel = new GroupEditorPanelViewModel(workspace, group.Id, fixture.EntryAuthoring, fixture.ProjectService,
-                null!, null!, null!, catalog, new GalNet.Editor.Services.EntrySelectionContext());
+                null!, null!, null!, catalog, new GalNet.Editor.Services.EntrySelectionContext()); entry.IsParametersExpanded = true;
             Application.Current!.RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
             Application.Current.Styles.Add(new Semi.Avalonia.SemiTheme());
             var view = new EntryListEditorControl { DataContext = panel };

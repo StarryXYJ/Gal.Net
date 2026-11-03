@@ -39,32 +39,6 @@ public static class CompressionHelper
         return output.ToArray();
     }
 
-    /// <summary>解压数据。</summary>
-    public static byte[] Decompress(byte[] compressed, Core.Assets.CompressionMode mode)
-    {
-        if (mode == Core.Assets.CompressionMode.None || compressed.Length == 0)
-            return compressed;
-
-        using var input = new MemoryStream(compressed);
-        using var decompressor = CreateDecompressor(input, mode);
-        using var output = new MemoryStream();
-        decompressor.CopyTo(output);
-        return output.ToArray();
-    }
-
-    /// <summary>异步解压数据。</summary>
-    public static async Task<byte[]> DecompressAsync(byte[] compressed, Core.Assets.CompressionMode mode, CancellationToken ct = default)
-    {
-        if (mode == Core.Assets.CompressionMode.None || compressed.Length == 0)
-            return compressed;
-
-        using var input = new MemoryStream(compressed);
-        using var decompressor = CreateDecompressor(input, mode);
-        using var output = new MemoryStream();
-        await decompressor.CopyToAsync(output, ct);
-        return output.ToArray();
-    }
-
     /// <summary>Decompresses exactly the declared length, leaving the source open.</summary>
     public static byte[] Decompress(Stream source, Core.Assets.CompressionMode mode, int expectedLength, CancellationToken ct = default)
     {

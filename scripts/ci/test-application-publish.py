@@ -71,6 +71,31 @@ class ApplicationPublishTests(unittest.TestCase):
         self.assertEqual(list(output.iterdir()), [marker])
         self.assertEqual(marker.read_text(), "keep")
 
+    def test_missing_pak_and_conflicting_demo_selection_are_rejected_before_build(self):
+        output = self.root / "not-created"
+        missing = self.root / "missing.galpak"
+        result = self.cli("--out", output, "--pak", missing)
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertFalse(output.exists())
+        package = self.root / "game.galpak"
+        package.write_bytes(b"placeholder")
+        result = self.cli("--out", output, "--pak", package, "--bind-game")
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertFalse(output.exists())
+
+    def test_game_contracts_reject_missing_mismatched_and_unsafe_entries(self):
+        contract = self.root / "Contract.dll"
+        contract.write_bytes(b"expected")
+        entry = {"path": contract.name, "size": contract.stat().st_size, "sha256": publisher.sha256(contract)}
+        publisher.validate_game_contracts({"contractFiles": [entry]}, self.root)
+        with self.assertRaisesRegex(ValueError, "missing"):
+            publisher.validate_game_contracts({}, self.root)
+        contract.write_bytes(b"modified")
+        with self.assertRaisesRegex(ValueError, "differs"):
+            publisher.validate_game_contracts({"contractFiles": [entry]}, self.root)
+        with self.assertRaisesRegex(ValueError, "Invalid"):
+            publisher.validate_game_contracts({"contractFiles": [{**entry, "path": "../Contract.dll"}]}, self.root)
+
     def test_incorrect_sdk_is_rejected_before_native_build(self):
         output = self.root / "wrong-sdk"
         process = self.cli("--output", output, "--dotnet", sys.executable)
@@ -119,16 +144,19 @@ class ApplicationPublishTests(unittest.TestCase):
             "GalNet.Avalonia.Debugging", "GalNet.Debugging", "AvaloniaUI.DiagnosticsSupport")}
         debug_assemblies = ("GalNet.Avalonia.Debugging.dll", "GalNet.Debugging.dll",
                             "AvaloniaUI.DiagnosticsSupport.Avalonia.dll")
-        for kind in ("CrossPlatform",):
-            role = kind + "-Developer"
+        for kind in ("Developer", "BoundDeveloper"):
+            role = "CrossPlatform-" + kind
             with self.subTest(role=role), self.assertRaisesRegex(ValueError, "missing debug dependencies"):
                 publisher.validate_sample_capabilities(root, role, {})
             with self.subTest(role=role), self.assertRaisesRegex(FileNotFoundError, "debug assemblies"):
                 publisher.validate_sample_capabilities(root, role, dependencies)
             for name in debug_assemblies:
                 (root / name).write_bytes(b"debug assembly")
-            self.assertFalse(publisher.validate_sample_capabilities(root, role, dependencies)["symbolsIncluded"])
-            symbols = root / (Path(publisher.PROJECTS[kind]).stem + ".pdb")
+            capabilities = publisher.validate_sample_capabilities(root, role, dependencies)
+            self.assertTrue(capabilities["gameDebugging"])
+            self.assertTrue(capabilities["launchArguments"])
+            self.assertFalse(capabilities["symbolsIncluded"])
+            symbols = root / (Path(publisher.PROJECTS["CrossPlatform"]).stem + ".pdb")
             symbols.write_bytes(b"unexpected symbols")
             with self.subTest(role=role), self.assertRaisesRegex(ValueError, "debug files or symbols"):
                 publisher.validate_sample_capabilities(root, role, dependencies)

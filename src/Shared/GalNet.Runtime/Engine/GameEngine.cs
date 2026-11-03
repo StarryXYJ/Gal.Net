@@ -13,7 +13,7 @@ namespace GalNet.Runtime.Engine;
 /// <summary>Owns story flow and all active primitive instances for one game run.</summary>
 public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerPlaybackController
 {
-    private readonly GameGraphNavigator _navigation;
+    private GameGraphNavigator _navigation;
     private readonly IGameRuntime _runtime;
     private readonly IPrimitiveDispatcher _view;
     private readonly IChoicePresenter? _choicePresenter;
@@ -24,6 +24,8 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     private IGameContext _dispatchRuntime;
     private readonly ActivePrimitiveRegistry _active;
     private GameSnapshot _lastStableSnapshot;
+    private GroupEntranceSnapshot? _currentGroupEntrance;
+    private readonly List<string> _visitedGroups = [];
     private readonly string _contentBuildId;
     private readonly string[] _storyPackages;
     private PendingChoice? _pendingChoice;
@@ -93,7 +95,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     /// <summary>Published outside the execution lock. Handlers must not synchronously wait for engine tasks.</summary>
     public event Action<GameEngineStateChange>? StateChanged { add => _notifications.StateChanged += value; remove => _notifications.StateChanged -= value; }
     public IGameRuntime Runtime => _runtime;
-    public GameSnapshot LastStableSnapshot => SnapshotCopy.Clone(_lastStableSnapshot);
+    public GameSnapshot LastStableSnapshot => StampContent(_lastStableSnapshot);
     public string CurrentNodeId => _runtime.CurrentNodeId;
     public int EntryIndex => _runtime.EntryIndex;
     public bool IsRunning { get; private set; }
@@ -170,7 +172,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         }
     }
 
-    public GameSnapshot CreateSaveData() => SnapshotCopy.Clone(_lastStableSnapshot);
+    public GameSnapshot CreateSaveData() => StampContent(_lastStableSnapshot);
 
     /// <summary>
     /// Rebuilds host presentation under the execution gate using this run's isolated scene and token.
@@ -219,6 +221,15 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         if (node is null || node is Group { IsAvailable: false } || candidate.EntryIndex > (node is Group group ? group.Entries.Count : 0))
             throw new InvalidDataException("The save position does not exist in this game graph.");
         _view.ValidateState(_runtime, candidate.State);
+        if (data.GroupEntrance is { } entrance)
+        {
+            if (entrance.NodeId != candidate.NodeId || node is not Group || entrance.Variables is null || entrance.States is null)
+                throw new InvalidDataException("The group entrance does not match the saved position.");
+            var entry = _runtime.PrepareRestore(new GameSnapshot { NodeId = entrance.NodeId, Variables = entrance.Variables, States = entrance.States });
+            _view.ValidateState(_runtime, entry.State);
+        }
+        if (data.VisitedGroups.Any(id => _navigation.FindNode(id) is not Group))
+            throw new InvalidDataException("The save contains an invalid visited Group.");
         return candidate;
     }
 
@@ -247,11 +258,18 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             var previousScope = _scopeCancellation;
             CancelDetachedScope(previousScope);
             _runtime.Restore(candidate);
+            if (restoringDebugger is null)
+            {
+                _currentGroupEntrance = data.GroupEntrance is { } entrance ? SnapshotCopy.CloneEntrance(entrance) : null;
+                _visitedGroups.Clear();
+                _visitedGroups.AddRange(data.VisitedGroups);
+            }
             _debugger?.OnExternalRestore(restoringDebugger is not null);
             _restorationPending = _view.RequiresStateRestore;
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
             _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
+            SetSnapshotEntrance(_lastStableSnapshot);
             _active.EndGroup();
             _flowError = null;
             IsRunning = true;
@@ -395,7 +413,16 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ProcessGroup(Group group, ref int budget, CancellationToken cancellationToken)
     {
-        if (_active.BeginGroupExecution(group.Id)) _debugger?.CaptureEntrance(group.Id);
+        if (_active.BeginGroupExecution(group.Id))
+        {
+            if (_runtime.EntryIndex == 0 && _debugger?.CapturingNaturalEntrance != false)
+            {
+                _visitedGroups.Add(group.Id);
+                var snapshot = _runtime.CreateSnapshot();
+                _currentGroupEntrance = new GroupEntranceSnapshot { NodeId = group.Id, Variables = snapshot.Variables, States = snapshot.States };
+            }
+            _debugger?.OnGroupEntry();
+        }
         while (_runtime.EntryIndex < group.Entries.Count && _debugger?.Paused != true && !_active.HasBlockingInstance())
         {
             if (_catchUpActive && --_catchUpBudget < 0) return;
@@ -694,8 +721,13 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             return;
         _view.OnCheckpointCreating(_dispatchRuntime);
         _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
+        SetSnapshotEntrance(_lastStableSnapshot);
         _notifications.Checkpoint(_lastStableSnapshot);
     }
+
+    private void SetSnapshotEntrance(GameSnapshot snapshot) => snapshot.GroupEntrance =
+        _currentGroupEntrance is { } entrance && entrance.NodeId == snapshot.NodeId
+            ? SnapshotCopy.CloneEntrance(entrance) : null;
 
     private void CancelPendingChoice()
     {
@@ -706,7 +738,23 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         CancelDetachedScope(pending.Cancellation);
     }
 
-    private GameSnapshot StampContent(GameSnapshot snapshot) => SnapshotCopy.Clone(snapshot, _contentBuildId, _storyPackages);
+    private GameSnapshot StampContent(GameSnapshot snapshot)
+    {
+        var stamped = SnapshotCopy.Clone(snapshot, _contentBuildId, _storyPackages);
+        return new GameSnapshot
+        {
+            Version = stamped.Version,
+            NodeId = stamped.NodeId,
+            EntryIndex = stamped.EntryIndex,
+            ContentBuildId = stamped.ContentBuildId,
+            StoryPackages = stamped.StoryPackages,
+            VisitedGroups = _visitedGroups.ToArray(),
+            Variables = stamped.Variables,
+            States = stamped.States,
+            GroupEntrance = stamped.GroupEntrance,
+            Attachments = stamped.Attachments
+        };
+    }
 
     private static void CancelDetachedScope(CancellationTokenSource cancellation)
     {

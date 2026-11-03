@@ -13,10 +13,19 @@ public static class SnapshotCopy
         EntryIndex = snapshot.EntryIndex,
         ContentBuildId = contentBuildId ?? snapshot.ContentBuildId,
         StoryPackages = (storyPackages ?? snapshot.StoryPackages).ToArray(),
+        VisitedGroups = snapshot.VisitedGroups.ToArray(),
         Variables = snapshot.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value), StringComparer.Ordinal),
         States = snapshot.States.ToDictionary(pair => pair.Key,
             pair => new StateSection(pair.Value.Version, pair.Value.Payload.Clone()), StringComparer.Ordinal),
+        GroupEntrance = snapshot.GroupEntrance is { } entrance ? CloneEntrance(entrance) : null,
         Attachments = snapshot.Attachments.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal)
+    };
+    public static GroupEntranceSnapshot CloneEntrance(GroupEntranceSnapshot entrance) => new()
+    {
+        NodeId = entrance.NodeId,
+        Variables = entrance.Variables.ToDictionary(pair => pair.Key, pair => CloneVariable(pair.Value), StringComparer.Ordinal),
+        States = entrance.States.ToDictionary(pair => pair.Key,
+            pair => new StateSection(pair.Value.Version, pair.Value.Payload.Clone()), StringComparer.Ordinal)
     };
     public static GalVariable CloneVariable(GalVariable variable) => variable.Clone();
 }

@@ -22,6 +22,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  template:
+    name: verify Sample template
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-dotnet@v5
+        with:
+          global-json-file: global.json
+      - name: Build packages and verify generated game
+        shell: pwsh
+        run: |
+          $version = '0.0.0-ci'
+          ./scripts/release/Pack-NuGet.ps1 -Version $version -OutputDirectory output/template-feed -WorkDirectory output/template-engine-pack
+          python scripts/samples/build-dotnet-template.py --version $version --work-directory output/template-stage --output-directory output/template-package
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/samples/test-dotnet-template.py --package "output/template-package/GalNet.Templates.$version.nupkg" --feed output/template-feed --work-directory output/template-check
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sample-template-ci
+          path: |
+            output/template-package/*.nupkg
+            output/template-feed/*.nupkg
+          retention-days: 7
+          if-no-files-found: error
+
   verify:
     name: verify (BuildTest)
     runs-on: windows-latest
@@ -43,6 +73,8 @@ jobs:
           cache-dependency-path: |
             global.json
             **/packages.lock*.json
+      - name: Verify application publish guards
+        run: python scripts/ci/test-application-publish.py
       - name: Run shared local CI entry
         shell: pwsh
         env:

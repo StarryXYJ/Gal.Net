@@ -1,0 +1,9 @@
+{
+  "character.guide.name": "案内人",
+  "demo.welcome": "GalNet のデモへようこそ。テキスト、画像、動画、音声、エフェクト、天候、転場をご覧ください。会話を進めてデモを始めましょう。",
+  "group.intro.entry.intro-line-1.content": "まずは画像バリアントを紹介します。一致、フォールバック、選択の保持、再表示時のリセットを確認してください。",
+  "group.intro.entry.demo-cue-variants-shy.content": "次に人物の表情を切り替え、完全一致するバリアントを確認します。",
+  "group.intro.entry.variants-exact.content": "xy_shy に完全一致しました。次に最初の次元を切り替え、画像のない組み合わせへのフォールバックを確認します。",
+  "branch.route_choice.option.0.text": "背景をタイル表示",
+  "branch.route_choice.option.1.text": "背景を画面に合わせて表示"
+}

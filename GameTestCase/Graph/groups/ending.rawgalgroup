@@ -7,8 +7,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.complete.content"
+        "content": "group.presentation-library.entry.complete.content",
+        "speaker": "guide"
       }
     },
     {

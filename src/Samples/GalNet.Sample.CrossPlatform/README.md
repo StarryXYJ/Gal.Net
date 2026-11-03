@@ -4,6 +4,8 @@
 
 主项目的 `Views/` 和 `ViewModels/` 拥有标题、加载、游戏、设置、存读档、鉴赏及详情、关于、截图、语言选择和确认/公告布局。按钮与页面命令直接编辑项目源码；普通页面只需在 `SampleCustomization` 注册一次 VM→View 映射，VM/View 自动注册为 Scoped，Gallery 另按实际内容类型注册。`PlayerApplication` 提供应用启动/返回策略。
 
+Sample 内置英语、简体中文、日语和韩语界面。`Localization/` 的日语和韩语资源也覆盖共享播放器界面；游戏正文由游戏内容单独提供，缺少所选语言时按游戏的语言回退规则显示。
+
 内置 `GamePresentationState`、`SaveSlotCollection`、Gallery 的缩略图/媒体/重播状态及 `PlayerSurface` 保留播放、异步取消、预览释放、焦点和输入屏蔽机制。项目页面组合这些对象，不复制机制，也不派生旧默认页面 VM。场景鉴赏使用项目游戏布局和独立呈现状态，不能通过菜单进入主会话存读档/设置。
 
 整套主题与旧页面适配已删除。配色库只提供语义颜色和字体回退；应用样式与尺寸位于项目 Styles/。会话/scope 所有权来自 `GalNet.Avalonia.GameHost`，内容安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`。
@@ -20,6 +22,18 @@
 SDK 固定 `10.0.401`，Avalonia `12.0.5`；仓库开发默认引用内置源码工程。独立交付仍使用同一份 Sample，按明确清单复制必要构建附件，由交付根配置切换为同版本包引用，无需手改工程 XML。
 
 ## 复制为独立项目
+
+也可以从同一份 Sample 生成 `dotnet new` 模板包。模板包版本同时决定生成项目默认引用的 GalNet 包版本；该版本必须能从 NuGet 包源取得。以下示例在仓库根执行，并使用全新的输出目录：
+
+```powershell
+python scripts/samples/build-dotnet-template.py --version <version> --work-directory output/template-stage --output-directory output/template-package
+dotnet new install output/template-package/GalNet.Templates.<version>.nupkg
+dotnet new galnet-game -n MyGame --title "我的游戏" -o MyGame
+```
+
+项目名称目前请使用以英文字母开头、仅包含英文字母、数字和下划线的名称；游戏标题可使用中文和空格，应为单行文本。省略 `--title` 时使用项目名称。生成目录的解决方案包含共享应用、契约和所有现有平台工程，并使用包引用；仓库内 Sample 仍默认使用源码引用。CI 会验证模板并上传测试版本包及对应的引擎包，但该 CI 产物并不代表已发布到 NuGet。正式发布后可通过 `dotnet new update` 更新已安装模板；现有游戏项目不会自动更新。
+
+模板生成不附内容包；各平台工具链、原生依赖和验收状态仍以本页及生成项目的 README 为准。
 
 在仓库根执行以下命令，输出目录必须尚不存在：
 
@@ -57,7 +71,7 @@ Debug 默认开启 `EnableGameDebugging`，Release 默认关闭，`EnableLaunchA
 
 ## 移动内容与 Mono AOT
 
-正式发行使用共享编译模式 `GalNetPlayerMode=Developer/Player/Bound`：Developer 可调试并加载外部内容；Player 不可调试但可加载外部内容；Bound 不可调试，也不接受外部路径参数。Bound 从已验证的 `GalNetGamePackage` 提取 `GalNetBoundProjectId` 编译进宿主，并由共享会话在加载内容前校验；不绑定 buildId，因此同一项目可更新内容。其他项目可使用 Editor 的 `Tools/bind-game.ps1` 从自己的包生成绑定配置，详见[发行手册](../../../docs/manual/publishing/engine-release.md)。
+共享编译模式支持 `GalNetPlayerMode=Developer/Player/Bound/BoundDeveloper`：Developer 可调试并加载外部内容；Player 不可调试但可加载外部内容；Bound 不可调试，也不接受外部路径参数；BoundDeveloper 支持调试和启动参数，但仍校验绑定的项目身份。Bound 从已验证的 `GalNetGamePackage` 提取 `GalNetBoundProjectId` 编译进宿主，并由共享会话在加载内容前校验；不绑定 buildId，因此同一项目可更新内容。其他项目可使用 Editor 的 `Tools/bind-game.ps1` 从自己的包生成绑定配置，详见[发行手册](../../../docs/manual/publishing/engine-release.md)。
 
 `GalNetGamePackage` 指向完整 v4 galpak：Android 打为 `assets/game.galpak`，iOS 打为 bundle 中的 `game.galpak`。平台打开普通资产流，`BundledGameInstaller` 不要求其可寻址，先在沙盒缓存临时文件，再通过正式安装器验证并安装到归档 SHA256 对应的目录。相同 projectId 的不同内容版本使用相同 profile；取消/损坏输入不覆盖已安装内容。
 

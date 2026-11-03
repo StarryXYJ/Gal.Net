@@ -15,7 +15,7 @@ public sealed class TouchInputRecognizer : IDisposable
     private readonly PlayerInputSettings _settings;
     private readonly Func<bool> _canReceive;
     private readonly Func<string, Task> _dispatch;
-    private readonly Dictionary<int, Point> _contacts = [];
+    private readonly Dictionary<int, IPointer> _contacts = [];
     private readonly DispatcherTimer _doubleTap = new() { Interval = TimeSpan.FromMilliseconds(280) };
     private Point _start;
     private Point _end;
@@ -28,6 +28,7 @@ public sealed class TouchInputRecognizer : IDisposable
         root.AddHandler(InputElement.PointerPressedEvent, Pressed, RoutingStrategies.Tunnel);
         root.AddHandler(InputElement.PointerMovedEvent, Moved, RoutingStrategies.Tunnel);
         root.AddHandler(InputElement.PointerReleasedEvent, Released, RoutingStrategies.Tunnel);
+        root.PointerCaptureLost += CaptureLost;
         _doubleTap.Tick += TapElapsed;
     }
     private void Pressed(object? sender, PointerPressedEventArgs e)
@@ -42,7 +43,8 @@ public sealed class TouchInputRecognizer : IDisposable
         var point = e.GetPosition(_root);
         if (_contacts.Count == 0)
         { _start = _end = point; _started = Environment.TickCount64; _maxContacts = 0; }
-        _contacts[e.Pointer.Id] = point;
+        e.Pointer.Capture(_root);
+        _contacts[e.Pointer.Id] = e.Pointer;
         _maxContacts = Math.Max(_maxContacts, _contacts.Count);
     }
     private void Moved(object? sender, PointerEventArgs e)
@@ -54,6 +56,7 @@ public sealed class TouchInputRecognizer : IDisposable
     private async void Released(object? sender, PointerReleasedEventArgs e)
     {
         if (!_contacts.Remove(e.Pointer.Id)) return;
+        if (e.Pointer.Captured == _root) e.Pointer.Capture(null);
         e.Handled = true;
         if (_contacts.Count > 0) return;
         _end = e.GetPosition(_root);
@@ -76,7 +79,18 @@ public sealed class TouchInputRecognizer : IDisposable
     private async void TapElapsed(object? sender, EventArgs e)
     { _doubleTap.Stop(); if (!_tapPending) return; _tapPending = false; await Emit("Tap"); }
     private Task Emit(string gesture) => _canReceive() && _settings.Resolve(PlayerInputDevice.Touch, gesture) is { } action ? _dispatch(action) : Task.CompletedTask;
-    public void Reset() { _contacts.Clear(); _doubleTap.Stop(); _tapPending = false; }
+    private void CaptureLost(object? sender, PointerCaptureLostEventArgs e)
+    {
+        if (_contacts.ContainsKey(e.Pointer.Id)) Reset();
+    }
+    public void Reset()
+    {
+        var contacts = _contacts.Values.ToArray();
+        _contacts.Clear();
+        foreach (var pointer in contacts)
+            if (pointer.Captured == _root) pointer.Capture(null);
+        _doubleTap.Stop(); _tapPending = false;
+    }
     public void Dispose()
     {
         Reset();
@@ -84,5 +98,6 @@ public sealed class TouchInputRecognizer : IDisposable
         _root.RemoveHandler(InputElement.PointerPressedEvent, Pressed);
         _root.RemoveHandler(InputElement.PointerMovedEvent, Moved);
         _root.RemoveHandler(InputElement.PointerReleasedEvent, Released);
+        _root.PointerCaptureLost -= CaptureLost;
     }
 }

@@ -100,17 +100,17 @@ public sealed class PlayerInputTests
     }
 
     [Test]
-    public void HistoryDefaultIsAddedToOlderConfigurationsWithoutStealingAnExistingWheelBinding()
+    public void RestoreDoesNotMigrateMissingBindingsAndRejectsReservedStart()
     {
         using var settings = Settings();
-        var older = settings.Configuration;
-        older.Bindings.Remove("open.history");
-        settings.Restore(System.Text.Json.JsonSerializer.Serialize(older));
-        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
-        older.Bindings["toggle.quick"] = [new(PlayerInputDevice.KeyboardMouse, "WheelUp")];
-        settings.Restore(System.Text.Json.JsonSerializer.Serialize(older));
-        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("toggle.quick"));
+        var configuration = settings.Configuration;
+        configuration.Bindings.Remove("open.history");
+        settings.Restore(System.Text.Json.JsonSerializer.Serialize(configuration));
         Assert.That(settings.GetBindings("open.history", PlayerInputDevice.KeyboardMouse), Is.Empty);
+        configuration.Bindings["toggle.quick"] = [new(PlayerInputDevice.Gamepad, "Start")];
+        settings.Restore(System.Text.Json.JsonSerializer.Serialize(configuration));
+        Assert.That(settings.Resolve(PlayerInputDevice.KeyboardMouse, "WheelUp"), Is.EqualTo("open.history"));
+        Assert.That(settings.Resolve(PlayerInputDevice.Gamepad, "Start"), Is.Null);
     }
     private static PlayerInputSettings Settings()
     {
@@ -584,20 +584,28 @@ public sealed class PlayerInputTests
             {
                 root.Focus();
                 window.KeyPress(Key.LeftCtrl, RawInputModifiers.Control, PhysicalKey.ControlLeft, null);
+                Assert.That(held, Is.True);
                 window.KeyPress(Key.H, RawInputModifiers.Control, PhysicalKey.H, null);
+                Assert.That(held, Is.False);
                 window.KeyRelease(Key.H, RawInputModifiers.Control, PhysicalKey.H, null);
                 window.KeyRelease(Key.LeftCtrl, RawInputModifiers.None, PhysicalKey.ControlLeft, null);
                 await Task.Delay(220);
-                Assert.That(actions, Is.EqualTo(new[] { "toggle.ui" }));
+                Assert.That(actions, Is.EqualTo(new[] { "hold.quick", "toggle.ui" }));
                 actions.Clear();
                 window.KeyPress(Key.LeftCtrl, RawInputModifiers.Control, PhysicalKey.ControlLeft, null);
+                Assert.That(held, Is.True);
                 editor.Focus();
                 await Task.Delay(220);
-                Assert.That(actions, Is.Empty);
+                Assert.That(held, Is.False);
+                Assert.That(actions, Is.EqualTo(new[] { "hold.quick" }));
+                actions.Clear();
                 window.KeyRelease(Key.LeftCtrl, RawInputModifiers.None, PhysicalKey.ControlLeft, null);
                 root.Focus();
                 window.KeyPress(Key.LeftCtrl, RawInputModifiers.Control, PhysicalKey.ControlLeft, null);
-                await Task.Delay(220);
+                Assert.That(held, Is.True);
+                window.KeyRelease(Key.LeftCtrl, RawInputModifiers.None, PhysicalKey.ControlLeft, null);
+                Assert.That(held, Is.False);
+                window.KeyPress(Key.LeftCtrl, RawInputModifiers.Control, PhysicalKey.ControlLeft, null);
                 Assert.That(held, Is.True);
                 host.Children.Remove(root);
                 Assert.That(held, Is.False);
@@ -624,7 +632,6 @@ public sealed class PlayerInputTests
                 root.Focus();
                 window.KeyPress(Key.LeftCtrl, RawInputModifiers.Control, PhysicalKey.ControlLeft, null);
                 window.KeyPress(Key.K, RawInputModifiers.Control, PhysicalKey.K, null);
-                await Task.Delay(220);
                 Assert.That(held, Is.True);
                 window.KeyRelease(Key.K, RawInputModifiers.Control, PhysicalKey.K, null);
                 Assert.That(held, Is.False);
@@ -713,6 +720,32 @@ public sealed class PlayerInputTests
 
     private static Task Ui(Func<Task> action) => HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly)
         .Dispatch<bool>(async () => { await action(); Dispatcher.UIThread.RunJobs(); return true; }, TestContext.CurrentContext.CancellationToken);
+
+    [Test]
+    public async Task TouchCaptureLossDoesNotPoisonTheNextGesture()
+    {
+        await Ui(async () =>
+        {
+            var settings = Settings();
+            var actions = new List<string>();
+            var surface = new Border();
+            var window = new Window { Width = 700, Height = 400, Content = surface };
+            using var touch = new TouchInputRecognizer(surface, settings, () => true, action => { actions.Add(action); return Task.CompletedTask; });
+            window.Show();
+            try
+            {
+                var interrupted = new Pointer(11, PointerType.Touch, true);
+                interrupted.Capture(surface);
+                Press(surface, interrupted, new(100, 100));
+                interrupted.Capture(null);
+                var next = new Pointer(12, PointerType.Touch, true);
+                Press(surface, next, new(100, 100));
+                Release(surface, next, new(100, 100));
+                Assert.That(actions, Is.EqualTo(new[] { "advance" }));
+            }
+            finally { window.Close(); }
+        });
+    }
 
     [Test]
     public async Task TouchGesturesDoNotAlsoDispatchTheSingleTap()

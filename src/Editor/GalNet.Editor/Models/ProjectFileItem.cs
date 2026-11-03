@@ -30,6 +30,8 @@ public sealed partial class ProjectFileItem : ObservableObject, IDisposable
         _ => "M2 5H10L12 7H22V19H2Z"
     };
     [ObservableProperty] private Bitmap? _thumbnail;
+    public bool HasThumbnail => Thumbnail is not null;
+    partial void OnThumbnailChanged(Bitmap? value) => OnPropertyChanged(nameof(HasThumbnail));
     [ObservableProperty] private bool _isRenaming;
     [ObservableProperty] private bool _isDropTarget;
     public void Dispose() => Thumbnail?.Dispose();

@@ -204,7 +204,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
                 workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Text);
-                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); vm.ExpandAllCommand.Execute(null);
                 var view = new EntryListEditorControl { DataContext = vm }; var outside = new Button { Content = "outside" };
                 var panel = new StackPanel { Children = { view, outside } }; var window = new Window { Content = panel, Width = 1100, Height = 800 }; window.Show(); Dispatcher.UIThread.RunJobs();
                 try
@@ -267,7 +267,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var item = CharacterEntry(project); item.Entry.Type = "custom.roles";
                 item.Entry.Parameters = new() { ["items"] = JsonSerializer.SerializeToElement(new[] { new CharacterNestedDto { Speaker = "" } }) };
                 var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
-                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, item.Group);
+                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, item.Group); vm.ExpandAllCommand.Execute(null);
                 var view = new EntryListEditorControl { DataContext = vm }; var window = new Window { Content = view, Width = 1100, Height = 800 }; window.Show(); Dispatcher.UIThread.RunJobs();
                 try
                 {

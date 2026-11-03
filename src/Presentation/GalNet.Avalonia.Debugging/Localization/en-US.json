@@ -1,5 +1,8 @@
 {
   "Debug.Menu": "Debug",
+  "Debug.GroupStart": "Jump to group start",
+  "Debug.GroupEnd": "Jump to group end",
+  "Debug.AllTextRead": "Treat all text as read",
   "Debug.ClearPlayerState": "Clear game data...",
   "Debug.ReloadGameResources": "Reload game resources and restart",
   "Debug.Save": "Save",

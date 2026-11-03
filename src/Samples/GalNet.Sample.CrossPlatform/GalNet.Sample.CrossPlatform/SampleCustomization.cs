@@ -37,6 +37,7 @@ public static class SampleCustomization
          () => new Opening.DisclaimerPageViewModel(text)]);
 
     public static GamePalette PlayerPalette { get; } = GamePalette.Mono;
+    public const int PageSize = 12;
     public static TimeSpan MinimumLoadingDwell { get; } = TimeSpan.FromMilliseconds(350);
     // The project toast spends 0.8 seconds entering, then leaves two seconds to read.
     public static TimeSpan AudioAnnouncementDuration { get; } = TimeSpan.FromSeconds(2.8);

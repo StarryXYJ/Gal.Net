@@ -97,8 +97,16 @@ internal sealed class PlayerFocusNavigator(PlayerInputSettings settings)
         if (focused is null || !candidates.Contains(focused)) { EnsureFocus(); return; }
         if (code is "LB" or "RB")
         {
-            var tabs = focused.GetSelfAndVisualAncestors().OfType<TabControl>().FirstOrDefault(control => Contains(scope, control))
-                ?? SelfAndDescendants(scope).OfType<TabControl>().FirstOrDefault(control => control.IsEffectivelyVisible && control.IsEffectivelyEnabled);
+            var tabs = focused.GetSelfAndVisualAncestors().OfType<TabControl>().FirstOrDefault(control => Contains(scope, control));
+            if (tabs is null && SelfAndDescendants(scope).OfType<Ursa.Controls.Pagination>()
+                .FirstOrDefault(control => control.IsEffectivelyVisible && control.IsEffectivelyEnabled && control.PageCount > 1) is { } pages)
+            {
+                var page = pages.CurrentPage ?? 1;
+                pages.SetCurrentValue(Ursa.Controls.Pagination.CurrentPageProperty, Math.Clamp(page + (code == "LB" ? -1 : 1), 1, pages.PageCount));
+                EnsureFocus();
+                return;
+            }
+            tabs ??= SelfAndDescendants(scope).OfType<TabControl>().FirstOrDefault(control => control.IsEffectivelyVisible && control.IsEffectivelyEnabled);
             if (tabs is not null) SwitchTab(tabs, code == "LB" ? -1 : 1);
             return;
         }

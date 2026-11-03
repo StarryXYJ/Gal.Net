@@ -225,6 +225,33 @@ public sealed class SampleOpeningTests
         finally { window.Close(); }
     });
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public Task CorruptProfileDialogBlocksUntilTheChosenButtonIsClicked(bool proceed) => SampleUiTests.RunAsync(async () =>
+    {
+        await using var app = new App();
+        using var localization = SampleCustomization.CreateLocalizationService();
+        localization.ApplyCulture("en-US");
+        var surface = new Grid();
+        surface.Resources.MergedDictionaries.Add(SampleCustomization.PlayerPalette.CreateResources());
+        var fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        typeof(App).GetField("_startupSurface", fields)!.SetValue(app, surface);
+        var window = new Window { Content = surface };
+        window.Show();
+        try
+        {
+            var task = (Task<bool>)typeof(App).GetMethod("ConfirmCorruptProfileAsync", fields)!
+                .Invoke(app, [localization, CancellationToken.None])!;
+            Assert.That(task.IsCompleted, Is.False);
+            var label = localization[proceed ? "ProfileCorrupt.Continue" : "ProfileCorrupt.Exit"];
+            var button = surface.GetVisualDescendants().OfType<Button>().Single(item => Equals(item.Content, label));
+            button.RaiseEvent(new global::Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.That(await task.WaitAsync(Deadline), Is.EqualTo(proceed));
+            Assert.That(surface.Children, Is.Empty);
+        }
+        finally { window.Close(); }
+    });
+
     [Test]
     public Task OpeningAppearsBeforePlatformPreparationAndShutdownJoinsIt() => SampleUiTests.RunAsync(async () =>
     {

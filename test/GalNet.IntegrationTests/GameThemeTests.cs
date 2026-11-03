@@ -130,7 +130,7 @@ public sealed partial class GameThemeTests
     public async Task Saving_one_slot_preserves_the_other_rows_and_decoded_previews()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
-        await session.Dispatch(() =>
+        await session.Dispatch(async () =>
         {
             using var provider = CreateServices(new TemplateAppearance()).BuildServiceProvider();
             using var scope = provider.CreateScope();
@@ -141,6 +141,7 @@ public sealed partial class GameThemeTests
             var bytes = stream.ToArray();
             fake.ReplaceSlot(1, fake.SaveSlots[1] with { PreviewImage = bytes });
             var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            while (page.Slots[1].IsPreviewLoading) await Task.Delay(5);
             var rows = page.Slots.ToArray();
             var preview = rows[1].Preview;
             fake.ReplaceSlot(0, new(0, DateTime.UtcNow, "New save", false, false) { PreviewImage = bytes });
@@ -148,7 +149,38 @@ public sealed partial class GameThemeTests
             Assert.That(page.Slots[1], Is.SameAs(rows[1]));
             Assert.That(page.Slots[1].Preview, Is.SameAs(preview));
             Assert.That(page.Slots[2], Is.SameAs(rows[2]));
+            while (page.Slots[0].IsPreviewLoading) await Task.Delay(5);
             Assert.That(((Bitmap)page.Slots[0].Preview!).PixelSize.Width, Is.EqualTo(480));
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task SavePreviewsAreDecodedOnlyForTheCurrentPage()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch(async () =>
+        {
+            using var provider = CreateServices(new TemplateAppearance()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var fake = (TestSession)scope.ServiceProvider.GetRequiredService<IGameSessionService>();
+            using var artwork = CreateGalleryArtwork();
+            using var stream = new MemoryStream();
+            artwork.Save(stream);
+            var bytes = stream.ToArray();
+            for (var index = 0; index < 25; index++)
+            {
+                var slot = new GameSaveSlot(index, default, "Saved", false, false) { PreviewImage = bytes };
+                if (index < 3) fake.ReplaceSlot(index, slot); else fake.AddSlot(slot);
+            }
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            while (page.Pages.Items.Any(row => row.IsPreviewLoading)) await Task.Delay(5);
+            Assert.That(page.Slots.Take(12).All(row => row.Preview is not null), Is.True);
+            Assert.That(page.Slots.Skip(12).All(row => row.Preview is null), Is.True);
+            page.Pages.CurrentPage = 2;
+            while (page.Pages.Items.Any(row => row.IsPreviewLoading)) await Task.Delay(5);
+            Assert.That(page.Slots.Take(12).All(row => row.Preview is null), Is.True);
+            Assert.That(page.Slots.Skip(12).Take(12).All(row => row.Preview is not null), Is.True);
+            Assert.That(page.Slots[24].Preview, Is.Null);
         }, TestContext.CurrentContext.CancellationToken);
     }
 
@@ -170,6 +202,84 @@ public sealed partial class GameThemeTests
             Assert.That(page.Slots[1].Description, Is.EqualTo("雨中的重逢"));
             Assert.That(page.Slots[0].CanRename, Is.False);
             Assert.That(page.Slots[2].CanRename, Is.False);
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [TestCase(SaveSlotsMode.Load)]
+    [TestCase(SaveSlotsMode.Save)]
+    public async Task SavePageCreatesOneCardPerSlotWithTheCorrectCommand(SaveSlotsMode mode)
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            using var provider = CreateServices(new TemplateAppearance()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            await page.ActivateAsync(mode);
+            var view = scope.ServiceProvider.GetRequiredService<IPageViewFactory>().Create(page);
+            var root = new Border { Child = view };
+            root.Classes.Add("galnet-player");
+            root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var cards = view.GetVisualDescendants().OfType<SaveSlotCard>().ToArray();
+                Assert.That(cards, Has.Length.EqualTo(page.Slots.Count));
+                foreach (var card in cards)
+                {
+                    var row = page.Slots.Single(slot => slot.SlotIndex == card.SlotIndex);
+                    Assert.That(card.Command, Is.SameAs(mode == SaveSlotsMode.Save ? row.SaveCommand : row.LoadCommand));
+                    Assert.That(card.Command!.CanExecute(null), Is.EqualTo(mode == SaveSlotsMode.Save || !row.IsEmpty && !row.IsCorrupt));
+                }
+            }
+            finally { window.Close(); }
+            return true;
+        }, TestContext.CurrentContext.CancellationToken);
+    }
+
+    [Test]
+    public async Task SavePaginationChangesTheRenderedPageAndKeepsItWhenModeChanges()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(GeneralTest.Integration.ScreenshotTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            using var provider = CreateServices(new TemplateAppearance()).BuildServiceProvider();
+            using var scope = provider.CreateScope();
+            var fake = (TestSession)scope.ServiceProvider.GetRequiredService<IGameSessionService>();
+            for (var index = 3; index < 25; index++) fake.AddSlot(new(index, default, "", true, false));
+            var page = scope.ServiceProvider.GetRequiredService<SaveSlotsPageViewModel>();
+            await page.ActivateAsync(SaveSlotsMode.Load);
+            var view = scope.ServiceProvider.GetRequiredService<IPageViewFactory>().Create(page);
+            var semi = new Semi.Avalonia.SemiTheme();
+            var ursa = new Ursa.Themes.Semi.UrsaSemiTheme();
+            Application.Current!.Styles.Add(semi);
+            Application.Current.Styles.Add(ursa);
+            var root = new Border { Child = view };
+            root.Classes.Add("galnet-player");
+            root.Styles.Add(GalNet.Sample.CrossPlatform.SampleCustomization.CreateStyles());
+            var window = new Window { Width = 1280, Height = 720, Content = root };
+            window.Show();
+            try
+            {
+                window.UpdateLayout();
+                var pager = view.GetVisualDescendants().OfType<Ursa.Controls.Pagination>().Single();
+                Assert.That(pager.IsVisible, Is.True);
+                Assert.That(pager.PageCount, Is.EqualTo(3));
+                Assert.That(view.GetVisualDescendants().OfType<SaveSlotCard>().Count(), Is.EqualTo(12));
+                var next = pager.GetVisualDescendants().OfType<Ursa.Controls.PaginationButton>().Single(button => button.Name == "PART_NextButton");
+                Click(window, next);
+                window.UpdateLayout();
+                Assert.That(page.Pages.CurrentPage, Is.EqualTo(2));
+                Assert.That(view.GetVisualDescendants().OfType<SaveSlotCard>().Select(card => card.SlotIndex), Is.EqualTo(Enumerable.Range(12, 12)));
+                await page.ActivateAsync(SaveSlotsMode.Save);
+                window.UpdateLayout();
+                Assert.That(page.Pages.CurrentPage, Is.EqualTo(2));
+                Assert.That(pager.CurrentPage, Is.EqualTo(2));
+            }
+            finally { window.Close(); Application.Current.Styles.Remove(ursa); Application.Current.Styles.Remove(semi); }
             return true;
         }, TestContext.CurrentContext.CancellationToken);
     }
@@ -1143,6 +1253,7 @@ public sealed partial class GameThemeTests
         };
         public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots { get; }
         public TestSession() => SaveSlots = new(_slots);
+        public void AddSlot(GameSaveSlot slot) => _slots.Add(slot);
         public void ReplaceSlot(int index, GameSaveSlot slot) => _slots[index] = slot;
         public event PropertyChangedEventHandler? PropertyChanged { add { } remove { } }
         public Task StartNewGameAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;

@@ -8,7 +8,12 @@ namespace GalNet.Avalonia.GameView.ViewModels;
 
 public sealed class GameSaveSlotRowViewModel : ObservableObject, IDisposable
 {
-    public global::Avalonia.Media.Imaging.Bitmap? Preview { get; }
+    private global::Avalonia.Media.Imaging.Bitmap? _preview;
+    private readonly byte[]? _previewBytes;
+    private int _previewGeneration;
+    private bool _isPreviewLoading;
+    public global::Avalonia.Media.Imaging.Bitmap? Preview { get => _preview; private set => SetProperty(ref _preview, value); }
+    public bool IsPreviewLoading { get => _isPreviewLoading; private set => SetProperty(ref _isPreviewLoading, value); }
     public int SlotIndex { get; }
     public string Timestamp { get; }
     private string _description;
@@ -23,17 +28,15 @@ public sealed class GameSaveSlotRowViewModel : ObservableObject, IDisposable
     public bool IsSaveMode { get; }
     public IAsyncRelayCommand SaveCommand { get; }
     public IAsyncRelayCommand LoadCommand { get; }
+    public IAsyncRelayCommand ActivateCommand => IsSaveMode ? SaveCommand : LoadCommand;
 
     public GameSaveSlotRowViewModel(GameSaveSlot slot, bool isSaveMode, Func<int, Task> save, Func<int, Task> load)
         : this(slot, isSaveMode, save, load, null) { }
 
-    public GameSaveSlotRowViewModel(GameSaveSlot slot, bool isSaveMode, Func<int, Task> save, Func<int, Task> load, Func<int, string, Task<string>>? rename)
+    public GameSaveSlotRowViewModel(GameSaveSlot slot, bool isSaveMode, Func<int, Task> save, Func<int, Task> load, Func<int, string, Task<string>>? rename, bool loadPreviewSynchronously = true)
     {
-        if (slot.PreviewImage is { Length: > 0 } bytes)
-        {
-            try { using var stream = new MemoryStream(bytes); Preview = global::Avalonia.Media.Imaging.Bitmap.DecodeToWidth(stream, 480); }
-            catch (Exception) { /* A damaged preview must not make the save unusable. */ }
-        }
+        _previewBytes = slot.PreviewImage;
+        if (loadPreviewSynchronously && _previewBytes is { Length: > 0 }) Preview = DecodePreview(_previewBytes);
         SlotIndex = slot.SlotIndex;
         Timestamp = slot.DisplayTimestamp;
         _description = slot.Description;
@@ -64,9 +67,31 @@ public sealed class GameSaveSlotRowViewModel : ObservableObject, IDisposable
         if (e.PropertyName == nameof(RenameCommand.IsRunning)) OnPropertyChanged(nameof(CanRename));
     }
     internal void UpdateDescription(string description) => Description = description;
+    private static global::Avalonia.Media.Imaging.Bitmap? DecodePreview(byte[] bytes)
+    {
+        try { using var stream = new MemoryStream(bytes); return global::Avalonia.Media.Imaging.Bitmap.DecodeToWidth(stream, 480); }
+        catch (Exception) { return null; }
+    }
+    public async Task LoadPreviewAsync()
+    {
+        if (_previewBytes is not { Length: > 0 } bytes || Preview is not null || IsPreviewLoading) return;
+        var generation = ++_previewGeneration;
+        IsPreviewLoading = true;
+        var result = await Task.Run(() => DecodePreview(bytes));
+        if (generation != _previewGeneration) { result?.Dispose(); return; }
+        Preview = result;
+        IsPreviewLoading = false;
+    }
+    public void ClearPreview()
+    {
+        _previewGeneration++;
+        IsPreviewLoading = false;
+        Preview?.Dispose();
+        Preview = null;
+    }
     public void Dispose()
     {
         RenameCommand.PropertyChanged -= OnRenameStateChanged;
-        Preview?.Dispose();
+        ClearPreview();
     }
 }

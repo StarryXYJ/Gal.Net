@@ -1,5 +1,8 @@
 {
   "Debug.Menu": "调试",
+  "Debug.GroupStart": "跳转到组开头",
+  "Debug.GroupEnd": "跳转到组末尾",
+  "Debug.AllTextRead": "所有文本已读",
   "Debug.ClearPlayerState": "清空游戏数据...",
   "Debug.ReloadGameResources": "重新加载游戏资源并重启",
   "Debug.Save": "存档",

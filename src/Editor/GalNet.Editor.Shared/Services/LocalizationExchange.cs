@@ -6,7 +6,7 @@ using GalNet.Editor.Abstraction.Commands;
 namespace GalNet.Editor.Shared.Services;
 
 public sealed record LocalizationExchangeRow(string Key, string? SourceText, string? SourceFingerprint, string[] Context, string? Translation);
-public sealed record LocalizationExchangeDocument(int Version, string ProjectId, string SourceLocale, string TargetLocale, LocalizationExchangeRow[] Rows, [property: JsonRequired] bool Complete);
+public sealed record LocalizationExchangeDocument(int Version, string ProjectId, string SourceLocale, string? TargetLocale, LocalizationExchangeRow[] Rows, [property: JsonRequired] bool Complete);
 public sealed record LocalizationExchangeInput(string? ProjectId, string? SourceLocale, string TargetLocale, LocalizationExchangeRow[] Rows);
 
 /// <summary>Current JSON exchange format. Order and source text are never used as row identity.</summary>
@@ -36,7 +36,7 @@ public static class LocalizationExchange
         if (root.TryGetProperty("version", out var version) && version.ValueKind == JsonValueKind.Number)
         {
             var document = root.Deserialize<LocalizationExchangeDocument>(Options) ?? throw new InvalidDataException("Missing template.");
-            if (document.Version != 1 || !Guid.TryParseExact(document.ProjectId, "N", out _) || document.Rows is null)
+            if (document.Version is not (1 or 2) || !Guid.TryParseExact(document.ProjectId, "N", out _) || document.Rows is null || string.IsNullOrWhiteSpace(document.TargetLocale))
                 throw new InvalidDataException("Unsupported template version or project identity.");
             input = new(Guid.Parse(document.ProjectId).ToString("N"), Culture(document.SourceLocale), Culture(document.TargetLocale), document.Rows);
         }

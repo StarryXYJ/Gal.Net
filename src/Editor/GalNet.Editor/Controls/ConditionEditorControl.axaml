@@ -19,7 +19,7 @@
                 CornerRadius="4"
                 Padding="6,3">
             <TextBlock x:Name="ValidationText"
-                       FontSize="11" />
+                       FontSize="{DynamicResource Editor.Font.Caption}" />
         </Border>
         <Popup x:Name="SuggestionsPopup"
                PlacementTarget="{Binding #EditorBox}"

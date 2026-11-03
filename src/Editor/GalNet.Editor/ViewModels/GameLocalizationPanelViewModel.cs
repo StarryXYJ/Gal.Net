@@ -228,6 +228,7 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     [ObservableProperty] private string? _exchangeLanguage;
     [ObservableProperty] private bool _exportAll = true;
     [ObservableProperty] private bool _exportRuntime;
+    [ObservableProperty] private bool _exportUniversal;
     [ObservableProperty] private bool _allowEmpty;
     public bool HasImport => _import is not null;
     partial void OnExchangeLanguageChanged(string? value) => CancelImport();
@@ -253,9 +254,9 @@ public sealed partial class GameLocalizationPanelViewModel : ObservableObject, I
     private Task ExportAsync() => RunAsync(async () =>
     {
         var culture = ExchangeLanguage ?? Languages.FirstOrDefault(language => language != Languages[0]) ?? Languages[0];
-        var path = await _dialogs.SaveFilePickerAsync(Service.Text["Exchange.Export"], culture + (ExportRuntime ? ".texts.json" : ".template.json"));
+        var path = await _dialogs.SaveFilePickerAsync(Service.Text["Exchange.Export"], ExportUniversal ? "translation.template.json" : culture + (ExportRuntime ? ".texts.json" : ".template.json"));
         if (path is null || IsDisposed) return;
-        await _exchange.ExportFileAsync(path, culture, ExportAll ? null : Selected?.Id, ExportRuntime);
+        await _exchange.ExportFileAsync(path, culture, ExportAll ? null : Selected?.Id, ExportRuntime && !ExportUniversal, ExportUniversal);
     });
     [RelayCommand]
     private Task PreviewImportAsync() => RunAsync(async () =>

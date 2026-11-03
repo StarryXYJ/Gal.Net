@@ -112,7 +112,24 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
                 throw new InvalidOperationException("The debug execution has changed. Refresh the draft.");
             payload = new DebugCommand(method, expectedRun ?? run.RunId, expectedGeneration ?? run.Generation, JsonSerializer.SerializeToElement(arguments, Json));
         }
-        return await RequestWithTimeoutAsync(peer, method, payload, DebugRequestTimeout, cancellationToken).ConfigureAwait(false);
+        var result = await RequestWithTimeoutAsync(peer, method, payload, DebugRequestTimeout, cancellationToken).ConfigureAwait(false);
+        if (result.ValueKind == JsonValueKind.Number && result.TryGetInt64(out var generation) && Host?.Run is { } current)
+            Host = Host with { Run = current with { Generation = generation } };
+        return result;
+    }
+    private async Task RefreshAsync(DebugPeer peer, CancellationToken cancellationToken)
+    {
+        Host = (await RequestWithTimeoutAsync(peer, "status", null, StatusRequestTimeout, cancellationToken).ConfigureAwait(false))
+            .Deserialize<DebugHostStatus>(Json);
+        if (Host?.Run is { } run && run.Capabilities.Contains("inspect"))
+        {
+            var command = new DebugCommand("inspect", run.RunId, run.Generation, JsonSerializer.SerializeToElement(new { }, Json));
+            State = (await RequestWithTimeoutAsync(peer, "inspect", command, StatusRequestTimeout, cancellationToken).ConfigureAwait(false))
+                .Deserialize<GameDebugState>(Json);
+        }
+        else State = null;
+        Error = null;
+        Status = State is null ? "Application connected" : State.Paused ? "Paused" : State.State.ToString();
     }
     private async Task AcceptAndPollAsync(DebugListener listener, long epoch, CancellationToken token)
     {
@@ -129,19 +146,8 @@ public sealed class ExternalGameDebugClient : IAsyncDisposable, IDisposable
                 token.ThrowIfCancellationRequested();
                 try
                 {
-                    Host = (await RequestWithTimeoutAsync(peer, "status", null, StatusRequestTimeout, token).ConfigureAwait(false)).Deserialize<DebugHostStatus>(Json);
-                    if (Host?.Run is { } run && run.Capabilities.Contains("inspect"))
-                    {
-                        try
-                        {
-                            var command = new DebugCommand("inspect", run.RunId, run.Generation, JsonSerializer.SerializeToElement(new { }, Json));
-                            State = (await RequestWithTimeoutAsync(peer, "inspect", command, StatusRequestTimeout, token).ConfigureAwait(false)).Deserialize<GameDebugState>(Json);
-                        }
-                        catch (InvalidOperationException error) { State = null; Error = error.Message; }
-                    }
-                    else State = null;
-                    Error = null;
-                    Status = State is null ? "Application connected" : State.Paused ? "Paused" : State.State.ToString();
+                    try { await RefreshAsync(peer, token).ConfigureAwait(false); }
+                    catch (InvalidOperationException error) { State = null; Error = error.Message; }
                 }
                 catch (TimeoutException error)
                 {

@@ -55,6 +55,20 @@ public sealed class PackedDocumentTests
     }
 
     [Test]
+    public void LegacyInstalledDirectoriesAreRejected()
+    {
+        Directory.CreateDirectory(Installed);
+        File.WriteAllText(Path.Combine(Installed, "content.json"), "{\"version\":2}");
+        var types = BuiltinResourceTypes.CreateCatalog();
+        Assert.ThrowsAsync<InvalidDataException>(() => GameInstallation.OpenAsync(Installed));
+        Assert.Throws<InvalidDataException>(() => InstalledGameDescriptor.Read(Installed));
+        Assert.ThrowsAsync<InvalidDataException>(() => new InstalledGameContentProvider(Installed, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync());
+        File.Delete(Path.Combine(Installed, "content.json"));
+        File.WriteAllText(Path.Combine(Installed, "old.galnet"), "{}");
+        Assert.ThrowsAsync<InvalidDataException>(() => GameInstallation.OpenAsync(Installed));
+    }
+
+    [Test]
     public async Task BuiltInDocumentsAndLanguagesArePackedWithDeterministicMerging()
     {
         await Export();
@@ -105,6 +119,7 @@ public sealed class PackedDocumentTests
         Put(Installed, "I18n/en-US/a.json", """{"line":"external first"}""");
         Put(Installed, "I18n/en-US/z.json", """{"line":"external last"}""");
         Put(Installed, "I18n/fr-FR/main.json", """{"line":"Bonjour"}""");
+        Put(Installed, "I18n/ja-JP.json", """{"line":"こんにちは"}""");
         Put(Installed, "I18n/en-US/broken.json", "broken JSON");
         Put(Installed, "I18n/en-US/nonstring.json", """{"line":7}""");
         var content = await Load();
@@ -117,6 +132,9 @@ public sealed class PackedDocumentTests
         culture = CultureInfo.GetCultureInfo("fr-FR");
         Assert.That(resolver.Resolve("line"), Is.EqualTo("Bonjour"));
         Assert.That(resolver.AvailableCultures.Select(item => item.Name), Does.Contain("fr-FR"));
+        culture = CultureInfo.GetCultureInfo("ja-JP");
+        Assert.That(resolver.Resolve("line"), Is.EqualTo("こんにちは"));
+        Assert.That(resolver.Resolve("fallback"), Is.EqualTo("Default"));
         Assert.That(content.Localization.Characters.GetRequired("guide").DisplayNameKey, Is.EqualTo("character.guide.name"));
     }
 

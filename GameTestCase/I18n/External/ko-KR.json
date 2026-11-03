@@ -1,0 +1,9 @@
+{
+  "character.guide.name": "안내자",
+  "demo.welcome": "GalNet 데모에 오신 것을 환영합니다. 텍스트, 이미지, 영상, 오디오, 효과, 날씨와 전환을 살펴보세요. 대화를 진행하면 데모가 시작됩니다.",
+  "group.intro.entry.intro-line-1.content": "먼저 이미지 배리에이션을 살펴봅니다. 정확한 일치, 대체 이미지, 선택 기억과 다시 표시할 때의 초기화를 확인하세요.",
+  "group.intro.entry.demo-cue-variants-shy.content": "다음으로 인물의 표정을 바꾸고 정확히 일치하는 배리에이션을 확인합니다.",
+  "group.intro.entry.variants-exact.content": "xy_shy와 정확히 일치했습니다. 다음으로 첫 번째 차원을 바꾸어 이미지가 없는 조합의 대체 동작을 확인합니다.",
+  "branch.route_choice.option.0.text": "배경 타일로 표시",
+  "branch.route_choice.option.1.text": "배경을 화면에 맞춰 표시"
+}

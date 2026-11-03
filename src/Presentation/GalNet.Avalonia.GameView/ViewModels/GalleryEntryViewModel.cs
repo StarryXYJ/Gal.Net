@@ -26,6 +26,7 @@ public sealed partial class GalleryEntryViewModel(GalleryItemData data, string? 
     public bool HasThumbnail => Thumbnail is not null;
     partial void OnThumbnailChanged(Bitmap? value) => OnPropertyChanged(nameof(HasThumbnail));
     [ObservableProperty] private Bitmap? _thumbnail;
+    [ObservableProperty] private bool _isThumbnailLoading;
     [ObservableProperty] private bool _isPlaying;
     [ObservableProperty] private double _progress;
     [ObservableProperty] private string _timeText = "00:00 / 00:00";

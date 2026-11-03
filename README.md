@@ -18,7 +18,7 @@ src/
   Presentation/    Avalonia 控件、渲染、页面、主题与宿主
   Infrastructure/  文件存储、音视频及输入适配
   Editor/          编辑器协议、共享逻辑、GUI 与 Headless CLI
-  Samples/         共享 Player、Avalonia、Headless 与 CrossPlatform 宿主
+  Samples/         Sample 契约、Headless 与 CrossPlatform 应用
 test/              按生产边界拆分的测试与 fixture
 docs/              快速开始、操作/扩展手册、技术规范与术语
 features/          按 feature 保存的需求、设计、阶段计划与总结
@@ -66,4 +66,4 @@ Headless 示例在终端中交互；CrossPlatform 示例的 Desktop 入口会启
 
 GalNet 采用 [MIT License](LICENSE) 发布，允许用于商业和非商业项目。
 
-图形 Sample 后续统一维护 `src/Samples/GalNet.Sample.CrossPlatform/`；旧桌面 Sample 仅在本机 `local-only/` 保留，该目录不参与 Git 同步。
+图形 Sample 位于 `src/Samples/GalNet.Sample.CrossPlatform/`。

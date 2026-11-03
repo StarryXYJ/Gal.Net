@@ -19,4 +19,16 @@ public static class StartupLocalization
         localization.ApplyCulture(PlayerStartup.ResolvePreferredCulture(stored,
             localization.CultureService.AvailableCultures.Select(culture => culture.Name).ToArray(), "en-US", systemCulture));
     }
+
+    public static async Task ApplyProfileWithRecoveryAsync(AvaloniaPlayerLocalization localization, string profileDirectory,
+        string systemCulture, Func<CancellationToken, Task<bool>> confirmRecovery, CancellationToken cancellationToken = default)
+    {
+        try { await ApplyProfileAsync(localization, profileDirectory, systemCulture, cancellationToken); }
+        catch (CorruptPlayerVariablesException error)
+        {
+            if (!await confirmRecovery(cancellationToken)) throw new OperationCanceledException("Player data recovery was declined.");
+            cancellationToken.ThrowIfCancellationRequested();
+            File.Move(error.FilePath, error.FilePath + ".corrupt-" + Guid.NewGuid().ToString("N") + ".bak");
+        }
+    }
 }

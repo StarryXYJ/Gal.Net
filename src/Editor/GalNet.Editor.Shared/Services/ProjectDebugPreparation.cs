@@ -15,10 +15,19 @@ public sealed class ProjectDebugPreparation(IProjectService projects, IEntryCata
     public async Task<ProjectContentBuildResult> PrepareAsync(Action<string>? reportStage = null)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var token = _lifetime.Token;
         await client.DisconnectAsync();
         var project = projects.Current ?? throw new InvalidOperationException("No project.");
         client.BeginDiagnostics(Path.Combine(project.RootPath, ".galnet", "debug-profile"));
+        var result = await BuildAsync(reportStage).ConfigureAwait(false);
+        client.Listen(new(project.Id, result.Manifest!.ContentFingerprint, schemas.Context.Fingerprint));
+        return result;
+    }
+
+    public async Task<ProjectContentBuildResult> BuildAsync(Action<string>? reportStage = null)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var token = _lifetime.Token;
+        var project = projects.Current ?? throw new InvalidOperationException("No project.");
         var timer = Stopwatch.StartNew();
         reportStage?.Invoke("Debug.SavingProject");
         client.RecordDiagnostic("Saving project changes before building test content.");
@@ -27,12 +36,13 @@ public sealed class ProjectDebugPreparation(IProjectService projects, IEntryCata
         client.RecordDiagnostic($"Project save completed in {timer.ElapsedMilliseconds} ms.");
         timer.Restart();
         reportStage?.Invoke("Debug.BuildingContent");
-        var output = Path.Combine(project.RootPath, "Output", "Debug");
-        client.RecordDiagnostic($"Building test content at {output}.");
-        var result = await Task.Run(() => new ProjectContentBuilder(catalog, configurations: project.Configurations).BuildAsync(project.RootPath, output, token), token);
+        var output = Path.Combine(project.RootPath, "Output", "Debug", "Builds");
+        client.RecordDiagnostic($"Building immutable test content under {output}.");
+        var result = await Task.Run(() => DebugContentRevisionBuilder.BuildAsync(
+            new ProjectContentBuilder(catalog, configurations: project.Configurations),
+            project.RootPath, project.Id, schemas.Context.Fingerprint, token), token);
         RequireCurrent();
         client.RecordDiagnostic($"Test content and author source map built in {timer.ElapsedMilliseconds} ms for {result.CompiledGroupCount} Group(s).");
-        client.Listen(new(project.Id, DebugContentIdentity.Compute(result.OutputPath), schemas.Context.Fingerprint));
         return result;
 
         void RequireCurrent()

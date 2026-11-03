@@ -1,24 +1,20 @@
 <UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:views="using:GalNet.Editor.Inspector.Views" xmlns:converters="using:Avalonia.Data.Converters" xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.AssetInspectorControl" x:DataType="vm:AssetInspectorControlViewModel">
+             xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:vm="using:GalNet.Editor.Inspector.ViewModels" xmlns:views="using:GalNet.Editor.Inspector.Views" xmlns:converters="using:Avalonia.Data.Converters" xmlns:loc="using:GalNet.Editor.MarkupExtensions" x:Class="GalNet.Editor.Inspector.Views.AssetInspectorControl" x:DataType="vm:AssetInspectorControlViewModel">
+ <UserControl.Styles><StyleInclude Source="avares://GalNet.Editor/Inspector/Views/InspectorFormStyles.axaml"/></UserControl.Styles>
  <Grid RowDefinitions="*,Auto,Auto">
   <ScrollViewer x:Name="AssetProperties" HorizontalScrollBarVisibility="Disabled">
    <StackPanel Margin="12" Spacing="10" IsVisible="{Binding HasSelectedAsset}">
     <TextBlock Text="{loc:Localize Inspector.Asset.Title}" FontWeight="SemiBold"/>
     <SelectableTextBlock Text="{Binding InspectedAsset.Name}" TextWrapping="Wrap"/>
-    <TextBlock Text="{loc:Localize Inspector.Asset.Id}" Foreground="{DynamicResource SemiColorText2}"/>
-    <SelectableTextBlock Text="{Binding InspectedAsset.Id}" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap"/>
-    <TextBlock Text="{loc:Localize Inspector.Asset.Path}" Foreground="{DynamicResource SemiColorText2}"/>
-    <SelectableTextBlock Text="{Binding InspectedAsset.RelativePath}" TextWrapping="Wrap"/>
+    <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Inspector.Asset.Id}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><SelectableTextBlock Text="{Binding InspectedAsset.Id}" FontFamily="Consolas" FontSize="{DynamicResource Editor.Font.Detail}" TextWrapping="Wrap" Margin="0,6,0,0"/></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
+    <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Inspector.Asset.Path}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><SelectableTextBlock Text="{Binding InspectedAsset.RelativePath}" TextWrapping="Wrap" Margin="0,6,0,0"/></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
     <Panel IsVisible="{Binding ResourceMetadata, Converter={x:Static converters:ObjectConverters.IsNotNull}}"><views:ResourceMetadataEditor DataContext="{Binding ResourceMetadata}" /></Panel>
     <StackPanel IsVisible="{Binding IsSelectedAssetImage}" Spacing="6">
-     <TextBlock Text="{loc:Localize Inspector.Asset.Filter}"/>
-     <ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding AssetFilter}" HorizontalAlignment="Stretch"/>
-     <TextBlock Text="{loc:Localize Inspector.Asset.Compression}"/>
-     <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" HorizontalAlignment="Stretch"/>
+     <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Inspector.Asset.Filter}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox ItemsSource="{Binding FilterOptions}" SelectedItem="{Binding AssetFilter}" HorizontalAlignment="Stretch"/></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
+     <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Inspector.Asset.Compression}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" HorizontalAlignment="Stretch"/></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
     </StackPanel>
     <StackPanel IsVisible="{Binding IsSelectedAssetVideo}" Spacing="6">
-     <TextBlock Text="{loc:Localize Inspector.Asset.Compression}"/>
-     <ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" HorizontalAlignment="Stretch"/>
+     <forms:FieldEditorRow ShowActions="False"><forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Inspector.Asset.Compression}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label><forms:FieldEditorRow.Editor><ComboBox ItemsSource="{Binding CompressionOptions}" SelectedItem="{Binding AssetCompression}" HorizontalAlignment="Stretch"/></forms:FieldEditorRow.Editor></forms:FieldEditorRow>
     </StackPanel>
     <Panel IsVisible="{Binding Variants, Converter={x:Static converters:ObjectConverters.IsNotNull}}"><views:ImageVariantsEditor DataContext="{Binding Variants}"/></Panel>
    </StackPanel>

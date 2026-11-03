@@ -1,0 +1,7 @@
+{
+  "group.masks.entry.demo-cue-mask-LetterboxIn.content": "接下来观察电影遮幅收拢。",
+  "group.masks.entry.demo-cue-mask-LetterboxOut.content": "接下来观察电影遮幅展开。",
+  "group.masks.entry.demo-cue-mask-Blink.content": "接下来观察缓慢闭眼再睁眼。",
+  "group.masks.entry.demo-cue-mask-Close.content": "接下来场景会闭合、短暂停留，然后重新打开。",
+  "group.masks.entry.demo-cue-overlay-card.content": "接下来的遮罩也会覆盖提示卡和对白。"
+}

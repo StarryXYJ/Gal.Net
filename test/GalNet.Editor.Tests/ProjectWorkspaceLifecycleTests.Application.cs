@@ -12,6 +12,39 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task EditorDefaults_FindContractsAndPreserveManualOverride()
+    {
+        using var services = Services();
+        var (executable, contracts) = CreateApplication();
+        var projects = services.GetRequiredService<IProjectService>();
+        var project = await projects.CreateAsync(Path.Combine(_root, "Defaults"), "Defaults", new(), Contracts());
+        using var panel = project.Services.GetRequiredService<EditorSettingsPanelViewModel>();
+        panel.DefaultApplicationPath = executable;
+        Assert.That(panel.DefaultContractsDirectory, Is.EqualTo(contracts));
+        var settings = services.GetRequiredService<IEditorSettingsService>().GetSettings();
+        Assert.That(settings.DefaultApplicationPath, Is.EqualTo(executable));
+        Assert.That(settings.DefaultContractsDirectory, Is.EqualTo(contracts));
+        panel.DefaultContractsDirectory = "manual";
+        panel.DefaultApplicationPath = "missing";
+        Assert.That(panel.DefaultContractsDirectory, Is.EqualTo("manual"));
+        await projects.CloseAsync();
+    }
+
+    [Test]
+    public void NewProjectApplication_PrefillsEditorDefaults()
+    {
+        using var services = Services();
+        var (executable, contracts) = CreateApplication();
+        var settings = services.GetRequiredService<IEditorSettingsService>().GetSettings();
+        settings.DefaultApplicationPath = executable;
+        settings.DefaultContractsDirectory = contracts;
+        var panel = services.GetRequiredService<NewProjectPanelViewModel>();
+        Assert.That(panel.ApplicationPath, Is.EqualTo(executable));
+        Assert.That(panel.ContractsDirectory, Is.EqualTo(contracts));
+        Assert.That(panel.Message, Is.Empty);
+    }
+
+    [Test]
     public async Task NewProjectApplication_FindsDeclaredContractsCopiesOnlyDependenciesAndPersistsDebugApp()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

@@ -26,11 +26,11 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
         meta.Remove("characterHighWater");
         return LocalizationTextState.Fingerprint(JsonSerializer.Serialize(new { Source, Languages = content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Select(locale => locale.Code), index.References, index.Texts, Metadata = meta }));
     }
-    public async Task<string> ExportAsync(string culture, string? category, bool runtime)
+    public async Task<string> ExportAsync(string culture, string? category, bool runtime, bool universal = false)
     {
         Active(); culture = LocalizationExchange.Culture(culture);
         await content.CommitDraftsAsync(); Active();
-        if (!content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Any(locale => locale.Code == culture)) throw new EditorOperationException("exchange.language", "Language is not supported.");
+        if (!universal && !content.CaptureWorking().Configuration.ReadDefaultOptions().AvailableLocales.Any(locale => locale.Code == culture)) throw new EditorOperationException("exchange.language", "Language is not supported.");
         var identity = runtime ? "" : await store.EnsureExchangeIdentityAsync(); Active();
         var snapshot = content.CaptureWorking(); var index = query.Get()!; var sourceLocale = snapshot.Configuration.ReadDefaultOptions().TargetLocale.Code;
         var branches = snapshot.Graph.Nodes.Where(node => node.Type == "Branch").Select(node => node.Id).ToHashSet(StringComparer.Ordinal);
@@ -40,10 +40,10 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
         {
             var source = index.FindDirect(sourceLocale, group.Key)?.Text;
             return new LocalizationExchangeRow(group.Key, source, source is null ? null : LocalizationTextState.Fingerprint(source),
-                group.Select(reference => $"{reference.Owner}/{reference.EntryId}{reference.LocationKey}").ToArray(), index.FindDirect(culture, group.Key)?.Text);
+                group.Select(reference => $"{reference.Owner}/{reference.EntryId}{reference.LocationKey}").ToArray(), universal ? null : index.FindDirect(culture, group.Key)?.Text);
         }).ToArray();
         return runtime ? JsonSerializer.Serialize(rows.Where(row => row.Translation is not null).ToDictionary(row => row.Key, row => row.Translation), new JsonSerializerOptions { WriteIndented = true })
-            : LocalizationExchange.Write(new(1, identity, sourceLocale, culture, rows, index.Complete));
+            : LocalizationExchange.Write(new(universal ? 2 : 1, identity, sourceLocale, universal ? null : culture, rows, index.Complete));
     }
     public LocalizationImportPreview Preview(string json, string flatLanguage)
     {
@@ -113,14 +113,14 @@ public sealed class LocalizationExchangeService(IProjectService projects, IProje
         public ValueTask RedoAsync() { Check(); return Edit.RedoAsync(); }
         public ValueTask UndoAsync() => Edit.UndoAsync();
     }
-    public async Task ExportFileAsync(string path, string culture, string? category, bool runtime)
+    public async Task ExportFileAsync(string path, string culture, string? category, bool runtime, bool universal = false)
     {
         var project = Active(); var full = Path.GetFullPath(path); var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(project.RootPath));
         if (full.Equals(root, StringComparison.OrdinalIgnoreCase) || full.StartsWith(root + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Export must be outside the project directory.");
         for (var directory = new DirectoryInfo(Path.GetDirectoryName(full)!); directory is not null; directory = directory.Parent)
             if (directory.Exists && directory.Attributes.HasFlag(FileAttributes.ReparsePoint)) throw new InvalidDataException("Export path traverses a directory link.");
-        var json = await ExportAsync(culture, category, runtime);
+        var json = await ExportAsync(culture, category, runtime, universal);
         if (!ReferenceEquals(project, Active())) throw new EditorOperationException("exchange.stale", "Project closed.");
         var temporary = full + ".export-" + Guid.NewGuid().ToString("N") + ".tmp";
         try { await File.WriteAllTextAsync(temporary, json, new UTF8Encoding(false)); Active(); File.Move(temporary, full, true); }

@@ -41,9 +41,7 @@ public sealed class Archive : IPakArchive
         entry.Metadata.Id, entry.Metadata.Path, entry.Metadata.TypeId, entry.Metadata, entry.OriginalLength, entry.Hash)).ToArray();
     public bool Contains(string assetId) => _entries.ContainsKey(assetId.Trim());
 
-    public IGameFile? GetAsset(string assetId) => GetAsset(assetId, CancellationToken.None);
-
-    public IGameFile? GetAsset(string assetId, CancellationToken ct)
+    public IGameFile? GetAsset(string assetId, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ct.ThrowIfCancellationRequested();
@@ -59,9 +57,7 @@ public sealed class Archive : IPakArchive
         return file;
     }
 
-    public IGameFile? GetAssetByPath(string path) => GetAssetByPath(path, CancellationToken.None);
-
-    public IGameFile? GetAssetByPath(string path, CancellationToken ct)
+    public IGameFile? GetAssetByPath(string path, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
         return _pathToId.TryGetValue(AssetPathHelper.Normalize(path), out var id) ? GetAsset(id, ct) : null;

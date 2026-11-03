@@ -180,7 +180,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var hide = workspace.InsertEntriesInto(group, 3, 1, BuiltinEntryIds.HideLayer).Single();
             hide.Source.Parameters["handleId"] = JsonSerializer.SerializeToElement("missing-reference");
             hide.Source.Parameters["future"] = JsonSerializer.SerializeToElement(new { retained = true });
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = hide;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = hide; hide.IsParametersExpanded = true;
             var entries = new EntryListEditorControl { DataContext = page };
             var entryWindow = new Window { Content = entries, Width = 1200, Height = 950 }; entryWindow.Show(); TimelinePump(entryWindow);
             var timelineView = scope.GetRequiredService<TimelinePanelView>(); timelineView.DataContext = scope.GetRequiredService<TimelinePanelViewModel>();

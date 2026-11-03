@@ -7,7 +7,7 @@ Editor 的成员值本地化标记、作者索引、角色表/speaker、默认�
 编辑器 UI 与游戏文本使用不同的边界。
 
 - 编辑器 UI 使用 `IEditorLocalizationService`。它通过 DynamicLocalization 从 `GalNet.Editor/Localization` 的嵌入 JSON 资源加载 `zh-CN`、`en-US`、`ja-JP`、`ko-KR`，切换语言时发布 `CurrentCulture` 与 `Item[]` 通知。
-- Avalonia Sample UI 使用 `DynamicLocalization.Core` 2.1.2 与 Sample 自有的 Avalonia 12 绑定适配层，从 Sample 程序集 `Localization/` 的嵌入 JSON 加载 `en-US` 与 `zh-CN`；`{loc:Localize ...}` 绑定读取同一 culture service。该 Sample UI 来源与游戏包 `I18n/` 内容仍是不同边界。
+- Avalonia Sample UI 使用 `DynamicLocalization.Core` 2.1.2 与 Sample 自有的 Avalonia 12 绑定适配层，从 Sample 程序集 `Localization/` 的嵌入 JSON 加载 `en-US`、`zh-CN`、`ja-JP` 与 `ko-KR`；`{loc:Localize ...}` 绑定读取同一 culture service。该 Sample UI 来源与游戏包 `I18n/` 内容仍是不同边界。
 - Runtime 不依赖 DynamicLocalization 或某种 JSON 结构。宿主向 `GameEngine` 提供 `ITextResolver`；内置 dialogue、NVL 和分支选项在展示前调用它。未提供时使用 `PassthroughTextResolver`，即把 key 原样返回。
 
 内置 `content` 与分支选项文本从 raw 开始就是 key；编译和复合展开原样传递。缺省、null、空串或纯空白文本引用按空内容处理，加载时不要求对应译文，GameTextResolver 返回空字符串；已定义 key 的空字符串译文也保持有效。非空 key 缺少默认语言译文仍在加载时报告错误。`speaker` 是人物 ID，空值或纯空白表示无说话人。宿主把 `CharacterCatalog` 传给 `AddBuiltins`、`AddBuiltinImplementations` 或 `AddBuiltinDialogue`；catalog 记录唯一 `Id` 和非空 `DisplayNameKey`，内置对话先查人物再解析姓名 key，未知人物 ID 抛出内容错误。自定义参数如何本地化由 implement 决定。
@@ -62,7 +62,7 @@ I18n/<culture>/**/*.json          平铺或嵌套对象，叶值必须是字符�
 
 ## 外部文本覆盖
 
-新打包内容的 `pak/I18n/<culture>/**/*.json` 在启动时递归读取，整个 I18n 目录仅作为外置覆盖入口；不再添加 External 层。开发目录和旧 content v2 安装目录继续使用 `I18n/External/<culture>/**/*.json`。同 culture 内优先级是嵌入 UI → 包内游戏 → 外部 JSON；每层按 ordinal 相对路径排序，最后文件优先。损坏 JSON、非字符串叶值、无效 culture 或不可读取的外部文件记入 `GameContent.Localization.Diagnostics` 并跳过，Sample 输出诊断；外部树不跟随 reparse point。默认语言完整性只检查包内文本，不能靠外部文件补齐。
+新打包内容的 `pak/I18n/<culture>.json` 和原有 `pak/I18n/<culture>/**/*.json` 在启动时读取，整个 I18n 目录仅作为外置覆盖入口；不再添加 External 层。开发目录和旧 content v2 安装目录继续使用 `I18n/External/`，同样支持根目录文化文件与原有文化子目录。同 culture 内优先级是嵌入 UI → 包内游戏 → 外部 JSON；每层按 ordinal 相对路径排序，最后文件优先。损坏 JSON、非字符串叶值、无效 culture 或不可读取的外部文件记入 `GameContent.Localization.Diagnostics` 并跳过，Sample 输出诊断；外部树不跟随 reparse point。默认语言完整性只检查包内文本，不能靠外部文件补齐。
 
 外部新增语言自动进入 Sample 设置语言列表，显示 culture 的本地名称。外部来源不会修改人物 metadata，也不进入资源 provider。宿主可通过 `AvaloniaPlayerLocalization.AttachGame(content, additionalSources)` 或中立 `CreateResolver` 的 `additional` 参数提供更高优先级的自定义 JSON 来源；其加载方式由宿主自行实现。修改文件后重新启动生效，不提供文件监听热更新。
 
@@ -75,6 +75,8 @@ Avalonia Sample 在载入游戏内容和玩家变量后、显示标题和创建 
 语言选择页采用 MVVM：DI 注册的 `LanguageSelectionViewModel` 管理语言列表、当前选择、确认/取消命令及取消等待，View 仅初始化并使用编译绑定，窗口只协调显示与隐藏。首次选择在开始等待时从 `CultureService.AvailableCultures` 读取一次；设置页在 session attach（游戏来源加载完成后）更新语言列表。两者不订阅 provider 变化来动态刷新选项，运行时新增来源的列表刷新由二次开发宿主自行实现；UI 文案仍照常响应语言和 provider 变化。
 
 确认后将所选 locale 与启动次数一起提交到 profile 的 `player-variables.json`，成功写盘才更新内存和 culture；每次成功启动加一，计数在 Int32 上限饱和。取消选择退出窗口；关闭窗口会取消等待；取消、内容加载失败或写盘失败不会提交启动次数。后续启动跳过选择页，恢复可用的已保存语言；已移除语言回退到游戏默认/首个可用语言。没有游戏目录的 bootstrap 启动不计数。
+
+启动时玩家变量文件无法解析，Sample 使用系统语言显示模态选择：退出保留原文件，继续先将其重命名为同目录唯一的 `player-variables.json.corrupt-*.bak`，再以空玩家变量进入首次启动流程。存档槽和已读进度不受此操作影响；备份失败则停止启动，不覆盖原文件。
 
 现有“清空游戏数据”会重置玩家变量并重启，因此下次再次显示首次选择。Sample 默认 profile 位于用户 `LocalApplicationData/GalNet/<project identity digest>/`，身份来自 game.pak 内的 projectId（旧安装读取 content.json）；与安装位置和 buildId 无关。开发目录无内容身份时使用绝对路径摘要，开发版可用 `--profile` 显式指定；用户主动共享 profile 时也会共享偏好。该流程只在 Sample 宿主实现，Headless 不显示首次选择页。设置切换不强制重启：UI 即时刷新，已显示的人物名、对话、选项和 NVL 历史保持原文，后续条目使用新语言。
 

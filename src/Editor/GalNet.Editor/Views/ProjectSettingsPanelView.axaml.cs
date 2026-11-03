@@ -1,6 +1,6 @@
 using Avalonia.Controls;
-using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.VisualTree;
 using Avalonia.Threading;
 using GalNet.Editor.ViewModels;
@@ -66,5 +66,12 @@ public partial class ProjectSettingsPanelView : UserControl
             try { await viewModel.CommitDraftAsync(); }
             catch (Exception) { /* The view model displays the validation error. */ }
         }
+    }
+    private string? _applicationBeforeEdit;
+    private void OnApplicationFocus(object? sender, RoutedEventArgs e) => _applicationBeforeEdit = (sender as TextBox)?.Text;
+    private async void OnApplicationLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox input && input.Text != _applicationBeforeEdit && DataContext is ProjectSettingsPanelViewModel vm)
+            await vm.OfferDefaultApplicationAsync();
     }
 }

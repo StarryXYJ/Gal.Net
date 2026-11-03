@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Text.Json;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -26,7 +28,8 @@ internal static class GameTextFieldEditor
             MinHeight = multiline ? 80 : 32,
             VerticalContentAlignment = multiline ? Avalonia.Layout.VerticalAlignment.Top : Avalonia.Layout.VerticalAlignment.Center
         };
-        var hint = new TextBlock { Name = "GameTextHint", TextWrapping = Avalonia.Media.TextWrapping.Wrap, FontSize = 11 };
+        var hint = new TextBlock { Name = "GameTextHint", TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        hint[!TextBlock.FontSizeProperty] = new DynamicResourceExtension("Editor.Font.Caption");
         var panel = new StackPanel { Children = { input, hint }, Spacing = 4 };
         var disposed = false; var updating = false; var dirty = false; var busy = false;
         LocalizationTextTarget? target = null;

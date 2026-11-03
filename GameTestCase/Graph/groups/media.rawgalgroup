@@ -7,11 +7,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.chapter-media",
-        "position": "Center",
-        "styleName": "chapter",
         "blocking": true,
-        "holdSeconds": 1.2
+        "content": "demo.chapter-media",
+        "holdSeconds": 1.2,
+        "position": "Center",
+        "styleName": "chapter"
       }
     },
     {
@@ -84,8 +84,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "demo.video-lead"
+        "content": "demo.video-lead",
+        "speaker": "guide"
       }
     },
     {
@@ -118,6 +118,15 @@
       "type": "dialogue.show",
       "condition": "",
       "parameters": {}
+    },
+    {
+      "id": "demo-cue-video-background",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.media.entry.demo-cue-video-background.content",
+        "speaker": "guide"
+      }
     },
     {
       "id": "video-background",

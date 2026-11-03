@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text.Json;
+using GalNet.Core.Graph;
+using GalNet.Runtime.Engine;
 
 namespace GalNet.Debugging;
 
@@ -9,6 +11,15 @@ public sealed record DebugInvitation(int Port, string Token, string SessionId, D
 public sealed record DebugRunInfo(string RunId, long Generation, string[] Capabilities, long? OperationGeneration = null);
 public sealed record DebugHostStatus(string SessionId, bool CanStart, DebugRunInfo? Run);
 public sealed record DebugCommand(string Method, string? RunId, long? Generation, JsonElement Arguments);
+public sealed record DebugContentInstallRequest(string Directory, string ContentFingerprint, string ContractFingerprint);
+public sealed record DebugContentActivateRequest(GameDebugContentBoundary Expected, int CandidateEntryIndex);
+
+public interface IDebugContentController
+{
+    Task InstallAsync(DebugContentInstallRequest request, CancellationToken cancellationToken);
+    Graph GetLatestGraph();
+    void CommitActivation();
+}
 public interface IDebugGameRun
 {
     DebugRunInfo Info { get; }
@@ -48,18 +59,21 @@ internal static class DebugWire
 /// <summary>Computes the identity of a built test content directory, independently in each process.</summary>
 public static class DebugContentIdentity
 {
+    private static readonly string ManifestPath = DebugContentManifest.RelativePath.Replace('/', Path.DirectorySeparatorChar);
+
     public static string Compute(string directory)
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var root = Path.GetFullPath(directory);
         var files = new List<string>();
-        foreach (var folder in new[] { "Graph", "I18n", "Contracts" })
+        foreach (var folder in new[] { "Graph", "Assets", "I18n", "Contracts" })
         {
             var path = Path.Combine(root, folder);
             if (Directory.Exists(path)) files.AddRange(Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories));
         }
         var settings = Path.Combine(root, "settings.json");
         if (File.Exists(settings)) files.Add(settings);
+        files.RemoveAll(file => string.Equals(Path.GetRelativePath(root, file), ManifestPath, StringComparison.OrdinalIgnoreCase));
         foreach (var file in files.Order(StringComparer.Ordinal))
         {
             hash.AppendData(System.Text.Encoding.UTF8.GetBytes(Path.GetRelativePath(root, file).Replace('\\', '/')));

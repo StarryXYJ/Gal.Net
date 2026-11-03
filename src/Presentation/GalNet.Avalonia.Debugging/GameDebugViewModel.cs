@@ -1,11 +1,23 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Avalonia.Threading;
 
 namespace GalNet.Avalonia.Debugging;
 
 /// <summary>Command surface for optional sample debug tools; window-specific presentation stays in the host view.</summary>
-public sealed partial class GameDebugViewModel(GameDebugActions actions) : ObservableObject
+public sealed partial class GameDebugViewModel : ObservableObject
 {
+    private readonly GameDebugActions actions;
+    private readonly AvaloniaExternalDebugSession _debug;
+    public GameDebugViewModel(GameDebugActions actions, AvaloniaExternalDebugSession debug)
+    {
+        this.actions = actions;
+        _debug = debug;
+        _debug.RunChanged += () => Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(HasRun)));
+    }
+    public bool HasRun => _debug.HasRun;
+    [ObservableProperty] private bool _treatAllTextAsRead;
+    partial void OnTreatAllTextAsReadChanged(bool value) => _ = RunAsync(token => _debug.SetTreatAllTextAsReadAsync(value, token), "设置已读状态失败");
     [ObservableProperty]
     private bool _isGameReady;
 
@@ -13,6 +25,9 @@ public sealed partial class GameDebugViewModel(GameDebugActions actions) : Obser
     public event Func<GameDebugNotification, Task>? NotificationRequested;
     public event Action? LogRequested;
     public bool CanOpenLogDirectory => actions.CanOpenLogDirectory;
+
+    [RelayCommand] private Task JumpToGroupStartAsync() => RunAsync(_debug.SeekGroupStartAsync, "跳转到组开头失败");
+    [RelayCommand] private Task JumpToGroupEndAsync() => RunAsync(_debug.SkipGroupEndAsync, "跳转到组末尾失败");
 
     [RelayCommand]
     private Task ShowLogAsync()

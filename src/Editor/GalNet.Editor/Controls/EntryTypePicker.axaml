@@ -16,7 +16,7 @@
                            HorizontalAlignment="Left" TextAlignment="Left" />
                 <TextBlock Text="{Binding ButtonLabel,ElementName=Root}" IsVisible="{Binding #Root.IsButtonMode}" />
                 <TextBlock Grid.Column="1" Text="{Binding SelectedGestureText, ElementName=Root}" IsVisible="{Binding !#Root.IsButtonMode}"
-                           Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
+                           Foreground="{DynamicResource SemiColorText2}" FontSize="{DynamicResource Editor.Font.Caption}" />
             </Grid>
         </ToggleButton>
         <Popup x:Name="PickerPopup"
@@ -42,9 +42,9 @@
                         </TreeDataTemplate>
                         <DataTemplate DataType="controls:EntryTypeLeafItem">
                             <Grid ColumnDefinitions="*,Auto" ColumnSpacing="16">
-                                <StackPanel><TextBlock Text="{Binding DisplayName}" /><TextBlock Text="{Binding Value}" FontSize="11" Opacity="0.65" /></StackPanel>
+                                <StackPanel><TextBlock Text="{Binding DisplayName}" /><TextBlock Text="{Binding Value}" FontSize="{DynamicResource Editor.Font.Caption}" Opacity="0.65" /></StackPanel>
                                 <TextBlock Grid.Column="1" Text="{Binding GestureText}"
-                                           Foreground="{DynamicResource SemiColorText2}" FontSize="11" />
+                                           Foreground="{DynamicResource SemiColorText2}" FontSize="{DynamicResource Editor.Font.Caption}" />
                             </Grid>
                         </DataTemplate>
                     </TreeView.DataTemplates>

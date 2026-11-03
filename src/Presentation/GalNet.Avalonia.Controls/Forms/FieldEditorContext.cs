@@ -131,7 +131,7 @@ public sealed class FieldEditorContext : INotifyPropertyChanged, IDisposable
 
     public async Task<bool> CommitAsync(FieldValue candidate, CancellationToken cancellationToken = default)
     {
-        if (_disposed || _submitting) return false;
+        if (_disposed || _submitting || _draft?.IsSubmitting == true) return false;
         if (_draft?.CanCommit == false) return false;
         if (_draft?.IsConflicted == true)
         {

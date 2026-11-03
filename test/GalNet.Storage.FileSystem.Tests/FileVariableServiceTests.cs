@@ -10,6 +10,17 @@ namespace GeneralTest.Storage;
 
 public sealed class PlayerVariableServiceTests
 {
+    [TestCase("{")]
+    [TestCase("null")]
+    public async Task CorruptPlayerVariablesAreReportedAndPreserved(string content)
+    {
+        var path = Path.Combine(_profileDirectory, "player-variables.json");
+        await File.WriteAllTextAsync(path, content);
+        using var store = new FilePlayerVariableStore(_profileDirectory);
+        var error = Assert.ThrowsAsync<CorruptPlayerVariablesException>(async () => await store.LoadAsync());
+        Assert.That(error!.FilePath, Is.EqualTo(path));
+        Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo(content));
+    }
     [Test]
     public async Task RuntimeUpdatesOfRestoredPrefixedVariablesPreserveTheBridgeKeyAndUid()
     {

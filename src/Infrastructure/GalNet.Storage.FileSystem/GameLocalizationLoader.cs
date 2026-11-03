@@ -139,8 +139,9 @@ public static class GameLocalizationLoader
                 var relative = Path.GetRelativePath(root, path).Replace('\\', '/');
                 try
                 {
-                    if (!relative.Contains('/')) throw new InvalidDataException("External JSON must be below a culture directory.");
-                    var culture = CultureInfo.GetCultureInfo(relative.Split('/')[0]);
+                    var cultureName = relative.Contains('/') ? relative.Split('/')[0] : Path.GetFileNameWithoutExtension(relative);
+                    var culture = CultureInfo.GetCultureInfo(cultureName);
+                    if (culture.Name.Length == 0) throw new InvalidDataException("External JSON requires a named culture.");
                     var json = File.ReadAllText(path);
                     _ = new GameLocalizationSource(culture.Name, relative, json).ReadText();
                     sources.Add(new(culture.Name, $"{sourcePrefix}/{relative}", json));

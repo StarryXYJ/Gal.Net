@@ -48,11 +48,29 @@ public class EntryTypeShortcutTests
         Assert.That(settings.SaveCount, Is.EqualTo(3));
     }
 
+    [Test]
+    public void SaveFailureLeavesBindingAndOverrideUnchanged()
+    {
+        var settings = new TestSettingsService();
+        var commands = new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()).Definitions.Select(definition => new EntryTypeShortcutCommand(definition)).ToList();
+        var service = new EditorShortcutService(commands, settings);
+        var video = commands.Single(command => command.EntryType == BuiltinEntryIds.PlayVideo);
+        service.SetGesture(video.Id, new KeyGesture(Key.V));
+        settings.Fail = true;
+        Assert.That(() => service.SetGesture(video.Id, new KeyGesture(Key.B)), Throws.InstanceOf<IOException>());
+        Assert.That(video.Gesture, Is.EqualTo(new KeyGesture(Key.V)));
+        Assert.That(settings.Settings.GestureOverrides[video.Id], Is.EqualTo("V"));
+        Assert.That(() => service.ResetAll(), Throws.InstanceOf<IOException>());
+        Assert.That(video.Gesture, Is.EqualTo(new KeyGesture(Key.V)));
+        Assert.That(settings.Settings.GestureOverrides[video.Id], Is.EqualTo("V"));
+    }
+
     private sealed class TestSettingsService : IEditorSettingsService
     {
         public EditorSettings Settings { get; } = new();
         public int SaveCount { get; private set; }
+        public bool Fail { get; set; }
         public EditorSettings GetSettings() => Settings;
-        public void SaveSettings() => SaveCount++;
+        public void SaveSettings() { if (Fail) throw new IOException("save failed"); SaveCount++; }
     }
 }

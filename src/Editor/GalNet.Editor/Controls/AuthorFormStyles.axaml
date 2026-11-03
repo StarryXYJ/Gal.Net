@@ -27,6 +27,14 @@
             <Setter Property="forms:StructuredFieldEditor.UpText" Value="{loc:Localize Form.MoveUp}" />
             <Setter Property="forms:StructuredFieldEditor.DownText" Value="{loc:Localize Form.MoveDown}" />
         </Style>
+        <Style Selector="Expander.structured-field Button#up, Expander.structured-field Button#down, Expander.structured-field Button#remove, Expander.structured-field Button#copy, Expander.structured-field Button#add">
+            <Setter Property="Theme" Value="{DynamicResource EditorIconButton}" />
+        </Style>
+        <Style Selector="Expander.structured-field Button#up"><Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="{DynamicResource ChevronUpRegular}"/></DataTemplate></Setter></Style>
+        <Style Selector="Expander.structured-field Button#down"><Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="{DynamicResource ChevronDownRegular}"/></DataTemplate></Setter></Style>
+        <Style Selector="Expander.structured-field Button#remove"><Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="{DynamicResource DeleteRegularIcon}"/></DataTemplate></Setter></Style>
+        <Style Selector="Expander.structured-field Button#add"><Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="{DynamicResource AddIcon}"/></DataTemplate></Setter></Style>
+        <Style Selector="Expander.structured-field Button#copy"><Setter Property="ContentTemplate"><DataTemplate><PathIcon Width="16" Height="16" Data="M4 3H16V5H6V17H4Z M8 7H20V21H8Z M10 9V19H18V9Z"/></DataTemplate></Setter></Style>
         <Style Selector="forms|SchemaForm" x:CompileBindings="False">
             <Setter Property="Template">
                 <ControlTemplate>

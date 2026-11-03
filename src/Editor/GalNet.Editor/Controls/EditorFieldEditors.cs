@@ -19,10 +19,12 @@ public static class EditorFieldEditors
     {
         var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true, copyValue: texts is null ? null : texts.StageCopy,
             formatIssue: (field, issue) => EditorProblemText.Value(field, issue));
+        registry.Replace(ValueEditorIds.Json, InferredJsonFieldEditor.Create);
         registry.Replace(ValueEditorIds.Numeric, NumericFieldEditors.CreateUpDown);
         registry.Replace(ValueEditorIds.Slider, NumericFieldEditors.CreateSliderWithInput);
         if (characters is not null) registry.RegisterSemantic(FieldValueSemantic.CharacterReference, context => CharacterFieldEditor.Create(context, characters));
         if (texts is not null) registry.RegisterSemantic(FieldValueSemantic.LocalizedText, context => GameTextFieldEditor.Create(context, texts));
+        registry.Register("project.audioBus", AudioBusFieldEditor.Create);
         registry.Register("entry.imageasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.Image));
         registry.Register("entry.variantsasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.ImageVariants));
         registry.Register("entry.effectprogramasset", context => AssetFieldEditor.Create(context, assets, Models.AssetPickerFilter.EffectProgram));

@@ -5,5 +5,6 @@
   "group.harbor.entry.shader-blur.content": "Blur 使用分离式高斯模糊，横向和纵向各经过 5 个迭代段、15 个密集采样点；28 像素半径让画面柔和扩散。",
   "group.harbor.entry.shader-toy-tunnel.content": "ShaderToy 示例：动态程序化雾气隧道。",
   "group.harbor.entry.shader-toy-grid.content": "ShaderToy 示例：带透视感的动态三维网格。",
-  "group.harbor.entry.shader-toy-rain.content": "ShaderToy 示例：通过光线步进绘制的雨夜道路与倒影。"
+  "group.harbor.entry.shader-toy-rain.content": "ShaderToy 示例：通过光线步进绘制的雨夜道路与倒影。",
+  "group.harbor.entry.demo-cue-route-blinds.content": "接下来观看百叶窗转场进入填充路线。"
 }

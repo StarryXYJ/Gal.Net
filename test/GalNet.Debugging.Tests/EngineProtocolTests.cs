@@ -9,6 +9,84 @@ namespace GalNet.Debugging.Tests;
 
 public class EngineProtocolTests
 {
+    [Test]
+    public async Task ContentCommandsActivateTheInstalledGraph()
+    {
+        var calls = new List<string>();
+        using var registration = new GameRegistration().RegisterSchema(new DefaultEntryModule("test",
+            [new DefaultPrimitiveEntryBase("test.wait", DynamicParameterTable.Empty),
+             new DefaultPrimitiveEntryBase("test.run", DynamicParameterTable.Empty)]));
+        using var view = registration.RegisterInstruction("test.wait", _ => new Wait())
+            .RegisterInstruction("test.run", context => new ImmediatePrimitiveInstance(() => calls.Add(context.Entry.StableId))).BuildView();
+        var initial = GraphWith(new PrimitiveEntry("test.wait", JsonSerializer.SerializeToElement(new { })) { StableId = "active" },
+            new PrimitiveEntry("test.run", JsonSerializer.SerializeToElement(new { })) { StableId = "old" });
+        var candidate = GraphWith(new PrimitiveEntry("test.wait", JsonSerializer.SerializeToElement(new { })) { StableId = "active" },
+            new PrimitiveEntry("test.run", JsonSerializer.SerializeToElement(new { })) { StableId = "new" });
+        await using var engine = new GameEngine(initial, view);
+        var revisions = new FakeContentRevisions(candidate);
+        using var adapter = new EngineDebugRun(engine, content: revisions);
+        await engine.AdvanceAsync();
+        var run = adapter.Info;
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        async Task<T> Send<T>(string method, object? value = null)
+        {
+            var result = await adapter.ExecuteAsync(new(method, run.RunId, adapter.Info.Generation,
+                JsonSerializer.SerializeToElement(value, json)), CancellationToken.None);
+            return (T)result!;
+        }
+
+        await adapter.ExecuteAsync(new("content.install", run.RunId, adapter.Info.Generation,
+            JsonSerializer.SerializeToElement(new DebugContentInstallRequest("candidate", "content", "contract"), json)), CancellationToken.None);
+        var before = await Send<GameDebugState>("inspect");
+        await Send<long>("content.activate", new DebugContentActivateRequest(
+            new(before.NodeId, before.EntryIndex, before.ActiveEntryIds), CandidateEntryIndex: 1));
+        await engine.AdvanceAsync();
+        var after = await Send<GameDebugState>("inspect");
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(adapter.Info.Capabilities, Does.Contain("content.install").And.Contain("content.activate"));
+            Assert.That(calls, Is.EqualTo(new[] { "new" }));
+            Assert.That(revisions.Activated, Is.True);
+            Assert.That(after.Generation, Is.EqualTo(adapter.Info.Generation));
+        });
+    }
+
+    [Test]
+    public async Task ActivateAndSeekUsesTheSavedEntranceWithTheInstalledGraph()
+    {
+        var calls = new List<string>();
+        using var registration = new GameRegistration().RegisterSchema(new DefaultEntryModule("test",
+            [new DefaultPrimitiveEntryBase("test.run", DynamicParameterTable.Empty),
+             new DefaultPrimitiveEntryBase("test.wait", DynamicParameterTable.Empty)]));
+        using var view = registration.RegisterInstruction("test.run", context =>
+                new ImmediatePrimitiveInstance(() => calls.Add(context.Entry.StableId)))
+            .RegisterInstruction("test.wait", _ => new Wait()).BuildView();
+        var initial = GraphWith(new PrimitiveEntry("test.run", JsonSerializer.SerializeToElement(new { })) { StableId = "old" },
+            new PrimitiveEntry("test.wait", JsonSerializer.SerializeToElement(new { })) { StableId = "wait" });
+        var candidate = GraphWith(new PrimitiveEntry("test.run", JsonSerializer.SerializeToElement(new { })) { StableId = "new" },
+            new PrimitiveEntry("test.wait", JsonSerializer.SerializeToElement(new { })) { StableId = "wait" });
+        await using var engine = new GameEngine(initial, view);
+        var revisions = new FakeContentRevisions(candidate);
+        using var adapter = new EngineDebugRun(engine,
+            new() { Instructions = new Dictionary<string, DebugReplayBehavior> { ["test.run"] = DebugReplayBehavior.Scene, ["test.wait"] = DebugReplayBehavior.Scene } },
+            content: revisions);
+        await engine.AdvanceAsync();
+        calls.Clear();
+        var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        async Task<object?> Send(string method, object value) => await adapter.ExecuteAsync(new(method, adapter.Info.RunId,
+            adapter.Info.Generation, JsonSerializer.SerializeToElement(value, json)), CancellationToken.None);
+        await Send("content.install", new DebugContentInstallRequest("candidate", "content", "contract"));
+        var state = (GameDebugState)(await adapter.ExecuteAsync(new("inspect", adapter.Info.RunId, adapter.Info.Generation,
+            JsonSerializer.SerializeToElement(new { }, json)), CancellationToken.None))!;
+
+        await Send("content.activateAndSeekGroupStart", new DebugContentActivateRequest(
+            new(state.NodeId, state.EntryIndex, state.ActiveEntryIds), CandidateEntryIndex: state.EntryIndex));
+
+        Assert.That(calls, Is.EqualTo(new[] { "new" }));
+        Assert.That(revisions.Activated, Is.True);
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task StopAndDisconnectDoNotWaitBehindAnUnskippableReplay(bool disconnect)
@@ -91,6 +169,7 @@ public class EngineProtocolTests
         public override bool IsSkippable => true;
         protected override void OnDispatch() { }
         protected override void OnPlaybackModeChanged(PrimitiveInvocationMode mode) { if (mode == PrimitiveInvocationMode.CatchUp) TryComplete(); }
+        protected override void OnSkip() => TryComplete();
     }
     private sealed class ReplayWait : PrimitiveInstance
     {
@@ -98,5 +177,23 @@ public class EngineProtocolTests
         public override bool IsBlocking => true;
         public override bool IsSkippable => false;
         protected override void OnDispatch() => Started.TrySetResult();
+    }
+
+    private static Graph GraphWith(params GalNet.Core.Entry.Entry[] entries) => new()
+    {
+        RootNodeId = "main",
+        Nodes = { new Group { Id = "main", Entries = entries.ToList() } }
+    };
+
+    private sealed class FakeContentRevisions(Graph graph) : IDebugContentController
+    {
+        public bool Activated { get; private set; }
+        public Task InstallAsync(DebugContentInstallRequest request, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.CompletedTask;
+        }
+        public Graph GetLatestGraph() => graph;
+        public void CommitActivation() => Activated = true;
     }
 }

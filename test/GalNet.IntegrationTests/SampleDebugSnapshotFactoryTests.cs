@@ -22,6 +22,8 @@ public sealed class DebugSnapshotFactoryTests
             Assert.That(snapshot.ContentBuildId, Is.EqualTo("packaged-build"));
             Assert.That(snapshot.StoryPackages, Is.EqualTo(new[] { "extra" }));
             Assert.That(snapshot.StoryPackages, Is.Not.SameAs(source.StoryPackages));
+            Assert.That(snapshot.VisitedGroups, Is.EqualTo(new[] { "chapter-1", "chapter-2" }));
+            Assert.That(snapshot.VisitedGroups, Is.Not.SameAs(source.VisitedGroups));
             Assert.That(snapshot.Variables["score"].AsInt(), Is.EqualTo(42));
             Assert.That(snapshot.Variables["score"], Is.Not.SameAs(source.Variables["score"]));
             Assert.That(BuiltinTestRuntime.State(snapshot).Table<Layer>().Values, Is.Empty);
@@ -64,7 +66,8 @@ public sealed class DebugSnapshotFactoryTests
             States = snapshot.States,
             Variables = snapshot.Variables,
             ContentBuildId = "packaged-build",
-            StoryPackages = ["extra"]
+            StoryPackages = ["extra"],
+            VisitedGroups = ["chapter-1", "chapter-2"]
         };
     }
 }

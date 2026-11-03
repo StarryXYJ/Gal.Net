@@ -1,10 +1,13 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using GalNet.Core.Assets;
+using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Models;
+using GalNet.Editor.Services;
 using GalNet.Editor.Services.Interfaces;
 using GalNet.Game.Controls.Forms;
 
@@ -20,10 +23,12 @@ public partial class AssetPicker : UserControl, IDisposable
     public static readonly DirectProperty<AssetPicker, string> DisplayTextProperty = AvaloniaProperty.RegisterDirect<AssetPicker, string>(nameof(DisplayText), x => x.DisplayText);
     public static readonly DirectProperty<AssetPicker, string> DisplayIconProperty = AvaloniaProperty.RegisterDirect<AssetPicker, string>(nameof(DisplayIcon), x => x.DisplayIcon);
     public static readonly DirectProperty<AssetPicker, string> DetailPathProperty = AvaloniaProperty.RegisterDirect<AssetPicker, string>(nameof(DetailPath), x => x.DetailPath);
-    private string _displayText = "None", _displayIcon = "—", _detailPath = string.Empty;
+    private string _displayText = "", _displayIcon = "—", _detailPath = string.Empty;
     private readonly Dictionary<string, Task<AssetPickerItem>> _cache = new(StringComparer.OrdinalIgnoreCase);
     private CancellationTokenSource _lifetime = new();
     private IEditorAssetChanges? _changes;
+    private IEditorLocalizationService? _localization;
+    private string? _displayTextKey, _pickerHintKey, _pickerHintDetails;
     private int _generation, _resolveVersion, _listVersion, _thumbnailCount;
     private bool _flyoutOpen, _attached, _disposed;
     public ObservableCollection<AssetPickerItem> Items { get; } = [];
@@ -45,7 +50,9 @@ public partial class AssetPicker : UserControl, IDisposable
     public AssetPicker()
     {
         InitializeComponent();
-        PickerPanel.Search.PlaceholderText = "Search assets";
+        _localization = EditorLocalizationService.Current;
+        ApplyLocalizedText();
+        DisplayLocalized("AssetPicker.None", "—", string.Empty);
         PickerPanel.Confirmed += () =>
         {
             if (PickerPanel.Selected is not { } item || _disposed) return;
@@ -59,13 +66,41 @@ public partial class AssetPicker : UserControl, IDisposable
     protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnAttachedToVisualTree(e); _attached = true;
+        _localization = EditorLocalizationService.Current;
+        if (_localization is not null) _localization.PropertyChanged += OnLocalizationChanged;
+        ApplyLocalizedText();
         if (!_disposed) ManagerChanged();
     }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
+        if (_localization is not null) _localization.PropertyChanged -= OnLocalizationChanged;
+        _localization = null;
         _attached = false; Unsubscribe(); PickerButton.Flyout?.Hide(); if (!_disposed) ClearCache();
         base.OnDetachedFromVisualTree(e);
     }
+    private void OnLocalizationChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == "Item[]") ApplyLocalizedText();
+    }
+    private string Text(string key) => _localization?[key] ?? "[" + key + "]";
+    private void ApplyLocalizedText()
+    {
+        PickerPanel.Search.PlaceholderText = Text("AssetPicker.Search");
+        ApplyPickerHint();
+        if (_displayTextKey is { } displayKey)
+            Display(Text(displayKey), _displayIcon, _detailPath, displayKey);
+        if (Items.Count > 0) RefreshPickerItems();
+    }
+    private void SetPickerHint(string? key, string? details = null)
+    {
+        _pickerHintKey = key; _pickerHintDetails = details;
+        ApplyPickerHint();
+    }
+    private void ApplyPickerHint() => PickerPanel.Hint = _pickerHintKey is { } hintKey
+        ? _pickerHintDetails is { Length: > 0 } details ? Text(hintKey) + Environment.NewLine + details : Text(hintKey)
+        : string.Empty;
+    private void RefreshPickerItems() => PickerPanel.SetItems(Items.Select(item => new ResourcePickerItem(
+        item.File?.Id ?? "", item.File is null ? Text("AssetPicker.None") : item.Name, item.Path, item.Icon, item.Thumbnail)).ToArray());
     private void Unsubscribe() { if (_changes is not null) _changes.Changed -= OnAssetChanges; _changes = null; }
     private void ManagerChanged()
     {
@@ -120,18 +155,20 @@ public partial class AssetPicker : UserControl, IDisposable
             AssetPickerItem? current = null;
             if (!string.IsNullOrWhiteSpace(id) && manager is not null)
             {
-                Display("Loading…", "…", id);
+                DisplayLocalized("AssetPicker.Loading", "…", id);
                 var file = await manager.GetFileAsync(id, ct);
                 if (!Current(generation, manager, revision) || version != _resolveVersion) return;
                 if (file is not null) current = await ItemAsync(file);
             }
             if (!Current(generation, manager, revision) || version != _resolveVersion) return;
-            Display(string.IsNullOrWhiteSpace(id) ? "None" : current?.Name ?? "Missing!", string.IsNullOrWhiteSpace(id) ? "—" : current?.Icon ?? "!", current?.Path ?? id);
+            if (string.IsNullOrWhiteSpace(id)) DisplayLocalized("AssetPicker.None", "—", string.Empty);
+            else if (current is not null) Display(current.Name, current.Icon, current.Path);
+            else DisplayLocalized("AssetPicker.Missing", "!", id);
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
         {
-            if (Current(generation, manager, revision) && version == _resolveVersion) Display("Unable to load", "!", error.Message);
+            if (Current(generation, manager, revision) && version == _resolveVersion) DisplayLocalized("AssetPicker.LoadFailed", "!", error.Message);
         }
     }
     private async Task LoadItemsAsync()
@@ -141,7 +178,7 @@ public partial class AssetPicker : UserControl, IDisposable
         var revision = (manager as IEditorAssetChanges)?.Revision; var filter = Filter; var ct = _lifetime.Token;
         try
         {
-            if (manager is null) { Items.Clear(); PickerPanel.SetItems([]); return; }
+            if (manager is null) { Items.Clear(); PickerPanel.SetItems([]); SetPickerHint(null); return; }
             var type = ResourceTypeId is { } declared ? declared == "*" ? null : declared : filter switch { AssetPickerFilter.Image => "sprite", AssetPickerFilter.Audio => "audio", AssetPickerFilter.Video => "video", AssetPickerFilter.EffectProgram => "effect-program", AssetPickerFilter.ImageVariants => "image-variants", _ => null };
             var files = await manager.GetFilesAsync(type, ct);
             if (!Current(generation, manager, revision) || version != _listVersion) return;
@@ -151,34 +188,39 @@ public partial class AssetPicker : UserControl, IDisposable
             var items = await Task.WhenAll(files.Select(ItemAsync));
             if (!Current(generation, manager, revision) || version != _listVersion) return;
             Items.Clear(); Items.Add(AssetPickerItem.Empty); foreach (var item in items) Items.Add(item);
-            PickerPanel.Hint = "";
-            PickerPanel.SetItems(Items.Select(item => new ResourcePickerItem(item.File?.Id ?? "", item.Name, item.Path, item.Icon, item.Thumbnail)).ToArray());
+            SetPickerHint(null);
+            RefreshPickerItems();
             _loadedRevision = revision;
         }
         catch (OperationCanceledException) { }
         catch (Exception error)
         {
-            if (Current(generation, manager, revision) && version == _listVersion) { Items.Clear(); PickerPanel.SetItems([]); PickerPanel.Hint = error.Message; }
+            if (Current(generation, manager, revision) && version == _listVersion) { Items.Clear(); PickerPanel.SetItems([]); SetPickerHint("AssetPicker.LoadFailed", error.Message); }
         }
     }
     internal static bool IsTextPath(string path) => AssetPickerTextFileExtensions.IsSupported(path);
-    private void Display(string text, string icon, string path)
+    private void DisplayLocalized(string key, string icon, string path) => Display(Text(key), icon, path, key);
+    private void Display(string text, string icon, string path, string? localizedKey = null)
     {
+        _displayTextKey = localizedKey;
         SetAndRaise(DisplayTextProperty, ref _displayText, text); SetAndRaise(DisplayIconProperty, ref _displayIcon, icon); SetAndRaise(DetailPathProperty, ref _detailPath, path);
     }
     public void Dispose()
     {
         if (_disposed) return;
+        if (_localization is not null) _localization.PropertyChanged -= OnLocalizationChanged;
+        _localization = null;
         _disposed = true; Unsubscribe(); PickerButton.Flyout?.Hide(); ClearCache(); _lifetime.Dispose(); GC.SuppressFinalize(this);
     }
 }
 
 public sealed class AssetPickerItem : IDisposable
 {
-    public static AssetPickerItem Empty { get; } = new(null, "None", string.Empty, "×", null);
-    private AssetPickerItem(IGameFile? file, string name, string path, string icon, Bitmap? thumbnail) { File = file; Name = name; Path = path; Icon = file is not null && AssetPicker.IsTextPath(path) ? "T" : icon; Thumbnail = thumbnail; }
+    public static AssetPickerItem Empty { get; } = new(null, string.Empty, string.Empty, "×", null);
+    private readonly string _name;
+    private AssetPickerItem(IGameFile? file, string name, string path, string icon, Bitmap? thumbnail) { File = file; _name = name; Path = path; Icon = file is not null && AssetPicker.IsTextPath(path) ? "T" : icon; Thumbnail = thumbnail; }
     public IGameFile? File { get; }
-    public string Name { get; }
+    public string Name => File is null ? EditorLocalizationService.Current?["AssetPicker.None"] ?? "[AssetPicker.None]" : _name;
     public string Path { get; }
     public string Icon { get; }
     public Bitmap? Thumbnail { get; }

@@ -1,11 +1,20 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:primitives="using:Avalonia.Controls.Primitives" xmlns:themes="using:GalNet.Editor.Themes">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:primitives="using:Avalonia.Controls.Primitives" xmlns:themes="using:GalNet.Editor.Themes" xmlns:timeline="using:GalNet.Game.Controls.Timeline" xmlns:forms="using:GalNet.Game.Controls.Forms">
   <!-- Native themes also contain palette defaults. Bind author controls explicitly to the
        Editor palette so custom variants keep readable text and consistent neutral surfaces. -->
   <Style Selector=":is(primitives|TemplatedControl)">
     <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+    <Setter Property="FontSize" Value="{DynamicResource Editor.Font.Body}"/>
   </Style>
-  <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/></Style>
-  <Style Selector="SelectableTextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/></Style>
+  <Style Selector="TextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/><Setter Property="FontSize" Value="{DynamicResource Editor.Font.Body}"/></Style>
+  <Style Selector="SelectableTextBlock"><Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/><Setter Property="FontSize" Value="{DynamicResource Editor.Font.Body}"/></Style>
+  <Style Selector="forms|ResourcePickerPanel"><Setter Property="BadgeFontSize" Value="{DynamicResource Editor.Font.Micro}"/></Style>
+  <Style Selector="timeline|TimelineCanvas"><Setter Property="LabelFontSize" Value="{DynamicResource Editor.Font.Caption}"/></Style>
+  <Style Selector="ToolTip">
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+    <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+  </Style>
   <Style Selector="TextBox">
     <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
     <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
@@ -21,11 +30,16 @@
   </Style>
   <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/>
+    <Setter Property="BorderThickness" Value="2,0,0,0"/>
     <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
   </Style>
   <Style Selector="ComboBox">
     <Setter Property="Background" Value="{DynamicResource SemiColorBackground2}"/>
     <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}"/>
+  </Style>
+  <Style Selector="Button#PART_MinimizeButton, Button#PART_MaximizeButton, Button#PART_CloseButton, Button#PART_FullScreenButton, Button#PART_PopoverFullScreenButton, Button#PART_PopoverCloseButton">
+    <Setter Property="themes:EditorButton.IsIcon" Value="True"/>
   </Style>
   <Style Selector="Button:not(.editor-icon)">
     <Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/>

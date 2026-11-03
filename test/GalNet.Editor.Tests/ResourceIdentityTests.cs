@@ -42,7 +42,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
             scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type,
                 entry.Source.Parameters.Append(new KeyValuePair<string, JsonElement>("asset", JsonSerializer.SerializeToElement(id))).GroupBy(pair => pair.Key).ToDictionary(items => items.Key, items => items.Last().Value));
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry; entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1200, Height = 900 }; window.Show(); TimelinePump(window);
             try
             {
@@ -174,23 +174,35 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         await ui.Dispatch<bool>(async () =>
         {
             PrepareGroupTheme(); using var services = Services(); var manager = services.GetRequiredService<EditorAssetManager>();
+            var localization = services.GetRequiredService<IEditorLocalizationService>();
+            var previousLocale = localization.CurrentCulture.Name;
+            localization.ApplyLocale("en-US");
             var provider = new ResourceTestProvider(); manager.RegisterProvider(provider);
             using var picker = new AssetPicker { AssetManager = manager, SelectedAssetId = "stable", Filter = AssetPickerFilter.Audio };
             var window = new Window { Content = picker, Width = 650, Height = 600 }; window.Show();
             try
             {
                 await WaitForResourceUi(window, () => picker.DisplayText == "voice.ogg");
+                Assert.That(picker.ResourcePanel.Search.PlaceholderText, Is.EqualTo(localization["AssetPicker.Search"]));
+                var button = picker.FindControl<Button>("PickerButton")!;
+                TimelineClick(window, button);
+                await WaitForResourceUi(window, () => picker.ResourcePanel.Results.Any(item => item.Id == ""));
+                Assert.That(picker.ResourcePanel.Results.Single(item => item.Id == "").Label, Is.EqualTo(localization["AssetPicker.None"]));
+                ((Flyout)button.Flyout!).Hide();
                 provider.Id = "replacement"; manager.RegisterProvider(new ResourceTestProvider("other"));
-                await WaitForResourceUi(window, () => picker.DisplayText == "Missing!");
+                await WaitForResourceUi(window, () => picker.DisplayText == localization["AssetPicker.Missing"]);
                 Assert.That(picker.SelectedAssetId, Is.EqualTo("stable")); Assert.That(picker.DetailPath, Is.EqualTo("stable"));
+                localization.ApplyLocale("ko-KR");
+                await WaitForResourceUi(window, () => picker.DisplayText == localization["AssetPicker.Missing"] && picker.ResourcePanel.Search.PlaceholderText == localization["AssetPicker.Search"]);
+                Assert.That(AssetPickerItem.Empty.Name, Is.EqualTo(localization["AssetPicker.None"]));
                 provider.Id = "stable"; provider.Failure = new IOException("Metadata is unreadable"); manager.RegisterProvider(new ResourceTestProvider("third"));
-                await WaitForResourceUi(window, () => picker.DisplayText == "Unable to load");
+                await WaitForResourceUi(window, () => picker.DisplayText == localization["AssetPicker.LoadFailed"]);
                 Assert.That(picker.DetailPath, Does.Contain("Metadata is unreadable")); Assert.That(picker.SelectedAssetId, Is.EqualTo("stable"));
                 provider.Failure = null; manager.RegisterProvider(new ResourceTestProvider("fourth"));
                 await WaitForResourceUi(window, () => picker.DisplayText == "voice.ogg");
                 return true;
             }
-            finally { window.Close(); }
+            finally { window.Close(); localization.ApplyLocale(previousLocale); }
         }, CancellationToken.None);
     }
 
@@ -263,8 +275,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         public string Name => "assets";
         public IEnumerable<string> AssetIds => [file.Id];
         public bool Contains(string id) => id == file.Id;
-        public IGameFile? GetAsset(string id) => Contains(id) ? file : null;
-        public IGameFile? GetAssetByPath(string path) => file.Path == path ? file : null;
+        public IGameFile? GetAsset(string id, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return Contains(id) ? file : null; }
+        public IGameFile? GetAssetByPath(string path, CancellationToken ct = default) { ct.ThrowIfCancellationRequested(); return file.Path == path ? file : null; }
         public void Dispose() { }
     }
     private sealed class ResourceDecoded : IDisposable { public bool Disposed { get; private set; } public void Dispose() => Disposed = true; }

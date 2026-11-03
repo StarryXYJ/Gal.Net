@@ -8,6 +8,16 @@ public class EditorSettingsSerializationTests
     private static readonly JsonSerializerOptions IndentedJson = new() { WriteIndented = true };
 
     [Test]
+    public void FontSizeDefaultsAndRoundTrips()
+    {
+        Assert.That(JsonSerializer.Deserialize<EditorSettings>("{}")!.FontSize, Is.EqualTo(12));
+        Assert.That(JsonSerializer.Deserialize<EditorSettings>("{}")!.ExpandNewEntries, Is.False);
+        Assert.That(JsonSerializer.Deserialize<EditorSettings>("{\"ExpandNewEntries\":true}")!.ExpandNewEntries, Is.True);
+        var settings = new EditorSettings { FontSize = 15 };
+        Assert.That(JsonSerializer.Deserialize<EditorSettings>(JsonSerializer.Serialize(settings))!.FontSize, Is.EqualTo(15));
+    }
+
+    [Test]
     public void LastDockLayout_RoundTripsAsAString()
     {
         var settings = new EditorSettings { LastDockLayout = "{\n  \"version\": 1\n}" };

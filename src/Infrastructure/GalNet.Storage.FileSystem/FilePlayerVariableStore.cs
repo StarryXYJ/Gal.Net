@@ -21,12 +21,13 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
         {
             if (!File.Exists(_path)) return new Dictionary<string, GalVariable>(StringComparer.Ordinal);
             var json = await File.ReadAllTextAsync(_path, ct);
-            var stored = JsonCodec.Deserialize<Dictionary<string, GalVariable>>(json) ?? [];
+            var stored = JsonCodec.Deserialize<Dictionary<string, GalVariable>>(json)
+                ?? throw new JsonException("Player variables document is empty.");
             return stored.ToDictionary(pair => pair.Key, pair => Clone(pair.Key, pair.Value), StringComparer.Ordinal);
         }
-        catch (JsonException)
+        catch (JsonException error)
         {
-            return new Dictionary<string, GalVariable>(StringComparer.Ordinal);
+            throw new CorruptPlayerVariablesException(_path, error);
         }
         finally { _gate.Release(); }
     }
@@ -49,4 +50,11 @@ public sealed class FilePlayerVariableStore : IPlayerVariableStore, IDisposable
     }
 
     private static GalVariable Clone(string name, GalVariable source) => source.Clone(name);
+}
+
+/// <summary>A player variable file cannot be parsed and must not be overwritten silently.</summary>
+public sealed class CorruptPlayerVariablesException(string path, Exception innerException)
+    : IOException($"Player variables are invalid: {path}", innerException)
+{
+    public string FilePath { get; } = path;
 }

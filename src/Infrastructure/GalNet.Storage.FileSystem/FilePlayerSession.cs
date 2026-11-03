@@ -16,7 +16,9 @@ public static class FilePlayerSession
         FileGameProgressService? progress = null;
         try
         {
-            variables = await PlayerVariableService.CreateAsync(new FilePlayerVariableStore(profileDirectory), cancellationToken);
+            var store = new FilePlayerVariableStore(profileDirectory);
+            try { variables = await PlayerVariableService.CreateAsync(store, cancellationToken); }
+            catch { store.Dispose(); throw; }
             variables.ConfigureSystemVariables(GalleryUnlockVariable.CreateDefinitions(gallery));
             progress = new FileGameProgressService(profileDirectory);
             var ownedProgress = progress;

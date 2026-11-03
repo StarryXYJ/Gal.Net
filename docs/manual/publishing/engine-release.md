@@ -42,11 +42,11 @@ Push 先检查索引、全部文件哈希、版本和消费者验收状态；Git
 
 ### 可复用的玩家编译模式和游戏绑定
 
-`GalNetPlayerMode` 有三种值：`Developer` 开启 `GALNET_GAME_DEBUG` 和 `GALNET_LAUNCH_ARGS`，可加载外部内容；`Player` 只开启 `GALNET_LAUNCH_ARGS`；`Bound` 两者均关闭，只加载包内游戏。不要再把允许加载外部游戏等同于允许调试。调试服务/包引用仍须按模式有条件引入，模式本身不会自动引用调试 UI。
+`GalNetPlayerMode` 有四种值：`Developer` 开启 `GALNET_GAME_DEBUG` 和 `GALNET_LAUNCH_ARGS`，可加载外部内容；`Player` 只开启 `GALNET_LAUNCH_ARGS`；`Bound` 两者均关闭，只加载包内游戏；`BoundDeveloper` 开启游戏调试和启动参数，但仍按绑定的项目 ID 校验加载内容。不要再把允许加载外部游戏等同于允许调试。调试服务/包引用仍须按模式有条件引入，模式本身不会自动引用调试 UI。
 
 仓库 Sample 从共享 props/targets 使用这些规则，`GalNet.Desktop` NuGet 通过 buildTransitive 向其他项目提供同一编译规则。外部宿主按 `GalNetPlayerMode` 条件编写启动参数与调试入口；共享 `AvaloniaGameSession` 会在加载内容前执行 `GameLaunchPolicy`。默认从入口程序集读取编译元数据，移动平台或共享 UI 程序集可在 `AvaloniaGameHostOptions.LaunchPolicy` 中显式传入 `GameLaunchPolicy.FromAssembly(typeof(YourApp).Assembly)`；若该类型在类库中，还应在该类库设置 `GalNetPlayerAssembly=true`，让编译目标在该程序集写入模式与绑定元数据。宿主不得另开绕过这一策略的游戏加载入口。
 
-Bound 构建需要 `GalNetGamePackage` 和从该包校验后提取的 `GalNetBoundProjectId`。绑定 `projectId`，不绑定每次内容更新都会变化的 buildId；它用于选择正确项目，不是防篡改或 DRM。打包工具必须同时检查游戏契约与目标宿主字节身份。
+Bound 和 BoundDeveloper 构建需要 `GalNetGamePackage` 和从该包校验后提取的 `GalNetBoundProjectId`。绑定 `projectId`，不绑定每次内容更新都会变化的 buildId；它用于选择正确项目，不是防篡改或 DRM。打包工具必须同时检查游戏契约与目标宿主字节身份。
 
 其他项目可运行 Editor 随附的 `Tools/bind-game.ps1`：
 

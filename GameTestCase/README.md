@@ -28,8 +28,10 @@ Initial node positions are stored in `Graph/graph.json`.
 | 8 | `routes`, `downtown` / `harbor`, `transitions` | Choice/condition, crossfade/blinds and all remaining transitions |
 | 9 | `ending` | Completion |
 
-Each chapter introduces the comparison and explicitly prepares its stage. Transient
-motion examples include a label and a short pause. Shader, particle and audio examples
+Each chapter introduces the comparison and explicitly prepares its stage. Short-lived
+transitions, masks, variant changes and animations have a bilingual dialogue cue before
+they run; advance when ready to watch. Transient motion examples include a label and a
+short pause. Shader, particle and audio examples
 keep their observation dialogue; advance to stop or compare the next effect. Weather rounds use independent handles: advancing stops the old emission and starts
 the next round immediately; existing particles fade out and release naturally. Rain,
 snow and petals originate just above the frame. The legacy standalone snow/spark block is superseded by the weather presets;
@@ -66,12 +68,23 @@ character names, choice text and each group's text live in separate per-culture 
 files. Change the language in the Avalonia Sample settings to localize subsequent
 dialogue, NVL paragraphs and choices using the same culture as the UI.
 
-Third-party translations go in `<game-directory>/I18n/External/<culture>/**/*.json`.
+Third-party translations go in `<game-directory>/I18n/External/<culture>.json`
+or the legacy `<game-directory>/I18n/External/<culture>/**/*.json` layout.
 They override built-in game and UI keys (for example `App.Title`); files are applied
 in ordinal relative-path order, last file wins. Invalid files are logged and skipped.
 New languages appear in settings. Restart to load edited files; currently displayed
 dialogue and NVL history do not change when selecting a language. External files are
 excluded from exported packages and preserved when reopening an existing installation.
+
+`I18n/External/ja-JP.json` and `ko-KR.json` are small external-translation examples:
+they translate the welcome, the first variant steps, the guide and route choices.
+Other story text falls back to the project's English default. Development builds copy
+these files into their output. External files are deliberately excluded from galpak;
+to try them in an installed game, copy them manually into `pak/I18n/` and restart.
+The Editor can export one universal template for translators; fill its `targetLocale`
+and `translation` fields, then run `GalNet.Editor.Headless localization convert
+translation.template.json --output ja-JP.json`. The output filename must match its
+target culture and must not already exist.
 
 On the Avalonia Sample's first successful launch for a profile, a language-selection
 page appears before the title. Confirm to persist the choice and increment the startup
@@ -172,9 +185,9 @@ fixture, including on a fresh checkout:
 CLI use, deploy the contracts as shown above before running:
 
 ```text
-dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output artifacts/sample-build
-dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- artifacts/sample-build
-dotnet run --project src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj -- artifacts/sample-build
+dotnet run --project src/Editor/GalNet.Editor.Headless/GalNet.Editor.Headless.csproj -- build GameTestCase --output output/sample-build
+dotnet run --project src/Samples/GalNet.Sample.Headless/GalNet.Sample.Headless.csproj -- output/sample-build
+dotnet run --project src/Samples/GalNet.Sample.CrossPlatform/GalNet.Sample.CrossPlatform.Desktop/GalNet.Sample.CrossPlatform.Desktop.csproj -- output/sample-build
 ```
 
 Video smoke: advance the first dialogue to reach blocking playback. Each left click seeks to the next point after the current position; the oversized final point ends playback. The following non-blocking playback uses rotation, scale and opacity below the portrait, then stops on dialogue advance. Headless has no video presenter and completes these entries immediately.

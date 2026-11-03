@@ -38,7 +38,9 @@ public static class BuiltInDockContributions
     {
         registry.RegisterDockPanel(new DelegateDockPanelContribution<ProblemsPanelViewModel>(
             EditorDockPanelIds.Problems, "Uiux.Problems", DockPanelPlacement.BottomDocument, true, true, true, false, true,
-            sp => sp.GetRequiredService<ProblemsPanelViewModel>(), typeof(ProblemsPanelView), null));
+            sp => sp.GetRequiredService<ProblemsPanelViewModel>(), typeof(ProblemsPanelView),
+            new DelegateInspectorContribution<ProblemsPanelViewModel, ProblemInspectorViewModel>(
+                (sp, page) => new ProblemInspectorViewModel(page), typeof(ProblemInspectorView))));
         registry.RegisterDockPanel(new DelegateDockPanelContribution<ExternalDebugPanelViewModel>(
             EditorDockPanelIds.ExternalDebug, "Debug.Panel", DockPanelPlacement.BottomDocument, true, true, true, false, true,
             sp => sp.GetRequiredService<ExternalDebugPanelViewModel>(), typeof(ExternalDebugPanelView), null));
