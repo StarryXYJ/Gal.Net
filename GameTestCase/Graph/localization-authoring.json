@@ -29,6 +29,14 @@
         "zh-CN": "cea1178030c05b360b2ae7d3c04c46a974d8b6387bf7c2478510ec0b36657f37"
       },
       "sourceFingerprint": "c17ee0b088cf9c7ae7feacb3ec5de38085cc561d5f5f292f36bc37237229c6ed"
+    },
+    "character.guide.name": {
+      "sourceLocale": "en-US",
+      "translations": {
+        "ja-JP": "8dd65d0952ed144ccf6e76ebf8aa45644afb2b9236762c414d07e813d42f588e"
+      },
+      "sourceFingerprint": "8dd65d0952ed144ccf6e76ebf8aa45644afb2b9236762c414d07e813d42f588e"
     }
-  }
+  },
+  "exchangeProjectId": "8fc88ba7aad24026a4e47f585e94127d"
 }

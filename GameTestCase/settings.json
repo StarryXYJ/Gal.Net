@@ -31,49 +31,70 @@
           },
           {
             "code": "zh-CN"
+          },
+          {
+            "code": "ja-JP"
+          },
+          {
+            "code": "ko-KR"
           }
         ],
         "audioBuses": [
           {
             "id": "bgm",
-            "name": "Settings.BgmVolume"
+            "name": "Settings.BgmVolume",
+            "defaultGain": 1
           },
           {
             "id": "sfx",
-            "name": "Settings.SfxVolume"
+            "name": "Settings.SfxVolume",
+            "defaultGain": 1
           },
           {
             "id": "vocal",
-            "name": "Settings.VoiceVolume"
+            "name": "Settings.VoiceVolume",
+            "defaultGain": 1
           }
         ],
         "audioTracks": [
           {
             "id": "bgm",
-            "busId": "bgm",
             "name": "Music",
+            "busId": "bgm",
+            "playbackOrder": "Sequential",
+            "repeat": "None",
             "preserveDuringCatchUp": true,
             "defaultGain": 0.8,
             "maxVoices": 1,
-            "maxQueuedItems": 64
+            "maxQueuedItems": 64,
+            "overflowPolicy": "DropNewest",
+            "queueOverflowPolicy": "DropNewest"
           },
           {
             "id": "sfx",
-            "busId": "sfx",
             "name": "Effects",
+            "busId": "sfx",
+            "playbackOrder": "Sequential",
+            "repeat": "None",
             "preserveDuringCatchUp": false,
             "defaultGain": 1,
             "maxVoices": 8,
-            "maxQueuedItems": 0
+            "maxQueuedItems": 0,
+            "overflowPolicy": "DropNewest",
+            "queueOverflowPolicy": "DropNewest"
           },
           {
             "id": "vocal",
-            "busId": "vocal",
             "name": "Voice",
+            "busId": "vocal",
+            "playbackOrder": "Sequential",
+            "repeat": "None",
             "preserveDuringCatchUp": false,
             "defaultGain": 1,
             "maxVoices": 1,
-            "maxQueuedItems": 64
+            "maxQueuedItems": 64,
+            "overflowPolicy": "DropNewest",
+            "queueOverflowPolicy": "DropNewest"
           }
         ],
         "defaultWeatherTextures": {
@@ -82,7 +103,12 @@
           "Petals": "b52e4108949456c8b613c47eec2e4530",
           "Dust": "cd5d35bb40de5941b965d32bd90d08e9",
           "Fireflies": "12d80a90e835574988aec865500726c4"
-        }
+        },
+        "saveSlotCount": 60,
+        "defaultWidth": 1920,
+        "defaultHeight": 1080,
+        "orientationPolicy": "Unforced",
+        "defaultOrientation": "Landscape"
       }
     }
   }

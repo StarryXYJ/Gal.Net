@@ -1,6 +1,6 @@
 # 运行 Sample
 
-以下命令都从仓库根目录执行。先满足[环境要求](requirements.md)。默认使用自带的 `GameTestCase`，不需要先写游戏剧情。
+目标：打开桌面窗口并运行自带的 `GameTestCase`。先满足[环境要求](requirements.md)，打开 PowerShell 并切换到仓库根目录；无需先创建项目。首次构建和还原可能需要一些时间。
 
 ## 从源码运行桌面示例
 
@@ -8,7 +8,7 @@
 pwsh -NoProfile -File scripts/samples/run-cross-platform-sample.ps1
 ```
 
-脚本构建并部署示例契约到 `GameTestCase/Contracts/`，通过 Headless CLI 编译内容到 `GameTestCase/Output/`，然后以 Debug 配置启动桌面 Sample。玩家数据写入 `GameTestCase/.galnet/`。进入窗口后完成首次语言选择，在标题页开始游戏。
+执行成功后会打开 Sample 窗口。脚本构建并部署示例契约到 `GameTestCase/Contracts/`，通过 Headless CLI 编译内容到 `GameTestCase/Output/`，然后以 Debug 配置启动桌面 Sample。玩家数据写入 `GameTestCase/.galnet/`。进入窗口后完成首次语言选择，在标题页开始游戏。
 
 无需 GUI 的逻辑示例：
 
@@ -18,7 +18,7 @@ pwsh -NoProfile -File scripts/samples/run-headless-sample.ps1
 
 Headless 用于终端交互和后端验证，不展示完整 Avalonia 画面，也不能代替音视频设备验收。
 
-已有编译内容时可使用 `-Project`、`-BuildOutput`、`-Profile` 和 `-SkipBuild`（以对应脚本参数为准）。跳过编译前，确认契约和内容与当前玩家构建匹配；自定义项目不会自动获得 GameTestCase 的契约。
+可用 `-Project` 指定作者项目，`-BuildOutput` 指定编译内容目录，`-Profile` 指定玩家数据目录；`-SkipBuild` 跳过契约部署和内容编译。跳过编译前，确认契约和内容与当前玩家构建匹配；自定义项目不会自动获得 GameTestCase 的契约。
 
 ## 使用发行包
 
@@ -34,6 +34,3 @@ Headless 用于终端交互和后端验证，不展示完整 Avalonia 画面，�
 - 窗口报告内容缺失：确认使用整合包，或已在正确的应用根部署 `pak/`。
 
 接下来可以[创建自己的项目](first-project.md)，或阅读 [Sample 使用手册](../manual/sample/README.md)。
-
-
-页面定制入口是主项目的 `Views/`、`ViewModels/` 和 `Styles/`：直接修改按钮 XAML 与对应项目命令；新增页面在 `SampleCustomization` 写一条 VM→View 映射并添加导航调用即可。全局配色修改 PlayerPalette，局部控件可以直接覆盖样式或 ControlTheme。复杂播放与资源清理留在内置层。详见 [定制 Sample](../manual/extensions/customize-sample.md)。
