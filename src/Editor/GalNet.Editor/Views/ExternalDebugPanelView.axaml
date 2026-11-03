@@ -61,6 +61,7 @@
     <StackPanel Orientation="Horizontal" Spacing="2">
      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding StepCommand}" IsEnabled="{Binding CanStep}"  ToolTip.Tip="{loc:Localize Debug.Step}" AutomationProperties.Name="{loc:Localize Debug.Step}"><PathIcon Data="{StaticResource DebugStepIcon}"/></Button>
      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding GroupEndCommand}" IsEnabled="{Binding CanLocate}"  ToolTip.Tip="{loc:Localize Debug.GroupEnd}" AutomationProperties.Name="{loc:Localize Debug.GroupEnd}"><PathIcon Data="{StaticResource DebugGroupEndIcon}"/></Button>
+     <Button Theme="{StaticResource DebugIconButton}" Command="{Binding HotReloadCommand}" IsEnabled="{Binding CanHotReload}" Name="HotReloadContent" ToolTip.Tip="{loc:Localize Debug.HotReload}" AutomationProperties.Name="{loc:Localize Debug.HotReload}"><PathIcon Data="{StaticResource DebugResetIcon}"/></Button>
      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding CancelCommand}" IsEnabled="{Binding HasRun}"  ToolTip.Tip="{loc:Localize Debug.Cancel}" AutomationProperties.Name="{loc:Localize Debug.Cancel}"><PathIcon Data="{StaticResource DebugCancelIcon}"/></Button>
      <Border Classes="debugDivider"/>
      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding DisconnectCommand}" IsEnabled="{Binding !Busy}"  ToolTip.Tip="{loc:Localize Debug.Disconnect}" AutomationProperties.Name="{loc:Localize Debug.Disconnect}"><PathIcon Data="{StaticResource DebugDisconnectIcon}"/></Button>
@@ -99,6 +100,13 @@
      <ScrollViewer MaxHeight="100" HorizontalScrollBarVisibility="Disabled"><SelectableTextBlock Text="{Binding Error}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/></ScrollViewer>
     </Border>
     <TextBlock Text="{loc:Localize Debug.ContentChanged}" IsVisible="{Binding ContentChanged}" FontSize="12" TextWrapping="Wrap"/>
+    <Border IsVisible="{Binding HasPendingContent}" BorderBrush="{DynamicResource SemiColorWarning}" BorderThickness="2,0,0,0" Padding="8,2">
+     <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+      <TextBlock Text="{Binding PendingContentMessage}" FontSize="12" TextWrapping="Wrap" VerticalAlignment="Center"/>
+      <Button Grid.Column="1" Content="{loc:Localize Debug.HotReload.Return}" Command="{Binding ApplyPendingContentCommand}" IsVisible="{Binding CanApplyPendingContent}"/>
+      <Button Grid.Column="2" Content="{loc:Localize Debug.HotReload.Restart}" Command="{Binding RestartForContentCommand}" IsVisible="{Binding CanRestartForContent}"/>
+     </Grid>
+    </Border>
     <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
      <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource SemiColorText3}" VerticalAlignment="Center" IsVisible="{Binding !IsConnected}"/>
      <Border Width="7" Height="7" CornerRadius="4" Background="{DynamicResource SemiColorSuccess}" VerticalAlignment="Center" IsVisible="{Binding IsConnected}"/>

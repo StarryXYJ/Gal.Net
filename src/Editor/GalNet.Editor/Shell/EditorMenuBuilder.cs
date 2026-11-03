@@ -90,6 +90,7 @@ internal sealed class EditorMenuBuilder(EditorShortcutService shortcuts, EditorD
                     new() { HeaderKey = "Debug.Start", Command = DebugAction(vm => vm.StartGameCommand.ExecuteAsync(null)) },
                     new() { HeaderKey = "Debug.Stop", Command = DebugAction(vm => vm.StopGameCommand.ExecuteAsync(null)) },
                     new() { HeaderKey = "Debug.GroupEnd", Command = DebugAction(vm => vm.GroupEndCommand.ExecuteAsync(null)) },
+                    new() { HeaderKey = "Debug.HotReload", Command = DebugAction(vm => vm.HotReloadCommand.ExecuteAsync(null)) },
                     new() { HeaderKey = "Debug.Panel", Command = commands.TogglePanel, CommandParameter = EditorDockPanelIds.ExternalDebug }
                 }
             },
