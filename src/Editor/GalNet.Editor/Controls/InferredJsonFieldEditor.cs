@@ -27,7 +27,9 @@ internal static class InferredJsonFieldEditor
         {
             case JsonValueKind.String: return new(typeof(string));
             case JsonValueKind.True or JsonValueKind.False: return new(typeof(bool));
-            case JsonValueKind.Number: return value.TryGetDecimal(out _) ? new(typeof(decimal)) : null;
+            case JsonValueKind.Number:
+                return value.TryGetDecimal(out var number) && JsonElement.DeepEquals(value, JsonSerializer.SerializeToElement(number))
+                    ? new(typeof(decimal)) : null;
             case JsonValueKind.Array:
             {
                 if (value.GetArrayLength() is 0 or > 200) return null;

@@ -400,6 +400,8 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     [TestCase("[]")]
     [TestCase("{\"a\":null}")]
     [TestCase("[1,\"two\"]")]
+    [TestCase("{\"tiny\":1e-40}")]
+    [TestCase("{\"huge\":123456789012345678901234567890}")]
     public void UntypedUninferableValuesKeepTheExistingSourceEditor(string value)
     {
         var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding(value);
