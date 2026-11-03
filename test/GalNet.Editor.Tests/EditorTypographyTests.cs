@@ -5,6 +5,8 @@ using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.Markup.Xaml.MarkupExtensions;
 using Avalonia.Markup.Xaml.Styling;
+using Avalonia.Styling;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Themes;
@@ -18,6 +20,32 @@ namespace GeneralTest.Editor;
 
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
+    [Test]
+    public async Task CaptionThemeKeepsTransparentIdleAndPointerFeedback()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(() =>
+        {
+            PrepareGroupTheme();
+            var button = new Button { Width = 60, Height = 32, Content = "×", Theme = (ControlTheme)Application.Current!.FindResource("CaptionButton")! };
+            var window = new Window { Width = 300, Height = 200, Content = button };
+            window.Show(); TimelinePump(window);
+            try
+            {
+                window.MouseMove(new Point(250, 150)); window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)button.Background!).Color.A, Is.Zero);
+                var point = button.TranslatePoint(new Point(10, 10), window)!.Value;
+                window.MouseMove(point); window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)button.Background!).Color, Is.EqualTo(((ISolidColorBrush)window.FindResource("CaptionButtonPointeroverBackground")!).Color));
+                window.MouseDown(point, MouseButton.Left); window.UpdateLayout();
+                Assert.That(((ISolidColorBrush)button.Background!).Color, Is.EqualTo(((ISolidColorBrush)window.FindResource("CaptionButtonPressedBackground")!).Color));
+                window.MouseUp(point, MouseButton.Left);
+            }
+            finally { window.Close(); }
+            return Task.FromResult(true);
+        }, CancellationToken.None);
+    }
+
     [Test]
     public async Task ShortcutCaptureUpdatesAndCancelKeepsTheBinding()
     {

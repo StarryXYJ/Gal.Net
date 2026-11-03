@@ -1,4 +1,5 @@
 # GalNet Agent Knowledge
+- [标题按钮本地值压过交互状态](lessons/L-20261103-06-caption-local-value-priority.md)：Semi CaptionButton 常态已透明；不要直接设置按钮本地背景，避免遮蔽 hover/pressed，先区分标题栏与按钮底色。
 - [默认折叠与问题定位](lessons/L-20261103-05-collapsed-group-navigation-order.md)：先打开 Group，再展开定位目标，避免面板首次 Attach 覆盖展开状态。
 - [Inspector 切换先于失焦提交](lessons/L-20261103-03-entry-inspector-click-before-blur.md)：Group pointer tunnel 可先释放旧表单；点击字段外时先由项目草稿提交，保留组字/冲突保护和异步新输入。
 - [调试热重载由内容发布自动触发](lessons/L-20261103-02-debug-hot-reload-publication-trigger.md)：已保存/原子发布的作者内容变化自动构建、分类并提示；顶部菜单和面板按钮只是手动重试入口。历史事务的 Committed 回调仍在捕获锁内，需投递到事务退出后再构建。
