@@ -21,6 +21,32 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task SelectedRowsShowAccentWithoutChangingTextColor()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(() =>
+        {
+            PrepareGroupTheme();
+            var list = new ListBox { ItemsSource = new[] { "One", "Two" }, SelectedIndex = 0 };
+            var window = new Window { Width = 400, Height = 200, Content = list };
+            window.Resources["SemiColorPrimary"] = Brushes.DodgerBlue;
+            window.Resources["SemiColorPrimaryLight"] = Brushes.LightBlue;
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Editor/")) { Source = new Uri("avares://GalNet.Editor/Themes/EditorControlStyles.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var row = (ListBoxItem)list.ContainerFromIndex(0)!;
+                var surface = row.GetVisualDescendants().OfType<Avalonia.Controls.Presenters.ContentPresenter>().Single(item => item.Name == "PART_ContentPresenter");
+                Assert.That(surface.BorderThickness.Left, Is.EqualTo(2));
+                Assert.That(((ISolidColorBrush)surface.BorderBrush!).Color, Is.EqualTo(Colors.DodgerBlue));
+                Assert.That(((ISolidColorBrush)surface.Background!).Color, Is.EqualTo(Colors.LightBlue));
+            }
+            finally { window.Close(); }
+            return Task.FromResult(true);
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task SettingsFieldsReflowWithoutOverlappingAtNarrowWidth()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

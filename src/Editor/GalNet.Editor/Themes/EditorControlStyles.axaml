@@ -30,6 +30,8 @@
   </Style>
   <Style Selector="ListBoxItem:selected /template/ ContentPresenter#PART_ContentPresenter">
     <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/>
+    <Setter Property="BorderThickness" Value="2,0,0,0"/>
     <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
   </Style>
   <Style Selector="ComboBox">
