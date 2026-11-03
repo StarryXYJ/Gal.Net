@@ -12,8 +12,10 @@
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
-        <ScrollViewer Grid.Row="1">
-            <StackPanel Spacing="8">
+        <TabControl Grid.Row="1" TabStripPlacement="Left">
+          <TabItem Header="{loc:Localize Settings.Editor.Title}">
+          <ScrollViewer>
+            <StackPanel Spacing="8" Margin="12,0,0,0">
                 <TextBlock Text="{loc:Localize Settings.Theme}"
                            Foreground="{DynamicResource SemiColorText2}"
                            FontSize="{DynamicResource Editor.Font.Detail}" />
@@ -49,38 +51,42 @@
                 <CheckBox Name="ExpandNewEntries" Content="{loc:Localize Settings.ExpandNewEntries}" IsChecked="{Binding ExpandNewEntries,Mode=TwoWay}"/>
                 <!-- Auto-save is intentionally forced on for the current editor experience. -->
 
-                <Separator Margin="0,10,0,6" />
+            </StackPanel>
+          </ScrollViewer>
+          </TabItem>
+          <TabItem Header="{loc:Localize Settings.Shortcuts}">
+          <ScrollViewer>
+            <StackPanel Spacing="8" Margin="12,0,0,0">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="{loc:Localize Settings.Shortcuts}" FontWeight="SemiBold"
                                Foreground="{DynamicResource SemiColorText0}" VerticalAlignment="Center" />
                     <Button Grid.Column="1" Content="{loc:Localize Settings.Shortcuts.ResetAll}"
-                            Command="{Binding ResetAllShortcutsCommand}" />
+                            Click="OnResetAll" />
                 </Grid>
                 <TextBox Text="{Binding ShortcutSearchText, Mode=TwoWay}" PlaceholderText="{loc:Localize Settings.SearchCommands}" />
                 <ItemsControl ItemsSource="{Binding Shortcuts}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:ShortcutSettingItemViewModel">
                             <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="0,7">
-                                <Grid ColumnDefinitions="2*,1.2*,1.2*,Auto,Auto" ColumnSpacing="8">
-                                    <StackPanel>
+                                <Grid ColumnDefinitions="2*,1*,Auto" ColumnSpacing="12">
+                                    <StackPanel VerticalAlignment="Center">
                                         <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource SemiColorText0}" />
-                                        <TextBlock Text="{Binding CommandId}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="{DynamicResource SemiColorText2}" />
+                                        <TextBlock Text="{Binding Category}" FontSize="{DynamicResource Editor.Font.Caption}" Foreground="{DynamicResource SemiColorText2}" />
                                     </StackPanel>
-                                    <TextBlock Grid.Column="1" Text="{Binding Category}" VerticalAlignment="Center"
-                                               Foreground="{DynamicResource SemiColorText2}" />
-                                    <StackPanel Grid.Column="2">
-                                        <TextBox Text="{Binding GestureText, Mode=TwoWay}" />
-                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="OrangeRed" />
+                                    <StackPanel Grid.Column="1">
+                                        <Button Content="{Binding GestureText}" HorizontalAlignment="Stretch" Click="OnCaptureShortcut" ToolTip.Tip="{loc:Localize Settings.Shortcuts.CaptureHint}" />
+                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="{DynamicResource SemiColorDanger}" TextWrapping="Wrap" />
                                     </StackPanel>
-                                    <Button Grid.Column="3" Content="{loc:Localize Common.Apply}" Command="{Binding ApplyCommand}" />
-                                    <Button Grid.Column="4" Content="{loc:Localize Common.Reset}" Command="{Binding ResetCommand}" />
+                                    <Button Grid.Column="2" Theme="{DynamicResource EditorIconButton}" Command="{Binding ResetCommand}" ToolTip.Tip="{loc:Localize Common.Reset}" AutomationProperties.Name="{loc:Localize Common.Reset}"><PathIcon Width="16" Height="16" Data="{StaticResource ResetIcon}" /></Button>
                                 </Grid>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
-        </ScrollViewer>
+          </ScrollViewer>
+          </TabItem>
+        </TabControl>
 
         <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
             <TextBlock Grid.Column="0" Text="{Binding StatusText}"

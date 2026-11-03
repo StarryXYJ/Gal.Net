@@ -101,14 +101,17 @@
                                             IsVisible="{TemplateBinding HasTitleBar}"
                                             Orientation="Horizontal">
                                     <Button Name="PART_MinimizeButton"
+                                            Background="Transparent"
                                             Theme="{StaticResource CaptionButton}"
                                             Content="{StaticResource WindowMinimizeGlyph}"
                                             WindowDecorationProperties.ElementRole="MinimizeButton" />
                                     <Button Name="PART_MaximizeButton"
+                                            Background="Transparent"
                                             Theme="{StaticResource CaptionButton}"
                                             Content="{StaticResource WindowMaximizeGlyph}"
                                             WindowDecorationProperties.ElementRole="MaximizeButton" />
                                     <Button Name="PART_CloseButton"
+                                            Background="Transparent"
                                             Theme="{StaticResource CaptionButton}"
                                             Content="{StaticResource WindowCloseIconGlyph}"
                                             WindowDecorationProperties.ElementRole="CloseButton" />
@@ -140,6 +143,9 @@
         <semi:UrsaSemiTheme Locale="zh-CN" />
         <semi:SemiPopupAnimations />
         <semi:DockSemiTheme />
+        <Style Selector="Button.fit-aspect"><Setter Property="Background" Value="Transparent"/><Setter Property="BorderThickness" Value="0"/><Setter Property="CornerRadius" Value="0"/></Style>
+        <Style Selector="Button.fit-aspect:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource CaptionButtonPointeroverBackground}"/></Style>
+        <Style Selector="Button.fit-aspect:pressed /template/ ContentPresenter"><Setter Property="Background" Value="{DynamicResource CaptionButtonPressedBackground}"/></Style>
         <semiColorPicker:ColorPickerSemiTheme />
         <StyleInclude Source="avares://GalNet.Editor/Themes/EditorControlStyles.axaml" />
     </Application.Styles>

@@ -1291,5 +1291,8 @@
   "Resource.InvalidGalleryId": "鉴赏解锁 ID 必须为正整数。",
   "Resource.InvalidCover": "封面必须是项目中可用的图片资源。",
   "Resource.DuplicateGalleryId": "鉴赏解锁 ID {0} 已被其他资源使用。",
-  "Resource.MissingCover": "缺失资源：{0}"
+  "Resource.MissingCover": "缺失资源：{0}",
+  "Settings.Shortcuts.Capture": "按下快捷键，Esc 取消，Backspace 清除",
+  "Settings.Shortcuts.CaptureHint": "点击后按下快捷键",
+  "Settings.Shortcuts.ResetAllQuestion": "确定将所有快捷键重置为默认值吗？"
 }

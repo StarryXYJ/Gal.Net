@@ -1291,5 +1291,8 @@
   "Resource.InvalidGalleryId": "Gallery unlock IDs must be positive integers.",
   "Resource.InvalidCover": "The cover must reference an available image resource.",
   "Resource.DuplicateGalleryId": "Gallery unlock ID {0} is already in use.",
-  "Resource.MissingCover": "Missing resource: {0}"
+  "Resource.MissingCover": "Missing resource: {0}",
+  "Settings.Shortcuts.Capture": "Press a shortcut; Esc cancels, Backspace clears",
+  "Settings.Shortcuts.CaptureHint": "Click and press a shortcut",
+  "Settings.Shortcuts.ResetAllQuestion": "Reset all shortcuts to their defaults?"
 }

@@ -1291,5 +1291,8 @@
   "Resource.InvalidGalleryId": "鑑賞の解放 ID は正の整数で指定してください。",
   "Resource.InvalidCover": "カバーには利用可能な画像リソースを指定してください。",
   "Resource.DuplicateGalleryId": "鑑賞の解放 ID {0} は既に使用されています。",
-  "Resource.MissingCover": "見つからないリソース：{0}"
+  "Resource.MissingCover": "見つからないリソース：{0}",
+  "Settings.Shortcuts.Capture": "ショートカットを入力。Esc でキャンセル、Backspace で解除",
+  "Settings.Shortcuts.CaptureHint": "クリックしてキーを入力",
+  "Settings.Shortcuts.ResetAllQuestion": "すべてのショートカットを初期値に戻しますか？"
 }

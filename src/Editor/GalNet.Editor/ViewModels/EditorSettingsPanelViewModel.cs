@@ -150,9 +150,13 @@ public partial class EditorSettingsPanelViewModel : ObservableObject, IDisposabl
     [RelayCommand]
     private void ResetAllShortcuts()
     {
-        _shortcutService.ResetAll();
-        ReloadShortcuts();
-        SetStatus(new("Settings.Saved"));
+        try
+        {
+            _shortcutService.ResetAll();
+            ReloadShortcuts();
+            SetStatus(new("Settings.Saved"));
+        }
+        catch (Exception error) { Log.Error(error, "Failed to reset shortcuts"); SetStatus(new("Settings.SaveFailed")); }
     }
 
     partial void OnSelectedThemeChanged(ThemeSelectionItem? value)
@@ -270,22 +274,29 @@ public sealed partial class ShortcutSettingItemViewModel : ObservableObject
         ValidationMessage = Validate(value);
     }
 
-    [RelayCommand]
-    private void Apply()
+    public void ApplyGesture(string value)
     {
-        ValidationMessage = Validate(GestureText);
-        if (!string.IsNullOrEmpty(ValidationMessage)) return;
-        _service.SetGesture(
-            CommandId,
-            string.IsNullOrWhiteSpace(GestureText) ? null : KeyGesture.Parse(GestureText));
+        var issue = Validate(value);
+        if (!string.IsNullOrEmpty(issue)) { ValidationMessage = issue; return; }
+        try
+        {
+            _service.SetGesture(CommandId, string.IsNullOrWhiteSpace(value) ? null : KeyGesture.Parse(value));
+            GestureText = _definition.Gesture?.ToString() ?? "";
+            ValidationMessage = "";
+        }
+        catch (Exception) { ValidationMessage = _localization["Settings.SaveFailed"]; }
     }
 
     [RelayCommand]
     private void Reset()
     {
-        _service.ResetGesture(CommandId);
-        GestureText = _definition.Gesture?.ToString() ?? "";
-        ValidationMessage = "";
+        try
+        {
+            _service.ResetGesture(CommandId);
+            GestureText = _definition.Gesture?.ToString() ?? "";
+            ValidationMessage = "";
+        }
+        catch (Exception error) { ValidationMessage = error is InvalidOperationException ? error.Message : _localization["Settings.SaveFailed"]; }
     }
 
     private string Validate(string value)

@@ -1291,5 +1291,8 @@
   "Resource.InvalidGalleryId": "감상 해금 ID는 양의 정수여야 합니다.",
   "Resource.InvalidCover": "표지는 사용 가능한 이미지 리소스여야 합니다.",
   "Resource.DuplicateGalleryId": "감상 해금 ID {0}은(는) 이미 사용 중입니다.",
-  "Resource.MissingCover": "누락된 리소스: {0}"
+  "Resource.MissingCover": "누락된 리소스: {0}",
+  "Settings.Shortcuts.Capture": "단축키를 누르세요. Esc 취소, Backspace 지우기",
+  "Settings.Shortcuts.CaptureHint": "클릭한 후 단축키 입력",
+  "Settings.Shortcuts.ResetAllQuestion": "모든 단축키를 기본값으로 초기화할까요?"
 }
