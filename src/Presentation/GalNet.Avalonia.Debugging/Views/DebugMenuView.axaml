@@ -22,6 +22,10 @@
     </Style>
   </Menu.Styles>
   <MenuItem x:Name="DebugCaption" Header="{loc:Localize Debug.Menu}" Foreground="{DynamicResource GalNet.Brush.TextPrimary}">
+    <MenuItem Header="{loc:Localize Debug.GroupStart}" Command="{Binding JumpToGroupStartCommand}" IsEnabled="{Binding HasRun}" />
+    <MenuItem Header="{loc:Localize Debug.GroupEnd}" Command="{Binding JumpToGroupEndCommand}" IsEnabled="{Binding HasRun}" />
+    <MenuItem Header="{loc:Localize Debug.AllTextRead}" ToggleType="CheckBox" IsChecked="{Binding TreatAllTextAsRead, Mode=TwoWay}" />
+    <Separator />
     <MenuItem Header="{loc:Localize Debug.ClearPlayerState}" Command="{Binding ClearPlayerStateCommand}" IsEnabled="{Binding IsGameReady}" />
     <MenuItem Header="{loc:Localize Debug.ReloadGameResources}" Command="{Binding ReloadGameResourcesCommand}" />
     <Separator />

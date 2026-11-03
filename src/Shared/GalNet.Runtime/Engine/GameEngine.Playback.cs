@@ -69,7 +69,7 @@ public sealed partial class GameEngine
         finally { _dispatchGate.Release(); PublishStateChanges(); }
     }
 
-    private bool IsQuickBlockedByUnreadText() => _playbackOptions.QuickReadOnly &&
+    private bool IsQuickBlockedByUnreadText() => _debugger?.TreatAllTextAsRead != true && _playbackOptions.QuickReadOnly &&
         _active.Any(item => item.IsReading && !item.WasRead);
 
     private void SetPlaybackModeCore(PlaybackMode mode)
@@ -85,13 +85,13 @@ public sealed partial class GameEngine
         var readingId = entry.ReadingBoundaryId;
         if (readingId is null && _view.TryGetEntry(entry.Type, out var definition) && definition!.IsReading)
             readingId = entry.StableId;
-        if (readingId is not null && _catchUpActive && _catchUpTarget == CatchUpTarget.Unread && _progress?.IsRead(group.Id, readingId) != true)
+        if (readingId is not null && _catchUpActive && _catchUpTarget == CatchUpTarget.Unread && _debugger?.TreatAllTextAsRead != true && _progress?.IsRead(group.Id, readingId) != true)
         {
             _catchUpActive = false;
             _catchUpStopAtBoundary = true;
         }
         if (readingId is not null && _playbackMode == PlaybackMode.Quick &&
-            _playbackOptions.QuickReadOnly && _progress?.IsRead(group.Id, readingId) != true)
+            _debugger?.TreatAllTextAsRead != true && _playbackOptions.QuickReadOnly && _progress?.IsRead(group.Id, readingId) != true)
             SetPlaybackModeCore(PlaybackMode.Manual);
         if (!_catchUpStopAtBoundary && entry.ReadingBoundaryId is { } target && target != entry.StableId)
             _readingPreamble = true;

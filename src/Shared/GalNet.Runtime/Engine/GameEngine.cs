@@ -24,6 +24,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     private IGameContext _dispatchRuntime;
     private readonly ActivePrimitiveRegistry _active;
     private GameSnapshot _lastStableSnapshot;
+    private GroupEntranceSnapshot? _currentGroupEntrance;
     private readonly string _contentBuildId;
     private readonly string[] _storyPackages;
     private PendingChoice? _pendingChoice;
@@ -219,6 +220,13 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
         if (node is null || node is Group { IsAvailable: false } || candidate.EntryIndex > (node is Group group ? group.Entries.Count : 0))
             throw new InvalidDataException("The save position does not exist in this game graph.");
         _view.ValidateState(_runtime, candidate.State);
+        if (data.GroupEntrance is { } entrance)
+        {
+            if (entrance.NodeId != candidate.NodeId || node is not Group || entrance.Variables is null || entrance.States is null)
+                throw new InvalidDataException("The group entrance does not match the saved position.");
+            var entry = _runtime.PrepareRestore(new GameSnapshot { NodeId = entrance.NodeId, Variables = entrance.Variables, States = entrance.States });
+            _view.ValidateState(_runtime, entry.State);
+        }
         return candidate;
     }
 
@@ -247,11 +255,14 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             var previousScope = _scopeCancellation;
             CancelDetachedScope(previousScope);
             _runtime.Restore(candidate);
+            if (restoringDebugger is null)
+                _currentGroupEntrance = data.GroupEntrance is { } entrance ? SnapshotCopy.CloneEntrance(entrance) : null;
             _debugger?.OnExternalRestore(restoringDebugger is not null);
             _restorationPending = _view.RequiresStateRestore;
             _scopeCancellation = new CancellationTokenSource();
             _dispatchRuntime = new RunScopedRuntime(_runtime, _scopeCancellation.Token);
             _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
+            SetSnapshotEntrance(_lastStableSnapshot);
             _active.EndGroup();
             _flowError = null;
             IsRunning = true;
@@ -395,7 +406,15 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
 
     private void ProcessGroup(Group group, ref int budget, CancellationToken cancellationToken)
     {
-        if (_active.BeginGroupExecution(group.Id)) _debugger?.CaptureEntrance(group.Id);
+        if (_active.BeginGroupExecution(group.Id))
+        {
+            if (_runtime.EntryIndex == 0 && _debugger?.CapturingNaturalEntrance != false)
+            {
+                var snapshot = _runtime.CreateSnapshot();
+                _currentGroupEntrance = new GroupEntranceSnapshot { NodeId = group.Id, Variables = snapshot.Variables, States = snapshot.States };
+            }
+            _debugger?.OnGroupEntry();
+        }
         while (_runtime.EntryIndex < group.Entries.Count && _debugger?.Paused != true && !_active.HasBlockingInstance())
         {
             if (_catchUpActive && --_catchUpBudget < 0) return;
@@ -694,8 +713,13 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             return;
         _view.OnCheckpointCreating(_dispatchRuntime);
         _lastStableSnapshot = StampContent(_runtime.CreateSnapshot());
+        SetSnapshotEntrance(_lastStableSnapshot);
         _notifications.Checkpoint(_lastStableSnapshot);
     }
+
+    private void SetSnapshotEntrance(GameSnapshot snapshot) => snapshot.GroupEntrance =
+        _currentGroupEntrance is { } entrance && entrance.NodeId == snapshot.NodeId
+            ? SnapshotCopy.CloneEntrance(entrance) : null;
 
     private void CancelPendingChoice()
     {

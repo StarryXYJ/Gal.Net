@@ -14,6 +14,27 @@ namespace GeneralTest.Runtime;
 public partial class DebugSessionTests
 {
     [Test]
+    public async Task GroupStartRestoresSavedEntranceSceneAndSaveVariablesAfterReload()
+    {
+        var graph = GraphOf(Entry("test.text", "first"), Entry("test.text", "second"));
+        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait()).BuildView();
+        var runtime = Runtime();
+        await using var engine = new GameEngine(graph, runtime, view);
+        runtime.State.Table<DebugState>().Set(new() { Id = "scene", Value = "entry" });
+        runtime.SetVariable("save.counter", 7);
+        await engine.AdvanceAsync();
+        runtime.State.Table<DebugState>().Set(new() { Id = "scene", Value = "later" });
+        runtime.SetVariable("save.counter", 9);
+        await engine.AdvanceAsync();
+        var save = GalNet.Runtime.SaveLoad.SaveManager.Deserialize(GalNet.Runtime.SaveLoad.SaveManager.Serialize(engine.CreateSaveData()))!;
+        await engine.RestoreFromAsync(save);
+        using var debug = engine.AttachDebugging(Options());
+        await debug.SeekGroupStartAsync(debug.Generation, "main");
+        Assert.That(runtime.State.Table<DebugState>().Get("scene").Value, Is.EqualTo("entry"));
+        Assert.That(runtime.GetVariable("counter")!.AsInt(), Is.EqualTo(7));
+        Assert.That(engine.EntryIndex, Is.Zero);
+    }
+    [Test]
     public async Task PackagedContentDebugSeekStampsInternalBaselinesButRejectsUnstampedExternalSaves()
     {
         var graph = GraphOf(Entry("test.text", "first"), Entry("test.text", "second"));
@@ -62,24 +83,8 @@ public partial class DebugSessionTests
         await debug.SeekAsync(debug.Generation, new("main", 1, []));
         Assert.That(engine.Runtime.State.Table<DebugState>().Get("scene").Value, Is.EqualTo("compressed"));
     }
-    [TestCase(0, 0)]
-    [TestCase(256, 1)]
-    public async Task EntranceCacheHonorsItsCountAndPayloadBudgets(int groups, long bytes)
-    {
-        var graph = GraphOf(Entry("test.text", "first"));
-        graph.Nodes.Add(new Group { Id = "second", Entries = { Entry("test.text", "second") } });
-        graph.Edges.Add(new("main", 0, "second"));
-        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait()).BuildView();
-        await using var engine = new GameEngine(graph, Runtime(), view);
-        using var debug = engine.AttachDebugging(new() { Instructions = Options().Instructions, MaxEntranceGroups = groups, MaxEntrancePayloadBytes = bytes });
-        await engine.AdvanceAsync(); await engine.AdvanceAsync();
-        var state = await debug.InspectAsync();
-        Assert.That(state.CachedGroups, Is.Empty);
-        Assert.That(state.Cache!.PayloadBytes, Is.Zero);
-    }
-
     [Test]
-    public async Task LatestEntranceLruAvoidsReplayingEarlierGroupsAndReportsMeasuredWork()
+    public async Task CurrentEntranceAvoidsReplayingEarlierGroupsAndReportsMeasuredWork()
     {
         var graph = GraphOf(Enumerable.Range(0, 2000).Select(index => Entry("test.scene", "prefix" + index)).Append(Entry("test.text", "wait")).ToArray());
         graph.Nodes.Add(new Group { Id = "second", Entries = Enumerable.Range(0, 200).Select(index => (Entry)Entry("test.scene", "local" + index)).Append(Entry("test.text", "second")).ToList() });
@@ -88,7 +93,7 @@ public partial class DebugSessionTests
             .RegisterInstruction("test.scene", context => new ImmediatePrimitiveInstance(() => context.Runtime.State.Table<DebugState>()
                 .Set(new DebugState { Id = "scene", Value = context.Entry.StableId }))).BuildView();
         await using var engine = new GameEngine(graph, Runtime(), view);
-        using var debug = engine.AttachDebugging(new() { Instructions = Options().Instructions, MaxEntranceGroups = 1 });
+        using var debug = engine.AttachDebugging(Options());
         await engine.AdvanceAsync(); await engine.AdvanceAsync();
         Assert.That((await debug.InspectAsync()).CachedGroups, Is.EqualTo(new[] { "second" }));
         await debug.SeekAsync(debug.Generation, new("second", 150, []));
@@ -103,10 +108,9 @@ public partial class DebugSessionTests
         Assert.That(root.Replay.Instructions, Is.EqualTo(2151));
         Assert.That(engine.Runtime.State.Table<DebugState>().Get("scene").Value, Is.EqualTo(result));
         Assert.That(JsonSerializer.Serialize(engine.Runtime.CreateSnapshot().States), Is.EqualTo(expectedStates));
-        Assert.That(root.Cache!.PayloadBytes, Is.LessThanOrEqualTo(root.Cache.BudgetBytes));
-        TestContext.Out.WriteLine($"entrance={local.Replay.Milliseconds:F2}ms/{local.Replay.Instructions} primitives; root={root.Replay.Milliseconds:F2}ms/{root.Replay.Instructions} primitives; payload={root.Cache.PayloadBytes} bytes");
+        Assert.That(root.Cache, Is.Null);
         await engine.RestoreFromAsync(engine.Runtime.CreateSnapshot());
-        Assert.That((await debug.InspectAsync()).Cache!.PayloadBytes, Is.Zero);
+        Assert.That((await debug.InspectAsync()).CachedGroups, Is.Empty);
     }
 
     [Test]

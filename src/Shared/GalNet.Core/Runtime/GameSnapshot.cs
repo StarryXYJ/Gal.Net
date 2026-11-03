@@ -23,6 +23,18 @@ public sealed class GameSnapshot
     [System.Text.Json.Serialization.JsonRequired]
     public Dictionary<string, StateSection> States { get; init; } = new(StringComparer.Ordinal);
 
+    /// <summary>The natural entrance to the current group, when available.</summary>
+    public GroupEntranceSnapshot? GroupEntrance { get; set; }
+
     /// <summary>Optional host-owned save data. Execution does not interpret or restore these attachments.</summary>
     public Dictionary<string, System.Text.Json.JsonElement> Attachments { get; init; } = new(StringComparer.Ordinal);
+}
+
+/// <summary>A single group entrance without recursively embedding another save.</summary>
+public sealed class GroupEntranceSnapshot
+{
+    public string NodeId { get; init; } = "";
+    public Dictionary<string, GalNet.Core.Variable.Variable> Variables { get; init; } = [];
+    [System.Text.Json.Serialization.JsonRequired]
+    public Dictionary<string, StateSection> States { get; init; } = new(StringComparer.Ordinal);
 }

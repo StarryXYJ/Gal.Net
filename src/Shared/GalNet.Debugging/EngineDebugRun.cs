@@ -23,6 +23,18 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
         _stop = stop;
     }
     public DebugRunInfo Info => new(_id, _session.Generation, ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"], OperationGeneration);
+    public Task SetTreatAllTextAsReadAsync(bool enabled, CancellationToken cancellationToken = default) =>
+        _session.SetTreatAllTextAsReadAsync(enabled, cancellationToken);
+
+    public async Task SeekCurrentGroupStartAsync(CancellationToken cancellationToken = default)
+    {
+        var state = await _session.InspectAsync(cancellationToken).ConfigureAwait(false);
+        await _session.SeekGroupStartAsync(state.Generation, state.NodeId, cancellationToken).ConfigureAwait(false);
+        await _session.ResumeAsync(_session.Generation, cancellationToken).ConfigureAwait(false);
+    }
+
+    public Task SkipToCurrentGroupEndAsync(CancellationToken cancellationToken = default) =>
+        _engine.SkipToGroupEndAsync(cancellationToken: cancellationToken);
     public async Task<object?> ExecuteAsync(DebugCommand command, CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);

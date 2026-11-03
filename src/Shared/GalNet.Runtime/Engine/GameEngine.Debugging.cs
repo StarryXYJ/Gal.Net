@@ -37,22 +37,19 @@ public sealed partial class GameEngine
     public sealed partial class DebugSession : IDisposable
     {
         private readonly GameEngine _engine;
-        private readonly DebugEntranceCache _entrances;
         private bool _disposed;
+        internal bool TreatAllTextAsRead { get; private set; }
         private long _generation = 1;
         internal bool Paused { get; private set; }
         public long Generation => Interlocked.Read(ref _generation);
         internal DebugSession(GameEngine engine, GameDebugOptions options)
         {
-            if (options.MaxEntrancePayloadBytes < 0 || options.MaxEntranceGroups < 0) throw new ArgumentOutOfRangeException(nameof(options));
             _engine = engine;
-            _entrances = new(options.MaxEntrancePayloadBytes, options.MaxEntranceGroups);
+            TreatAllTextAsRead = options.TreatAllTextAsRead;
             _options = new GameDebugOptions
             {
                 Instructions = options.Instructions.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal),
-                SynchronizePresentation = options.SynchronizePresentation,
-                MaxEntrancePayloadBytes = options.MaxEntrancePayloadBytes,
-                MaxEntranceGroups = options.MaxEntranceGroups
+                SynchronizePresentation = options.SynchronizePresentation
             };
             _initialScene = CaptureScene();
         }
@@ -70,11 +67,25 @@ public sealed partial class GameEngine
                     _engine._active.Where(item => !item.Instance.IsCompleted).Select(item => item.StableId).ToArray(), variables,
                     _engine._navigation.Nodes.OfType<Group>().Select(group => new GameDebugGroup(group.Id,
                         group.Entries.OfType<GalNet.Core.Entry.PrimitiveEntry>().Select(entry => entry.StableId).ToArray())).ToArray(),
-                    _entrances.Groups.ToArray(), _engine._flowError?.ToString(),
+                    _engine._currentGroupEntrance is { } entrance && entrance.NodeId == _engine.CurrentNodeId ? [entrance.NodeId] : [], _engine._flowError?.ToString(),
                     _engine._pendingChoice is { } choice ? new(choice.Id, choice.Options.Select(item => item.Text).ToArray()) : null,
                     _engine._active.Where(item => !item.Instance.IsCompleted)
                         .Select(item => new GameDebugActiveEntry(item.GroupId, item.StableId)).ToArray(),
-                    _entrances.Stats, _lastReplay);
+                    null, _lastReplay);
+            }
+            finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
+        }
+
+        public async Task SetTreatAllTextAsReadAsync(bool enabled, CancellationToken cancellationToken = default)
+        {
+            await _engine._dispatchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                Check();
+                TreatAllTextAsRead = enabled;
+                if (!enabled && _engine._playbackMode == PlaybackMode.Quick && _engine.IsQuickBlockedByUnreadText())
+                    _engine.SetPlaybackModeCore(PlaybackMode.Manual);
+                _engine.ReconcilePlaybackTimer();
             }
             finally { _engine._dispatchGate.Release(); _engine.PublishStateChanges(); }
         }
