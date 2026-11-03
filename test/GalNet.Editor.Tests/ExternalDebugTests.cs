@@ -143,10 +143,18 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(view.GetVisualDescendants().OfType<TabControl>().Single().Items.Count, Is.EqualTo(3));
                 var initialBuild = hotReload.PublishedBuild;
                 future.Condition = "true";
+                Dispatcher.UIThread.RunJobs();
+                Assert.Multiple(() =>
+                {
+                    Assert.That(panel.ContentChanged, Is.True);
+                    Assert.That(group.IsDebugCurrent, Is.True, "Editing must not hide the running Group.");
+                    Assert.That(entry.IsDebugCurrent, Is.True, "Editing must not hide the Entry still running from published content.");
+                });
                 await panel.HotReloadCommand.ExecuteAsync(null);
                 Assert.Multiple(() =>
                 {
                     Assert.That(panel.Error, Is.Empty);
+                    Assert.That(panel.Status, Is.EqualTo(panel.L["Debug.HotReload.Applied"]));
                     Assert.That(hotReload.PublishedBuild, Is.Not.SameAs(initialBuild));
                     Assert.That(panel.HasPendingContent, Is.False);
                     Assert.That(revisions.InstallCount, Is.EqualTo(1));
@@ -159,6 +167,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.Multiple(() =>
                 {
                     Assert.That(panel.Error, Is.Empty);
+                    Assert.That(panel.Status, Is.EqualTo(panel.L["Debug.HotReload.ReturnRequired"]));
                     Assert.That(panel.HasPendingContent, Is.True);
                     Assert.That(panel.CanApplyPendingContent, Is.True);
                     Assert.That(hotReload.PublishedBuild, Is.SameAs(directlyApplied), "Source maps must stay on the running content while an update is pending.");

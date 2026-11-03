@@ -140,16 +140,18 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     });
     private void ShowHotReloadNotice(DebugContentImpact impact)
     {
-        if (_closed || (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is not Views.MainWindow window) return;
+        if (_closed) return;
         var key = impact switch
         {
             DebugContentImpact.Direct => "Debug.HotReload.Applied",
             DebugContentImpact.ReturnGroupStart => "Debug.HotReload.ReturnRequired",
             _ => "Debug.HotReload.RestartRequired"
         };
-        window.ShowToast(L[key], impact == DebugContentImpact.Direct
-            ? Avalonia.Controls.Notifications.NotificationType.Success
-            : Avalonia.Controls.Notifications.NotificationType.Information);
+        Status = L[key];
+        if ((Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.MainWindow is Views.MainWindow window)
+            window.ShowToast(Status, impact == DebugContentImpact.Direct
+                ? Avalonia.Controls.Notifications.NotificationType.Success
+                : Avalonia.Controls.Notifications.NotificationType.Information);
     }
     private void OnClientChanged() => Dispatcher.UIThread.Post(() =>
     {
@@ -216,7 +218,7 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
     }
     private void UpdateHighlights()
     {
-        var state = !ContentChanged && _authorSignature is not null ? _client.State : null;
+        var state = _authorSignature is not null ? _client.State : null;
         foreach (var node in _workspace.Nodes)
         {
             node.IsDebugCurrent = state?.NodeId == node.Id;
