@@ -13,7 +13,8 @@ public sealed record GameDebugActiveEntry(string GroupId, string EntryId);
 public sealed record GameDebugState(long Generation, GameEngineState State, bool Paused, string NodeId, int EntryIndex,
     string[] ActiveEntryIds, GameDebugVariable[] Variables, GameDebugGroup[] Groups, string[] CachedGroups, string? Error, GameDebugChoice? Choice,
     GameDebugActiveEntry[]? ActiveEntries = null, GameDebugCacheStats? Cache = null, GameDebugReplayStats? Replay = null,
-    string[]? VisitedGroups = null, bool CanReturnGroupStart = false, bool RepeatedGroupVisit = false);
+    string[]? VisitedGroups = null, bool CanReturnGroupStart = false, bool RepeatedGroupVisit = false,
+    string? LatestRevision = null, string? RunRevision = null);
 
 public sealed partial class GameEngine
 {

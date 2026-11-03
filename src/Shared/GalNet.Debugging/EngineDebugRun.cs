@@ -12,17 +12,24 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
     private readonly GameEngine _engine;
     private readonly GameEngine.DebugSession _session;
     private readonly Func<CancellationToken, Task>? _stop;
+    private readonly IDebugContentRevisionController? _content;
     private readonly string _id = Guid.NewGuid().ToString("N");
     private bool _disposed;
     private long _operationGeneration;
     private long? OperationGeneration => Interlocked.Read(ref _operationGeneration) is var value && value != 0 ? value : null;
-    public EngineDebugRun(GameEngine engine, GameDebugOptions? options = null, Func<CancellationToken, Task>? stop = null)
+    public EngineDebugRun(GameEngine engine, GameDebugOptions? options = null, Func<CancellationToken, Task>? stop = null,
+        IDebugContentRevisionController? content = null)
     {
         _engine = engine;
         _session = engine.AttachDebugging(options);
         _stop = stop;
+        _content = content;
     }
-    public DebugRunInfo Info => new(_id, _session.Generation, ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"], OperationGeneration);
+    public DebugRunInfo Info => new(_id, _session.Generation,
+        _content is null
+            ? ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel"]
+            : ["inspect", "pause", "resume", "step", "breakpoints", "setVariable", "choose", "seek", "groupEnd", "stop", "cancel",
+                "content.install", "content.activate", "content.activateAndSeekGroupStart"], OperationGeneration);
     public Task SetTreatAllTextAsReadAsync(bool enabled, CancellationToken cancellationToken = default) =>
         _session.SetTreatAllTextAsReadAsync(enabled, cancellationToken);
 
@@ -43,7 +50,19 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
         var generation = command.Generation ?? throw new InvalidDataException("Missing execution generation.");
         switch (command.Method)
         {
-            case "inspect": return await _session.InspectAsync(cancellationToken).ConfigureAwait(false);
+            case "inspect":
+                var inspected = await _session.InspectAsync(cancellationToken).ConfigureAwait(false);
+                return _content is null ? inspected : inspected with
+                {
+                    LatestRevision = _content.Versions.LatestRevision,
+                    RunRevision = _content.Versions.RunRevision
+                };
+            case "content.install":
+                return await RequireContent().InstallAsync(Read<DebugContentInstallRequest>(command.Arguments), cancellationToken).ConfigureAwait(false);
+            case "content.activate":
+                return await ActivateContentAsync(generation, Read<DebugContentActivateRequest>(command.Arguments), false, cancellationToken).ConfigureAwait(false);
+            case "content.activateAndSeekGroupStart":
+                return await ActivateContentAsync(generation, Read<DebugContentActivateRequest>(command.Arguments), true, cancellationToken).ConfigureAwait(false);
             case "pause": await _session.PauseAsync(generation, cancellationToken).ConfigureAwait(false); break;
             case "resume": await _session.ResumeAsync(generation, cancellationToken).ConfigureAwait(false); break;
             case "step": await _session.StepAsync(generation, Read<GameDebugSpan>(command.Arguments), cancellationToken).ConfigureAwait(false); break;
@@ -76,6 +95,24 @@ public sealed class EngineDebugRun : IDebugGameRun, IDisposable
         }
         return null;
     }
+    private async Task<DebugContentActivationResult> ActivateContentAsync(long generation, DebugContentActivateRequest request,
+        bool seekGroupStart, CancellationToken cancellationToken)
+    {
+        var content = RequireContent();
+        var graph = content.GetLatestGraph(request.Revision);
+        var next = await _session.ReplaceContentAsync(generation,
+            new(graph, request.Expected, request.CandidateEntryIndex), cancellationToken).ConfigureAwait(false);
+        content.CommitActivation(request.Revision);
+        if (seekGroupStart)
+        {
+            await _session.SeekGroupStartAsync(next, request.Expected.NodeId, cancellationToken).ConfigureAwait(false);
+            await _session.ResumeAsync(_session.Generation, cancellationToken).ConfigureAwait(false);
+            next = _session.Generation;
+        }
+        return new(next, content.Versions);
+    }
+    private IDebugContentRevisionController RequireContent() =>
+        _content ?? throw new NotSupportedException("This debug App does not support content revisions.");
     private static T Read<T>(JsonElement value) => value.Deserialize<T>(DebugWire.Json) ?? throw new InvalidDataException("Missing debug arguments.");
     public async Task OnDisconnectedAsync()
     {

@@ -12,15 +12,17 @@ public sealed class AvaloniaExternalDebugSession : IAsyncDisposable
     private readonly GameDebugHost _host;
     private readonly IServiceProvider _services;
     private readonly GameDebugHostOptions _options;
+    private readonly DebugContentRevisionService _content;
     private EngineDebugRun? _run;
     private bool _treatAllTextAsRead;
     public bool HasRun => _run is not null;
     public event Action? RunChanged;
 
-    public AvaloniaExternalDebugSession(IServiceProvider services, GameDebugHostOptions options)
+    public AvaloniaExternalDebugSession(IServiceProvider services, GameDebugHostOptions options, DebugContentRevisionService content)
     {
         _services = services;
         _options = options;
+        _content = content;
         _host = new GameDebugHost(async token =>
         {
             token.ThrowIfCancellationRequested();
@@ -28,12 +30,16 @@ public sealed class AvaloniaExternalDebugSession : IAsyncDisposable
                 await services.GetRequiredService<IPlayerApplication>().StartNewGameAsync());
         });
     }
-    public Task ConnectAsync(DebugInvitation invitation, CancellationToken token) => _host.ConnectAsync(invitation, token);
+    public Task ConnectAsync(DebugInvitation invitation, CancellationToken token)
+    {
+        _content.SetIdentity(invitation.Identity);
+        return _host.ConnectAsync(invitation, token);
+    }
     public Task DisconnectAsync() => _host.DisconnectAsync();
     public IDisposable Attach(GameEngine engine)
     {
         var run = new EngineDebugRun(engine, new GameDebugOptions { Instructions = _options.Instructions, TreatAllTextAsRead = _treatAllTextAsRead },
-            token => _services.GetRequiredService<AvaloniaGameSession>().StopAsync(token));
+            token => _services.GetRequiredService<AvaloniaGameSession>().StopAsync(token), _content);
         try
         {
             var binding = _host.AttachRun(run);

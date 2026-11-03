@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using System.Text.Json;
+using GalNet.Core.Graph;
+using GalNet.Runtime.Engine;
 
 namespace GalNet.Debugging;
 
@@ -9,6 +11,18 @@ public sealed record DebugInvitation(int Port, string Token, string SessionId, D
 public sealed record DebugRunInfo(string RunId, long Generation, string[] Capabilities, long? OperationGeneration = null);
 public sealed record DebugHostStatus(string SessionId, bool CanStart, DebugRunInfo? Run);
 public sealed record DebugCommand(string Method, string? RunId, long? Generation, JsonElement Arguments);
+public sealed record DebugContentVersions(string LatestRevision, string RunRevision);
+public sealed record DebugContentInstallRequest(string Directory, string Revision, string ContentFingerprint, string ContractFingerprint);
+public sealed record DebugContentActivateRequest(string Revision, GameDebugContentBoundary Expected, int CandidateEntryIndex);
+public sealed record DebugContentActivationResult(long Generation, DebugContentVersions Versions);
+
+public interface IDebugContentRevisionController
+{
+    DebugContentVersions Versions { get; }
+    Task<DebugContentVersions> InstallAsync(DebugContentInstallRequest request, CancellationToken cancellationToken);
+    Graph GetLatestGraph(string revision);
+    void CommitActivation(string revision);
+}
 public interface IDebugGameRun
 {
     DebugRunInfo Info { get; }

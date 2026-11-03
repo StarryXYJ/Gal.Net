@@ -40,7 +40,11 @@ Runtime 只提供 Editor 分类所需事实和一个原子导航换代能力，�
 - 普通非调试运行回归通过。
 - 测试、阶段证据完整后单独提交。
 
-## P3 — 客户端版本服务与两段式协议（planned）
+## P3 — 客户端版本服务与两段式协议（verified）
+
+实现结果（2026-11-03）：新增唯一客户端 `DebugContentRevisionService`，验证并拥有不可变候选 scope，区分 LatestRevision/RunRevision；协议新增 install、activate、activateAndSeekGroupStart，inspect 回传两个版本身份。Direct 复用 P2 原子换代；返回开头串行执行激活、现有 Seek 和恢复；新 Run 通过一个可选资源选择接口取得最新版。当前运行中新资源 Acquire 的动态路由明确留在 P5，不在本阶段增加第二个资源服务。
+
+验证：`GalNet.Debugging.Tests` 18/18、`GalNet.GameHost.Tests` 10/10、版本服务/调试工具/宿主清理与扩展相关集成 12/12 通过；`GalNet.Avalonia.Debugging` 构建通过。仅保留仓库既有 analyzer/Avalonia warning。
 
 ### 目标
 
@@ -52,7 +56,7 @@ Runtime 只提供 Editor 分类所需事实和一个原子导航换代能力，�
 - inspect 返回 `LatestRevision` 与 `RunRevision`。
 - 版本服务验证候选目录、项目/内容/契约身份、Graph 和 primitive 实现后更新 Latest；安装不改变 Run 或 generation。
 - 新未激活候选覆盖旧候选时释放旧候选；失败保持两个版本指针不变。
-- Direct 激活调用 P2 原语，同时切换当前运行的新资源获取来源。
+- Direct 激活调用 P2 原语并提交 RunRevision；当前运行的新资源获取路由在 P5 由同一服务补齐。
 - 返回开头操作串行完成“激活最新版 → 现有 SeekGroupStart”；不自行降级。
 - 新 Run 默认绑定 LatestRevision。
 - 超时后通过 inspect 对账；位置竞态只拒绝，不重新分类。

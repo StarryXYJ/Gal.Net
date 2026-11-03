@@ -25,6 +25,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private readonly IPlayerLocalization _localization;
     private readonly IPlayerStartup _startup;
     private readonly LibVlcRuntime _mediaRuntime;
+    private readonly IGameResourceRevisionSource? _resourceRevisions;
     private readonly SaveSlotCollection _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
@@ -42,7 +43,8 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private Task? _disposeTask;
 
     public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePresentationState gameplay, GamePage page, IAvaloniaPlayerSettings settings,
-        IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime)
+        IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime,
+        IEnumerable<IGameResourceRevisionSource>? resourceRevisions = null)
     {
         _options = options;
         GameTitle = options.GameTitle;
@@ -53,6 +55,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         _localization = localization;
         _startup = startup;
         _mediaRuntime = mediaRuntime;
+        _resourceRevisions = resourceRevisions?.SingleOrDefault();
         _readOnlySaveSlots = new ReadOnlyObservableCollection<GameSaveSlot>(_saveSlots);
         _gameplay.InteractionObserved += OnInteractionObserved;
     }
@@ -355,6 +358,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
         var saveSession = _saveSession;
         if (!IsReady || resources is null || saveSession is null)
             throw new InvalidOperationException("The game session is not initialized.");
+        resources = _resourceRevisions?.SelectForNewRun(resources) ?? resources;
 
         return await AvaloniaGameRun.CreateAsync(
             _gameplay,
