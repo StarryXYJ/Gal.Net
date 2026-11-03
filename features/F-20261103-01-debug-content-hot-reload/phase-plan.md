@@ -35,13 +35,13 @@
 ## P4 — Editor 协调、提示与闭环（verified）
 
 - 唯一 Editor 服务保存 applied/pending build，负责构建、安装、分类和明确命令。
-- Direct 自动替换；Return/Restart 在调试面板显示唯一对应动作。
-- 顶部菜单只保留“应用内容修改”；Toast 由 Editor Panel 在命令完成后显示。
+- 已保存或原子发布的内容变化自动触发；Direct 自动替换，Return/Restart 在调试面板显示唯一对应动作。
+- 三种结果均由 Editor Panel 即时 Toast；顶部菜单和面板热更新按钮只保留为手动重试入口。
 - 只有命令成功才切换源码映射；失败保持旧运行和旧映射。
 
-证据：真实 loopback 挂载 UI 测试覆盖 Direct、ReturnGroupStart、RestartGame pending，1/1 通过；Editor 构建通过。
+证据：真实 loopback 挂载 UI 测试从作者保存/结构发布开始，覆盖自动 Direct、ReturnGroupStart、RestartGame pending，1/1 通过；Editor 构建通过。
 
-提交：`4f825460`。
+提交：`4f825460`；自动触发修复：`674eaf27`。
 
 ## P5 — 文档与收尾（verified）
 

@@ -14,7 +14,7 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 - `GalNet.Debugging`：候选清单、纯影响分类、install/activate/activate-and-seek 协议。
 - `GalNet.Runtime`：Snapshot v6 的自然经过 Group ID 序列，以及完整 Graph 原子替换。
 - `GalNet.Avalonia.Debugging`：验证并拥有完整候选，激活最新候选，新 Run 选择最新内容。
-- `GalNet.Editor`：构建/安装/分类/激活协调服务、调试面板待处理动作、Toast 和单一顶部菜单入口。
+- `GalNet.Editor`：保存/原子发布后的自动构建、安装、分类与激活，调试面板待处理动作、三类 Toast 和手动重试入口。
 
 ## 行为边界
 
@@ -33,7 +33,7 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 - `GalNet.Debugging.Tests`：19/19。
 - `GalNet.Runtime.Tests`：128/128。
 - Debug 内容服务、构建器、Snapshot/primitive dispatch 定向集成：30/30。
-- Editor 真实 loopback 挂载 UI 测试：1/1，覆盖 Direct、ReturnGroupStart、RestartGame pending、源码映射提交与 generation 后续命令。
+- Editor 真实 loopback 挂载 UI 测试：1/1，从作者保存/结构发布开始覆盖自动 Direct、ReturnGroupStart、RestartGame pending、源码映射提交与 generation 后续命令。
 
 仓库既有 analyzer/Avalonia warning 保留，无新增编译错误。
 
@@ -45,6 +45,8 @@ Editor 启动的 Developer 调试 App 现可接收完整内容候选，并由 Ed
 - `a4787c71`：撤销独立拓扑摘要。
 - `c049ebce`：删除内容版本状态机并收缩客户端状态。
 - `4f825460`：Editor 协调、提示与闭环。
+- `d74f2478`：保留运行位置高亮并让三类结果始终显示在面板状态栏。
+- `674eaf27`：恢复保存/原子发布后的自动应用与即时提示。
 
 ## 文档
 
