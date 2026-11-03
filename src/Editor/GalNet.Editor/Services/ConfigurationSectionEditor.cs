@@ -63,7 +63,8 @@ public sealed class ConfigurationSectionEditor : IDisposable
         };
         if (field.Id is "defaultVisualPrograms" or "defaultWeatherTextures")
         {
-            var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)))));
+            var editor = field.Id == "defaultWeatherTextures" ? "entry.imageasset" : "entry.effectprogramasset";
+            var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)), editor: new EditorHints(editor))));
             return new(field.Id, map, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
         }
         if (field.Id is not ("audioBuses" or "audioTracks"))
