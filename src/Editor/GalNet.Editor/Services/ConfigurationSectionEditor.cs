@@ -55,12 +55,13 @@ public sealed class ConfigurationSectionEditor : IDisposable
             "orientationPolicy" => "Settings.Project.OrientationPolicy",
             "defaultOrientation" => "Settings.Project.DefaultOrientation",
             "defaultVisualPrograms" => "Settings.Project.DefaultVisualPrograms",
+            "defaultWeatherTextures" => "Settings.Project.DefaultWeatherTextures",
             "saveSlotCount" => "Settings.Project.SaveSlotCount",
             "audioBuses" => "Settings.Project.AudioBuses",
             "audioTracks" => "Settings.Project.AudioTracks",
             _ => field.LabelKey
         };
-        if (field.Id == "defaultVisualPrograms")
+        if (field.Id is "defaultVisualPrograms" or "defaultWeatherTextures")
         {
             var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)))));
             return new(field.Id, map, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);

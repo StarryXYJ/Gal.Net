@@ -93,6 +93,33 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task DefaultWeatherTexturesUseStructuredMapAndProjectHistory()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "WeatherSettings"), "WeatherSettings", new(), Contracts());
+            var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
+            var view = new ProjectSettingsPanelView { DataContext = panel }; var window = new Window { Content = view, Width = 1000, Height = 700 };
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var map = view.GetVisualDescendants().OfType<StructuredFieldEditor>().Single(editor => editor.Context.Field.Id == "defaultWeatherTextures");
+                Assert.That(map.Context.Field.LabelKey, Is.EqualTo("Settings.Project.DefaultWeatherTextures"));
+                Assert.That(map.Context.Value.Json!.Value.ValueKind, Is.EqualTo(JsonValueKind.Object));
+                await Stage(panel, "defaultWeatherTextures", new Dictionary<string, string> { ["rain"] = "rain-id" });
+                await panel.CommitDraftAsync();
+                Assert.That(project.Configuration.ReadDefaultOptions().DefaultWeatherTextures["rain"], Is.EqualTo("rain-id"));
+                await panel.UndoRedoHistory.UndoAsync();
+                Assert.That(project.Configuration.ReadDefaultOptions().DefaultWeatherTextures, Is.Empty);
+            }
+            finally { window.Close(); panel.Dispose(); await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task CustomAudioConfigurationSupportsDraftUndoSaveAndReopen()
     {
         using var services = Services();

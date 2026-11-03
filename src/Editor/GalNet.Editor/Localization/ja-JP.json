@@ -162,6 +162,7 @@
   "Settings.Project.Orientation.Landscape": "横向き",
   "Settings.Project.Orientation.Portrait": "縦向き",
   "Settings.Project.DefaultVisualPrograms": "既定のビジュアルプログラム",
+  "Settings.Project.DefaultWeatherTextures": "既定の天候テクスチャ",
   "Settings.Project.PlaybackOrder": "再生順",
   "Settings.Project.Repeat": "リピートモード",
   "Settings.Project.OverflowPolicy": "音声超過時の処理",

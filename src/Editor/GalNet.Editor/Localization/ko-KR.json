@@ -162,6 +162,7 @@
   "Settings.Project.Orientation.Landscape": "가로 화면",
   "Settings.Project.Orientation.Portrait": "세로 화면",
   "Settings.Project.DefaultVisualPrograms": "기본 비주얼 프로그램",
+  "Settings.Project.DefaultWeatherTextures": "기본 날씨 텍스처",
   "Settings.Project.PlaybackOrder": "재생 순서",
   "Settings.Project.Repeat": "반복 모드",
   "Settings.Project.OverflowPolicy": "음성 초과 정책",

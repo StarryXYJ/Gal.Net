@@ -162,6 +162,7 @@
   "Settings.Project.Orientation.Landscape": "Landscape",
   "Settings.Project.Orientation.Portrait": "Portrait",
   "Settings.Project.DefaultVisualPrograms": "Default visual programs",
+  "Settings.Project.DefaultWeatherTextures": "Default weather textures",
   "Settings.Project.PlaybackOrder": "Playback order",
   "Settings.Project.Repeat": "Repeat mode",
   "Settings.Project.OverflowPolicy": "Voice overflow policy",

@@ -24,7 +24,7 @@ internal static class AudioBusFieldEditor
             try
             {
                 var current = context.EffectiveValue is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
-                var rows = new List<Option> { new(null, PropertyEditorSupport.Text("AssetPicker.None")) };
+                var rows = new List<Option> { new(null, PropertyEditorSupport.Text("Entry.Option.None")) };
                 rows.AddRange(section.AudioBuses().Select(bus => new Option(bus.Id, string.IsNullOrWhiteSpace(bus.Name) ? bus.Id : $"{bus.Name} ({bus.Id})")));
                 if (current is not null && rows.All(row => row.Id != current)) rows.Add(new(current, current));
                 if (input.ItemsSource is not List<Option> existing || !existing.SequenceEqual(rows)) input.ItemsSource = rows;
