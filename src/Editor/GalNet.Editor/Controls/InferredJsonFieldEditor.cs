@@ -1,5 +1,9 @@
 using System.ComponentModel;
 using System.Text.Json;
+using Avalonia.Controls;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using Avalonia.Layout;
 using GalNet.Core.Parameters;
 using GalNet.Game.Controls.Forms;
 
@@ -12,12 +16,58 @@ internal static class InferredJsonFieldEditor
     {
         if (parent.EffectiveValue is not { ValueKind: JsonValueKind.Object or JsonValueKind.Array } value || Infer(value, 0) is not { } descriptor)
             return DefaultFieldEditors.CreateJson(parent);
-        var field = new FieldDescriptor(parent.Field.Id, descriptor, parent.Field.IsRequired, labelKey: parent.Field.LabelKey);
-        var binding = new ForwardBinding(parent);
-        var child = new FieldEditorContext(field, binding, parent.Registry);
-        var lease = parent.Registry!.Resolve(field)(child);
-        if (lease.Control is StructuredFieldEditor editor) editor.ShowSourceEditor = true;
-        return new FieldEditorLease(lease.Control, () => { lease.Dispose(); child.Dispose(); binding.Dispose(); });
+        var host = new InferredHost(parent, descriptor);
+        return new FieldEditorLease(host, host.Dispose);
+    }
+
+    private sealed class InferredHost : ContentControl, IDisposable
+    {
+        private readonly FieldEditorContext _parent;
+        private ValueDescriptor? _shape;
+        private ForwardBinding? _binding;
+        private FieldEditorContext? _child;
+        private FieldEditorLease? _lease;
+        private bool _disposed, _refreshQueued;
+        public InferredHost(FieldEditorContext parent, ValueDescriptor shape)
+        {
+            _parent = parent; HorizontalContentAlignment = HorizontalAlignment.Stretch;
+            _parent.PropertyChanged += ParentChanged; Build(shape);
+        }
+        private void ParentChanged(object? sender, PropertyChangedEventArgs args)
+        {
+            if (_disposed || _refreshQueued) return;
+            _refreshQueued = true;
+            Dispatcher.UIThread.Post(() =>
+            {
+                _refreshQueued = false;
+                if (_disposed || _parent.HasDraft || _parent.IsSubmitting ||
+                    this.GetVisualDescendants().OfType<SchemaForm>().Any(form => form.Contexts.Any(context => context.HasDraft))) return;
+                var next = _parent.Value.Json is { ValueKind: JsonValueKind.Object or JsonValueKind.Array } value ? Infer(value, 0) : null;
+                if (next is null ? _shape is null : _shape is not null && SameShape(_shape, next)) return;
+                Build(next);
+            });
+        }
+        private void Build(ValueDescriptor? shape)
+        {
+            Content = null; _lease?.Dispose(); _child?.Dispose(); _binding?.Dispose();
+            _shape = shape; _lease = null; _child = null; _binding = null;
+            if (shape is null) _lease = DefaultFieldEditors.CreateJson(_parent);
+            else
+            {
+                var field = new FieldDescriptor(_parent.Field.Id, shape, _parent.Field.IsRequired, labelKey: _parent.Field.LabelKey);
+                _binding = new ForwardBinding(_parent);
+                _child = new FieldEditorContext(field, _binding, _parent.Registry);
+                _lease = _parent.Registry!.Resolve(field)(_child);
+                if (_lease.Control is StructuredFieldEditor editor) editor.ShowSourceEditor = true;
+            }
+            Content = _lease.Control;
+        }
+        public void Dispose()
+        {
+            if (_disposed) return;
+            _disposed = true; _parent.PropertyChanged -= ParentChanged;
+            Content = null; _lease?.Dispose(); _child?.Dispose(); _binding?.Dispose();
+        }
     }
 
     private static ValueDescriptor? Infer(JsonElement value, int depth)

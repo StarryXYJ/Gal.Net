@@ -387,6 +387,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     {
         public FieldValue Value { get; private set; } = new(JsonSerializer.Deserialize<JsonElement>(json));
         public int Commits { get; private set; }
+        public void ReplaceExternally(string json) { Value = new(JsonSerializer.Deserialize<JsonElement>(json)); Changed?.Invoke(this, EventArgs.Empty); }
         public FieldValue Read() => Value;
         public event EventHandler? Changed;
         public Task<ValueIssue?> CommitAsync(FieldValue value, CancellationToken token)
@@ -429,7 +430,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             window.Show(); TimelinePump(window);
             try
             {
-                var list = (StructuredFieldEditor)lease.Control; list.IsExpanded = true; TimelinePump(window);
+                var list = (StructuredFieldEditor)((ContentControl)lease.Control).Content!; list.IsExpanded = true; TimelinePump(window);
                 var row = list.GetVisualDescendants().OfType<StructuredFieldEditor>().First(editor => !ReferenceEquals(editor, list));
                 row.IsExpanded = true; TimelinePump(window);
                 var amount = row.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Single(item => item.Field.Id == "amount");
@@ -440,6 +441,34 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             }
             finally { window.Close(); }
             return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task UntypedShapeChangeDoesNotDiscardPendingFieldInput()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(() =>
+        {
+            PrepareGroupTheme(); var registry = EditorFieldEditors.CreateDefault(); var binding = new PropertyBinding("{\"amount\":1}");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field)(context);
+            var window = new Window { Content = lease.Control, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.Controls/")) { Source = new Uri("avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var editor = (StructuredFieldEditor)((ContentControl)lease.Control).Content!; editor.IsExpanded = true; TimelinePump(window);
+                var amount = editor.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Single(item => item.Field.Id == "amount");
+                amount.Text = "3";
+                binding.ReplaceExternally("{\"amount\":1,\"added\":true}"); TimelinePump(window);
+                Assert.That(((ContentControl)lease.Control).Content, Is.SameAs(editor));
+                Assert.That(amount.Text, Is.EqualTo("3"));
+                Assert.That(amount.HasDraft, Is.True);
+            }
+            finally { window.Close(); }
+            return Task.FromResult(true);
         }, CancellationToken.None);
     }
 
@@ -460,7 +489,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             window.Show(); TimelinePump(window);
             try
             {
-                var editor = (StructuredFieldEditor)lease.Control; editor.IsExpanded = true; TimelinePump(window);
+                var editor = (StructuredFieldEditor)((ContentControl)lease.Control).Content!; editor.IsExpanded = true; TimelinePump(window);
                 var form = editor.GetVisualDescendants().OfType<SchemaForm>().First();
                 var amount = form.Contexts.Single(item => item.Field.Id == "amount");
                 amount.Text = "2"; Assert.That(await amount.CommitTextAsync(), Is.True);
@@ -473,6 +502,10 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 source.Text = "{\"amount\":2,\"newField\":true}";
                 source.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
                 Assert.That(binding.Value.Json.Value.GetProperty("newField").GetBoolean(), Is.True, "Adding an untyped member must remain possible.");
+                TimelinePump(window);
+                var updated = (StructuredFieldEditor)((ContentControl)lease.Control).Content!;
+                updated.IsExpanded = true; TimelinePump(window);
+                Assert.That(updated.GetVisualDescendants().OfType<SchemaForm>().First().Contexts.Any(item => item.Field.Id == "newField"), Is.True, "New members must appear in the refreshed form.");
             }
             finally { window.Close(); }
             return true;
