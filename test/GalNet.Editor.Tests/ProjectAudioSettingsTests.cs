@@ -76,6 +76,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var remove = tracks.GetVisualDescendants().OfType<Button>().First(button => button.Name == "remove");
                 Assert.That(Avalonia.Automation.AutomationProperties.GetName(remove), Is.Not.Null.And.Not.Empty);
                 Assert.That(ToolTip.GetTip(remove), Is.Not.Null);
+                var firstTrack = tracks.GetVisualDescendants().OfType<StructuredFieldEditor>().First(editor => !ReferenceEquals(editor, tracks));
+                firstTrack.IsExpanded = true; TimelinePump(window);
+                var bus = firstTrack.GetVisualDescendants().OfType<ComboBox>().Single(box => box.Name == "AudioBusInput");
+                var buses = audio.Buses.ToList(); buses.Add(new("ambience", "Environment"));
+                await Stage(panel, "audioBuses", buses); TimelinePump(window);
+                Assert.That(bus.Items.Cast<object>().Any(option => option.ToString() == "Environment (ambience)"), Is.True, "Unsaved bus drafts must be selectable.");
+                bus.SelectedItem = bus.Items.Cast<object>().Single(option => option.ToString() == "Environment (ambience)"); TimelinePump(window);
+                Assert.That(Setting(panel, "audioTracks").Read().Json!.Value[0].GetProperty("busId").GetString(), Is.EqualTo("ambience"));
+                await panel.CommitDraftAsync();
+                Assert.That(project.Configuration.ReadDefaultOptions().AudioTracks[0].BusId, Is.EqualTo("ambience"));
             }
             finally { window.Close(); panel.Dispose(); await projects.CloseAsync(); }
             return true;

@@ -2,6 +2,8 @@
 
 默认宿主使用 `MiniaudioAudioPlaybackHost`，原生设备/解码适配位于 `GalNet.Media.Miniaudio`，跨平台 PCM 混音与 DSP 位于 `GalNet.Media.Audio`。LibVLC 继续服务视频和 Gallery，剧情音频不再通过独立 LibVLC player 输出。
 
+项目设置中的音频轨道按 ID 标识，轨道的总线字段可从当前总线列表选择，尚未提交的总线草稿也会显示；选择“无”表示不归属总线。无法解析的旧 ID 保留显示，不会因打开设置被自动替换。
+
 ## 效果与混音条目
 
 `audio.seffect.apply` / `audio.seffect.stop` 使用 `scope`（`track` / `bus`）、必填 `targetId` 和 `instanceId`。首次 apply 添加到链尾；相同实例/类型更新参数并保留链位置。移除平滑旁路，不重启声音。已附着的效果可在空闲时保留，新音源第一帧即经过目标链。

@@ -24,6 +24,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
     public string Id => _section.Id;
     public DtoEditorItem Item { get; }
     public EditorRegistry Registry { get; }
+    public event Action? AudioBusesChanged;
     public bool HasChanges => _fields.Values.Any(item => item.Draft.IsDirty || item.Pending is { } value && !Equal(item.Source(_baseline), value));
 
     public ConfigurationSectionEditor(ConfigurationSection section, ProjectConfiguration configuration, EditorRegistry registry,
@@ -80,11 +81,19 @@ public sealed class ConfigurationSectionEditor : IDisposable
                 "playbackOrder" => "Settings.Project.PlaybackOrder", "repeat" => "Settings.Project.Repeat",
                 "overflowPolicy" => "Settings.Project.OverflowPolicy", "queueOverflowPolicy" => "Settings.Project.QueueOverflowPolicy", _ => null
             };
-            return new FieldDescriptor(id, new ValueDescriptor(property.PropertyType, jsonOptions: options), labelKey: key);
+            return new FieldDescriptor(id, new ValueDescriptor(property.PropertyType, jsonOptions: options),
+                editor: type == typeof(AudioTrackDefinition) && id == "busId" ? new EditorHints("project.audioBus") : null, labelKey: key);
         }).ToArray();
         var element = new FieldDescriptor("element", new ValueDescriptor(type, jsonOptions: options).WithStructure(ValueStructure.Object(members)));
         var value = field.Value.WithStructure(ValueStructure.Sequence(element));
         return new(field.Id, value, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
+    }
+    public IReadOnlyList<(string Id, string Name)> AudioBuses()
+    {
+        if (!_fields.TryGetValue("audioBuses", out var field) || field.Read().Json is not { ValueKind: JsonValueKind.Array } values) return [];
+        return values.EnumerateArray().Where(item => item.ValueKind == JsonValueKind.Object && item.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String)
+            .Select(item => (item.GetProperty("id").GetString() ?? "", item.TryGetProperty("name", out var name) && name.ValueKind == JsonValueKind.String ? name.GetString() ?? "" : ""))
+            .Where(item => item.Item1.Length > 0).DistinctBy(item => item.Item1, StringComparer.Ordinal).ToArray();
     }
     public IFieldBinding Binding(FieldDescriptor field) => _fields[field.Id];
     public void RefreshLocalization()
@@ -147,6 +156,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
         public FieldDescriptor Descriptor { get; }
         public FieldValue? Pending { get; private set; }
         public FieldDraftState Draft { get; }
+        public object? HostContext => _owner;
         public bool IsEnabled => _canEdit && !_owner._disposed && _owner._isCurrent();
         public bool IsVisible => Descriptor.Id != "defaultOrientation" || _owner.ShowDefaultOrientation;
         public object? Label => Descriptor.LabelKey ?? Descriptor.Id;
@@ -166,6 +176,7 @@ public sealed class ConfigurationSectionEditor : IDisposable
             cancellationToken.ThrowIfCancellationRequested();
             if (!IsEnabled) return Task.FromResult<ValueIssue?>(new("settings.obsolete", "Configuration field is unavailable."));
             Pending = value; _owner._changed(); Changed?.Invoke(this, EventArgs.Empty);
+            if (Descriptor.Id == "audioBuses") _owner.AudioBusesChanged?.Invoke();
             if (Descriptor.Id == "orientationPolicy") _owner.RefreshDefaultOrientationVisibility();
             return Task.FromResult<ValueIssue?>(null);
         }
