@@ -3,11 +3,31 @@
              xmlns:loc="using:GalNet.Editor.MarkupExtensions"
              xmlns:vm="using:GalNet.Editor.ViewModels"
              xmlns:services="using:GalNet.Editor.Services"
+             xmlns:controls="using:GalNet.Editor.Controls"
              xmlns:forms="using:GalNet.Game.Controls.Forms"
              x:Class="GalNet.Editor.Views.ProjectSettingsPanelView"
              x:DataType="vm:ProjectSettingsPanelViewModel"
              Background="{DynamicResource SemiColorBackground0}">
-    <UserControl.Styles><StyleInclude Source="/Controls/AuthorFormStyles.axaml" /></UserControl.Styles>
+    <UserControl.Styles>
+        <StyleInclude Source="/Controls/AuthorFormStyles.axaml" />
+        <Style Selector="Border.structured-array-card">
+            <Setter Property="Padding" Value="12,8" />
+            <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SemiColorBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="6" />
+        </Style>
+        <Style Selector="TextBlock.structured-item-title">
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}" />
+        </Style>
+        <Style Selector="Grid.structured-map-item">
+            <Setter Property="Margin" Value="0,2" />
+        </Style>
+        <Style Selector="Grid.structured-map-item controls|AssetPicker">
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        </Style>
+    </UserControl.Styles>
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Name="ProjectSettingsTitle" Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
                    FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold"
@@ -29,7 +49,7 @@
                 <ItemsControl ItemsSource="{Binding Sections}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="services:ConfigurationSectionEditor">
-                            <Expander Header="{Binding Id}" IsExpanded="True" HorizontalAlignment="Stretch">
+                            <Expander Header="{loc:Localize DisplayNameKey, FallbackPath=Id}" IsExpanded="True" HorizontalAlignment="Stretch">
                                 <forms:DtoEditorHost Item="{Binding Item}" Registry="{Binding Registry}" />
                             </Expander>
                         </DataTemplate>

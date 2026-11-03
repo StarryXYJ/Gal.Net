@@ -80,6 +80,9 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(ToolTip.GetTip(remove), Is.Not.Null);
                 var firstTrack = tracks.GetVisualDescendants().OfType<StructuredFieldEditor>().First(editor => !ReferenceEquals(editor, tracks));
                 firstTrack.IsExpanded = true; TimelinePump(window);
+                tracks.BringIntoView(); TimelinePump(window);
+                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "settings-audio-expanded.png")); }
                 var bus = firstTrack.GetVisualDescendants().OfType<ComboBox>().Single(box => box.Name == "AudioBusInput");
                 var buses = audio.Buses.ToList(); buses.Add(new("ambience", "Environment"));
                 await Stage(panel, "audioBuses", buses); TimelinePump(window);
@@ -113,6 +116,16 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 await Stage(panel, "defaultWeatherTextures", new Dictionary<string, string> { ["Rain"] = "original-id" });
                 map.IsExpanded = true; TimelinePump(window);
                 var picker = map.GetVisualDescendants().OfType<AssetPicker>().Single();
+                map.BringIntoView(); TimelinePump(window);
+                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
+                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "settings-map-expanded.png")); }
+                var row = map.GetVisualDescendants().OfType<Grid>().Single(grid => grid.Classes.Contains("structured-map-item"));
+                Assert.That(row.ColumnDefinitions.Count, Is.EqualTo(3));
+                window.Width = 600; TimelinePump(window); row.BringIntoView(); TimelinePump(window);
+                Assert.That(row.ColumnDefinitions.Count, Is.EqualTo(2));
+                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } narrowArtifacts)
+                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(narrowArtifacts, "settings-map-narrow.png")); }
+                window.Width = 1000; TimelinePump(window);
                 Assert.That(picker.Filter, Is.EqualTo(AssetPickerFilter.Image));
                 Assert.That(picker.SelectedAssetId, Is.EqualTo("original-id"));
                 Assert.That(Setting(panel, "defaultWeatherTextures").Read().Json!.Value.GetProperty("Rain").GetString(), Is.EqualTo("original-id"), "Opening must not rewrite the existing reference.");

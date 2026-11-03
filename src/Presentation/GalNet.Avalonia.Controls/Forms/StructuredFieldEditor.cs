@@ -175,9 +175,10 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         for (var index = 0; index < values.Count; index++)
         {
             var position = index;
-            var row = new StackPanel { Spacing = 4 };
+            var row = new StackPanel { Spacing = 4, Classes = { "structured-array-item" } };
             var buttons = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
-            buttons.Children.Add(new TextBlock { Text = ElementLabel(values[index], index), VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center });
+            var header = new Grid { ColumnDefinitions = new("*,Auto"), ColumnSpacing = 8 };
+            header.Children.Add(new TextBlock { Text = ElementLabel(values[index], index), VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center, TextTrimming = global::Avalonia.Media.TextTrimming.CharacterEllipsis, Classes = { "structured-item-title" } });
             AddButton(buttons, "up", () => Move(position, -1, generation)).IsEnabled = index > 0;
             AddButton(buttons, "down", () => Move(position, 1, generation)).IsEnabled = index + 1 < values.Count;
             AddButton(buttons, "remove", () => ChangeArray(generation, list => list.RemoveAt(position)));
@@ -193,11 +194,11 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
                 items.Insert(position + 1, wrapped ? copy.Value.GetProperty(element.Id) : copy.Value);
                 await Submit(JsonCodec.SerializeToElement(items.ToArray()), generation, CancellationToken.None);
             }).IsEnabled = values.Count < 200;
-            row.Children.Add(buttons);
+            Grid.SetColumn(buttons, 1); header.Children.Add(buttons); row.Children.Add(header);
             var descriptor = new FieldDescriptor(_shape.Element!.Id, _shape.Element.Value, isRequired: true, editor: _shape.Element.Editor, labelKey: _shape.Element.LabelKey, semantic: _shape.Element.Semantic, resourceTypeId: _shape.Element.ResourceTypeId);
             var binding = Bind(descriptor, null, position);
             row.Children.Add(new SchemaForm { ShowLabels = false, Depth = Context.Depth + 1, Schema = [descriptor], Registry = Context.Registry, Binding = _ => binding });
-            panel.Children.Add(row);
+            panel.Children.Add(new Border { Classes = { "structured-array-card" }, Child = row });
         }
         AddButton(panel, "add", () => ChangeArray(generation, list => list.Add(InitialValue(_shape.Element!.Value)))).IsEnabled = values.Count < 200;
         Content = panel;
@@ -218,9 +219,8 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         foreach (var pair in values)
         {
             var original = pair.Key;
-            var row = new StackPanel { Spacing = ItemSpacing };
-            var keys = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = ItemSpacing };
-            var key = new TextBox { Name = "MapKey", Text = original, Watermark = KeyText, MinWidth = 120 };
+            var row = new Grid { ColumnSpacing = 8, RowSpacing = 6, Classes = { "structured-map-item" } };
+            var key = new TextBox { Name = "MapKey", Text = original, Watermark = KeyText };
             async Task Rename()
             {
                 if (!Available(generation) || key.Text == original) return;
@@ -236,16 +236,25 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
                 else if (args.Key == global::Avalonia.Input.Key.Escape) { key.Text = original; args.Handled = true; }
             };
             key.LostFocus += async (_, _) => await Rename();
-            keys.Children.Add(key);
-            AddButton(keys, "remove", async () =>
+            row.Children.Add(key);
+            var remove = AddButton(row, "remove", async () =>
             {
                 if (!Available(generation)) return;
                 var candidate = MapValues(); candidate.Remove(original);
                 await Submit(JsonCodec.SerializeToElement(candidate), generation, CancellationToken.None);
             });
-            row.Children.Add(keys);
             var descriptor = _shape.Element!;
-            row.Children.Add(new SchemaForm { Depth = Context.Depth + 1, ShowLabels = false, Schema = [descriptor], Registry = Context.Registry, Binding = _ => Bind(descriptor, original, null) });
+            var value = new SchemaForm { Depth = Context.Depth + 1, ShowLabels = false, Schema = [descriptor], Registry = Context.Registry, Binding = _ => Bind(descriptor, original, null) };
+            row.Children.Add(value);
+            void LayoutMap(bool narrow)
+            {
+                row.ColumnDefinitions = new(narrow ? "*,Auto" : "160,*,Auto");
+                row.RowDefinitions = new(narrow ? "Auto,Auto" : "Auto");
+                Grid.SetRow(value, narrow ? 1 : 0); Grid.SetColumn(value, narrow ? 0 : 1);
+                Grid.SetRow(remove, 0); Grid.SetColumn(remove, narrow ? 1 : 2);
+            }
+            LayoutMap(false);
+            row.SizeChanged += (_, _) => LayoutMap(row.Bounds.Width < 480);
             panel.Children.Add(row);
         }
         var additions = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = ItemSpacing };
