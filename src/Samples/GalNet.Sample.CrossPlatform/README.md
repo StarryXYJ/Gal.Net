@@ -23,6 +23,18 @@ SDK 固定 `10.0.401`，Avalonia `12.0.5`；仓库开发默认引用内置源码
 
 ## 复制为独立项目
 
+也可以从同一份 Sample 生成 `dotnet new` 模板包。模板包版本同时决定生成项目默认引用的 GalNet 包版本；该版本必须能从 NuGet 包源取得。以下示例在仓库根执行，并使用全新的输出目录：
+
+```powershell
+python scripts/samples/build-dotnet-template.py --version <version> --work-directory output/template-stage --output-directory output/template-package
+dotnet new install output/template-package/GalNet.Templates.<version>.nupkg
+dotnet new galnet-game -n MyGame --title "我的游戏" -o MyGame
+```
+
+项目名称目前请使用以英文字母开头、仅包含英文字母、数字和下划线的名称；游戏标题可使用中文和空格，应为单行文本。省略 `--title` 时使用项目名称。生成目录的解决方案包含共享应用、契约和所有现有平台工程，并使用包引用；仓库内 Sample 仍默认使用源码引用。CI 会验证模板并上传测试版本包及对应的引擎包，但该 CI 产物并不代表已发布到 NuGet。正式发布后可通过 `dotnet new update` 更新已安装模板；现有游戏项目不会自动更新。
+
+模板生成不附内容包；各平台工具链、原生依赖和验收状态仍以本页及生成项目的 README 为准。
+
 在仓库根执行以下命令，输出目录必须尚不存在：
 
 ```powershell
