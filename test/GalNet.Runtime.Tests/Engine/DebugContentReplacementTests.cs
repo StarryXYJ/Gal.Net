@@ -26,30 +26,11 @@ public partial class DebugSessionTests
 
         var state = await debug.InspectAsync();
         Assert.That(state.VisitedGroups, Is.EqualTo(new[] { "main", "second" }));
-        Assert.That(state.RepeatedGroupVisit, Is.False);
         var save = engine.CreateSaveData();
         Assert.That(save.VisitedGroups, Is.EqualTo(new[] { "main", "second" }));
 
         await engine.RestoreFromAsync(save);
         Assert.That((await debug.InspectAsync()).VisitedGroups, Is.EqualTo(new[] { "main", "second" }));
-    }
-
-    [Test]
-    public async Task NaturalGroupReentryIsReportedWithoutDiscardingTheSequence()
-    {
-        var graph = GraphOf(Entry("test.text", "line"));
-        graph.Edges.Add(new("main", 0, "main"));
-        using var view = Registration().RegisterInstruction("test.text", _ => new TextWait()).BuildView();
-        await using var engine = new GameEngine(graph, Runtime(), view);
-        using var debug = engine.AttachDebugging(Options());
-
-        await engine.AdvanceAsync();
-        await engine.AdvanceAsync();
-
-        var state = await debug.InspectAsync();
-        Assert.That(state.VisitedGroups, Is.EqualTo(new[] { "main", "main" }));
-        Assert.That(state.RepeatedGroupVisit, Is.True);
-        Assert.That(engine.CreateSaveData().VisitedGroups, Is.EqualTo(new[] { "main", "main" }));
     }
 
     [Test]

@@ -17,9 +17,9 @@ public static class GameDebugServiceCollectionExtensions
         services.TryAddScoped(_ => options);
         services.TryAddScoped<GameDebugActions>();
         services.TryAddScoped<GameDebugViewModel>();
-        services.TryAddScoped<DebugContentRevisionService>();
-        services.TryAddScoped<GalNet.Avalonia.GameHost.IGameResourceRevisionSource>(services =>
-            services.GetRequiredService<DebugContentRevisionService>());
+        services.TryAddScoped<DebugContentUpdateService>();
+        services.TryAddScoped<GalNet.Avalonia.GameHost.IGameResourceUpdateSource>(services =>
+            services.GetRequiredService<DebugContentUpdateService>());
         services.TryAddScoped<AvaloniaExternalDebugSession>();
         services.TryAddTransient<DebugLogView>();
         services.TryAddTransient<DebugLogWindow>();

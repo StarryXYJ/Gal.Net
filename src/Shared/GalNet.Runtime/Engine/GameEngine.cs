@@ -26,8 +26,6 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
     private GameSnapshot _lastStableSnapshot;
     private GroupEntranceSnapshot? _currentGroupEntrance;
     private readonly List<string> _visitedGroups = [];
-    private readonly HashSet<string> _visitedGroupSet = new(StringComparer.Ordinal);
-    private bool _repeatedGroupVisit;
     private readonly string _contentBuildId;
     private readonly string[] _storyPackages;
     private PendingChoice? _pendingChoice;
@@ -264,13 +262,7 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             {
                 _currentGroupEntrance = data.GroupEntrance is { } entrance ? SnapshotCopy.CloneEntrance(entrance) : null;
                 _visitedGroups.Clear();
-                _visitedGroupSet.Clear();
-                _repeatedGroupVisit = false;
-                foreach (var group in data.VisitedGroups)
-                {
-                    _visitedGroups.Add(group);
-                    if (!_visitedGroupSet.Add(group)) _repeatedGroupVisit = true;
-                }
+                _visitedGroups.AddRange(data.VisitedGroups);
             }
             _debugger?.OnExternalRestore(restoringDebugger is not null);
             _restorationPending = _view.RequiresStateRestore;
@@ -426,7 +418,6 @@ public sealed partial class GameEngine : IDisposable, IAsyncDisposable, IPlayerP
             if (_runtime.EntryIndex == 0 && _debugger?.CapturingNaturalEntrance != false)
             {
                 _visitedGroups.Add(group.Id);
-                if (!_visitedGroupSet.Add(group.Id)) _repeatedGroupVisit = true;
                 var snapshot = _runtime.CreateSnapshot();
                 _currentGroupEntrance = new GroupEntranceSnapshot { NodeId = group.Id, Variables = snapshot.Variables, States = snapshot.States };
             }

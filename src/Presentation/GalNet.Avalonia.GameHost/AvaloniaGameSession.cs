@@ -25,7 +25,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
     private readonly IPlayerLocalization _localization;
     private readonly IPlayerStartup _startup;
     private readonly LibVlcRuntime _mediaRuntime;
-    private readonly IGameResourceRevisionSource? _resourceRevisions;
+    private readonly IGameResourceUpdateSource? _resourceRevisions;
     private readonly SaveSlotCollection _saveSlots = [];
     private readonly ReadOnlyObservableCollection<GameSaveSlot> _readOnlySaveSlots;
     private GameResourceScope? _resources;
@@ -44,7 +44,7 @@ public partial class AvaloniaGameSession : ObservableObject, ISavePreviewSource,
 
     public AvaloniaGameSession(AvaloniaGameHostOptions options, GamePresentationState gameplay, GamePage page, IAvaloniaPlayerSettings settings,
         IPlayerLocalization localization, IPlayerStartup startup, LibVlcRuntime mediaRuntime,
-        IEnumerable<IGameResourceRevisionSource>? resourceRevisions = null)
+        IEnumerable<IGameResourceUpdateSource>? resourceRevisions = null)
     {
         _options = options;
         GameTitle = options.GameTitle;

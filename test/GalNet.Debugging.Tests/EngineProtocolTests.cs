@@ -10,7 +10,7 @@ namespace GalNet.Debugging.Tests;
 public class EngineProtocolTests
 {
     [Test]
-    public async Task ContentCommandsExposeVersionsAndActivateTheInstalledGraph()
+    public async Task ContentCommandsActivateTheInstalledGraph()
     {
         var calls = new List<string>();
         using var registration = new GameRegistration().RegisterSchema(new DefaultEntryModule("test",
@@ -35,23 +35,20 @@ public class EngineProtocolTests
             return (T)result!;
         }
 
-        var installed = await Send<DebugContentVersions>("content.install",
-            new DebugContentInstallRequest("candidate", "candidate", "content", "contract"));
+        await adapter.ExecuteAsync(new("content.install", run.RunId, adapter.Info.Generation,
+            JsonSerializer.SerializeToElement(new DebugContentInstallRequest("candidate", "content", "contract"), json)), CancellationToken.None);
         var before = await Send<GameDebugState>("inspect");
-        var activated = await Send<DebugContentActivationResult>("content.activate",
-            new DebugContentActivateRequest("candidate",
-                new(before.NodeId, before.EntryIndex, before.ActiveEntryIds), CandidateEntryIndex: 1));
+        await Send<long>("content.activate", new DebugContentActivateRequest(
+            new(before.NodeId, before.EntryIndex, before.ActiveEntryIds), CandidateEntryIndex: 1));
         await engine.AdvanceAsync();
         var after = await Send<GameDebugState>("inspect");
 
         Assert.Multiple(() =>
         {
             Assert.That(adapter.Info.Capabilities, Does.Contain("content.install").And.Contain("content.activate"));
-            Assert.That(installed, Is.EqualTo(new DebugContentVersions("candidate", "initial")));
-            Assert.That(activated.Versions, Is.EqualTo(new DebugContentVersions("candidate", "candidate")));
             Assert.That(calls, Is.EqualTo(new[] { "new" }));
-            Assert.That(after.LatestRevision, Is.EqualTo("candidate"));
-            Assert.That(after.RunRevision, Is.EqualTo("candidate"));
+            Assert.That(revisions.Activated, Is.True);
+            Assert.That(after.Generation, Is.EqualTo(adapter.Info.Generation));
         });
     }
 
@@ -79,15 +76,15 @@ public class EngineProtocolTests
         var json = new JsonSerializerOptions(JsonSerializerDefaults.Web);
         async Task<object?> Send(string method, object value) => await adapter.ExecuteAsync(new(method, adapter.Info.RunId,
             adapter.Info.Generation, JsonSerializer.SerializeToElement(value, json)), CancellationToken.None);
-        await Send("content.install", new DebugContentInstallRequest("candidate", "candidate", "content", "contract"));
+        await Send("content.install", new DebugContentInstallRequest("candidate", "content", "contract"));
         var state = (GameDebugState)(await adapter.ExecuteAsync(new("inspect", adapter.Info.RunId, adapter.Info.Generation,
             JsonSerializer.SerializeToElement(new { }, json)), CancellationToken.None))!;
 
-        await Send("content.activateAndSeekGroupStart", new DebugContentActivateRequest("candidate",
+        await Send("content.activateAndSeekGroupStart", new DebugContentActivateRequest(
             new(state.NodeId, state.EntryIndex, state.ActiveEntryIds), CandidateEntryIndex: state.EntryIndex));
 
         Assert.That(calls, Is.EqualTo(new[] { "new" }));
-        Assert.That(revisions.Versions.RunRevision, Is.EqualTo("candidate"));
+        Assert.That(revisions.Activated, Is.True);
     }
 
     [TestCase(false)]
@@ -188,17 +185,15 @@ public class EngineProtocolTests
         Nodes = { new Group { Id = "main", Entries = entries.ToList() } }
     };
 
-    private sealed class FakeContentRevisions(Graph graph) : IDebugContentRevisionController
+    private sealed class FakeContentRevisions(Graph graph) : IDebugContentController
     {
-        public DebugContentVersions Versions { get; private set; } = new("initial", "initial");
-        public Task<DebugContentVersions> InstallAsync(DebugContentInstallRequest request, CancellationToken cancellationToken)
+        public bool Activated { get; private set; }
+        public Task InstallAsync(DebugContentInstallRequest request, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            Versions = Versions with { LatestRevision = request.Revision };
-            return Task.FromResult(Versions);
+            return Task.CompletedTask;
         }
-        public Graph GetLatestGraph(string revision) =>
-            revision == Versions.LatestRevision ? graph : throw new InvalidOperationException();
-        public void CommitActivation(string revision) => Versions = new(revision, revision);
+        public Graph GetLatestGraph() => graph;
+        public void CommitActivation() => Activated = true;
     }
 }

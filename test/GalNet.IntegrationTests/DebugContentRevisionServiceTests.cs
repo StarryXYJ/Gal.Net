@@ -8,10 +8,10 @@ using GalNet.Storage.FileSystem;
 
 namespace GalNet.IntegrationTests;
 
-public sealed class DebugContentRevisionServiceTests
+public sealed class DebugContentUpdateServiceTests
 {
     [Test]
-    public async Task InstallSeparatesLatestFromRunAndNewRunSelectsLatestResources()
+    public async Task InstallKeepsRunContentUntilActivationAndNewRunSelectsLatestResources()
     {
         var root = Path.Combine(Path.GetTempPath(), $"galnet-debug-revisions-{Guid.NewGuid():N}");
         Directory.CreateDirectory(Path.Combine(root, "Graph", "groups"));
@@ -34,40 +34,34 @@ public sealed class DebugContentRevisionServiceTests
             var catalogs = options.CreateContentCatalogs();
             using var initialResources = await GameResourceScope.OpenAsync(initial.OutputPath,
                 catalogs.Resources, catalogs.Gallery, options.Content);
-            await using var revisions = new DebugContentRevisionService(options);
+            await using var revisions = new DebugContentUpdateService(options);
             revisions.SetIdentity(new("project", initial.Manifest!.ContentFingerprint, "contract"));
 
             Assert.That(revisions.SelectForNewRun(initialResources), Is.SameAs(initialResources));
-            var installed = await revisions.InstallAsync(new(candidate.OutputPath, candidate.Manifest!.Revision,
-                candidate.Manifest.ContentFingerprint, candidate.Manifest.ContractFingerprint), CancellationToken.None);
+            await revisions.InstallAsync(new(candidate.OutputPath, candidate.Manifest!.ContentFingerprint,
+                candidate.Manifest.ContractFingerprint), CancellationToken.None);
 
-            Assert.Multiple(() =>
-            {
-                Assert.That(installed.LatestRevision, Is.EqualTo(candidate.Manifest.Revision));
-                Assert.That(installed.RunRevision, Is.EqualTo(initial.Manifest.Revision));
-                Assert.That(revisions.GetLatestGraph(candidate.Manifest.Revision).Nodes.OfType<GalNet.Core.Graph.Group>()
-                    .Single().Entries, Has.Count.EqualTo(2));
-            });
+            Assert.That(revisions.GetLatestGraph().Nodes.OfType<GalNet.Core.Graph.Group>()
+                .Single().Entries, Has.Count.EqualTo(2));
 
-            revisions.CommitActivation(candidate.Manifest.Revision);
+            revisions.CommitActivation();
             var selected = revisions.SelectForNewRun(initialResources);
             Assert.That(selected.GameDirectory, Is.EqualTo(Path.GetFullPath(candidate.OutputPath)));
-            Assert.That(revisions.Versions, Is.EqualTo(new DebugContentVersions(candidate.Manifest.Revision, candidate.Manifest.Revision)));
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }
 
     [Test]
-    public async Task InstallRejectsContractMismatchWithoutChangingVersions()
+    public async Task InstallRejectsContractMismatchWithoutCandidate()
     {
         var options = SampleCustomization.CreateHostOptions();
-        await using var revisions = new DebugContentRevisionService(options);
+        await using var revisions = new DebugContentUpdateService(options);
         revisions.SetIdentity(new("project", "content", "expected"));
 
         var error = Assert.ThrowsAsync<InvalidOperationException>(() => revisions.InstallAsync(
-            new("missing", "revision", "content", "changed"), CancellationToken.None));
+            new("missing", "content", "changed"), CancellationToken.None));
 
         Assert.That(error!.Message, Does.Contain("contracts changed").IgnoreCase);
-        Assert.That(revisions.Versions, Is.EqualTo(new DebugContentVersions("", "")));
+        Assert.Throws<InvalidOperationException>(() => revisions.GetLatestGraph());
     }
 }

@@ -49,12 +49,18 @@ public sealed class ProjectContentBuilderTests
 
         var first = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
         var second = await DebugContentRevisionBuilder.BuildAsync(builder, _root, "project", "contracts");
+        var stored = DebugContentManifestStore.Read(first.OutputPath);
 
         Assert.Multiple(() =>
         {
             Assert.That(second.OutputPath, Is.EqualTo(first.OutputPath));
             Assert.That(first.Manifest, Is.Not.Null);
-            Assert.That(DebugContentManifestStore.Read(first.OutputPath).Revision, Is.EqualTo(first.Manifest!.Revision));
+            Assert.That(stored.ContentFingerprint, Is.EqualTo(first.Manifest!.ContentFingerprint));
+            Assert.That(stored.AuthorSignature, Is.EqualTo(first.Manifest.AuthorSignature));
+            Assert.That(stored.Groups.Select(group => group.Id),
+                Is.EqualTo(first.Manifest.Groups.Select(group => group.Id)));
+            Assert.That(stored.Groups.Single().Entries.Select(entry => entry.ContentSha256),
+                Is.EqualTo(first.Manifest.Groups.Single().Entries.Select(entry => entry.ContentSha256)));
             Assert.That(first.Manifest!.ContentFingerprint, Is.EqualTo(DebugContentIdentity.Compute(first.OutputPath)));
             Assert.That(first.Manifest.Groups.Single().Entries.Single().ContentSha256, Has.Length.EqualTo(64));
         });

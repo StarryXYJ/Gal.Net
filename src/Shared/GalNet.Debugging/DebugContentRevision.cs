@@ -23,7 +23,6 @@ public sealed record DebugContentFile(string Path, string Sha256, bool SessionWi
 public sealed record DebugContentManifest(
     int Version,
     string ProjectId,
-    string Revision,
     string ContentFingerprint,
     string ContractFingerprint,
     string AuthorSignature,
@@ -63,15 +62,29 @@ public sealed record DebugContentPosition(
     string[] ActivePrimitiveIds,
     string[] VisitedGroups);
 
-public sealed record DebugContentImpactResult(DebugContentImpact Impact, string[] Reasons)
-{
-    public static DebugContentImpactResult Direct { get; } = new(DebugContentImpact.Direct, []);
-}
-
 /// <summary>Pure comparison of two verified debug manifests against one captured execution boundary.</summary>
 public static class DebugContentImpactClassifier
 {
-    public static DebugContentImpactResult Classify(
+    public static int MapCandidateEntryIndex(
+        DebugContentManifest current,
+        DebugContentManifest candidate,
+        DebugContentPosition position)
+    {
+        var impact = Classify(current, candidate, position);
+        if (impact != DebugContentImpact.Direct)
+            throw new InvalidOperationException("Only a direct content revision has a stable candidate boundary.");
+        var groupId = position.CurrentGroupId ?? throw new InvalidOperationException("There is no current Group to map.");
+        var before = current.Groups.SingleOrDefault(group => string.Equals(group.Id, groupId, StringComparison.Ordinal))
+            ?? throw new InvalidDataException($"Current debug content does not contain Group '{groupId}'.");
+        var after = candidate.Groups.SingleOrDefault(group => string.Equals(group.Id, groupId, StringComparison.Ordinal))
+            ?? throw new InvalidDataException($"Candidate debug content does not contain Group '{groupId}'.");
+        var prefixCount = ExecutedPrefixCount(before, position);
+        if (after.Entries.Length < prefixCount)
+            throw new InvalidDataException("Candidate content does not preserve the executed author boundary.");
+        return prefixCount == 0 ? 0 : after.Entries[prefixCount - 1].End;
+    }
+
+    public static DebugContentImpact Classify(
         DebugContentManifest current,
         DebugContentManifest candidate,
         DebugContentPosition position)
@@ -85,19 +98,15 @@ public static class DebugContentImpactClassifier
             throw new InvalidDataException("Debug content belongs to a different project.");
         if (!string.Equals(current.ContractFingerprint, candidate.ContractFingerprint, StringComparison.Ordinal))
             throw new InvalidOperationException("Project contracts changed; restart the debug application.");
-        if (string.Equals(current.Revision, candidate.Revision, StringComparison.Ordinal))
-            return DebugContentImpactResult.Direct;
+        if (string.Equals(current.ContentFingerprint, candidate.ContentFingerprint, StringComparison.Ordinal) &&
+            string.Equals(current.AuthorSignature, candidate.AuthorSignature, StringComparison.Ordinal))
+            return DebugContentImpact.Direct;
 
-        var reasons = new List<string>();
         var impact = DebugContentImpact.Direct;
-        void Raise(DebugContentImpact value, string reason)
-        {
-            if (value > impact) impact = value;
-            reasons.Add(reason);
-        }
+        void Raise(DebugContentImpact value) => impact = value > impact ? value : impact;
 
         if (!string.Equals(current.GraphSha256, candidate.GraphSha256, StringComparison.Ordinal))
-            Raise(DebugContentImpact.RestartGame, "Graph topology changed.");
+            Raise(DebugContentImpact.RestartGame);
 
         var oldGroups = current.Groups.ToDictionary(group => group.Id, StringComparer.Ordinal);
         var newGroups = candidate.Groups.ToDictionary(group => group.Id, StringComparer.Ordinal);
@@ -112,18 +121,13 @@ public static class DebugContentImpactClassifier
             {
                 if (before is null || after is null)
                 {
-                    Raise(DebugContentImpact.RestartGame, $"Current Group '{id}' was added or removed.");
+                    Raise(DebugContentImpact.RestartGame);
                     continue;
                 }
-                if (KeepsExecutedPrefix(before, after, position))
-                    reasons.Add($"Future entries in current Group '{id}' changed.");
-                else
-                    Raise(DebugContentImpact.ReturnGroupStart, $"Executed entries in current Group '{id}' changed.");
+                if (!KeepsExecutedPrefix(before, after, position)) Raise(DebugContentImpact.ReturnGroupStart);
             }
             else if (visited.Contains(id))
-                Raise(DebugContentImpact.RestartGame, $"Visited Group '{id}' changed.");
-            else
-                reasons.Add($"Future Group '{id}' changed.");
+                Raise(DebugContentImpact.RestartGame);
         }
 
         var oldFiles = current.Files.ToDictionary(file => file.Path, StringComparer.OrdinalIgnoreCase);
@@ -134,10 +138,10 @@ public static class DebugContentImpactClassifier
             newFiles.TryGetValue(path, out var after);
             if (before is not null && after is not null &&
                 string.Equals(before.Sha256, after.Sha256, StringComparison.Ordinal)) continue;
-            Raise(DebugContentImpact.RestartGame, $"Session content '{path}' changed.");
+            Raise(DebugContentImpact.RestartGame);
         }
 
-        return new(impact, reasons.Distinct(StringComparer.Ordinal).ToArray());
+        return impact;
     }
 
     private static bool KeepsExecutedPrefix(DebugContentGroup before, DebugContentGroup after, DebugContentPosition position)
@@ -192,7 +196,7 @@ public static class DebugContentImpactClassifier
     {
         if (manifest.Version != DebugContentManifest.CurrentVersion)
             throw new InvalidDataException($"Unsupported debug content manifest version {manifest.Version}.");
-        if (string.IsNullOrWhiteSpace(manifest.ProjectId) || string.IsNullOrWhiteSpace(manifest.Revision))
+        if (string.IsNullOrWhiteSpace(manifest.ProjectId))
             throw new InvalidDataException("Debug content manifest identity is incomplete.");
         if (manifest.Groups.GroupBy(group => group.Id, StringComparer.Ordinal).Any(group => group.Count() != 1))
             throw new InvalidDataException("Debug content manifest contains duplicate Group identities.");

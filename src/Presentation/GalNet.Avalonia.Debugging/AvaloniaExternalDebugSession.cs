@@ -12,13 +12,13 @@ public sealed class AvaloniaExternalDebugSession : IAsyncDisposable
     private readonly GameDebugHost _host;
     private readonly IServiceProvider _services;
     private readonly GameDebugHostOptions _options;
-    private readonly DebugContentRevisionService _content;
+    private readonly DebugContentUpdateService _content;
     private EngineDebugRun? _run;
     private bool _treatAllTextAsRead;
     public bool HasRun => _run is not null;
     public event Action? RunChanged;
 
-    public AvaloniaExternalDebugSession(IServiceProvider services, GameDebugHostOptions options, DebugContentRevisionService content)
+    public AvaloniaExternalDebugSession(IServiceProvider services, GameDebugHostOptions options, DebugContentUpdateService content)
     {
         _services = services;
         _options = options;

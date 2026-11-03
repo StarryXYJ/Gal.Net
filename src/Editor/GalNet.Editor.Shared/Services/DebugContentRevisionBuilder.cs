@@ -20,9 +20,9 @@ public static class DebugContentRevisionBuilder
         ArgumentException.ThrowIfNullOrWhiteSpace(projectId);
         ArgumentException.ThrowIfNullOrWhiteSpace(contractFingerprint);
         var root = Path.GetFullPath(projectRoot);
-        var revisions = Path.Combine(root, "Output", "Debug", "Revisions");
-        Directory.CreateDirectory(revisions);
-        var candidate = Path.Combine(revisions, $".candidate-{Guid.NewGuid():N}");
+        var builds = Path.Combine(root, "Output", "Debug", "Builds");
+        Directory.CreateDirectory(builds);
+        var candidate = Path.Combine(builds, $".candidate-{Guid.NewGuid():N}");
         try
         {
             var build = await builder.BuildAsync(root, candidate, cancellationToken).ConfigureAwait(false);
@@ -36,21 +36,20 @@ public static class DebugContentRevisionBuilder
                 .ToArray();
             var files = EnumerateSessionFiles(candidate).Select(path => new DebugContentFile(
                 Path.GetRelativePath(candidate, path).Replace('\\', '/'), HashFile(path), SessionWide: true)).ToArray();
-            var revision = ComputeRevision(contentFingerprint, contractFingerprint, build.AuthorSignature, groups);
-            var manifest = new DebugContentManifest(DebugContentManifest.CurrentVersion, projectId, revision,
+            var buildKey = ComputeBuildKey(contentFingerprint, contractFingerprint, build.AuthorSignature, groups);
+            var manifest = new DebugContentManifest(DebugContentManifest.CurrentVersion, projectId,
                 contentFingerprint, contractFingerprint, build.AuthorSignature, graphSha256, groups, files);
             await DebugContentManifestStore.WriteAsync(candidate, manifest, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
 
-            var published = Path.Combine(revisions, revision.ToLowerInvariant());
+            var published = Path.Combine(builds, buildKey.ToLowerInvariant());
             if (Directory.Exists(published))
             {
                 var existing = DebugContentManifestStore.Read(published);
-                if (!string.Equals(existing.Revision, manifest.Revision, StringComparison.Ordinal) ||
-                    !string.Equals(existing.ContentFingerprint, manifest.ContentFingerprint, StringComparison.Ordinal) ||
+                if (!string.Equals(existing.ContentFingerprint, manifest.ContentFingerprint, StringComparison.Ordinal) ||
                     !string.Equals(existing.ContractFingerprint, manifest.ContractFingerprint, StringComparison.Ordinal) ||
                     !string.Equals(existing.AuthorSignature, manifest.AuthorSignature, StringComparison.Ordinal))
-                    throw new InvalidDataException($"Debug content revision '{revision}' has conflicting metadata.");
+                    throw new InvalidDataException($"Debug content build '{buildKey}' has conflicting metadata.");
                 Directory.Delete(candidate, recursive: true);
                 candidate = "";
             }
@@ -80,7 +79,7 @@ public static class DebugContentRevisionBuilder
         if (File.Exists(settings)) yield return settings;
     }
 
-    private static string ComputeRevision(string contentFingerprint, string contractFingerprint, string authorSignature,
+    private static string ComputeBuildKey(string contentFingerprint, string contractFingerprint, string authorSignature,
         IReadOnlyList<DebugContentGroup> groups)
     {
         var bytes = JsonSerializer.SerializeToUtf8Bytes(new { contentFingerprint, contractFingerprint, authorSignature, groups });
