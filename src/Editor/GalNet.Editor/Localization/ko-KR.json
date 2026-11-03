@@ -1007,6 +1007,7 @@
   "Error.i18n.development": "게임 현지화 패널에서 개발 언어를 확인하고 변경하세요.",
   "Exchange.All": "모든 분류",
   "Exchange.Runtime": "실행 텍스트",
+  "Exchange.Universal": "공통 번역 템플릿 (대상 언어 미지정)",
   "Exchange.Export": "JSON 내보내기",
   "Exchange.Import": "가져오기 미리보기",
   "Exchange.AllowEmpty": "빈 문자열로 번역 지우기 허용",

@@ -1007,6 +1007,7 @@
   "Error.i18n.development": "Change the development language in the game localization panel.",
   "Exchange.All": "All categories",
   "Exchange.Runtime": "Runtime texts",
+  "Exchange.Universal": "Universal translation template (no target language)",
   "Exchange.Export": "Export JSON",
   "Exchange.Import": "Import preview",
   "Exchange.AllowEmpty": "Allow empty translations to clear text",

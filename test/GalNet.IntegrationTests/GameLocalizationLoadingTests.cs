@@ -83,6 +83,39 @@ public sealed class GameLocalizationLoadingTests
     }
 
     [Test]
+    public void RootCultureFileLoadsAlongsideLegacyExternalDirectories()
+    {
+        var external = Path.Combine(_root, "I18n", "External");
+        Directory.CreateDirectory(Path.Combine(external, "ja-JP"));
+        File.WriteAllText(Path.Combine(external, "ja-JP.json"), """{"line":"日本語","empty":""}""");
+        File.WriteAllText(Path.Combine(external, "ja-JP", "legacy.json"), """{"legacy":"旧形式"}""");
+        File.WriteAllText(Path.Combine(external, "not_a_culture.json"), """{"line":"bad"}""");
+        var loaded = GameLocalizationLoader.Load(_root, new());
+        Assert.That(loaded.Diagnostics, Has.Count.EqualTo(1));
+        using var resolver = new AvaloniaPlayerLocalization(new CultureService());
+        resolver.AttachGame(new GameContent { Graph = new(), Localization = loaded });
+        resolver.ApplyCulture("ja-JP");
+        Assert.That(resolver.Resolve("line"), Is.EqualTo("日本語"));
+        Assert.That(resolver.Resolve("legacy"), Is.EqualTo("旧形式"));
+        Assert.That(resolver.Resolve("empty"), Is.Empty);
+    }
+
+    [TestCase("ja-JP", "案内人")]
+    [TestCase("ko-KR", "안내자")]
+    public void GameTestCaseExternalExamplesOverrideNamesAndFallBackForMissingText(string culture, string name)
+    {
+        var directory = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "GalNet.slnx"))) directory = directory.Parent;
+        Assert.That(directory, Is.Not.Null);
+        var loaded = GameLocalizationLoader.Load(Path.Combine(directory!.FullName, "GameTestCase"), new(), "en-US");
+        using var resolver = new AvaloniaPlayerLocalization(new CultureService());
+        resolver.AttachGame(new GameContent { Graph = new(), Localization = loaded });
+        resolver.ApplyCulture(culture);
+        Assert.That(resolver.Resolve("character.guide.name"), Is.EqualTo(name));
+        Assert.That(resolver.Resolve("group.intro.entry.nvl-append-history.content"), Is.EqualTo("This is the second paragraph in the scrollable NVL history."));
+    }
+
+    [Test]
     public void SpecificCultureWinsOverLaterParentFileAndInvalidJsonIsRejected()
     {
         Directory.CreateDirectory(Path.Combine(_root, "I18n", "zh-CN"));

@@ -61,9 +61,10 @@
             <PathIcon Width="16" Height="16" Data="{StaticResource PanelExportIcon}"/>
             <Button.Flyout><Flyout><StackPanel Width="260" Spacing="8" IsEnabled="{Binding !ApplyImportCommand.IsRunning}">
               <TextBlock Text="{loc:Localize Uiux.I18n.Exchange}" FontWeight="SemiBold"/>
-              <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding ExchangeLanguage}" HorizontalAlignment="Stretch"/>
+              <CheckBox x:Name="ExportUniversal" Content="{loc:Localize Exchange.Universal}" IsChecked="{Binding ExportUniversal}"/>
+              <ComboBox ItemsSource="{Binding Languages}" SelectedItem="{Binding ExchangeLanguage}" IsEnabled="{Binding !ExportUniversal}" HorizontalAlignment="Stretch"/>
               <CheckBox Content="{loc:Localize Exchange.All}" IsChecked="{Binding ExportAll}"/>
-              <CheckBox Content="{loc:Localize Exchange.Runtime}" IsChecked="{Binding ExportRuntime}"/>
+              <CheckBox Content="{loc:Localize Exchange.Runtime}" IsChecked="{Binding ExportRuntime}" IsEnabled="{Binding !ExportUniversal}"/>
               <Button x:Name="ExportLocalization" Content="{loc:Localize Exchange.Export}" Command="{Binding ExportCommand}"/>
             </StackPanel></Flyout></Button.Flyout>
           </Button>

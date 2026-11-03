@@ -1007,6 +1007,7 @@
   "Error.i18n.development": "请在游戏本地化面板检查并切换开发语言。",
   "Exchange.All": "全部分类",
   "Exchange.Runtime": "运行文本",
+  "Exchange.Universal": "通用翻译模板（不指定目标语言）",
   "Exchange.Export": "导出 JSON",
   "Exchange.Import": "导入预览",
   "Exchange.AllowEmpty": "允许空字符串清空译文",

@@ -37,6 +37,16 @@ public sealed class LocalizationExchangeTests
         Assert.That(input.ProjectId, Is.Null); Assert.That(input.Rows[0].Translation, Is.Null);
         Assert.That(input.Rows[1].Translation, Is.Empty); Assert.That(input.Rows[2].Key, Is.EqualTo("version"));
     }
+    [Test]
+    public void UniversalTemplateBecomesImportableOnlyAfterChoosingTargetLanguage()
+    {
+        var row = new LocalizationExchangeRow("key", "Source", LocalizationTextState.Fingerprint("Source"), ["group/entry"], null);
+        var template = new LocalizationExchangeDocument(2, Guid.NewGuid().ToString("N"), "en-US", null, [row], true);
+        Assert.Catch(() => LocalizationExchange.Parse(LocalizationExchange.Write(template), "ja-JP"));
+        var translated = LocalizationExchange.Parse(LocalizationExchange.Write(template with { TargetLocale = "ja-JP", Rows = [row with { Translation = "訳文" }] }), "ko-KR");
+        Assert.That(translated.TargetLocale, Is.EqualTo("ja-JP"));
+        Assert.That(translated.Rows.Single().Translation, Is.EqualTo("訳文"));
+    }
     [TestCase("[]")]
     [TestCase("{\"version\":1,\"characterHighWater\":0,\"exchangeProjectId\":\"bad\"}")]
     public void ExchangeMetadataIdentityMustBeCurrentGuid(string json) => Assert.Catch(() => LocalizationJson.Validate(LocalizationJson.MetadataPath, System.Text.Encoding.UTF8.GetBytes(json)));

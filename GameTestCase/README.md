@@ -68,12 +68,23 @@ character names, choice text and each group's text live in separate per-culture 
 files. Change the language in the Avalonia Sample settings to localize subsequent
 dialogue, NVL paragraphs and choices using the same culture as the UI.
 
-Third-party translations go in `<game-directory>/I18n/External/<culture>/**/*.json`.
+Third-party translations go in `<game-directory>/I18n/External/<culture>.json`
+or the legacy `<game-directory>/I18n/External/<culture>/**/*.json` layout.
 They override built-in game and UI keys (for example `App.Title`); files are applied
 in ordinal relative-path order, last file wins. Invalid files are logged and skipped.
 New languages appear in settings. Restart to load edited files; currently displayed
 dialogue and NVL history do not change when selecting a language. External files are
 excluded from exported packages and preserved when reopening an existing installation.
+
+`I18n/External/ja-JP.json` and `ko-KR.json` are small external-translation examples:
+they translate the welcome, the first variant steps, the guide and route choices.
+Other story text falls back to the project's English default. Development builds copy
+these files into their output. External files are deliberately excluded from galpak;
+to try them in an installed game, copy them manually into `pak/I18n/` and restart.
+The Editor can export one universal template for translators; fill its `targetLocale`
+and `translation` fields, then run `GalNet.Editor.Headless localization convert
+translation.template.json --output ja-JP.json`. The output filename must match its
+target culture and must not already exist.
 
 On the Avalonia Sample's first successful launch for a profile, a language-selection
 page appears before the title. Confirm to persist the choice and increment the startup

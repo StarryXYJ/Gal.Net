@@ -1007,6 +1007,7 @@
   "Error.i18n.development": "ゲームのローカライズ画面で開発言語を確認・変更してください。",
   "Exchange.All": "全カテゴリ",
   "Exchange.Runtime": "実行用テキスト",
+  "Exchange.Universal": "共通翻訳テンプレート（翻訳先言語なし）",
   "Exchange.Export": "JSON を書き出す",
   "Exchange.Import": "読み込みプレビュー",
   "Exchange.AllowEmpty": "空文字で翻訳を消去する",

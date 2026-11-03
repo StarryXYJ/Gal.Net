@@ -26,6 +26,25 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public Task UniversalTemplateDoesNotAddLanguageAndCanBeImportedAfterTranslation() => WithLocalizationProject(async project =>
+    {
+        CharacterEntry(project); WriteTranslation(project, """{"line":"原文"}""");
+        var panel = project.Services.GetRequiredService<GameLocalizationPanelService>();
+        var exchange = project.Services.GetRequiredService<LocalizationExchangeService>();
+        var before = panel.Languages.ToArray();
+        var template = JsonNode.Parse(await exchange.ExportAsync("zh-CN", null, false, universal: true))!;
+        Assert.That(panel.Languages, Is.EqualTo(before));
+        Assert.That(template["version"]!.GetValue<int>(), Is.EqualTo(2));
+        Assert.That(template["targetLocale"], Is.Null);
+        template["targetLocale"] = "ja-JP";
+        template["rows"]![0]!["translation"] = "訳文";
+        await panel.AddLanguageAsync("ja-JP");
+        var preview = exchange.Preview(template.ToJsonString(), "en-US");
+        await exchange.ApplyAsync(preview, ["line"], false);
+        Assert.That(project.Services.GetRequiredService<LocalizationDocumentStore>().CaptureText("line", "ja-JP").Text, Is.EqualTo("訳文"));
+    });
+
+    [Test]
     public Task ExchangeTemplateRoundTripKeepsStableKeysTranslationsHistoryAndRuntimeContent() => WithLocalizationProject(async project =>
     {
         var item = CharacterEntry(project); WriteTranslation(project, """{"line":"原文"}""");
@@ -189,6 +208,12 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                     var flyout = (Flyout)options.Flyout!;
                     try
                     {
+                        var container = (Control)flyout.Content!;
+                        var universal = container.GetVisualDescendants().OfType<CheckBox>().Single(box => box.Name == "ExportUniversal");
+                        universal.IsChecked = true; Dispatcher.UIThread.RunJobs();
+                        Assert.That(model.ExportUniversal, Is.True);
+                        Assert.That(container.GetVisualDescendants().OfType<ComboBox>().Single().IsEnabled, Is.False);
+                        universal.IsChecked = false; Dispatcher.UIThread.RunJobs();
                         var export = ((Control)flyout.Content!).GetVisualDescendants().OfType<Button>().Single(button => button.Name == "ExportLocalization");
                         var point = new Point(export.Bounds.Width / 2, export.Bounds.Height / 2);
                         var popupWindow = TopLevel.GetTopLevel(export)!;

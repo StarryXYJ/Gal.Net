@@ -7,7 +7,7 @@ Editor 的成员值本地化标记、作者索引、角色表/speaker、默认�
 编辑器 UI 与游戏文本使用不同的边界。
 
 - 编辑器 UI 使用 `IEditorLocalizationService`。它通过 DynamicLocalization 从 `GalNet.Editor/Localization` 的嵌入 JSON 资源加载 `zh-CN`、`en-US`、`ja-JP`、`ko-KR`，切换语言时发布 `CurrentCulture` 与 `Item[]` 通知。
-- Avalonia Sample UI 使用 `DynamicLocalization.Core` 2.1.2 与 Sample 自有的 Avalonia 12 绑定适配层，从 Sample 程序集 `Localization/` 的嵌入 JSON 加载 `en-US` 与 `zh-CN`；`{loc:Localize ...}` 绑定读取同一 culture service。该 Sample UI 来源与游戏包 `I18n/` 内容仍是不同边界。
+- Avalonia Sample UI 使用 `DynamicLocalization.Core` 2.1.2 与 Sample 自有的 Avalonia 12 绑定适配层，从 Sample 程序集 `Localization/` 的嵌入 JSON 加载 `en-US`、`zh-CN`、`ja-JP` 与 `ko-KR`；`{loc:Localize ...}` 绑定读取同一 culture service。该 Sample UI 来源与游戏包 `I18n/` 内容仍是不同边界。
 - Runtime 不依赖 DynamicLocalization 或某种 JSON 结构。宿主向 `GameEngine` 提供 `ITextResolver`；内置 dialogue、NVL 和分支选项在展示前调用它。未提供时使用 `PassthroughTextResolver`，即把 key 原样返回。
 
 内置 `content` 与分支选项文本从 raw 开始就是 key；编译和复合展开原样传递。缺省、null、空串或纯空白文本引用按空内容处理，加载时不要求对应译文，GameTextResolver 返回空字符串；已定义 key 的空字符串译文也保持有效。非空 key 缺少默认语言译文仍在加载时报告错误。`speaker` 是人物 ID，空值或纯空白表示无说话人。宿主把 `CharacterCatalog` 传给 `AddBuiltins`、`AddBuiltinImplementations` 或 `AddBuiltinDialogue`；catalog 记录唯一 `Id` 和非空 `DisplayNameKey`，内置对话先查人物再解析姓名 key，未知人物 ID 抛出内容错误。自定义参数如何本地化由 implement 决定。
@@ -62,7 +62,7 @@ I18n/<culture>/**/*.json          平铺或嵌套对象，叶值必须是字符�
 
 ## 外部文本覆盖
 
-新打包内容的 `pak/I18n/<culture>/**/*.json` 在启动时递归读取，整个 I18n 目录仅作为外置覆盖入口；不再添加 External 层。开发目录和旧 content v2 安装目录继续使用 `I18n/External/<culture>/**/*.json`。同 culture 内优先级是嵌入 UI → 包内游戏 → 外部 JSON；每层按 ordinal 相对路径排序，最后文件优先。损坏 JSON、非字符串叶值、无效 culture 或不可读取的外部文件记入 `GameContent.Localization.Diagnostics` 并跳过，Sample 输出诊断；外部树不跟随 reparse point。默认语言完整性只检查包内文本，不能靠外部文件补齐。
+新打包内容的 `pak/I18n/<culture>.json` 和原有 `pak/I18n/<culture>/**/*.json` 在启动时读取，整个 I18n 目录仅作为外置覆盖入口；不再添加 External 层。开发目录和旧 content v2 安装目录继续使用 `I18n/External/`，同样支持根目录文化文件与原有文化子目录。同 culture 内优先级是嵌入 UI → 包内游戏 → 外部 JSON；每层按 ordinal 相对路径排序，最后文件优先。损坏 JSON、非字符串叶值、无效 culture 或不可读取的外部文件记入 `GameContent.Localization.Diagnostics` 并跳过，Sample 输出诊断；外部树不跟随 reparse point。默认语言完整性只检查包内文本，不能靠外部文件补齐。
 
 外部新增语言自动进入 Sample 设置语言列表，显示 culture 的本地名称。外部来源不会修改人物 metadata，也不进入资源 provider。宿主可通过 `AvaloniaPlayerLocalization.AttachGame(content, additionalSources)` 或中立 `CreateResolver` 的 `additional` 参数提供更高优先级的自定义 JSON 来源；其加载方式由宿主自行实现。修改文件后重新启动生效，不提供文件监听热更新。
 
