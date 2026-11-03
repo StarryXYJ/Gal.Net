@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup Condition="'$(GalNetPlayerMode)' != ''">
-    <EnableGameDebugging Condition="'$(GalNetPlayerMode)' == 'Developer'">true</EnableGameDebugging>
-    <EnableGameDebugging Condition="'$(GalNetPlayerMode)' != 'Developer'">false</EnableGameDebugging>
+    <EnableGameDebugging Condition="('$(GalNetPlayerMode)' == 'Developer' Or '$(GalNetPlayerMode)' == 'BoundDeveloper')">true</EnableGameDebugging>
+    <EnableGameDebugging Condition="('$(GalNetPlayerMode)' != 'Developer' And '$(GalNetPlayerMode)' != 'BoundDeveloper')">false</EnableGameDebugging>
     <EnableLaunchArguments Condition="'$(GalNetPlayerMode)' != 'Bound'">true</EnableLaunchArguments>
     <EnableLaunchArguments Condition="'$(GalNetPlayerMode)' == 'Bound'">false</EnableLaunchArguments>
     <DefineConstants Condition="'$(EnableGameDebugging)' == 'true'">$(DefineConstants);GALNET_GAME_DEBUG</DefineConstants>

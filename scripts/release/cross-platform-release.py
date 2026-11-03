@@ -108,7 +108,7 @@ def expected_assets(version):
                 f"GalNet-CrossPlatform-Sample-GameTestCase-{version}-android-arm64.apk"}
 
 
-def desktop(raw, output, media=None):
+def desktop(raw, output, media=None, demo_only=False, game_only=False):
     report = read(raw / "application-publish.json")
     if not report["passed"] or not report.get("boundProjectId"):
         raise ValueError("A successful, game-bound application publish is required.")
@@ -125,9 +125,17 @@ def desktop(raw, output, media=None):
         publisher.validate_publish(root, role, rid, deployment == "SelfContained")
     assets = output / "assets"
     assets.mkdir(parents=True)
-    for role, product in (("Editor", "Editor"), ("CrossPlatform-Bound", "CrossPlatform-Sample-GameTestCase"),
-                          ("CrossPlatform-Player", "CrossPlatform-Sample-Player"),
-                          ("CrossPlatform-Developer", "CrossPlatform-Sample-Developer")):
+    if demo_only and game_only:
+        raise ValueError("Choose either demo-only or game-only.")
+    bound_role = "CrossPlatform-BoundDeveloper" if game_only and any(
+        application["role"] == "CrossPlatform-BoundDeveloper" for application in report["applications"]) else "CrossPlatform-Bound"
+    game_product = "CrossPlatform-Sample-GameTestCase" if report.get("gameTestCaseBundled", True) else "Game"
+    products = [] if game_only else [("Editor", "Editor")]
+    products.append((bound_role, game_product))
+    if not demo_only and not game_only:
+        products += [("CrossPlatform-Player", "CrossPlatform-Sample-Player"),
+                     ("CrossPlatform-Developer", "CrossPlatform-Sample-Developer")]
+    for role, product in products:
         name = asset_name(product, version, rid, deployment)
         root = output / "staging" / name.removesuffix(".tar.gz").removesuffix(".zip")
         library = root / "lib"
@@ -171,7 +179,7 @@ def desktop(raw, output, media=None):
             linux_package.verify_native(root)
         (root / "docs").mkdir(exist_ok=True)
         shutil.copyfile(REPO / "LICENSE", root / "docs/LICENSE")
-        if role == "CrossPlatform-Bound":
+        if role in ("CrossPlatform-Bound", "CrossPlatform-BoundDeveloper"):
             for entry in report["content"]["contractFiles"]:
                 if Path(entry["path"]).name != entry["path"] or digest(library / entry["path"]) != entry["sha256"]:
                     raise ValueError("Game/runtime contract identity differs.")
@@ -188,8 +196,10 @@ def desktop(raw, output, media=None):
                else "Includes .NET; no SDK/runtime installation required.\n")
             + ("Ubuntu 24.04 x64 baseline. Host glibc, ICU, display/graphics drivers, fonts and audio service are required.\n"
                "Private VLC dependencies, source provenance and copyright notices are in lib/native and docs/.\n" if linux else "")
-            + ("GameTestCase is included; debug and launch arguments are disabled; the player is bound to its project identity.\n"
+            + ("Game content is included; debug and launch arguments are disabled; the player is bound to its project identity.\n"
                if role == "CrossPlatform-Bound" else "")
+            + ("Game content and debugging are included; the player is bound to its project identity.\n"
+               if role == "CrossPlatform-BoundDeveloper" else "")
             + ("No game included. Launch with <content-directory> [--profile <directory>]; debug tools are enabled.\n"
                if role == "CrossPlatform-Developer" else "")
             + ("No game included. Launch with <content-directory> [--profile <directory>]; debug tools are disabled.\n"
@@ -197,10 +207,10 @@ def desktop(raw, output, media=None):
         write(root / "docs/release-manifest.json", {"schemaVersion": 1, "version": version,
               "sourceCommit": report["sourceCommit"], "runtime": rid, "package": product,
               "selfContained": deployment == "SelfContained", "readyToRun": False,
-              "boundProjectId": report["boundProjectId"] if role == "CrossPlatform-Bound" else None,
+              "boundProjectId": report["boundProjectId"] if role in ("CrossPlatform-Bound", "CrossPlatform-BoundDeveloper") else None,
               "sampleFlavor": role.partition("-")[2] or None, "files": inventory(root)})
         archive(root, assets / name, linux)
-    if deployment == "SelfContained":
+    if deployment == "SelfContained" and not demo_only and not game_only:
         with zipfile.ZipFile(assets / f"GalNet-CrossPlatform-Sample-Contracts-{version}-{rid}.zip", "w", zipfile.ZIP_DEFLATED) as zipped:
             for name in CONTRACTS:
                 zipped.write(raw / "publish/CrossPlatform-Bound" / name, name)
@@ -212,8 +222,8 @@ def desktop(raw, output, media=None):
 def android(raw, output, version, commit):
     report = read(raw / "android-publish.json")
     verification = read(raw / "android-package-verification.json")
-    if not report.get("passed") or not report.get("monoAot") or report.get("gameDebugging") or not report.get("boundProjectId"):
-        raise ValueError("A successful bound, non-debug Mono AOT Android publish is required.")
+    if not report.get("passed") or not report.get("monoAot") or report.get("gameDebugging") or not report.get("boundProjectId") or not report.get("gameTestCaseBundled"):
+        raise ValueError("A successful bound, non-debug GameTestCase Mono AOT Android publish is required.")
     # verify-android-package.py raises on failure; preserve its full evidence with the bundle.
     if verification.get("apkSha256") != digest(Path(report["apk"])) or verification.get("contentSha256") != digest(Path(report["content"])):
         raise ValueError("Missing Android package evidence.")
@@ -260,8 +270,10 @@ if __name__ == "__main__":
     commands = parser.add_subparsers(dest="command", required=True)
     desktop_parser = commands.add_parser("desktop")
     desktop_parser.add_argument("--raw", type=Path, required=True)
-    desktop_parser.add_argument("--output", type=Path, required=True)
+    desktop_parser.add_argument("--out", "--output", dest="output", type=Path, required=True)
     desktop_parser.add_argument("--media", type=Path)
+    desktop_parser.add_argument("--demo-only", action="store_true", help="Package only Editor and the bound sample for CI.")
+    desktop_parser.add_argument("--game-only", action="store_true", help="Package only the bound game.")
     android_parser = commands.add_parser("android")
     android_parser.add_argument("--raw", type=Path, required=True)
     android_parser.add_argument("--output", type=Path, required=True)

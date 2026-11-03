@@ -14,6 +14,10 @@ on:
       - 'scripts/ci/publish-android-sample.ps1'
       - 'scripts/ci/process_steps.py'
       - 'scripts/ci/test-application-publish.py'
+      - 'scripts/release/cross-platform-release.py'
+      - 'scripts/release/prepare-linux-media.py'
+      - 'scripts/release/package-linux.py'
+      - 'scripts/distribution/**'
       - 'features/F-20261029-05-cross-platform-applications/probes/mobile/verify-android-package.py'
       - 'packaging/**'
       - 'scripts/release/Pack-NuGet.ps1'
@@ -55,19 +59,39 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Publish and validate real application payloads
+      - name: Prepare Linux media dependencies
+        if: matrix.rid == 'linux-x64'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgles2
+          python scripts/release/prepare-linux-media.py --work-directory out/media-work --output-directory out/media
+      - name: Build and package Editor and bound sample demo
         shell: pwsh
         run: |
-          python scripts/ci/publish-applications.py --target '${{ matrix.rid }}' --output out/application-portability --bind-game --flavors Developer Player Bound
+          python scripts/ci/publish-applications.py --target '${{ matrix.rid }}' --output out/application-portability --package-apphosts --bind-game --flavors Player Bound
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $arguments = @('desktop', '--raw', 'out/application-portability', '--output', 'out/demo-bundles', '--demo-only')
+          if ('${{ matrix.rid }}' -eq 'linux-x64') { $arguments += @('--media', 'out/media') }
+          python scripts/release/cross-platform-release.py @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload Editor and demo
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-demo-${{ matrix.rid }}
+          path: out/demo-bundles/assets/*
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
       - name: Upload publish reports and step logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: application-publish-${{ matrix.rid }}
+          name: application-publish-evidence-${{ matrix.rid }}
           path: |
             out/application-portability/application-publish.json
             out/application-portability/logs/
+            out/demo-bundles/bundle.json
+            out/media/media-manifest.json
           if-no-files-found: warn
 
   nuget:

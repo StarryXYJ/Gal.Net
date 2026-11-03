@@ -43,6 +43,8 @@ jobs:
           cache-dependency-path: |
             global.json
             **/packages.lock*.json
+      - name: Verify application publish guards
+        run: python scripts/ci/test-application-publish.py
       - name: Run shared local CI entry
         shell: pwsh
         env:

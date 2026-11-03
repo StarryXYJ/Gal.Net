@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][string]$OutputDirectory,
-    [ValidateSet('android-arm64')][string]$RuntimeIdentifier = 'android-arm64',
+    [Parameter(Mandatory)][Alias('Out')][string]$OutputDirectory,
+    [Alias('Rid')][ValidateSet('android-arm64')][string]$RuntimeIdentifier = 'android-arm64',
+    [string]$Pak,
     [string]$AndroidNdkDirectory,
     [string]$CMakePath = 'cmake',
     [string]$NinjaPath = 'ninja',
@@ -12,6 +13,10 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 if (Test-Path -LiteralPath $OutputDirectory) { throw "Use a new Android publish output directory: $OutputDirectory" }
+if ($Pak) {
+    $Pak = [IO.Path]::GetFullPath($Pak)
+    if ([IO.Path]::GetExtension($Pak) -ine '.galpak' -or !(Test-Path -LiteralPath $Pak -PathType Leaf)) { throw '-Pak must name an existing .galpak file.' }
+}
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-(?:dev|preview)\.\d+)?$') { throw 'Use a release or numbered dev/preview version.' }
 if ([string]::IsNullOrWhiteSpace($AndroidNdkDirectory)) { $AndroidNdkDirectory = $env:ANDROID_NDK_ROOT }
 if ([string]::IsNullOrWhiteSpace($AndroidNdkDirectory) -or !(Test-Path -LiteralPath (Join-Path $AndroidNdkDirectory 'build/cmake/android.toolchain.cmake'))) {
@@ -131,14 +136,17 @@ try {
     Invoke-AndroidDotNet 'restore-android' (@('restore', $android) + $restoreProperties + @('--locked-mode'))
     Invoke-AndroidDotNet 'build-android-contracts' (@('build', $android, '-c', 'Release', '--no-restore') + $properties)
     $androidContractDirectory = Join-Path (Split-Path -Parent $android) "bin/Release/net10.0-android/$RuntimeIdentifier"
-    $exportSource = New-GameTestCaseExportSource $androidContractDirectory
-    Invoke-AndroidDotNet 'export-gametestcase' @('run', '--project', $headless, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore',
-        '--', 'export', $exportSource, '--output', $contentOutput)
-    $exportReport = Get-Content -LiteralPath (Join-Path $logs 'export-gametestcase.log') -Raw | ConvertFrom-Json
-    $galpak = [IO.Path]::GetFullPath([string]$exportReport.data.packagePath)
-    $relativeGalpak = [IO.Path]::GetRelativePath($contentOutput, $galpak)
-    if ([string]::IsNullOrWhiteSpace($galpak) -or [IO.Path]::IsPathRooted($relativeGalpak) -or $relativeGalpak -eq '..' -or $relativeGalpak.StartsWith("..$([IO.Path]::DirectorySeparatorChar)") -or [IO.Path]::GetExtension($galpak) -cne '.galpak' -or !(Test-Path -LiteralPath $galpak -PathType Leaf)) {
-        throw "GameTestCase export did not produce a galpak under $contentOutput."
+    $galpak = $Pak
+    if (!$galpak) {
+        $exportSource = New-GameTestCaseExportSource $androidContractDirectory
+        Invoke-AndroidDotNet 'export-gametestcase' @('run', '--project', $headless, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore',
+            '--', 'export', $exportSource, '--output', $contentOutput)
+        $exportReport = Get-Content -LiteralPath (Join-Path $logs 'export-gametestcase.log') -Raw | ConvertFrom-Json
+        $galpak = [IO.Path]::GetFullPath([string]$exportReport.data.packagePath)
+        $relativeGalpak = [IO.Path]::GetRelativePath($contentOutput, $galpak)
+        if ([string]::IsNullOrWhiteSpace($galpak) -or [IO.Path]::IsPathRooted($relativeGalpak) -or $relativeGalpak -eq '..' -or $relativeGalpak.StartsWith("..$([IO.Path]::DirectorySeparatorChar)") -or [IO.Path]::GetExtension($galpak) -cne '.galpak' -or !(Test-Path -LiteralPath $galpak -PathType Leaf)) {
+            throw "GameTestCase export did not produce a galpak under $contentOutput."
+        }
     }
     $installedContent = Join-Path $OutputDirectory 'installed-content'
     Invoke-AndroidDotNet 'install-gametestcase' @('run', '--project', $headless, '--configuration', 'Release', '--no-launch-profile', '--no-build', '--no-restore',
@@ -161,7 +169,7 @@ try {
         runtimeIdentifier = $RuntimeIdentifier
         gameDebugging = $false
         boundProjectId = $binding.projectId
-        gameTestCaseBundled = $true
+        gameTestCaseBundled = !$Pak
         monoAot = $true
         selfContained = $true
         publicDotnetRuntimeRequired = $false
