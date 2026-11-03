@@ -1,5 +1,5 @@
 {
-  "demo.welcome": "Welcome to the GalNet showcase: text and variants, media, audio, shaders, masks, character direction, weather and transitions. Pause at dialogue to inspect, then advance.",
+  "demo.welcome": "Welcome to the GalNet showcase: text and variants, media, audio, shaders, masks, character direction, weather and transitions. Pause at dialogue to inspect, then advance.\r\n",
   "demo.chapter-text": "Text cards · Position, replacement and style",
   "demo.chapter-media": "02 · Video and scene layers",
   "demo.video-lead": "First: a skippable video. Then: video as a scene layer alongside dialogue.",

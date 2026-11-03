@@ -8,27 +8,6 @@ namespace GeneralTest.Editor;
 public sealed partial class SceneTargetAnalysisTests
 {
     [Test]
-    public void PossibleCleanupIsInformationButMissingAndOrdinaryReferencesRemainWarnings()
-    {
-        var graph = Graph("g");
-        Dictionary<string, List<EditorEntryData>> groups = new() { ["g"] =
-        [Layer("layer", "layer", condition: "save.flag"), Playback(),
-         Entry("stop", BuiltinEntryIds.StopAnimation, new { playbackHandleId = "play" }),
-         Entry("missing", BuiltinEntryIds.StopParticleEmitter, new { instanceId = "absent" }),
-         Entry("move", BuiltinEntryIds.MoveLayer, new { handleId = "layer", transform = new { x = 4 } })] };
-        var diagnostics = SceneReferenceAnalysis.Diagnose(new(groups), new(graph, groups));
-        Assert.That(diagnostics.Single(issue => issue.Owner.EntryId == "stop"), Has.Property("Code").EqualTo("scene.reference.possible").And.Property("IsInformation").True);
-        Assert.That(diagnostics.Single(issue => issue.Owner.EntryId == "missing"), Has.Property("Code").EqualTo("scene.reference.missing").And.Property("IsInformation").False);
-        Assert.That(diagnostics.Single(issue => issue.Owner.EntryId == "move"), Has.Property("Code").EqualTo("scene.reference.possible").And.Property("IsInformation").False);
-
-        var timeline = Entry("timeline", BuiltinEntryIds.PlayTimeline, new { timeline = new { durationFrames = 10, tracks = new object[0], events = new object[] {
-            new { editorId = "stop", frame = 0, type = BuiltinEntryIds.StopParticleEmitter, parameters = new { instanceId = "particle" } } } } });
-        var index = new SceneReferenceIndex(new Dictionary<string, List<EditorEntryData>> { ["g"] = [timeline] });
-        Assert.That(index.References.Single().Slot.OptionalCleanup, Is.True);
-        Assert.That(SceneAuthoringSemantics.Reference(BuiltinEntryIds.StopEffect, "instanceId")!.OptionalCleanup, Is.True);
-    }
-
-    [Test]
     public void RelationshipRegistryKeepsDomainsSeparateAndUnknownJsonUntouchedDuringCopy()
     {
         var layer = Layer("layer", "shared");

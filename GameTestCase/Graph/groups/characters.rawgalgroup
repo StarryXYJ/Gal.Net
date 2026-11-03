@@ -7,11 +7,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.chapter-characters",
-        "position": "Center",
-        "styleName": "chapter",
         "blocking": true,
-        "holdSeconds": 1.2
+        "content": "demo.chapter-characters",
+        "holdSeconds": 1.2,
+        "position": "Center",
+        "styleName": "chapter"
       }
     },
     {
@@ -71,8 +71,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "demo.motion-lead"
+        "content": "demo.motion-lead",
+        "speaker": "guide"
       }
     },
     {
@@ -80,11 +80,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-jump",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-jump",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -112,11 +112,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-nod",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-nod",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -144,11 +144,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-shake",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-shake",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -176,11 +176,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-radial-lines",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-radial-lines",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -211,11 +211,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-directional-lines",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-directional-lines",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -247,11 +247,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-impact",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-impact",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -288,11 +288,11 @@
       "type": "text.card",
       "condition": "",
       "parameters": {
-        "content": "demo.cue-push",
-        "position": "TopLeft",
-        "styleName": "location",
         "blocking": true,
-        "holdSeconds": 0.65
+        "content": "demo.cue-push",
+        "holdSeconds": 0.65,
+        "position": "TopLeft",
+        "styleName": "location"
       }
     },
     {
@@ -338,9 +338,9 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bg",
         "assetId": "a1000000000000000000000000000001",
-        "displayMode": "Fill"
+        "displayMode": "Fill",
+        "handleId": "library-bg"
       }
     },
     {
@@ -348,8 +348,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-alice",
         "assetId": "a5cd492b4d7242738f000dbd93efec15",
+        "handleId": "library-alice",
         "transform": {
           "x": -400,
           "y": 80
@@ -362,8 +362,8 @@
       "type": "layer.show",
       "condition": "",
       "parameters": {
-        "handleId": "library-bob",
         "assetId": "a1000000000000000000000000000004",
+        "handleId": "library-bob",
         "transform": {
           "x": 400,
           "y": 80
@@ -376,9 +376,9 @@
       "type": "preset.flash",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-lightning",
         "count": 3,
-        "durationFrames": 90
+        "durationFrames": 90,
+        "playbackHandleId": "library-lightning"
       }
     },
     {
@@ -386,10 +386,10 @@
       "type": "preset.idle",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-idle",
+        "durationFrames": 180,
         "handleId": "library-alice",
         "motion": "Breathe",
-        "durationFrames": 180
+        "playbackHandleId": "library-idle"
       }
     },
     {
@@ -397,8 +397,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.idle-Breathe-note.content"
+        "content": "group.presentation-library.entry.idle-Breathe-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -406,8 +406,8 @@
       "type": "animation.stop",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-idle",
-        "mode": "CompleteImmediately"
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "library-idle"
       }
     },
     {
@@ -415,10 +415,10 @@
       "type": "preset.idle",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-idle",
+        "durationFrames": 180,
         "handleId": "library-alice",
         "motion": "Sway",
-        "durationFrames": 180
+        "playbackHandleId": "library-idle"
       }
     },
     {
@@ -426,8 +426,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.idle-Sway-note.content"
+        "content": "group.presentation-library.entry.idle-Sway-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -435,8 +435,8 @@
       "type": "animation.stop",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-idle",
-        "mode": "CompleteImmediately"
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "library-idle"
       }
     },
     {
@@ -444,18 +444,18 @@
       "type": "dialogue.emphasis",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "speaker-0",
-        "instanceId": "library-speaker",
-        "program": "b1000000000000000000000000000004",
+        "activeHandleId": "library-alice",
+        "content": "group.presentation-library.entry.emphasis-0.content",
         "handleIds": [
           "library-alice",
           "library-bob"
         ],
-        "activeHandleId": "library-alice",
+        "instanceId": "library-speaker",
+        "playbackHandleId": "speaker-0",
+        "program": "b1000000000000000000000000000004",
         "speaker": "guide",
-        "content": "group.presentation-library.entry.emphasis-0.content",
-        "voice": "a1000000000000000000000000000010",
-        "trackId": "vocal"
+        "trackId": "vocal",
+        "voice": "a1000000000000000000000000000010"
       }
     },
     {
@@ -463,18 +463,18 @@
       "type": "dialogue.emphasis",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "speaker-1",
-        "instanceId": "library-speaker",
-        "program": "b1000000000000000000000000000004",
+        "activeHandleId": "library-bob",
+        "content": "group.presentation-library.entry.emphasis-1.content",
         "handleIds": [
           "library-alice",
           "library-bob"
         ],
-        "activeHandleId": "library-bob",
+        "instanceId": "library-speaker",
+        "playbackHandleId": "speaker-1",
+        "program": "b1000000000000000000000000000004",
         "speaker": "guide",
-        "content": "group.presentation-library.entry.emphasis-1.content",
-        "voice": "a1000000000000000000000000000010",
-        "trackId": "vocal"
+        "trackId": "vocal",
+        "voice": "a1000000000000000000000000000010"
       }
     },
     {
@@ -482,14 +482,14 @@
       "type": "preset.emphasis",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "speaker-clear",
-        "instanceId": "library-speaker",
-        "program": "b1000000000000000000000000000004",
+        "clear": true,
         "handleIds": [
           "library-alice",
           "library-bob"
         ],
-        "clear": true
+        "instanceId": "library-speaker",
+        "playbackHandleId": "speaker-clear",
+        "program": "b1000000000000000000000000000004"
       }
     },
     {
@@ -497,10 +497,10 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Memory",
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
-        "mood": "Memory"
+        "mood": "Memory",
+        "playbackHandleId": "mood-Memory",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -508,8 +508,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mood-Memory-note.content"
+        "content": "group.presentation-library.entry.mood-Memory-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -517,11 +517,11 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Memory-exit",
+        "exit": true,
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
         "mood": "Memory",
-        "exit": true
+        "playbackHandleId": "mood-Memory-exit",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -529,10 +529,10 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Dream",
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
-        "mood": "Dream"
+        "mood": "Dream",
+        "playbackHandleId": "mood-Dream",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -540,8 +540,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mood-Dream-note.content"
+        "content": "group.presentation-library.entry.mood-Dream-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -549,11 +549,11 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Dream-exit",
+        "exit": true,
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
         "mood": "Dream",
-        "exit": true
+        "playbackHandleId": "mood-Dream-exit",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -561,10 +561,10 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Tension",
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
-        "mood": "Tension"
+        "mood": "Tension",
+        "playbackHandleId": "mood-Tension",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -572,8 +572,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mood-Tension-note.content"
+        "content": "group.presentation-library.entry.mood-Tension-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -581,11 +581,11 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Tension-exit",
+        "exit": true,
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
         "mood": "Tension",
-        "exit": true
+        "playbackHandleId": "mood-Tension-exit",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -593,10 +593,10 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Injury",
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
-        "mood": "Injury"
+        "mood": "Injury",
+        "playbackHandleId": "mood-Injury",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -604,8 +604,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.mood-Injury-note.content"
+        "content": "group.presentation-library.entry.mood-Injury-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -613,11 +613,11 @@
       "type": "preset.mood",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "mood-Injury-exit",
+        "exit": true,
         "instanceId": "library-mood",
-        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee",
         "mood": "Injury",
-        "exit": true
+        "playbackHandleId": "mood-Injury-exit",
+        "program": "4b29dda4fb2b5c46bc3887ba81aaf0ee"
       }
     },
     {
@@ -625,10 +625,10 @@
       "type": "preset.heartbeat",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-heartbeat",
-        "program": "b1000000000000000000000000000003",
+        "durationFrames": 90,
         "handleId": "library-alice",
-        "durationFrames": 90
+        "playbackHandleId": "library-heartbeat",
+        "program": "b1000000000000000000000000000003"
       }
     },
     {
@@ -636,8 +636,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.heartbeat-note.content"
+        "content": "group.presentation-library.entry.heartbeat-note.content",
+        "speaker": "guide"
       }
     },
     {
@@ -645,8 +645,8 @@
       "type": "animation.stop",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-heartbeat",
-        "mode": "CompleteImmediately"
+        "mode": "CompleteImmediately",
+        "playbackHandleId": "library-heartbeat"
       }
     },
     {
@@ -654,8 +654,8 @@
       "type": "preset.parallax",
       "condition": "",
       "parameters": {
-        "playbackHandleId": "library-parallax",
         "durationFrames": 120,
+        "playbackHandleId": "library-parallax",
         "targets": [
           {
             "handleId": "library-bg",
@@ -686,8 +686,8 @@
       "type": "dialogue.text",
       "condition": "",
       "parameters": {
-        "speaker": "guide",
-        "content": "group.presentation-library.entry.parallax-note.content"
+        "content": "group.presentation-library.entry.parallax-note.content",
+        "speaker": "guide"
       }
     }
   ]

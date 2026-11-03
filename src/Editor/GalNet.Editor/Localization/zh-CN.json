@@ -140,6 +140,7 @@
   "Command.SaveProject": "保存项目",
   "Command.CloseProject": "关闭项目",
   "Settings.Editor.Title": "编辑器设置",
+  "Settings.FontSize": "\u7f16\u8f91\u5668\u5b57\u53f7",
   "Settings.Theme": "主题",
   "Settings.UiLanguage": "UI 语言",
   "Settings.Save": "保存设置",

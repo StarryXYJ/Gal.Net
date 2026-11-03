@@ -36,7 +36,7 @@
                     <TextBlock Text="{Binding DisplayText}"
                                DoubleTapped="OnLogDoubleTapped"
                                FontFamily="Consolas"
-                               FontSize="12"
+                               FontSize="{DynamicResource Editor.Font.Detail}"
                                Foreground="{DynamicResource SemiColorText2}" />
                 </DataTemplate>
             </ListBox.ItemTemplate>

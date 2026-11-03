@@ -12,7 +12,7 @@
               TransparencyLevelHint="AcrylicBlur"
               Background="Transparent">
     <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="20">
-        <TextBlock Text="{loc:Localize Export.Progress.Title}" FontSize="16" FontWeight="Bold" />
+        <TextBlock Text="{loc:Localize Export.Progress.Title}" FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold" />
         <TextBlock Grid.Row="1" Margin="0,14,0,8" Text="{loc:Localize Export.Progress.Working}" />
         <ProgressBar Grid.Row="2" IsIndeterminate="{Binding IsRunning}" Height="6" />
         <StackPanel Grid.Row="3" Spacing="12">

@@ -16,8 +16,8 @@
       "condition": "",
       "parameters": {
         "assetId": "a1000000000000000000000000000003",
-        "handleId": "background",
-        "displayMode": "Fill"
+        "displayMode": "Fill",
+        "handleId": "background"
       }
     },
     {

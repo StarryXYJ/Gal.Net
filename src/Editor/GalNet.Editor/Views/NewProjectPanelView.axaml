@@ -8,7 +8,7 @@
     <ScrollViewer>
         <StackPanel Margin="12" Spacing="10" MaxWidth="520" IsEnabled="{Binding !IsBusy}">
             <TextBlock Text="{loc:Localize Startup.NewProject}"
-                       FontSize="16"
+                       FontSize="{DynamicResource Editor.Font.Heading}"
                        FontWeight="SemiBold" />
 
             <TextBlock Text="{loc:Localize NewProject.Name}" />

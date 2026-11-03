@@ -140,6 +140,7 @@
   "Command.SaveProject": "프로젝트 저장",
   "Command.CloseProject": "프로젝트 닫기",
   "Settings.Editor.Title": "편집기 설정",
+  "Settings.FontSize": "\uc5d0\ub514\ud130 \uae00\uaf34 \ud06c\uae30",
   "Settings.Theme": "테마",
   "Settings.UiLanguage": "UI 언어",
   "Settings.Save": "설정 저장",

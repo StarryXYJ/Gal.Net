@@ -7,6 +7,7 @@ using GalNet.Contracts.Builtins.Scene;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.Composition;
 using GalNet.Editor.Services;
+using GalNet.Editor.Themes;
 using GalNet.Editor.ViewModels;
 using GalNet.Editor.Views;
 using GameViewAssembly::GalNet.Avalonia.GameView.Presentation;
@@ -28,6 +29,7 @@ public partial class App : Application
         using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.Xaml");
 #endif
         AvaloniaXamlLoader.Load(this);
+        EditorTypography.Apply(Resources, EditorTypography.DefaultSize);
     }
 
     public override void OnFrameworkInitializationCompleted()
@@ -70,6 +72,7 @@ public partial class App : Application
             using var measurement = GalNet.Diagnostics.CpuProfiler.Shared.Measure("Editor.SettingsLocaleTheme");
 #endif
             var editorSettings = ServiceProvider.GetRequiredService<IEditorSettingsService>().GetSettings();
+            EditorTypography.Apply(Resources, editorSettings.FontSize);
             ServiceProvider.GetRequiredService<IEditorLocalizationService>().ApplyLocale(editorSettings.UiLocale.Code);
             ServiceProvider.GetRequiredService<IThemeService>().ApplyThemeByName(editorSettings.Theme);
         }

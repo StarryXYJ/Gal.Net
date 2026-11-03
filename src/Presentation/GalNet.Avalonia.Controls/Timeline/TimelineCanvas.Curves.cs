@@ -71,7 +71,7 @@ public sealed partial class TimelineCanvas
             context.DrawRectangle(selected ? Brushes.DodgerBlue : Brushes.MediumPurple, new Pen(Brushes.White, 1), new Rect(position.X - 4, position.Y - 4, 8, 8));
         }
         void Label(double value, double y) => context.DrawText(new FormattedText(value.ToString("G5", CultureInfo.CurrentCulture), CultureInfo.CurrentCulture,
-            FlowDirection.LeftToRight, new Typeface(FontFamily.Default), 10, Brushes.Gray), new Point(Math.Max(4, Bounds.Width - 80), y));
+            FlowDirection.LeftToRight, new Typeface(FontFamily.Default), LabelFontSize * 10 / 11, Brushes.Gray), new Point(Math.Max(4, Bounds.Width - 80), y));
         Label(viewport.Maximum, top + 2); Label(viewport.Minimum, top + TimelineCurveViewport.Height - 15);
     }
     private static double Distance(Point left, Point right) => Math.Sqrt(Math.Pow(left.X - right.X, 2) + Math.Pow(left.Y - right.Y, 2));

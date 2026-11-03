@@ -7,7 +7,7 @@
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto"
           RowSpacing="5" Margin="16">
-        <TextBlock Text="{loc:Localize Export.Title}" FontSize="16" FontWeight="Bold" />
+        <TextBlock Text="{loc:Localize Export.Title}" FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold" />
         <TextBlock Grid.Row="1" Margin="0,8,0,0" Text="{loc:Localize Export.Mode}" Foreground="{DynamicResource SemiColorText2}" />
         <ComboBox Grid.Row="2" Name="ExportModeSelector"
                   ItemsSource="{Binding Modes}" SelectedItem="{Binding SelectedMode}"

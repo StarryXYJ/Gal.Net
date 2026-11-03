@@ -245,7 +245,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             entry.Source.Parameters["parameters"] = JsonSerializer.Deserialize<JsonElement>("{\"amount\":0.6,\"unknown\":[9007199254740993,null]}");
             scope.GetRequiredService<IEditorDocumentService>().SynchronizeGroups();
             var query = scope.GetRequiredService<ProjectSceneTargets>(); await query.PrepareAsync();
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry; entry.IsParametersExpanded = true;
             using var inspector = new EntryInspectorViewModel(page, sceneTargets: query);
             var view = new EntryInspectorView { DataContext = inspector };
             var groupView = new GroupEditorPanelView { DataContext = page };

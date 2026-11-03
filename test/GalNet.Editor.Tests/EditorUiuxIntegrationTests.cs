@@ -207,6 +207,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
         {
             PrepareGroupTheme();
             var app = Application.Current!;
+            EditorTypography.Apply(app.Resources, EditorTypography.DefaultSize);
             var resourceBase = new Uri("avares://GalNet.Editor/");
             app.Resources.MergedDictionaries.Add(new ResourceInclude(resourceBase) { Source = new Uri("avares://GalNet.Editor/Assets/icons.axaml") });
             app.Resources.MergedDictionaries.Add(new ResourceInclude(resourceBase) { Source = new Uri("avares://GalNet.Editor/Themes/EditorButtons.axaml") });
@@ -225,6 +226,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Wait).Single();
             var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); page.SelectedEntry = entry;
             using var inspector = new EntryInspectorViewModel(page);
+            entry.IsParametersExpanded = true;
             var groupView = new GroupEditorPanelView { DataContext = page };
             var details = new EntryInspectorView { DataContext = inspector };
             var content = new Grid { ColumnDefinitions = new("72*,28*") }; content.Children.Add(groupView); Grid.SetColumn(details, 1); content.Children.Add(details);
@@ -250,6 +252,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                         var editor = row.GetVisualDescendants().OfType<ContentControl>().Single(item => item.Name == "FieldEditor");
                         Assert.That(Grid.GetRow(editor), Is.EqualTo(stacked ? 1 : 0));
                         Assert.That(Grid.GetColumn(editor), Is.EqualTo(stacked ? 0 : 1));
+                        Assert.That(row.LabelWidth, Is.EqualTo(85));
                         Assert.That(label.IsVisible, Is.True);
                     }
                 }

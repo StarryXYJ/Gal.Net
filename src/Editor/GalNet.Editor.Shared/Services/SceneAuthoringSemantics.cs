@@ -4,8 +4,7 @@ namespace GalNet.Editor.Shared.Services;
 
 public enum SceneIdentityDomain { Object, Playback, AudioEffect }
 public sealed record SceneOutputSlot(string Field, string Role, SceneIdentityDomain Domain, SceneTargetKind Kind, string? Container = null);
-public sealed record SceneReferenceSlot(string Field, SceneIdentityDomain Domain, IReadOnlyList<SceneTargetKind> Kinds, bool RequiresVariants = false, bool AllowsGlobal = false, string? Container = null)
-{ public bool OptionalCleanup { get; init; } }
+public sealed record SceneReferenceSlot(string Field, SceneIdentityDomain Domain, IReadOnlyList<SceneTargetKind> Kinds, bool RequiresVariants = false, bool AllowsGlobal = false, string? Container = null);
 public sealed record SceneEntrySemantics(IReadOnlyList<SceneOutputSlot> Outputs, IReadOnlyList<SceneReferenceSlot> References, bool SceneNeutral = false, bool Timeline = false);
 
 /// <summary>Built-in author relationships, independent of value schemas and runtime execution.</summary>
@@ -29,10 +28,10 @@ public static class SceneAuthoringSemantics
         foreach (var type in new[] { BuiltinEntryIds.HideLayer, BuiltinEntryIds.MoveLayer, BuiltinEntryIds.ReplaceLayer, BuiltinEntryIds.StopVideo })
             Add(type, [], [Reference("handleId", SceneTargetKind.Layer)]);
         Add(BuiltinEntryIds.SelectVariants, [], [Reference("handleId", SceneTargetKind.Layer) with { RequiresVariants = true }]);
-        Add(BuiltinEntryIds.StopParticleEmitter, [], [Reference("instanceId", SceneTargetKind.Particle) with { OptionalCleanup = true }]);
-        Add(BuiltinEntryIds.StopEffect, [], [Reference("instanceId", SceneTargetKind.Effect) with { OptionalCleanup = true }]);
+        Add(BuiltinEntryIds.StopParticleEmitter, [], [Reference("instanceId", SceneTargetKind.Particle)]);
+        Add(BuiltinEntryIds.StopEffect, [], [Reference("instanceId", SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.Animate, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect)]);
-        Add(BuiltinEntryIds.StopAnimation, [], [Reference("playbackHandleId", SceneTargetKind.Playback) with { OptionalCleanup = true }]);
+        Add(BuiltinEntryIds.StopAnimation, [], [Reference("playbackHandleId", SceneTargetKind.Playback)]);
         foreach (var type in new[] { BuiltinEntryIds.MaskPreset, BuiltinEntryIds.FlashPreset, BuiltinEntryIds.IdlePreset, BuiltinEntryIds.WeatherPreset, BuiltinEntryIds.MoodPreset, BuiltinEntryIds.HeartbeatPreset, BuiltinEntryIds.ParallaxPreset, BuiltinEntryIds.EmphasisPreset, BuiltinEntryIds.EmphasisText })
             Add(type, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)],
                 type is BuiltinEntryIds.IdlePreset or BuiltinEntryIds.HeartbeatPreset ? [Reference("handleId", SceneTargetKind.Layer)] :

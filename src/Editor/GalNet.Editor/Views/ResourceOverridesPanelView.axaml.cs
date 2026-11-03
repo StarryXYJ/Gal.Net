@@ -74,7 +74,8 @@ public sealed partial class ResourceOverridesPanelView : UserControl
             top.Children.Add(name); Grid.SetColumn(export, 1); top.Children.Add(export); Grid.SetColumn(delete, 2); top.Children.Add(delete);
             header.Children.Add(top);
             var bottom = new Grid { ColumnDefinitions = new("*,Auto"), Margin = new Thickness(6, 0, 6, 0) };
-            bottom.Children.Add(new TextBlock { Text = model.L["Packaging.PriorityLabel"], FontSize = 12, VerticalAlignment = VerticalAlignment.Center });
+            var priorityLabel = new TextBlock { Text = model.L["Packaging.PriorityLabel"], VerticalAlignment = VerticalAlignment.Center };
+            priorityLabel.Bind(TextBlock.FontSizeProperty, this.GetResourceObservable("Editor.Font.Detail")); bottom.Children.Add(priorityLabel);
             ToolTip.SetTip(bottom, model.L["Packaging.Priority"]);
             Grid.SetColumn(priority, 1); bottom.Children.Add(priority); Grid.SetRow(bottom, 1); header.Children.Add(bottom);
             headers.Children.Add(header);
@@ -114,7 +115,8 @@ public sealed partial class ResourceOverridesPanelView : UserControl
         var source = new Grid { Width = 300, ColumnDefinitions = new("*,Auto"), Margin = new Thickness(0, 0, 0, 2) };
         var description = new StackPanel { Margin = new Thickness(6, 4), VerticalAlignment = VerticalAlignment.Center, Spacing = 2 };
         description.Children.Add(new TextBlock { Text = Path.GetFileName(row.Path), TextTrimming = Avalonia.Media.TextTrimming.CharacterEllipsis });
-        var type = new TextBlock { Text = row.TypeId + (row.Missing ? " · " + model.L["Packaging.Missing"] : ""), FontSize = 11 };
+        var type = new TextBlock { Text = row.TypeId + (row.Missing ? " · " + model.L["Packaging.Missing"] : "") };
+        type.Bind(TextBlock.FontSizeProperty, this.GetResourceObservable("Editor.Font.Caption"));
         type.Bind(ForegroundProperty, this.GetResourceObservable("SemiColorText2")); description.Children.Add(type); source.Children.Add(description);
         ToolTip.SetTip(source, row.Path + "\n" + row.Id + "\n" + string.Join("\n", row.Uses.Select(use => use.GroupId + "/" + use.EntryId + use.FieldPath + (use.Through is null ? "" : " ← " + use.Through))));
         var locate = IconButton("PanelNavigateIcon", model.L["Packaging.Locate"], "Locate_" + row.Id);

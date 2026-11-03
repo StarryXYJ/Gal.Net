@@ -10,7 +10,7 @@
              x:Name="Root">
 
     <Menu ItemsSource="{Binding ItemsSource, ElementName=Root}"
-          FontSize="13">
+          FontSize="{DynamicResource Editor.Font.Body}">
         <Menu.Styles>
             <!-- 将 MenuData.IsSeparator 映射到附加属性，供样式选择器匹配 -->
             <!-- 附加属性用 ReflectionBinding 避免编译绑定语法限制 -->

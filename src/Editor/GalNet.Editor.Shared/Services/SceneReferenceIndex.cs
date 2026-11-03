@@ -11,8 +11,7 @@ public sealed record SceneIdentityReference(SceneAuthorAddress Owner, string Jso
     public string? Qualifier { get; init; }
     public string? RequiredProperty { get; init; }
 }
-public sealed record SceneReferenceDiagnostic(string Code, SceneAuthorAddress Owner, string JsonPointer, string? Handle = null, IReadOnlyList<SceneIdentityDefinition>? Candidates = null, long? Revision = null)
-{ public bool IsInformation { get; init; } }
+public sealed record SceneReferenceDiagnostic(string Code, SceneAuthorAddress Owner, string JsonPointer, string? Handle = null, IReadOnlyList<SceneIdentityDefinition>? Candidates = null, long? Revision = null);
 
 /// <summary>Syntactic relationships include unreachable and unopened Groups. They do not prove a unique creator.</summary>
 public sealed class SceneReferenceIndex
@@ -96,8 +95,7 @@ public static class SceneReferenceAnalysis
                     && target.Values.ContainsKey(reference.RequiredProperty)));
             if (resolved && (state.Complete || targetComplete)) continue;
             diagnostics.Add(new(resolved ? "scene.reference.uncertain" : state.Code,
-                reference.Owner, reference.JsonPointer, reference.Handle, index.Candidates(reference))
-                { IsInformation = state.Code == "scene.reference.possible" && reference.Slot.OptionalCleanup });
+                reference.Owner, reference.JsonPointer, reference.Handle, index.Candidates(reference)));
         }
         return diagnostics.AsReadOnly();
     }

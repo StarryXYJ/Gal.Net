@@ -39,7 +39,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             await projects.CloseAsync(); project = await projects.OpenAsync(path); workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>(); group = workspace.Nodes.Single(node => node.Id == groupId);
             text = group.Entries.Single(entry => entry.StableId == textId); particle = group.Entries.Single(entry => entry.StableId == partialId);
             var opaque = group.Entries.Single(entry => entry.StableId == "opaque-line");
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, groupId);
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, groupId); page.ExpandAllCommand.Execute(null);
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1200, Height = 1100 }; window.Show(); Dispatcher.UIThread.RunJobs();
             try
             {

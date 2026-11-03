@@ -8,7 +8,7 @@
              Background="{DynamicResource SemiColorBackground0}">
     <Grid RowDefinitions="Auto,*,Auto" Margin="12">
         <TextBlock Grid.Row="0" Text="{loc:Localize Settings.Editor.Title}"
-                   FontSize="16" FontWeight="Bold"
+                   FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
                    Margin="0,0,0,12" />
 
@@ -16,7 +16,7 @@
             <StackPanel Spacing="8">
                 <TextBlock Text="{loc:Localize Settings.Theme}"
                            Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12" />
+                           FontSize="{DynamicResource Editor.Font.Detail}" />
                 <ComboBox ItemsSource="{Binding AvailableThemes}"
                           SelectedItem="{Binding SelectedTheme, Mode=TwoWay}"
                           Foreground="{DynamicResource SemiColorText0}"
@@ -31,7 +31,7 @@
 
                 <TextBlock Text="{loc:Localize Settings.UiLanguage}"
                            Foreground="{DynamicResource SemiColorText2}"
-                           FontSize="12"
+                           FontSize="{DynamicResource Editor.Font.Detail}"
                            Margin="0,4,0,0" />
                 <ComboBox ItemsSource="{Binding AvailableCultures}"
                           SelectedItem="{Binding SelectedCulture, Mode=TwoWay}"
@@ -44,6 +44,8 @@
                         </DataTemplate>
                     </ComboBox.ItemTemplate>
                 </ComboBox>
+                <TextBlock Text="{loc:Localize Settings.FontSize}" Foreground="{DynamicResource SemiColorText2}" Margin="0,4,0,0" />
+                <NumericUpDown Name="EditorFontSize" Minimum="10" Maximum="18" Increment="1" FormatString="0" Width="120" HorizontalAlignment="Left" Value="{Binding FontSize, Mode=TwoWay}" />
                 <CheckBox Name="ExpandNewEntries" Content="{loc:Localize Settings.ExpandNewEntries}" IsChecked="{Binding ExpandNewEntries,Mode=TwoWay}"/>
                 <!-- Auto-save is intentionally forced on for the current editor experience. -->
 
@@ -62,13 +64,13 @@
                                 <Grid ColumnDefinitions="2*,1.2*,1.2*,Auto,Auto" ColumnSpacing="8">
                                     <StackPanel>
                                         <TextBlock Text="{Binding DisplayName}" Foreground="{DynamicResource SemiColorText0}" />
-                                        <TextBlock Text="{Binding CommandId}" FontSize="10" Foreground="{DynamicResource SemiColorText2}" />
+                                        <TextBlock Text="{Binding CommandId}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="{DynamicResource SemiColorText2}" />
                                     </StackPanel>
                                     <TextBlock Grid.Column="1" Text="{Binding Category}" VerticalAlignment="Center"
                                                Foreground="{DynamicResource SemiColorText2}" />
                                     <StackPanel Grid.Column="2">
                                         <TextBox Text="{Binding GestureText, Mode=TwoWay}" />
-                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="10" Foreground="OrangeRed" />
+                                        <TextBlock Text="{Binding ValidationMessage}" FontSize="{DynamicResource Editor.Font.Micro}" Foreground="OrangeRed" />
                                     </StackPanel>
                                     <Button Grid.Column="3" Content="{loc:Localize Common.Apply}" Command="{Binding ApplyCommand}" />
                                     <Button Grid.Column="4" Content="{loc:Localize Common.Reset}" Command="{Binding ResetCommand}" />

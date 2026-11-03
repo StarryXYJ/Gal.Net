@@ -6,6 +6,7 @@
  <UserControl.Styles>
   <StyleInclude Source="avares://GalNet.Editor/Controls/AuthorFormStyles.axaml"/>
   <StyleInclude Source="avares://GalNet.Editor/Inspector/Views/InspectorFormStyles.axaml"/>
+  <Style Selector="forms|FieldEditorRow"><Setter Property="LabelWidth" Value="85"/></Style>
  </UserControl.Styles>
  <Grid RowDefinitions="*,Auto,Auto">
  <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">

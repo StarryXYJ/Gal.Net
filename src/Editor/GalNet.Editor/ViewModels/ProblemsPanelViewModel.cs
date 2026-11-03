@@ -178,8 +178,8 @@ public sealed partial class ProblemsPanelViewModel : ObservableObject, IDisposab
         if (_edits.ArchiveError is not null) Problems.Add(new("error", _text["Error.entry.archiveUnavailable"], ".galnet/editor/input-archive.json", null));
         if (_validatedRevision == _revision)
             foreach (var problem in _validation.Where(problem => IsPresent(problem.Target))) Problems.Add(Present(problem));
-        foreach (var diagnostic in _sceneDiagnostics)
-            Problems.Add(Present(new(diagnostic.IsInformation ? "info" : "warning", _text["Scene.Diagnostic." + diagnostic.Code], diagnostic.Owner.GroupId + diagnostic.JsonPointer,
+        foreach (var diagnostic in _sceneDiagnostics.Where(diagnostic => diagnostic.Code != "scene.reference.possible"))
+            Problems.Add(Present(new(diagnostic.Code == "scene.reference.missing" ? "error" : "warning", _text["Scene.Diagnostic." + diagnostic.Code], diagnostic.Owner.GroupId + diagnostic.JsonPointer,
                 new(diagnostic.Owner.GroupId, diagnostic.Owner.EntryId, diagnostic.JsonPointer.Split('/').ElementAtOrDefault(2), Revision: _revision))
             { SceneReference = diagnostic, Details = diagnostic.Code + "\n" + diagnostic.JsonPointer }));
         foreach (var problem in _external) Problems.Add(Present(problem));

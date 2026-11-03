@@ -140,6 +140,7 @@
   "Command.SaveProject": "Save Project",
   "Command.CloseProject": "Close Project",
   "Settings.Editor.Title": "Editor Settings",
+  "Settings.FontSize": "Editor font size",
   "Settings.Theme": "Theme",
   "Settings.UiLanguage": "UI Language",
   "Settings.Save": "Save Settings",

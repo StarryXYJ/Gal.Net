@@ -42,7 +42,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayAudio).Single();
             scope.GetRequiredService<EntryFieldAuthoringService>().SetParameters(group.Id, entry.Source, entry.Type,
                 entry.Source.Parameters.Append(new KeyValuePair<string, JsonElement>("asset", JsonSerializer.SerializeToElement(id))).GroupBy(pair => pair.Key).ToDictionary(items => items.Key, items => items.Last().Value));
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry; entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1200, Height = 900 }; window.Show(); TimelinePump(window);
             try
             {

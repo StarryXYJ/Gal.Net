@@ -60,6 +60,32 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task GroupEntriesStartCollapsedAndNewEntriesRespectThePreference()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
+            var project = await projects.CreateAsync(Path.Combine(_root, "GroupCollapsed"), "GroupCollapsed", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+            var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+            var existing = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Wait).Single();
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+            Assert.That(existing.IsParametersExpanded, Is.False);
+            existing.IsParametersExpanded = true;
+            var added = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.Wait).Single();
+            Assert.That(added.IsParametersExpanded, Is.False);
+            using var settings = project.Services.GetRequiredService<EditorSettingsPanelViewModel>();
+            settings.ExpandNewEntries = true;
+            var expanded = workspace.InsertEntriesInto(group, 2, 1, BuiltinEntryIds.Wait).Single();
+            Assert.That(expanded.IsParametersExpanded, Is.True);
+            Assert.That(existing.IsParametersExpanded, Is.True);
+            Assert.That(added.IsParametersExpanded, Is.False);
+            await Task.CompletedTask; return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task GroupToolbarBatchesAreSingleHistoryStepsAndSpaceInsertsOneAtCapturedAnchor()
     {
         var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
@@ -135,7 +161,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var view = new EntryListEditorControl { DataContext = vm }; var window = new Window { Content = view, Width = 1000, Height = 700 }; window.Show(); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
             try
             {
-                var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear(); var entry = group.Entries[0];
+                var history = project.Services.GetRequiredService<EditorHistories>().Content; history.Clear(); var entry = group.Entries[0]; entry.IsParametersExpanded = true;
                 var snapshot = JsonSerializer.Serialize(project.Services.GetRequiredService<IProjectContentSession>().CaptureWorking());
                 var toggle = view.GetVisualDescendants().OfType<ToggleButton>().Single(button => button.Name == "ParametersToggle" && ReferenceEquals(button.DataContext, entry)); Click(window, toggle); Dispatcher.UIThread.RunJobs(); window.UpdateLayout();
                 Assert.That(entry.IsParametersExpanded, Is.False); Assert.That(history.CanUndo, Is.False); Assert.That(JsonSerializer.Serialize(project.Services.GetRequiredService<IProjectContentSession>().CaptureWorking()), Is.EqualTo(snapshot));

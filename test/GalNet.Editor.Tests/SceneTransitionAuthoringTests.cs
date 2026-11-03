@@ -44,7 +44,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             if (type == BuiltinEntryIds.BlindsTransition) entry.Source.Parameters["maskProgram"] = JsonSerializer.SerializeToElement("mask-program");
             entry.Source.Parameters["future"] = JsonSerializer.Deserialize<JsonElement>("[9007199254740993,null]");
             foreach (var item in group.Entries) item.IsParametersExpanded = ReferenceEquals(item, entry);
-            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry;
+            using var page = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(scope, group.Id); page.SelectedEntry = entry; entry.IsParametersExpanded = true;
             var view = new EntryListEditorControl { DataContext = page }; var window = new Window { Content = view, Width = 1200, Height = 1000 }; window.Show(); TimelinePump(window);
             try
             {

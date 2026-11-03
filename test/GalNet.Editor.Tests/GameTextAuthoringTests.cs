@@ -175,7 +175,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>(); var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
                 var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.Text).Single();
-                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id);
+                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, group.Id); entry.IsParametersExpanded = true;
                 var view = new EntryListEditorControl { DataContext = vm }; var window = new Window { Content = view, Width = 1100, Height = 800 }; window.Show(); Dispatcher.UIThread.RunJobs();
                 try
                 {
@@ -245,7 +245,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             {
                 if (hasDefault) WriteTranslation(project, """{"original":"原文"}"""); WriteTranslation(project, """{"original":"English"}""", "I18n/en-US/lines.json");
                 var item = CharacterEntry(project); item.Entry.Type = "custom.lines"; item.Entry.Parameters = new() { ["items"] = JsonSerializer.SerializeToElement(new[] { new GameLineDto { Text = "original", Code = "original" } }) };
-                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, item.Group);
+                using var vm = ActivatorUtilities.CreateInstance<GroupEditorPanelViewModel>(project.Services, item.Group); vm.ExpandAllCommand.Execute(null);
                 var view = new EntryListEditorControl { DataContext = vm }; var window = new Window { Content = view, Width = 1100, Height = 1000 }; window.Show(); Dispatcher.UIThread.RunJobs();
                 try
                 {

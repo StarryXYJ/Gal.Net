@@ -140,6 +140,7 @@
   "Command.SaveProject": "プロジェクトを保存",
   "Command.CloseProject": "プロジェクトを閉じる",
   "Settings.Editor.Title": "エディター設定",
+  "Settings.FontSize": "\u30a8\u30c7\u30a3\u30bf\u30fc\u306e\u6587\u5b57\u30b5\u30a4\u30ba",
   "Settings.Theme": "テーマ",
   "Settings.UiLanguage": "UI 言語",
   "Settings.Save": "設定を保存",

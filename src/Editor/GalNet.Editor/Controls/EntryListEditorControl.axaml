@@ -81,7 +81,7 @@
                                                              ValidationVariables="{Binding #Root.DataContext.ValidationVariables}" />
                             <StackPanel Grid.Column="3" IsVisible="{Binding #Root.UseCommonFields}" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Summary}" Margin="0,0,32,0" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Summary}" />
-                                <TextBlock Text="{Binding Condition}" IsVisible="{Binding HasCondition}" FontSize="11" Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Text="{Binding Condition}" IsVisible="{Binding HasCondition}" FontSize="{DynamicResource Editor.Font.Caption}" Foreground="{DynamicResource SemiColorText2}" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                             <Button Grid.Column="3" HorizontalAlignment="Right" Content="{Binding ProblemCount}" IsVisible="{Binding HasProblems}" Classes="entryProblems" Classes.error="{Binding HasProblemErrors}"
                                     ToolTip.Tip="{loc:Localize Uiux.Problems}" Command="{Binding #Root.DataContext.ShowEntryProblemsCommand}" CommandParameter="{Binding}"/>
