@@ -19,6 +19,7 @@ public static class EditorFieldEditors
     {
         var registry = EditorRegistry.CreateDefault(emptyInputClearsOptionalFields: true, copyValue: texts is null ? null : texts.StageCopy,
             formatIssue: (field, issue) => EditorProblemText.Value(field, issue));
+        registry.Replace(ValueEditorIds.Json, InferredJsonFieldEditor.Create);
         registry.Replace(ValueEditorIds.Numeric, NumericFieldEditors.CreateUpDown);
         registry.Replace(ValueEditorIds.Slider, NumericFieldEditors.CreateSliderWithInput);
         if (characters is not null) registry.RegisterSemantic(FieldValueSemantic.CharacterReference, context => CharacterFieldEditor.Create(context, characters));

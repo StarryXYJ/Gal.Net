@@ -397,6 +397,37 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     }
 
     [Test]
+    public async Task UntypedObjectUsesStructuredFieldsAndPreservesSiblingValues()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme();
+            var registry = EditorFieldEditors.CreateDefault();
+            var binding = new PropertyBinding("{\"amount\":1,\"nested\":{\"name\":\"old\"},\"large\":9007199254740993}");
+            var field = new FieldDescriptor("custom", new(typeof(JsonElement)));
+            using var context = new FieldEditorContext(field, binding, registry);
+            using var lease = registry.Resolve(field)(context);
+            var window = new Window { Content = lease.Control, Width = 800, Height = 700 };
+            window.Styles.Add(new StyleInclude(new Uri("avares://GalNet.Avalonia.Controls/")) { Source = new Uri("avares://GalNet.Avalonia.Controls/Styles/SchemaForm.axaml") });
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var editor = (StructuredFieldEditor)lease.Control; editor.IsExpanded = true; TimelinePump(window);
+                var form = editor.GetVisualDescendants().OfType<SchemaForm>().First();
+                var amount = form.Contexts.Single(item => item.Field.Id == "amount");
+                amount.Text = "2"; Assert.That(await amount.CommitTextAsync(), Is.True);
+                Assert.That(binding.Value.Json!.Value.GetProperty("amount").GetInt32(), Is.EqualTo(2));
+                Assert.That(binding.Value.Json.Value.GetProperty("large").GetRawText(), Is.EqualTo("9007199254740993"));
+                Assert.That(binding.Value.Json.Value.GetProperty("nested").GetProperty("name").GetString(), Is.EqualTo("old"));
+                Assert.That(binding.Commits, Is.EqualTo(1));
+            }
+            finally { window.Close(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task TransformListUsesRegisteredElementControlAndRejectsReorderedEditors()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
