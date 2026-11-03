@@ -4,6 +4,9 @@ using GalNet.Core.Parameters;
 using GalNet.Core.Configuration;
 using GalNet.Editor.Services;
 using Avalonia.Headless;
+using Avalonia.Controls;
+using Avalonia.VisualTree;
+using GalNet.Editor.Views;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Game.Controls.Forms;
@@ -48,6 +51,33 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             editor.Apply(candidate);
             Assert.That(candidate.Sections["extension"].Data.GetProperty("unknown").GetInt32(), Is.EqualTo(42));
             Assert.That(candidate.Sections["extension"].Data.GetProperty("labels")[0].GetString(), Is.EqualTo("b"));
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
+    public async Task AudioTracksDisplayTheirIdentityAndAccessibleActions()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            PrepareGroupTheme(); using var services = Services();
+            var projects = services.GetRequiredService<IProjectService>();
+            var audio = BuiltinAudioDefaults.Create();
+            var project = await projects.CreateAsync(Path.Combine(_root, "AudioPresentation"), "AudioPresentation", new DefaultProjectOptions { AudioBuses = audio.Buses.ToList(), AudioTracks = audio.Tracks.ToList() }.ToConfiguration(), Contracts());
+            var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
+            var view = new ProjectSettingsPanelView { DataContext = panel }; var window = new Window { Content = view, Width = 1000, Height = 700 };
+            window.Show(); TimelinePump(window);
+            try
+            {
+                var tracks = view.GetVisualDescendants().OfType<StructuredFieldEditor>().Single(editor => editor.Context.Field.Id == "audioTracks");
+                tracks.IsExpanded = true; TimelinePump(window);
+                Assert.That(tracks.GetVisualDescendants().OfType<TextBlock>().Any(text => text.Text == "#1 · bgm"), Is.True);
+                var remove = tracks.GetVisualDescendants().OfType<Button>().First(button => button.Name == "remove");
+                Assert.That(Avalonia.Automation.AutomationProperties.GetName(remove), Is.Not.Null.And.Not.Empty);
+                Assert.That(ToolTip.GetTip(remove), Is.Not.Null);
+            }
+            finally { window.Close(); panel.Dispose(); await projects.CloseAsync(); }
             return true;
         }, CancellationToken.None);
     }

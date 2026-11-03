@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Automation;
 using GalNet.Core.Parameters;
 using GalNet.Core.Serialization;
 
@@ -174,7 +175,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             var position = index;
             var row = new StackPanel { Spacing = 4 };
             var buttons = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = 4 };
-            buttons.Children.Add(new TextBlock { Text = "[" + index + "]" });
+            buttons.Children.Add(new TextBlock { Text = ElementLabel(values[index], index), VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center });
             AddButton(buttons, "up", () => Move(position, -1, generation)).IsEnabled = index > 0;
             AddButton(buttons, "down", () => Move(position, 1, generation)).IsEnabled = index + 1 < values.Count;
             AddButton(buttons, "remove", () => ChangeArray(generation, list => list.RemoveAt(position)));
@@ -198,6 +199,13 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         }
         AddButton(panel, "add", () => ChangeArray(generation, list => list.Add(InitialValue(_shape.Element!.Value)))).IsEnabled = values.Count < 200;
         Content = panel;
+    }
+    private static string ElementLabel(JsonElement value, int index)
+    {
+        var label = "#" + (index + 1);
+        if (value.ValueKind == JsonValueKind.Object && value.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(id.GetString()))
+            label += " · " + id.GetString();
+        return label;
     }
     private Dictionary<string, JsonElement> MapValues() => DecodedCurrent is { ValueKind: JsonValueKind.Object } map
         ? map.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal) : new(StringComparer.Ordinal);
@@ -257,7 +265,13 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
         panel.Children.Add(button); RefreshButtonText(); return button;
     }
     private void RefreshButtonText()
-    { foreach (var (button, kind) in _buttons) button.Content = kind switch { "add" => AddText, "remove" => RemoveText, "up" => UpText, "copy" => CopyText, _ => DownText }; }
+    {
+        foreach (var (button, kind) in _buttons)
+        {
+            var text = kind switch { "add" => AddText, "remove" => RemoveText, "up" => UpText, "copy" => CopyText, _ => DownText };
+            button.Content = text; ToolTip.SetTip(button, text); AutomationProperties.SetName(button, text);
+        }
+    }
     private List<JsonElement> ArrayValues() => DecodedCurrent is { ValueKind: JsonValueKind.Array } array ? array.EnumerateArray().Select(item => item.Clone()).ToList() : [];
     private static JsonElement InitialValue(ValueDescriptor descriptor, int depth = 0)
     {
