@@ -34,11 +34,8 @@ public sealed class ConfigurationSectionEditor : IDisposable
         catch (Exception error) when (error is System.IO.InvalidDataException or JsonException or ArgumentException)
         { _resolved = JsonSerializer.SerializeToElement(new { }); }
         _isCurrent = isCurrent; _changed = changed; _localization = localization; Registry = registry;
-        // Ordinary object/list DTOs use the shared JSON editor; no second reflection-based configuration form.
         var fields = section.Fields.Where(field => section.Id != "galnet.project" || field.Id is not ("targetLocale" or "availableLocales"))
-            .Select(Decorate).Select(field => field.Editor is null && !IsScalar(field.Value.ValueType)
-            ? new FieldDescriptor(field.Id, field.Value, field.IsRequired, field.DefaultValue, new(ValueEditorIds.Json), field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId)
-            : field).ToArray();
+            .Select(Decorate).ToArray();
         _fields = fields.ToDictionary(field => field.Id, field => new Field(this, field, canEdit(field)), StringComparer.Ordinal);
         Item = new(section.Id, null, fields, Binding, async (patch, token) =>
         {
@@ -89,7 +86,6 @@ public sealed class ConfigurationSectionEditor : IDisposable
         var value = field.Value.WithStructure(ValueStructure.Sequence(element));
         return new(field.Id, value, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
     }
-    private static bool IsScalar(Type type) => type.IsPrimitive || type.IsEnum || type == typeof(string) || type == typeof(decimal);
     public IFieldBinding Binding(FieldDescriptor field) => _fields[field.Id];
     public void RefreshLocalization()
     {

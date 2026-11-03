@@ -1,6 +1,9 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins;
 using GalNet.Core.Parameters;
+using GalNet.Core.Configuration;
+using GalNet.Editor.Services;
+using Avalonia.Headless;
 using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.ViewModels;
 using GalNet.Game.Controls.Forms;
@@ -18,6 +21,36 @@ public sealed partial class ProjectWorkspaceLifecycleTests
     private static Task Stage(ProjectSettingsPanelViewModel panel, string id, object? value, string section = "galnet.project") =>
         Setting(panel, id, section).CommitAsync(new(JsonSerializer.SerializeToElement(value, new JsonSerializerOptions(JsonSerializerDefaults.Web)
         { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } })), CancellationToken.None);
+
+    public sealed class ExtensionSettings
+    {
+        public List<string> Labels { get; set; } = [];
+    }
+
+    [Test]
+    public async Task ExtensionSequenceUsesStructuredEditorAndPreservesOtherFields()
+    {
+        var session = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await session.Dispatch<bool>(async () =>
+        {
+            var field = new FieldDescriptor("labels", new ValueDescriptor(typeof(List<string>)));
+            var section = new ConfigurationSection<ExtensionSettings>("extension", [field]);
+            var configuration = new ProjectConfiguration();
+            configuration.SetRaw("extension", new(1, JsonSerializer.SerializeToElement(new { labels = new[] { "a" }, unknown = 42 })));
+            var registry = EditorRegistry.CreateDefault();
+            using var editor = new ConfigurationSectionEditor(section, configuration, registry, new EditorLocalizationService(), () => true, () => { }, _ => true);
+            var actual = editor.Item.Fields.Single();
+            using var context = new FieldEditorContext(actual, editor.Binding(actual), registry);
+            using var lease = registry.Resolve(actual)(context);
+            Assert.That(lease.Control, Is.TypeOf<StructuredFieldEditor>());
+            await editor.Binding(actual).CommitAsync(new(JsonSerializer.SerializeToElement(new[] { "b" })), CancellationToken.None);
+            var candidate = configuration.Clone();
+            editor.Apply(candidate);
+            Assert.That(candidate.Sections["extension"].Data.GetProperty("unknown").GetInt32(), Is.EqualTo(42));
+            Assert.That(candidate.Sections["extension"].Data.GetProperty("labels")[0].GetString(), Is.EqualTo("b"));
+            return true;
+        }, CancellationToken.None);
+    }
 
     [Test]
     public async Task CustomAudioConfigurationSupportsDraftUndoSaveAndReopen()
