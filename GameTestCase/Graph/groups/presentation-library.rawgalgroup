@@ -31,22 +31,6 @@
       }
     },
     {
-      "id": "remove-visual-bg",
-      "type": "layer.hide",
-      "condition": "",
-      "parameters": {
-        "handleId": "visual-bg"
-      }
-    },
-    {
-      "id": "remove-visual-hero",
-      "type": "layer.hide",
-      "condition": "",
-      "parameters": {
-        "handleId": "visual-hero"
-      }
-    },
-    {
       "id": "background",
       "type": "layer.show",
       "condition": "",

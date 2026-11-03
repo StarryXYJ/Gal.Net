@@ -372,6 +372,15 @@
       }
     },
     {
+      "id": "demo-cue-flash",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.characters.entry.demo-cue-flash.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "flash",
       "type": "preset.flash",
       "condition": "",
@@ -647,6 +656,15 @@
       "parameters": {
         "mode": "CompleteImmediately",
         "playbackHandleId": "library-heartbeat"
+      }
+    },
+    {
+      "id": "demo-cue-parallax",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.characters.entry.demo-cue-parallax.content",
+        "speaker": "guide"
       }
     },
     {

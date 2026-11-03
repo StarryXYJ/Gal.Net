@@ -18,5 +18,13 @@
   "group.intro.entry.nvl-append-history.content": "这是可滚动 NVL 历史中的第二段。",
   "group.intro.entry.nvl-append-after-clear.content": "之前的 NVL 历史已清空，随后追加了这一段。",
   "group.intro.entry.intro-line-5.content": "基础音频演示完成。接下来在同一章节继续比较新音效。",
-  "group.intro.entry.audio-save-checkpoint.content": "在这里新建存档再读档：场景与轨道 gain 效果会恢复，BGM 保持暂停。推进后从头恢复播放。"
+  "group.intro.entry.audio-save-checkpoint.content": "在这里新建存档再读档：场景与轨道 gain 效果会恢复，BGM 保持暂停。推进后从头恢复播放。",
+  "group.intro.entry.demo-cue-variants-shy.content": "接下来切换人物表情，观察精确匹配的图集变体。",
+  "group.intro.entry.demo-cue-variants-solo.content": "接下来请求不存在的组合，观察图集回退。",
+  "group.intro.entry.demo-cue-variants-return.content": "接下来切回原姿势，观察被记住的表情。",
+  "group.intro.entry.demo-cue-classroom-speech.content": "接下来请求不存在的背景组合，观察默认图像回退。",
+  "group.intro.entry.demo-cue-classroom-teacher.content": "接下来选择教师，观察匹配的背景。",
+  "group.intro.entry.demo-cue-variants-hide.content": "接下来隐藏并重新显示人物，演示选择重置。",
+  "group.intro.entry.demo-cue-portrait-jitter.content": "接下来启动非阻塞的上下摆动，并在动画中切换表情。",
+  "group.intro.entry.demo-cue-portrait-spin.content": "接下来观看阻塞式人物旋转；动画结束后剧情继续。"
 }

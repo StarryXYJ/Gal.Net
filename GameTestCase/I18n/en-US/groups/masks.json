@@ -1,0 +1,7 @@
+{
+  "group.masks.entry.demo-cue-mask-LetterboxIn.content": "Next: watch the letterbox bars close in.",
+  "group.masks.entry.demo-cue-mask-LetterboxOut.content": "Next: watch the letterbox bars open out.",
+  "group.masks.entry.demo-cue-mask-Blink.content": "Next: watch the slow blink close and reopen.",
+  "group.masks.entry.demo-cue-mask-Close.content": "Next: the scene will close, pause, and then reopen.",
+  "group.masks.entry.demo-cue-overlay-card.content": "Next: the mask will also cover the following text card and dialogue."
+}

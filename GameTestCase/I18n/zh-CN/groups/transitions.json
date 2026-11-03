@@ -1,0 +1,9 @@
+{
+  "group.transitions.entry.demo-cue-wipe.content": "接下来观看柔边方向擦除转场。",
+  "group.transitions.entry.demo-cue-blur.content": "接下来观看双通道模糊交叉淡化。",
+  "group.transitions.entry.demo-cue-mask.content": "接下来观看图像遮罩溶解转场。",
+  "group.transitions.entry.demo-cue-transition-flash.content": "接下来观看闪光转场。",
+  "group.transitions.entry.demo-cue-transition-zoom.content": "接下来观看缩放转场。",
+  "group.transitions.entry.demo-cue-transition-pixelate.content": "接下来观看像素化转场。",
+  "group.transitions.entry.demo-cue-transition-glitch.content": "接下来观看故障效果转场。"
+}

@@ -5,5 +5,6 @@
   "group.harbor.entry.shader-blur.content": "Blur uses a separable Gaussian with five iteration bands and 15 dense taps in each horizontal and vertical pass. Its 28-pixel radius softly diffuses the scene.",
   "group.harbor.entry.shader-toy-tunnel.content": "ShaderToy sample: an animated procedural fog tunnel.",
   "group.harbor.entry.shader-toy-grid.content": "ShaderToy sample: an animated, perspective 3D grid.",
-  "group.harbor.entry.shader-toy-rain.content": "ShaderToy sample: a raymarched rainy road with reflections."
+  "group.harbor.entry.shader-toy-rain.content": "ShaderToy sample: a raymarched rainy road with reflections.",
+  "group.harbor.entry.demo-cue-route-blinds.content": "Next: watch a blinds transition into the filled route."
 }

@@ -55,6 +55,15 @@
       }
     },
     {
+      "id": "demo-cue-wipe",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-wipe.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "wipe",
       "type": "transition.reveal",
       "condition": "",
@@ -69,6 +78,15 @@
       }
     },
     {
+      "id": "demo-cue-blur",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-blur.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "blur",
       "type": "transition.blur",
       "condition": "",
@@ -79,6 +97,15 @@
         "newHandleId": "visual-bg3",
         "oldHandleId": "visual-bg2",
         "playbackHandleId": "visual-blur"
+      }
+    },
+    {
+      "id": "demo-cue-mask",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-mask.content",
+        "speaker": "guide"
       }
     },
     {
@@ -160,6 +187,15 @@
       }
     },
     {
+      "id": "demo-cue-transition-flash",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-transition-flash.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "transition-flash",
       "type": "transition.flash",
       "condition": "",
@@ -177,6 +213,15 @@
       "condition": "",
       "parameters": {
         "content": "group.presentation-library.entry.transition-flash-note.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-transition-zoom",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-transition-zoom.content",
         "speaker": "guide"
       }
     },
@@ -202,6 +247,15 @@
       }
     },
     {
+      "id": "demo-cue-transition-pixelate",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-transition-pixelate.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "transition-pixelate",
       "type": "transition.pixelate",
       "condition": "",
@@ -220,6 +274,15 @@
       "condition": "",
       "parameters": {
         "content": "group.presentation-library.entry.transition-pixelate-note.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-transition-glitch",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.transitions.entry.demo-cue-transition-glitch.content",
         "speaker": "guide"
       }
     },

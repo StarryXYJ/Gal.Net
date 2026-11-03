@@ -132,13 +132,22 @@
       }
     },
     {
+      "id": "demo-cue-variants-shy",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-variants-shy.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "variants-shy",
       "type": "variants.select",
       "condition": "",
       "parameters": {
         "dimension": "expression",
         "handleId": "teacher",
-        "value": "shock"
+        "value": "shy"
       }
     },
     {
@@ -147,6 +156,15 @@
       "condition": "",
       "parameters": {
         "content": "group.intro.entry.variants-exact.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-variants-solo",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-variants-solo.content",
         "speaker": "guide"
       }
     },
@@ -170,6 +188,15 @@
       }
     },
     {
+      "id": "demo-cue-variants-return",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-variants-return.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "variants-return",
       "type": "variants.select",
       "condition": "",
@@ -185,6 +212,15 @@
       "condition": "",
       "parameters": {
         "content": "group.intro.entry.variants-remembered.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-classroom-speech",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-classroom-speech.content",
         "speaker": "guide"
       }
     },
@@ -208,6 +244,15 @@
       }
     },
     {
+      "id": "demo-cue-classroom-teacher",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-classroom-teacher.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "classroom-teacher",
       "type": "variants.select",
       "condition": "",
@@ -223,6 +268,15 @@
       "condition": "",
       "parameters": {
         "content": "group.intro.entry.variants-scene.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-variants-hide",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-variants-hide.content",
         "speaker": "guide"
       }
     },
@@ -255,6 +309,15 @@
       "condition": "",
       "parameters": {
         "content": "group.intro.entry.variants-reset.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-portrait-jitter",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-portrait-jitter.content",
         "speaker": "guide"
       }
     },
@@ -292,6 +355,15 @@
       "condition": "",
       "parameters": {
         "content": "group.intro.entry.intro-line-2.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-portrait-spin",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.intro.entry.demo-cue-portrait-spin.content",
         "speaker": "guide"
       }
     },

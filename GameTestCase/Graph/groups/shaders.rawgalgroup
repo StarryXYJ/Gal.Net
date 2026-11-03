@@ -179,27 +179,11 @@
       }
     },
     {
-      "id": "shader-toy-hide-route-background",
-      "type": "layer.hide",
-      "condition": "",
-      "parameters": {
-        "handleId": "route-background"
-      }
-    },
-    {
       "id": "shader-toy-hide-portrait",
       "type": "layer.hide",
       "condition": "",
       "parameters": {
         "handleId": "teacher"
-      }
-    },
-    {
-      "id": "shader-toy-stop-snow",
-      "type": "particle.stop",
-      "condition": "",
-      "parameters": {
-        "instanceId": "route-particles"
       }
     },
     {
@@ -371,14 +355,6 @@
       }
     },
     {
-      "id": "hide-portrait",
-      "type": "layer.hide",
-      "condition": "",
-      "parameters": {
-        "handleId": "teacher"
-      }
-    },
-    {
       "id": "hide-toy-backdrop",
       "type": "layer.hide",
       "condition": "",
@@ -531,6 +507,15 @@
       "condition": "",
       "parameters": {
         "content": "group.ending.entry.visual-depth.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-rack-focus",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.shaders.entry.demo-cue-rack-focus.content",
         "speaker": "guide"
       }
     },

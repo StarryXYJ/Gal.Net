@@ -3,6 +3,15 @@
   "kind": "Raw",
   "entries": [
     {
+      "id": "demo-cue-route-blinds",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.harbor.entry.demo-cue-route-blinds.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "route-blinds",
       "type": "transition.blinds",
       "condition": "",

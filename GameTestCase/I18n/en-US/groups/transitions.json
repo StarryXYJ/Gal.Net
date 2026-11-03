@@ -1,0 +1,9 @@
+{
+  "group.transitions.entry.demo-cue-wipe.content": "Next: compare a directional soft wipe.",
+  "group.transitions.entry.demo-cue-blur.content": "Next: compare a two-pass blur cross-fade.",
+  "group.transitions.entry.demo-cue-mask.content": "Next: compare an image-mask dissolve.",
+  "group.transitions.entry.demo-cue-transition-flash.content": "Next: watch the flash transition.",
+  "group.transitions.entry.demo-cue-transition-zoom.content": "Next: watch the zoom transition.",
+  "group.transitions.entry.demo-cue-transition-pixelate.content": "Next: watch the pixelation transition.",
+  "group.transitions.entry.demo-cue-transition-glitch.content": "Next: watch the glitch transition."
+}

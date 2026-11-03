@@ -120,6 +120,15 @@
       "parameters": {}
     },
     {
+      "id": "demo-cue-video-background",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.media.entry.demo-cue-video-background.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "video-background",
       "type": "video.play",
       "condition": "",

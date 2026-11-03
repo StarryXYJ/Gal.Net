@@ -512,6 +512,15 @@
       }
     },
     {
+      "id": "demo-cue-filter-animation",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.audio.entry.demo-cue-filter-animation.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "filter-animation",
       "type": "timeline.play",
       "condition": "",
@@ -581,6 +590,15 @@
         "instanceId": "library-filter",
         "scope": "bus",
         "targetId": "bgm"
+      }
+    },
+    {
+      "id": "demo-cue-duck-on",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.audio.entry.demo-cue-duck-on.content",
+        "speaker": "guide"
       }
     },
     {

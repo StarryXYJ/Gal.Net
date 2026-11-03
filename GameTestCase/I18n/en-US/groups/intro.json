@@ -1,9 +1,9 @@
 {
-  "group.intro.entry.variants-exact.content": "Exact match: xy_shy. Next, switch the first dimension to exercise a missing combination.23",
+  "group.intro.entry.variants-exact.content": "Exact match: xy_shy. Next, switch the first dimension to exercise a missing combination.",
   "group.intro.entry.variants-reduced.content": "Requested solo_shy; removing the second dimension shows solo (a copy of wink). Save and load here: the shy selection is retained.",
   "group.intro.entry.variants-remembered.content": "Switching the first dimension back to xy restores the remembered xy_shy.",
   "group.intro.entry.variants-default.content": "The background request classroom_speech_empty has no match, so the explicit default classroom_idle_empty is shown. Save and load here too.",
-  "group.intro.entry.variants-scene.content": "Selecting teacher in the third dimension matches classroom_speech_teacher, retaining the earlier speech request.23",
+  "group.intro.entry.variants-scene.content": "Selecting teacher in the third dimension matches classroom_speech_teacher, retaining the earlier speech request.",
   "group.intro.entry.variants-reset.content": "Hide and re-show resets the portrait to xy_idle. A later selection switches to wink during the loop animation.",
   "group.intro.entry.intro-line-1.content": "Start with image variants: exact matches, fallback, remembered selections and resetting on show.",
   "group.intro.entry.intro-video-background.content": "niko.mp4 is a scene layer below the portrait, with rotation, scale and opacity. This non-blocking video lets dialogue advance. Advance to stop it.",
@@ -18,5 +18,13 @@
   "group.intro.entry.nvl-append-history.content": "This is the second paragraph in the scrollable NVL history.",
   "group.intro.entry.nvl-append-after-clear.content": "The prior NVL history was cleared, then this paragraph was appended.",
   "group.intro.entry.intro-line-5.content": "Basic audio complete. Continue this chapter to compare the additional sound effects.",
-  "group.intro.entry.audio-save-checkpoint.content": "Save here and load the new save: the scene and gain effect return, and BGM stays paused. Advance to resume it from the beginning."
+  "group.intro.entry.audio-save-checkpoint.content": "Save here and load the new save: the scene and gain effect return, and BGM stays paused. Advance to resume it from the beginning.",
+  "group.intro.entry.demo-cue-variants-shy.content": "Next: switch the portrait expression and inspect the exact variant match.",
+  "group.intro.entry.demo-cue-variants-solo.content": "Next: request a combination that has no image and observe the fallback.",
+  "group.intro.entry.demo-cue-variants-return.content": "Next: return to the original pose and observe the remembered expression.",
+  "group.intro.entry.demo-cue-classroom-speech.content": "Next: request an unavailable background combination and observe its default.",
+  "group.intro.entry.demo-cue-classroom-teacher.content": "Next: select the teacher and observe the matching background.",
+  "group.intro.entry.demo-cue-variants-hide.content": "Next: hide and show the portrait again to demonstrate selection reset.",
+  "group.intro.entry.demo-cue-portrait-jitter.content": "Next: start a non-blocking bob, then switch the expression while it runs.",
+  "group.intro.entry.demo-cue-portrait-spin.content": "Next: watch a blocking portrait rotation. The story continues after it finishes."
 }

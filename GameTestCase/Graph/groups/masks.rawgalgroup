@@ -122,6 +122,15 @@
       }
     },
     {
+      "id": "demo-cue-mask-LetterboxIn",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.masks.entry.demo-cue-mask-LetterboxIn.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "mask-LetterboxIn",
       "type": "preset.mask",
       "condition": "",
@@ -142,6 +151,15 @@
       "condition": "",
       "parameters": {
         "content": "group.presentation-library.entry.mask-LetterboxIn-note.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-mask-LetterboxOut",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.masks.entry.demo-cue-mask-LetterboxOut.content",
         "speaker": "guide"
       }
     },
@@ -170,6 +188,15 @@
       }
     },
     {
+      "id": "demo-cue-mask-Blink",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.masks.entry.demo-cue-mask-Blink.content",
+        "speaker": "guide"
+      }
+    },
+    {
       "id": "mask-Blink",
       "type": "preset.mask",
       "condition": "",
@@ -190,6 +217,15 @@
       "condition": "",
       "parameters": {
         "content": "group.presentation-library.entry.mask-Blink-note.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-mask-Close",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.masks.entry.demo-cue-mask-Close.content",
         "speaker": "guide"
       }
     },
@@ -237,6 +273,15 @@
       "condition": "",
       "parameters": {
         "content": "group.presentation-library.entry.mask-Open-note.content",
+        "speaker": "guide"
+      }
+    },
+    {
+      "id": "demo-cue-overlay-card",
+      "type": "dialogue.text",
+      "condition": "",
+      "parameters": {
+        "content": "group.masks.entry.demo-cue-overlay-card.content",
         "speaker": "guide"
       }
     },

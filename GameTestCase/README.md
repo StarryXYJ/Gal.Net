@@ -28,8 +28,10 @@ Initial node positions are stored in `Graph/graph.json`.
 | 8 | `routes`, `downtown` / `harbor`, `transitions` | Choice/condition, crossfade/blinds and all remaining transitions |
 | 9 | `ending` | Completion |
 
-Each chapter introduces the comparison and explicitly prepares its stage. Transient
-motion examples include a label and a short pause. Shader, particle and audio examples
+Each chapter introduces the comparison and explicitly prepares its stage. Short-lived
+transitions, masks, variant changes and animations have a bilingual dialogue cue before
+they run; advance when ready to watch. Transient motion examples include a label and a
+short pause. Shader, particle and audio examples
 keep their observation dialogue; advance to stop or compare the next effect. Weather rounds use independent handles: advancing stops the old emission and starts
 the next round immediately; existing particles fade out and release naturally. Rain,
 snow and petals originate just above the frame. The legacy standalone snow/spark block is superseded by the weather presets;
