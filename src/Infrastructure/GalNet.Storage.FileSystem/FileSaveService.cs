@@ -106,17 +106,27 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, ISav
     {
         if (!quick && (slot < 0 || slot >= MaxSlots)) throw new ArgumentOutOfRangeException(nameof(slot));
         await _gate.WaitAsync(ct);
+        string? stagedPreview = null;
+        var committed = false;
         try
         {
-            var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot };
             var path = GetPath(slot, quick);
+            var previousPreview = await ReadPreviewPathAsync(path, slot, quick, ct);
+            var previewName = "";
+            if (request.PreviewImage is { Length: > 0 })
+            {
+                Directory.CreateDirectory(_root);
+                previewName = $"{(quick ? "quick" : $"slot-{slot:D3}")}-{Guid.NewGuid():N}.png";
+                stagedPreview = Path.Combine(_root, previewName);
+                await File.WriteAllBytesAsync(stagedPreview, request.PreviewImage, ct).ConfigureAwait(false);
+            }
+            var payload = new StoredSave { Version = FormatVersion, Timestamp = DateTimeOffset.UtcNow, Description = request.Description, Snapshot = request.Snapshot, PreviewFile = previewName };
             var json = await Task.Run(() => JsonCodec.Serialize(payload, JsonOptions), ct).ConfigureAwait(false);
             await FileReplacement.WriteTextAsync(path, json, ct).ConfigureAwait(false);
-            var previewPath = GetPreviewPath(slot, quick);
-            if (request.PreviewImage is { Length: > 0 }) await File.WriteAllBytesAsync(previewPath, request.PreviewImage, ct);
-            else if (File.Exists(previewPath)) File.Delete(previewPath);
+            committed = true;
+            TryDelete(previousPreview);
         }
-        finally { _gate.Release(); }
+        finally { if (!committed) TryDelete(stagedPreview); _gate.Release(); }
     }
 
     private async Task<SaveSlotInfo> GetInfoAsync(int slot, bool quick, CancellationToken ct)
@@ -128,8 +138,8 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, ISav
             var json = await File.ReadAllTextAsync(path, ct).ConfigureAwait(false);
             var stored = JsonCodec.Deserialize<StoredSave>(json, JsonOptions);
             if (stored?.Version != FormatVersion || stored.Snapshot is null) throw new InvalidDataException();
-            var preview = GetPreviewPath(slot, quick);
-            return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, Timestamp = stored.Timestamp.LocalDateTime, Description = stored.Description, PreviewImage = File.Exists(preview) ? preview : null };
+            var preview = PreviewPath(stored, slot, quick);
+            return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, Timestamp = stored.Timestamp.LocalDateTime, Description = stored.Description, PreviewImage = preview is not null && File.Exists(preview) ? preview : null };
         }
         catch (OperationCanceledException) { throw; }
         catch { return new SaveSlotInfo { SlotIndex = slot, IsQuickSave = quick, IsCorrupt = true }; }
@@ -150,10 +160,42 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, ISav
     private string GetPath(int slot, bool quick) => Path.Combine(_root, quick ? "quick.json" : $"slot-{slot:D3}.json");
     private string GetPreviewPath(int slot, bool quick) => Path.Combine(_root, quick ? "quick.png" : $"slot-{slot:D3}.png");
 
+    private string? PreviewPath(StoredSave stored, int slot, bool quick)
+    {
+        if (stored.PreviewFile is null) return GetPreviewPath(slot, quick); // Existing saves.
+        var prefix = quick ? "quick-" : $"slot-{slot:D3}-";
+        var name = stored.PreviewFile;
+        return name.StartsWith(prefix, StringComparison.Ordinal) && name.EndsWith(".png", StringComparison.Ordinal) &&
+            name.Length == prefix.Length + 32 + 4 && Guid.TryParseExact(name.Substring(prefix.Length, 32), "N", out _)
+            ? Path.Combine(_root, name) : null;
+    }
+
+    private async Task<string?> ReadPreviewPathAsync(string path, int slot, bool quick, CancellationToken ct)
+    {
+        if (!File.Exists(path)) return null;
+        try
+        {
+            var stored = JsonCodec.Deserialize<StoredSave>(await File.ReadAllTextAsync(path, ct), JsonOptions);
+            return stored is null ? null : PreviewPath(stored, slot, quick);
+        }
+        catch (JsonException) { return null; }
+    }
+
+    private static void TryDelete(string? path)
+    {
+        if (path is null) return;
+        try { File.Delete(path); }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+
     private void DeleteFiles(int slot, bool quick)
     {
         foreach (var path in new[] { GetPath(slot, quick), GetPreviewPath(slot, quick) })
             if (File.Exists(path)) File.Delete(path);
+        if (Directory.Exists(_root))
+            foreach (var path in Directory.EnumerateFiles(_root, quick ? "quick-*.png" : $"slot-{slot:D3}-*.png"))
+                File.Delete(path);
     }
 
     public void Dispose()
@@ -168,5 +210,6 @@ public sealed class FileSaveService : ISaveService, ISaveSlotNamingService, ISav
         public DateTimeOffset Timestamp { get; set; }
         public string? Description { get; set; }
         public GameSnapshot? Snapshot { get; set; }
+        public string? PreviewFile { get; set; }
     }
 }

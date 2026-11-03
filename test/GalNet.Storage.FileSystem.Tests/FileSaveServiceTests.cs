@@ -8,6 +8,55 @@ namespace GeneralTest.Storage;
 public sealed class FileSaveServiceTests
 {
     [Test]
+    public async Task FailedCommitKeepsPreviousSaveAndPreview()
+    {
+        if (!OperatingSystem.IsWindows()) Assert.Ignore("The test simulates Windows sharing denial.");
+        var directory = CreateProfileDirectory();
+        try
+        {
+            using var saves = new FileSaveService(directory);
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "old" }, PreviewImage = [1, 2] });
+            var before = await saves.GetSlotInfoAsync(0);
+            var path = Path.Combine(directory, "saves", "slot-000.json");
+            using (File.Open(path, FileMode.Open, FileAccess.Read, FileShare.Read))
+                Assert.That(Assert.CatchAsync(async () => await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "new" }, PreviewImage = [3, 4] })),
+                    Is.InstanceOf<IOException>().Or.InstanceOf<UnauthorizedAccessException>());
+            var after = await saves.GetSlotInfoAsync(0);
+            Assert.That((await saves.LoadAsync(0))!.NodeId, Is.EqualTo("old"));
+            Assert.That(after.PreviewImage, Is.EqualTo(before.PreviewImage));
+            Assert.That(await File.ReadAllBytesAsync(after.PreviewImage!), Is.EqualTo(new byte[] { 1, 2 }));
+            Assert.That(Directory.GetFiles(Path.Combine(directory, "saves"), "slot-000-*.png"), Has.Length.EqualTo(1));
+        }
+        finally { DeleteProfileDirectory(directory); }
+    }
+
+    [Test]
+    public async Task LegacyPreviewRemainsReadableAndOverwritePublishesNewPair()
+    {
+        var directory = CreateProfileDirectory();
+        try
+        {
+            using var saves = new FileSaveService(directory);
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "old" }, PreviewImage = [1] });
+            var old = await saves.GetSlotInfoAsync(0);
+            var path = Path.Combine(directory, "saves", "slot-000.json");
+            var json = System.Text.Json.Nodes.JsonNode.Parse(await File.ReadAllTextAsync(path))!.AsObject();
+            json.Remove("PreviewFile");
+            await File.WriteAllTextAsync(path, json.ToJsonString());
+            File.Move(old.PreviewImage!, Path.Combine(directory, "saves", "slot-000.png"));
+            Assert.That(await File.ReadAllBytesAsync((await saves.GetSlotInfoAsync(0)).PreviewImage!), Is.EqualTo(new byte[] { 1 }));
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "new" }, PreviewImage = [2] });
+            var current = await saves.GetSlotInfoAsync(0);
+            Assert.That((await saves.LoadAsync(0))!.NodeId, Is.EqualTo("new"));
+            Assert.That(await File.ReadAllBytesAsync(current.PreviewImage!), Is.EqualTo(new byte[] { 2 }));
+            Assert.That(File.Exists(Path.Combine(directory, "saves", "slot-000.png")), Is.False);
+            await saves.SaveAsync(0, new SaveRequest { Snapshot = new GameSnapshot { NodeId = "without-preview" } });
+            Assert.That((await saves.GetSlotInfoAsync(0)).PreviewImage, Is.Null);
+            Assert.That((await saves.LoadAsync(0))!.NodeId, Is.EqualTo("without-preview"));
+        }
+        finally { DeleteProfileDirectory(directory); }
+    }
+    [Test]
     public async Task SingleSlotLookupMatchesListMetadataForOccupiedEmptyAndCorruptSlots()
     {
         var directory = CreateProfileDirectory();

@@ -1,4 +1,8 @@
 {
+  "ProfileCorrupt.Title": "Player data could not be read",
+  "ProfileCorrupt.Message": "Your player settings and unlocked content could not be read. Continue with fresh player data? The original file will be kept as a backup in the profile folder. Save slots will remain available.",
+  "ProfileCorrupt.Exit": "Exit",
+  "ProfileCorrupt.Continue": "Continue",
   "App.Title": "GalNet CrossPlatform Sample Player",
   "About.Description": "This sample hosts the same game content on desktop and mobile.",
   "Opening.NoticeTitle": "Before you play",

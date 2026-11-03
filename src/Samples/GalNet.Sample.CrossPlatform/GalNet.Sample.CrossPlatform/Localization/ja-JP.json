@@ -1,4 +1,8 @@
 {
+  "ProfileCorrupt.Title": "プレイヤーデータを読み込めません",
+  "ProfileCorrupt.Message": "設定と解放済みコンテンツを読み込めません。新しいプレイヤーデータで続行しますか？元のファイルはプロファイルフォルダーにバックアップされ、セーブデータは引き続き使用できます。",
+  "ProfileCorrupt.Exit": "終了",
+  "ProfileCorrupt.Continue": "続行",
   "App.Title": "GalNet クロスプラットフォーム サンプルプレイヤー",
   "About.Description": "このサンプルは、デスクトップとモバイルで同じゲームコンテンツを再生します。",
   "Opening.NoticeTitle": "プレイ前のご案内",

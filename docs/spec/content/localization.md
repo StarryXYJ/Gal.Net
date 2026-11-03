@@ -76,6 +76,8 @@ Avalonia Sample 在载入游戏内容和玩家变量后、显示标题和创建 
 
 确认后将所选 locale 与启动次数一起提交到 profile 的 `player-variables.json`，成功写盘才更新内存和 culture；每次成功启动加一，计数在 Int32 上限饱和。取消选择退出窗口；关闭窗口会取消等待；取消、内容加载失败或写盘失败不会提交启动次数。后续启动跳过选择页，恢复可用的已保存语言；已移除语言回退到游戏默认/首个可用语言。没有游戏目录的 bootstrap 启动不计数。
 
+启动时玩家变量文件无法解析，Sample 使用系统语言显示模态选择：退出保留原文件，继续先将其重命名为同目录唯一的 `player-variables.json.corrupt-*.bak`，再以空玩家变量进入首次启动流程。存档槽和已读进度不受此操作影响；备份失败则停止启动，不覆盖原文件。
+
 现有“清空游戏数据”会重置玩家变量并重启，因此下次再次显示首次选择。Sample 默认 profile 位于用户 `LocalApplicationData/GalNet/<project identity digest>/`，身份来自 game.pak 内的 projectId（旧安装读取 content.json）；与安装位置和 buildId 无关。开发目录无内容身份时使用绝对路径摘要，开发版可用 `--profile` 显式指定；用户主动共享 profile 时也会共享偏好。该流程只在 Sample 宿主实现，Headless 不显示首次选择页。设置切换不强制重启：UI 即时刷新，已显示的人物名、对话、选项和 NVL 历史保持原文，后续条目使用新语言。
 
 资源的区域变体可由 `AssetLocaleResolver` 通过宿主选择的目录规则定位；这与文本的 `ITextResolver` 相互独立。

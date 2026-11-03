@@ -722,6 +722,32 @@ public sealed class PlayerInputTests
         .Dispatch<bool>(async () => { await action(); Dispatcher.UIThread.RunJobs(); return true; }, TestContext.CurrentContext.CancellationToken);
 
     [Test]
+    public async Task TouchCaptureLossDoesNotPoisonTheNextGesture()
+    {
+        await Ui(async () =>
+        {
+            var settings = Settings();
+            var actions = new List<string>();
+            var surface = new Border();
+            var window = new Window { Width = 700, Height = 400, Content = surface };
+            using var touch = new TouchInputRecognizer(surface, settings, () => true, action => { actions.Add(action); return Task.CompletedTask; });
+            window.Show();
+            try
+            {
+                var interrupted = new Pointer(11, PointerType.Touch, true);
+                interrupted.Capture(surface);
+                Press(surface, interrupted, new(100, 100));
+                interrupted.Capture(null);
+                var next = new Pointer(12, PointerType.Touch, true);
+                Press(surface, next, new(100, 100));
+                Release(surface, next, new(100, 100));
+                Assert.That(actions, Is.EqualTo(new[] { "advance" }));
+            }
+            finally { window.Close(); }
+        });
+    }
+
+    [Test]
     public async Task TouchGesturesDoNotAlsoDispatchTheSingleTap()
     {
         await Ui(async () =>

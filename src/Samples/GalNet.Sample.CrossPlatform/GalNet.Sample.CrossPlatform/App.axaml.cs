@@ -44,6 +44,7 @@ public partial class App : Application, IAsyncDisposable
     private DesktopWindowPlacement? _windowPlacement;
     private OpeningSequence? _opening;
     private Grid? _startupSurface;
+    private TaskCompletionSource<bool>? _corruptProfileChoice;
     private readonly CultureInfo _systemCulture = CultureInfo.CurrentUICulture;
 #if GALNET_GAME_DEBUG
     private DebugToolsOverlay? _debugSurface;
@@ -214,6 +215,13 @@ public partial class App : Application, IAsyncDisposable
             await ApplyPlatformStateAsync();
         }
         catch (OperationCanceledException) when (_stopping || generation != _generation) { }
+        catch (OperationCanceledException)
+        {
+            if (opening is not null) await opening.DisposeAsync();
+            await ShutdownAsync();
+            if (_window is not null) _window.Close();
+            else ExitRequested?.Invoke();
+        }
         catch (Exception error)
         {
             if (opening is not null)
@@ -255,7 +263,8 @@ public partial class App : Application, IAsyncDisposable
     private async Task<PlayerLaunchPaths> PrepareEnvironmentAsync(AvaloniaPlayerLocalization text, OpeningSequence opening)
     {
         var paths = await PrepareLaunchAsync(_lifetime.Token);
-        await StartupLocalization.ApplyProfileAsync(text, paths.ProfileDirectory, _systemCulture.Name, _lifetime.Token);
+        await StartupLocalization.ApplyProfileWithRecoveryAsync(text, paths.ProfileDirectory, _systemCulture.Name,
+            token => ConfirmCorruptProfileAsync(text, token), _lifetime.Token);
         opening.SetProfileDirectory(paths.ProfileDirectory);
         if (_window is not null && _windowPlacement is null)
         {
@@ -277,6 +286,35 @@ public partial class App : Application, IAsyncDisposable
             Log.Logger = _logger;
         }
         return paths;
+    }
+
+    private async Task<bool> ConfirmCorruptProfileAsync(AvaloniaPlayerLocalization text, CancellationToken token)
+    {
+        var surface = _startupSurface ?? throw new InvalidOperationException("Startup surface is unavailable.");
+        var choice = _corruptProfileChoice = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancel = new Button { Content = text["ProfileCorrupt.Exit"], MinWidth = 80, MinHeight = 36 };
+        var proceed = new Button { Content = text["ProfileCorrupt.Continue"], MinWidth = 80, MinHeight = 36 };
+        proceed.Classes.Add("player-primary");
+        cancel.Click += (_, _) => choice.TrySetResult(false);
+        proceed.Click += (_, _) => choice.TrySetResult(true);
+        var buttons = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = 8, HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Right };
+        buttons.Children.Add(cancel);
+        buttons.Children.Add(proceed);
+        var content = new StackPanel { Spacing = 20 };
+        content.Children.Add(new TextBlock { Text = text["ProfileCorrupt.Title"], FontSize = 20, FontWeight = global::Avalonia.Media.FontWeight.SemiBold,
+            Foreground = (global::Avalonia.Media.IBrush)surface.FindResource("GalNet.Brush.TextPrimary")! });
+        content.Children.Add(new TextBlock { Text = text["ProfileCorrupt.Message"], TextWrapping = global::Avalonia.Media.TextWrapping.Wrap,
+            Foreground = (global::Avalonia.Media.IBrush)surface.FindResource("GalNet.Brush.TextSecondary")! });
+        content.Children.Add(buttons);
+        var dialog = new Grid { Background = global::Avalonia.Media.Brushes.Black, Opacity = 1 };
+        dialog.Children.Add(new Border { Child = content, MaxWidth = 440, Margin = new Thickness(16), Padding = new Thickness(24),
+            HorizontalAlignment = global::Avalonia.Layout.HorizontalAlignment.Center, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center,
+            Background = (global::Avalonia.Media.IBrush)surface.FindResource("GalNet.Brush.Surface")!, CornerRadius = new CornerRadius(6) });
+        global::Avalonia.Input.KeyboardNavigation.SetTabNavigation(dialog, global::Avalonia.Input.KeyboardNavigationMode.Cycle);
+        surface.Children.Add(dialog);
+        cancel.Focus();
+        try { return await choice.Task.WaitAsync(token); }
+        finally { _corruptProfileChoice = null; surface.Children.Remove(dialog); }
     }
 
     private async Task<AvaloniaPlayerHost> CreatePlayerAsync(PlayerLaunchPaths paths, OpeningSequence opening, AvaloniaPlayerLocalization text)
@@ -367,6 +405,7 @@ public partial class App : Application, IAsyncDisposable
 
     public async Task HandleBackAsync()
     {
+        if (_corruptProfileChoice is { } choice) { choice.TrySetResult(false); return; }
         if (_opening is { IsRunning: true } opening)
         {
             opening.SkipRemainingCommand.Execute(null);

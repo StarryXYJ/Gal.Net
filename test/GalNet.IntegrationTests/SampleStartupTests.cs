@@ -17,6 +17,35 @@ namespace GalNet.IntegrationTests;
 
 public sealed class SampleStartupTests
 {
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task CorruptProfileIsPreservedUntilRecoveryIsConfirmed(bool confirm)
+    {
+        Directory.CreateDirectory(_root);
+        var path = Path.Combine(_root, "player-variables.json");
+        await File.WriteAllTextAsync(path, "{broken");
+        using var localization = SampleCustomization.CreateLocalizationService();
+        Task Recovery() => StartupLocalization.ApplyProfileWithRecoveryAsync(localization, _root, "en-US", async token =>
+        {
+            Assert.That(await File.ReadAllTextAsync(path, token), Is.EqualTo("{broken"));
+            Assert.That(Directory.GetFiles(_root, "*.bak"), Is.Empty);
+            return confirm;
+        });
+        if (confirm)
+        {
+            await Recovery();
+            Assert.That(File.Exists(path), Is.False);
+            var backup = Directory.GetFiles(_root, "player-variables.json.corrupt-*.bak").Single();
+            Assert.That(await File.ReadAllTextAsync(backup), Is.EqualTo("{broken"));
+            using var store = new FilePlayerVariableStore(_root);
+            Assert.That(await store.LoadAsync(), Is.Empty);
+        }
+        else
+        {
+            Assert.ThrowsAsync<OperationCanceledException>(async () => await Recovery());
+            Assert.That(await File.ReadAllTextAsync(path), Is.EqualTo("{broken"));
+        }
+    }
     private string _root = null!;
 
     [SetUp]

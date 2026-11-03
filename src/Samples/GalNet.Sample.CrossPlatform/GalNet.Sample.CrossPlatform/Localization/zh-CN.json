@@ -1,4 +1,8 @@
 {
+  "ProfileCorrupt.Title": "无法读取玩家数据",
+  "ProfileCorrupt.Message": "无法读取玩家设置和已解锁内容。是否使用新的玩家数据继续？原文件将备份在玩家数据目录中，存档槽仍可使用。",
+  "ProfileCorrupt.Exit": "退出",
+  "ProfileCorrupt.Continue": "继续",
   "App.Title": "GalNet 跨平台示例播放器",
   "About.Description": "此示例在桌面和移动端运行同一份游戏内容。",
   "Opening.NoticeTitle": "游玩前提示",
