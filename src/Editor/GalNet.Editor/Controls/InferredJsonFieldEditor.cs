@@ -16,6 +16,7 @@ internal static class InferredJsonFieldEditor
         var binding = new ForwardBinding(parent);
         var child = new FieldEditorContext(field, binding, parent.Registry);
         var lease = parent.Registry!.Resolve(field)(child);
+        if (lease.Control is StructuredFieldEditor editor) editor.ShowSourceEditor = true;
         return new FieldEditorLease(lease.Control, () => { lease.Dispose(); child.Dispose(); binding.Dispose(); });
     }
 

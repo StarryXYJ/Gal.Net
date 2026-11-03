@@ -30,6 +30,8 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     public string DownText { get => GetValue(DownTextProperty); set => SetValue(DownTextProperty, value); }
     public static readonly StyledProperty<string> CopyTextProperty = AvaloniaProperty.Register<StructuredFieldEditor, string>(nameof(CopyText), "Copy element");
     public string CopyText { get => GetValue(CopyTextProperty); set => SetValue(CopyTextProperty, value); }
+    public static readonly StyledProperty<bool> ShowSourceEditorProperty = AvaloniaProperty.Register<StructuredFieldEditor, bool>(nameof(ShowSourceEditor));
+    public bool ShowSourceEditor { get => GetValue(ShowSourceEditorProperty); set => SetValue(ShowSourceEditorProperty, value); }
     public FieldEditorContext Context { get; }
     private readonly Type _type;
     private readonly Type? _element;
@@ -92,7 +94,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
             try { if (_shape.Kind == ValueStructureKind.Object && _shape.Members.Count <= 6) IsExpanded = true; }
             catch (Exception error) when (error is ArgumentException or InvalidOperationException or NotSupportedException) { }
         }
-        else if (change.Property == ObjectTextProperty || change.Property == ListTextProperty || change.Property == RepairTextProperty || change.Property == TitleTextProperty)
+        else if (change.Property == ObjectTextProperty || change.Property == ListTextProperty || change.Property == RepairTextProperty || change.Property == TitleTextProperty || change.Property == ShowSourceEditorProperty)
         {
             if (IsExpanded) SetHeader(_jsonMode || _fallback is not null ? "JSON" : HeaderText());
             else Header = HeaderText();
@@ -103,7 +105,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     private void Changed(object? sender, PropertyChangedEventArgs args)
     {
         if (_disposed) return;
-        if (_jsonButton is not null) _jsonButton.IsVisible = RepairText == "JSON" || _jsonMode || _fallback is not null || Context.Issue is not null;
+        if (_jsonButton is not null) _jsonButton.IsVisible = ShowSourceEditor || RepairText == "JSON" || _jsonMode || _fallback is not null || Context.Issue is not null;
         IsEnabled = Context.IsEnabled;
         IsVisible = Context.IsVisible;
         var current = Current;
@@ -138,7 +140,7 @@ public sealed class StructuredFieldEditor : Expander, IDisposable
     {
         var panel = new StackPanel { Orientation = global::Avalonia.Layout.Orientation.Horizontal, Spacing = 8 };
         panel.Children.Add(new TextBlock { Text = text, VerticalAlignment = global::Avalonia.Layout.VerticalAlignment.Center });
-        var button = new Button { Name = "JsonMode", Content = _jsonMode ? "≡" : RepairText == "JSON" ? "JSON" : "⋯", IsVisible = RepairText == "JSON" || _jsonMode || _fallback is not null || Context.Issue is not null };
+        var button = new Button { Name = "JsonMode", Content = _jsonMode ? "≡" : RepairText == "JSON" ? "JSON" : "⋯", IsVisible = ShowSourceEditor || RepairText == "JSON" || _jsonMode || _fallback is not null || Context.Issue is not null };
         _jsonButton = button;
         ToolTip.SetTip(button, RepairText);
         button.Click += (_, _) =>

@@ -466,6 +466,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 Assert.That(binding.Value.Json.Value.GetProperty("large").GetRawText(), Is.EqualTo("9007199254740993"));
                 Assert.That(binding.Value.Json.Value.GetProperty("nested").GetProperty("name").GetString(), Is.EqualTo("old"));
                 Assert.That(binding.Commits, Is.EqualTo(1));
+                editor.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "JsonMode").RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); TimelinePump(window);
+                var source = editor.GetVisualDescendants().OfType<TextBox>().Single();
+                source.Text = "{\"amount\":2,\"newField\":true}";
+                source.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter, KeyModifiers = KeyModifiers.Control });
+                Assert.That(binding.Value.Json.Value.GetProperty("newField").GetBoolean(), Is.True, "Adding an untyped member must remain possible.");
             }
             finally { window.Close(); }
             return true;
