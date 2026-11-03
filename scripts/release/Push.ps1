@@ -31,18 +31,15 @@ if ($Destination -contains 'GitHub') {
         $expectedAssets = @(
             foreach ($rid in @('win-x64', 'linux-x64')) {
                 $extension = if ($rid -eq 'win-x64') { '.zip' } else { '.tar.gz' }
-                foreach ($suffix in @('', '-framework-dependent')) {
-                    foreach ($product in @('Editor', 'CrossPlatform-Sample-Developer', 'CrossPlatform-Sample-Player', 'CrossPlatform-Sample-GameTestCase')) {
-                        "GalNet-$product-$($release.version)-$rid$suffix$extension"
-                    }
+                foreach ($product in @('Editor', 'CrossPlatform-Sample-GameTestCase')) {
+                    "GalNet-$product-$($release.version)-$rid$extension"
                 }
-                "GalNet-CrossPlatform-Sample-Contracts-$($release.version)-$rid.zip"
             }
             "GalNet-CrossPlatform-Sample-GameTestCase-$($release.version)-android-arm64.apk"
         )
         $actualAssets = @($assets | ForEach-Object { [IO.Path]::GetFileName($_) })
         if ($actualAssets.Count -ne $expectedAssets.Count -or @(Compare-Object $expectedAssets $actualAssets).Count) {
-            throw 'Expected the complete cross-platform release matrix (19 application/contract assets).'
+            throw 'Expected the complete cross-platform release matrix (five application assets).'
         }
     }
 }

@@ -111,12 +111,9 @@ function Test-GitHubPayloadSet {
     $crossNames = @(
         foreach ($rid in @('win-x64', 'linux-x64')) {
             $extension = if ($rid -eq 'win-x64') { '.zip' } else { '.tar.gz' }
-            foreach ($suffix in @('', '-framework-dependent')) {
-                foreach ($product in @('Editor', 'CrossPlatform-Sample-Developer', 'CrossPlatform-Sample-Player', 'CrossPlatform-Sample-GameTestCase')) {
-                    "GalNet-$product-99.99.1-$rid$suffix$extension"
-                }
+            foreach ($product in @('Editor', 'CrossPlatform-Sample-GameTestCase')) {
+                "GalNet-$product-99.99.1-$rid$extension"
             }
-            "GalNet-CrossPlatform-Sample-Contracts-99.99.1-$rid.zip"
         }
         'GalNet-CrossPlatform-Sample-GameTestCase-99.99.1-android-arm64.apk'
     )
@@ -126,7 +123,7 @@ function Test-GitHubPayloadSet {
         @{ path = "assets/$_"; size = (Get-Item $path).Length; sha256 = (Get-FileHash $path).Hash.ToLowerInvariant() }
     })
     $payloadIndex.schemaVersion = 2
-    $payloadIndex.files = @($crossFiles[0..17])
+    $payloadIndex.files = @($crossFiles[0..3])
     $crossIndex = Join-Path $crossRoot 'release-index.json'
     $payloadIndex | ConvertTo-Json -Depth 6 | Set-Content $crossIndex
     Expect-Failure { & $fixturePush -Index $crossIndex -Destination GitHub } 'complete cross-platform'
@@ -135,7 +132,7 @@ function Test-GitHubPayloadSet {
     $payloadIndex | ConvertTo-Json -Depth 6 | Set-Content $crossIndex
     'fixture checksums' | Set-Content (Join-Path $crossRoot 'SHA256SUMS')
     & $fixturePush -Index $crossIndex -Destination GitHub
-    if ($uploadCalls.Count -ne 23) { throw 'Cross-platform publication did not upload the complete matrix.' }
+    if ($uploadCalls.Count -ne 9) { throw 'Cross-platform publication did not upload the complete matrix.' }
 }
 Test-GitHubPayloadSet
 if ($attempts.Count) { throw "Guard tests attempted external commands: $($attempts -join ', ')" }
