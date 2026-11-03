@@ -27,6 +27,20 @@ namespace GalNet.IntegrationTests;
 [NonParallelizable]
 public sealed class SampleCustomizationTests
 {
+    [TestCase("ja-JP", "設定", "プレイ前のご案内")]
+    [TestCase("ko-KR", "설정", "플레이 전 안내")]
+    public void SampleLanguagesCoverSharedAndProjectUiBeforeAndAfterGameAttachment(string culture, string settings, string notice)
+    {
+        using var localization = AvaloniaPlayerLocalization.FromEmbeddedResources([typeof(SampleCustomization).Assembly]);
+        Assert.That(localization.CultureService.AvailableCultures.Select(item => item.Name), Does.Contain(culture));
+        localization.ApplyCulture(culture);
+        Assert.That(localization["Settings.Title"], Is.EqualTo(settings));
+        Assert.That(localization["Opening.NoticeTitle"], Is.EqualTo(notice));
+        localization.AttachGame(new GameContent { Graph = new Graph() });
+        Assert.That(localization["Settings.Title"], Is.EqualTo(settings));
+        Assert.That(localization["Opening.NoticeTitle"], Is.EqualTo(notice));
+    }
+
     [TestCase(false)]
     [TestCase(true)]
     public async Task HostCompositionSharesScopedServicesAndReleasesLocalization(bool enableDebug)

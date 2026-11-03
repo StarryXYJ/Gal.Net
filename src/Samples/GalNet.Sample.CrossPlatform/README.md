@@ -4,6 +4,8 @@
 
 主项目的 `Views/` 和 `ViewModels/` 拥有标题、加载、游戏、设置、存读档、鉴赏及详情、关于、截图、语言选择和确认/公告布局。按钮与页面命令直接编辑项目源码；普通页面只需在 `SampleCustomization` 注册一次 VM→View 映射，VM/View 自动注册为 Scoped，Gallery 另按实际内容类型注册。`PlayerApplication` 提供应用启动/返回策略。
 
+Sample 内置英语、简体中文、日语和韩语界面。`Localization/` 的日语和韩语资源也覆盖共享播放器界面；游戏正文由游戏内容单独提供，缺少所选语言时按游戏的语言回退规则显示。
+
 内置 `GamePresentationState`、`SaveSlotCollection`、Gallery 的缩略图/媒体/重播状态及 `PlayerSurface` 保留播放、异步取消、预览释放、焦点和输入屏蔽机制。项目页面组合这些对象，不复制机制，也不派生旧默认页面 VM。场景鉴赏使用项目游戏布局和独立呈现状态，不能通过菜单进入主会话存读档/设置。
 
 整套主题与旧页面适配已删除。配色库只提供语义颜色和字体回退；应用样式与尺寸位于项目 Styles/。会话/scope 所有权来自 `GalNet.Avalonia.GameHost`，内容安装及 profile 身份计算来自 `GalNet.Storage.FileSystem`。
