@@ -37,7 +37,7 @@ public sealed class EditorAssetManager : IAssetManager, IEditorAssetChanges
         {
             if (_disposed) return;
             var providers = new List<IAssetProvider>();
-            if (_projects.Current is { } project) providers.Add(new LocalFileProvider(project.AssetsPath, _resourceTypes, optional: true));
+            if (_projects.Current is { } project) providers.Add(new ProjectAssetProvider(project.RootPath, _resourceTypes));
             providers.AddRange(_providers.Select(provider => provider.Borrow()));
             previous = _current;
             _current = new(providers, _decoders.Values);

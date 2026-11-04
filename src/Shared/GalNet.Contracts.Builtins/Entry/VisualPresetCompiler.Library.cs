@@ -95,7 +95,8 @@ internal static partial class VisualPresetCompiler
 
     public static IReadOnlyList<PrimitiveEntry> Weather(EntryCompileContext context, WeatherPresetOptions options)
     {
-        var clip = Clip(options); Sustain(clip, options.PlaybackMode); Require(options.Texture, "texture");
+        var clip = Clip(options); Sustain(clip, options.PlaybackMode);
+        var texture = Require(options.Texture ?? BuiltinVisualResources.WeatherTextures.GetValueOrDefault(options.Weather.ToString()), "texture");
         var floating = options.Weather is WeatherKind.Dust or WeatherKind.Fireflies;
         var rain = options.Weather == WeatherKind.Rain;
         var speed = rain ? 1000f : options.Weather == WeatherKind.Snow ? 100f : 70f;
@@ -116,7 +117,7 @@ internal static partial class VisualPresetCompiler
                 max = rain ? "#9FC6DF78" : options.Weather == WeatherKind.Petals ? "#FFB1D1F2" : options.Weather == WeatherKind.Fireflies ? "#FFF7C0FF" : "#FFFFFFFF" } };
         var emitter = Id(clip, "weather");
         clip.Events.Add(Event(0, BuiltinEntryIds.PlayParticleEmitter, new { instanceId = emitter, z = options.Z, parameters = new {
-            particleTexture = options.Texture, rate, maxParticles = options.MaxParticles, seed = options.Seed, initial,
+            particleTexture = texture, rate, maxParticles = options.MaxParticles, seed = options.Seed, initial,
             shape = new { type = "box", x = options.Width / 2 - drift / 2, y = floating ? options.Height / 2 : -16, width = options.Width + Math.Abs(drift), height = floating ? options.Height : 1 },
             motion = new { noise = rain ? 0 : floating ? 15 : 20, drag = floating ? .15 : 0 },
             lifetime = new { opacity = new[] { new { time = 0f, value = 0f }, new { time = fadeIn, value = 1f }, new { time = .8f, value = 1f }, new { time = 1f, value = 0f } } }
@@ -225,7 +226,7 @@ internal static partial class VisualPresetCompiler
         {
             var handle = incoming ? options.NewHandleId! : options.OldHandleId!; var effect = Id(clip, incoming ? "incoming" : "outgoing");
             var property = kind == "pixelate" ? "blockSize" : "strength"; var neutral = kind == "pixelate" ? 1 : 0; var peak = kind == "pixelate" ? Math.Clamp(options.Strength * 48, 1, 256) : Math.Min(1, options.Strength);
-            clip.Events.Add(Apply(0, effect, handle, Require(options.Program, "program"), new Dictionary<string, float> { [property] = incoming ? peak : neutral }));
+            clip.Events.Add(Apply(0, effect, handle, Require(options.Program ?? BuiltinVisualResources.Programs.GetValueOrDefault(kind), "program"), new Dictionary<string, float> { [property] = incoming ? peak : neutral }));
             clip.Tracks.Add(Track(effect, property, frames, incoming ? peak : neutral, incoming ? neutral : peak));
             if (kind == "glitch") clip.Tracks.Add(Track(effect, "time", frames, 0, (float)frames / clip.FrameRate));
             clip.Events.Add(Stop(frames, effect));

@@ -92,7 +92,7 @@ public sealed class ProjectQueryService(string projectDirectory)
                     .Where(item => item.Id == query.Id));
             }
         if (query.Kind is null or "resource")
-            foreach (var file in _reader.Files(null, diagnostics).Where(file => file.StartsWith("Assets/", StringComparison.Ordinal) && file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+            foreach (var file in _reader.Files(null, diagnostics).Where(file => ProjectFilePaths.IsResource(file) && file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
                 if (_reader.Read(file, diagnostics) is { } meta)
                 {
                     var identity = ProjectRawReader.MetadataIdentity(meta);
@@ -235,7 +235,7 @@ public sealed class ProjectQueryService(string projectDirectory)
         _ when file.EndsWith(".rawgalgroup", StringComparison.OrdinalIgnoreCase) => "rawgroup",
         _ when file.EndsWith(".galgroup", StringComparison.OrdinalIgnoreCase) => "compiledgroup",
         _ when file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) => "metadata",
-        _ when file.StartsWith("Assets/", StringComparison.Ordinal) => "resource",
+        _ when ProjectFilePaths.IsResource(file) => "resource",
         _ when file.StartsWith("I18n/", StringComparison.Ordinal) => "localization",
         _ => "other"
     };

@@ -51,10 +51,10 @@ public sealed class ProjectTextFiles(IProjectService projects, IProjectContentSe
     }
     private void ValidateVariants(string path, string text)
     {
-        if (resourceTypes is null || !path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) return;
+        if (resourceTypes is null || !ProjectFilePaths.IsResource(path)) return;
         var isVariants = resourceTypes.TryGetByExtension(Path.GetExtension(path), out var type) && type.TypeId == "image-variants";
         var sidecar = new ProjectRawReader(projects.Current!.RootPath).Resolve(path + ".meta");
-        if (!isVariants && File.Exists(sidecar)) isVariants = new AssetMetaCodec(resourceTypes).Deserialize(File.ReadAllText(sidecar), path[7..]).TypeId == "image-variants";
+        if (!isVariants && File.Exists(sidecar)) isVariants = new AssetMetaCodec(resourceTypes).Deserialize(File.ReadAllText(sidecar), ProjectFilePaths.ResourceRelative(path)).TypeId == "image-variants";
         if (!isVariants) return;
         var build = ImageVariantsAuthoring.Scan(projects.Current!.RootPath, path, text, resourceTypes).Build;
         if (build.Definition is null) throw new InvalidDataException(string.Join("\n", build.Diagnostics.Select(item => $"{item.Path} [{item.Code}]: {item.Message}")));

@@ -15,21 +15,22 @@ public sealed partial class ProjectFileOperation
     {
         var files = new Dictionary<string, string>(ProjectFilePaths.Comparer);
         var directories = new HashSet<string>(ProjectFilePaths.Comparer);
-        var root = _reader.Resolve("Assets");
-        if (!Directory.Exists(root)) return (files, directories);
-        var tree = Enumerate(root);
-        foreach (var path in tree.Files) files.Add(_reader.Relative(path), path);
-        foreach (var path in tree.Directories) directories.Add(_reader.Relative(path));
+        foreach (var root in new[] { "Assets", "Buildin" }.Select(_reader.Resolve).Where(Directory.Exists))
+        {
+            var tree = Enumerate(root);
+            foreach (var path in tree.Files) files.Add(_reader.Relative(path), path);
+            foreach (var path in tree.Directories) directories.Add(_reader.Relative(path));
+        }
         return (files, directories);
     }
 
     private void PrepareVariantRelations()
     {
         if (_request.Action is not (ProjectFileAction.Move or ProjectFileAction.Copy)) return;
-        if (!_before.Keys.Concat(_after.Keys).Any(path => path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))) return;
+        if (!_before.Keys.Concat(_after.Keys).Any(ProjectFilePaths.IsResource)) return;
         var snapshot = AssetSnapshot();
         foreach (var path in _before.Keys) snapshot.Files.Remove(path);
-        foreach (var pair in _after.Where(pair => pair.Key.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))) snapshot.Files[pair.Key] = pair.Value.Backup;
+        foreach (var pair in _after.Where(pair => ProjectFilePaths.IsResource(pair.Key))) snapshot.Files[pair.Key] = pair.Value.Backup;
         foreach (var pair in snapshot.Files.Where(pair => IsVariants(pair.Key, snapshot.Files)).ToArray())
         {
             var destination = pair.Key;
@@ -43,7 +44,7 @@ public sealed partial class ProjectFileOperation
             _variantDescriptors.Add(origin);
             var bytes = File.ReadAllBytes(pair.Value);
             var source = ImageVariantsCodec.ReadSource(bytes);
-            var oldFolder = "Assets/" + LocalAssetCompiler.ResolveFolder(origin[7..], source.Folder);
+            var oldFolder = origin[..origin.IndexOf('/')] + "/" + LocalAssetCompiler.ResolveFolder(ProjectFilePaths.ResourceRelative(origin), source.Folder);
             oldFolder = oldFolder.TrimEnd('/');
             var newFolder = Map(oldFolder, true);
             if (copied is { } relation && ProjectFilePaths.Within(oldFolder, relation.From))
@@ -65,7 +66,7 @@ public sealed partial class ProjectFileOperation
     {
         if (!_variantDescriptors.Contains(file.Path)) return;
         var source = ImageVariantsCodec.ReadSource(file.Data);
-        var folder = ("Assets/" + LocalAssetCompiler.ResolveFolder(file.Path[7..], source.Folder)).TrimEnd('/');
+        var folder = (file.Path[..file.Path.IndexOf('/')] + "/" + LocalAssetCompiler.ResolveFolder(ProjectFilePaths.ResourceRelative(file.Path), source.Folder)).TrimEnd('/');
         var destination = Map(file.Path, forward);
         var mappedFolder = Map(folder, forward);
         if (file.Path == destination && folder == mappedFolder) return;
@@ -79,33 +80,39 @@ public sealed partial class ProjectFileOperation
         if (path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) return false;
         if (_types.TryGetByExtension(Path.GetExtension(path), out var type) && type.TypeId == ImageVariantsCodec.ResourceType) return true;
         return files.TryGetValue(path + ".meta", out var sidecar)
-            && _codec.Deserialize(File.ReadAllText(sidecar), path[7..]).TypeId == ImageVariantsCodec.ResourceType;
+            && _codec.Deserialize(File.ReadAllText(sidecar), ProjectFilePaths.ResourceRelative(path)).TypeId == ImageVariantsCodec.ResourceType;
     }
 
     private void ValidateVariants(IReadOnlyDictionary<string, Snapshot> current, IReadOnlyDictionary<string, Snapshot> desired,
         IReadOnlyCollection<string> currentDirectories, IReadOnlyCollection<string> desiredDirectories, EditorProjectDocument document)
     {
-        if (!current.Keys.Concat(desired.Keys).Any(path => path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))) return;
+        if (!current.Keys.Concat(desired.Keys).Any(ProjectFilePaths.IsResource)) return;
         var snapshot = AssetSnapshot();
         foreach (var path in current.Keys) snapshot.Files.Remove(path);
-        foreach (var pair in desired.Where(pair => pair.Key.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))) snapshot.Files[pair.Key] = pair.Value.Backup;
+        foreach (var pair in desired.Where(pair => ProjectFilePaths.IsResource(pair.Key))) snapshot.Files[pair.Key] = pair.Value.Backup;
         if (!snapshot.Files.Keys.Any(path => IsVariants(path, snapshot.Files))) return;
         snapshot.Directories.ExceptWith(currentDirectories);
-        snapshot.Directories.UnionWith(desiredDirectories.Where(path => path == "Assets" || path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)));
-        var files = snapshot.Files.ToDictionary(pair => pair.Key[7..], pair => pair.Value, StringComparer.OrdinalIgnoreCase);
-        var directories = snapshot.Directories.Select(path => path == "Assets" ? "" : path[7..]).ToArray();
+        snapshot.Directories.UnionWith(desiredDirectories.Where(path => path is "Assets" or "Buildin" || ProjectFilePaths.IsResource(path)));
         var temporary = new List<string>();
         try
         {
             foreach (var file in document.Files.Values.Where(file => file.ManagedContent && file.Exists
-                && file.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && IsVariants(file.Path, snapshot.Files)))
+                && ProjectFilePaths.IsResource(file.Path) && IsVariants(file.Path, snapshot.Files)))
             {
                 var path = Path.Combine(_retained, "validate-" + Guid.NewGuid().ToString("N"));
                 temporary.Add(path);
                 File.WriteAllBytes(path, file.Data);
-                files[file.Path[7..]] = path;
+                snapshot.Files[file.Path] = path;
             }
-            _ = LocalAssetCompiler.CompileAsync(files, directories, _types).GetAwaiter().GetResult();
+            foreach (var root in new[] { "Assets", "Buildin" })
+            {
+                var prefix = root + "/";
+                var files = snapshot.Files.Where(pair => pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    .ToDictionary(pair => pair.Key[prefix.Length..], pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+                var directories = snapshot.Directories.Where(path => path.Equals(root, StringComparison.OrdinalIgnoreCase) || path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    .Select(path => path.Equals(root, StringComparison.OrdinalIgnoreCase) ? "" : path[prefix.Length..]).ToArray();
+                _ = LocalAssetCompiler.CompileAsync(files, directories, _types).GetAwaiter().GetResult();
+            }
         }
         finally { foreach (var path in temporary) File.Delete(path); }
     }

@@ -19,9 +19,7 @@ public static class DefaultProjectConfiguration
         Field("defaultWidth", typeof(int), minimum: 1), Field("defaultHeight", typeof(int), minimum: 1),
         Field("orientationPolicy", typeof(ProjectOrientationPolicy)), Field("defaultOrientation", typeof(ProjectDefaultOrientation)),
         Field("saveSlotCount", typeof(int), minimum: 0),
-        Field("audioBuses", typeof(List<AudioBusDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>)),
-        Field("defaultVisualPrograms", typeof(Dictionary<string, string>)),
-        Field("defaultWeatherTextures", typeof(Dictionary<string, string>))
+        Field("audioBuses", typeof(List<AudioBusDefinition>)), Field("audioTracks", typeof(List<AudioTrackDefinition>))
     ], value => _ = new AudioConfiguration(value.AudioTracks, value.AudioBuses), version: 2, jsonResolver: BuiltinJson.Resolver);
     public static ProjectConfigurationSchema Schema { get; } = new([Section, ContentPackagingOptions.Section, ResourceOverrideOptions.Section]);
 

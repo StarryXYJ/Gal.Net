@@ -1,19 +1,19 @@
 # 默认视觉资源与演出预设
 
-新建默认契约项目时，编辑器将 16 个 SkSL 模板和 5 个天气粒子纹理复制到 `Assets/Effects/Default/`，为每个项目生成资源 GUID。预览、运行和导出读取项目资产；升级编辑器不覆盖已有 shader。
+新建默认契约项目时，编辑器将 16 个 SkSL 模板和 5 个天气粒子纹理复制到 `Buildin/Effects/Default/`。它们在所有项目中使用相同的固定资源 ID，可以查看和编辑；编辑器禁止删除、移动或改名这些资源及其父目录。预览、运行和导出读取项目中的资源，升级编辑器不覆盖作者修改。
 
-`galnet.project.defaultVisualPrograms` 保存默认 shader 用途绑定；`defaultWeatherTextures` 保存 Rain、Snow、Petals、Dust、Fireflies 的纹理绑定。编辑器插入预设或切换类型时填入实际 GUID；修改用途绑定不会追改已有 Entry。项目设置中的两组绑定可通过资源选择器分别选择效果程序和图片纹理；CLI / 外部作者需要显式填写资源引用。
+视觉预设使用相应内置资源的固定 ID；每条 Entry 仍可单独选择其他资源。项目设置不再维护统一的默认用途绑定。若在编辑器外删除内置文件、sidecar 或改变其固定身份，校验和构建会报错。
 
-## 旧项目补入
+## 显式安装
 
-先重建、部署与当前引擎匹配的项目契约（声明 effect.apply 和 defaultVisualPrograms），再使用 CLI：
+契约声明默认项目配置和 `effect.apply` 时，可以使用 CLI 显式安装缺失的完整资源对：
 
 ```text
 project visuals install <project> --dry-run
 project visuals install <project>
 ```
 
-只补缺失用途，保留已有绑定和作者修改。缺失绑定对应的默认资产路径被占用时，整次操作拒绝覆盖；可以手动将用途绑定到已有资源。发布复用作者文件事务与 settings 原哈希检查；dry-run 不改项目，重复安装没有变化。不提供自动升级/覆盖已有 shader 的入口。
+安装保留已有资源的作者修改；文件和 sidecar 不完整、路径被占用或身份不匹配时拒绝操作。dry-run 不改项目，重复安装没有变化。旧项目不自动迁移。
 
 ## 通用效果
 

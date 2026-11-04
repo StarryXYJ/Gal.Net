@@ -229,61 +229,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             .Single(context => context.Field.Id == id);
 
     [Test]
-    public async Task DefaultWeatherTexturesUseStructuredMapAndProjectHistory()
+    public void BuiltinVisualDefaultsAreNotProjectSettings()
     {
-        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
-        await ui.Dispatch<bool>(async () =>
-        {
-            PrepareGroupTheme(); using var services = Services(); var projects = services.GetRequiredService<IProjectService>();
-            var project = await projects.CreateAsync(Path.Combine(_root, "WeatherSettings"), "WeatherSettings", new(), Contracts());
-            var panel = project.Services.GetRequiredService<ProjectSettingsPanelViewModel>();
-            var view = new ProjectSettingsPanelView { DataContext = panel }; var window = new Window { Content = view, Width = 1000, Height = 700 };
-            window.Show(); TimelinePump(window);
-            try
-            {
-                var map = view.GetVisualDescendants().OfType<StructuredFieldEditor>().Single(editor => editor.Context.Field.Id == "defaultWeatherTextures");
-                Assert.That(map.Context.Field.LabelKey, Is.EqualTo("Settings.Project.DefaultWeatherTextures"));
-                Assert.That(map.Context.Value.Json!.Value.ValueKind, Is.EqualTo(JsonValueKind.Object));
-                await Stage(panel, "defaultWeatherTextures", new Dictionary<string, string> { ["Rain"] = "original-id" });
-                map.IsExpanded = true; TimelinePump(window);
-                var picker = map.GetVisualDescendants().OfType<AssetPicker>().Single();
-                map.BringIntoView(); TimelinePump(window);
-                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } artifacts)
-                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(artifacts, "settings-map-expanded.png")); }
-                var row = map.GetVisualDescendants().OfType<Grid>().Single(grid => grid.Classes.Contains("structured-map-item"));
-                Assert.That(row.ColumnDefinitions.Count, Is.EqualTo(3));
-                var keyInput = row.GetVisualDescendants().OfType<TextBox>().Single(input => input.Name == "MapKey");
-                var pickerButton = picker.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "PickerButton");
-                var removeButton = row.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "remove");
-                var resetButton = row.GetVisualDescendants().OfType<Button>().Single(button => button.Name == "UseDefault");
-                double Center(Control control) => control.TranslatePoint(new Avalonia.Point(0, control.Bounds.Height / 2), row)!.Value.Y;
-                Assert.That(Center(keyInput), Is.EqualTo(Center(pickerButton)).Within(1));
-                Assert.That(Center(removeButton), Is.EqualTo(Center(pickerButton)).Within(1));
-                Assert.That(Center(resetButton), Is.EqualTo(Center(pickerButton)).Within(1));
-                window.Width = 600; TimelinePump(window); row.BringIntoView(); TimelinePump(window);
-                Assert.That(row.ColumnDefinitions.Count, Is.EqualTo(2));
-                if (Environment.GetEnvironmentVariable("GALNET_EDITOR_TEST_ARTIFACTS") is { Length: > 0 } narrowArtifacts)
-                { using var frame = window.CaptureRenderedFrame(); frame!.Save(Path.Combine(narrowArtifacts, "settings-map-narrow.png")); }
-                window.Width = 1000; TimelinePump(window);
-                Assert.That(picker.Filter, Is.EqualTo(AssetPickerFilter.Image));
-                Assert.That(picker.SelectedAssetId, Is.EqualTo("original-id"));
-                Assert.That(Setting(panel, "defaultWeatherTextures").Read().Json!.Value.GetProperty("Rain").GetString(), Is.EqualTo("original-id"), "Opening must not rewrite the existing reference.");
-                picker.SelectedAssetId = "rain-id"; TimelinePump(window);
-                await Stage(panel, "defaultVisualPrograms", new Dictionary<string, string> { ["blur"] = "shader-id" });
-                var programs = view.GetVisualDescendants().OfType<StructuredFieldEditor>().Single(editor => editor.Context.Field.Id == "defaultVisualPrograms");
-                programs.IsExpanded = true; TimelinePump(window);
-                var shader = programs.GetVisualDescendants().OfType<AssetPicker>().Single();
-                Assert.That(shader.Filter, Is.EqualTo(AssetPickerFilter.EffectProgram));
-                Assert.That(shader.SelectedAssetId, Is.EqualTo("shader-id"));
-                await panel.CommitDraftAsync();
-                Assert.That(project.Configuration.ReadDefaultOptions().DefaultWeatherTextures["Rain"], Is.EqualTo("rain-id"));
-                Assert.That(project.Configuration.ReadDefaultOptions().DefaultVisualPrograms["blur"], Is.EqualTo("shader-id"));
-                await panel.UndoRedoHistory.UndoAsync();
-                Assert.That(project.Configuration.ReadDefaultOptions().DefaultWeatherTextures, Is.Empty);
-            }
-            finally { window.Close(); panel.Dispose(); await projects.CloseAsync(); }
-            return true;
-        }, CancellationToken.None);
+        var fields = DefaultProjectConfiguration.Section.Fields.Select(field => field.Id).ToArray();
+        Assert.That(fields, Does.Not.Contain("defaultWeatherTextures"));
+        Assert.That(fields, Does.Not.Contain("defaultVisualPrograms"));
     }
 
     [Test]

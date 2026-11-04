@@ -22,10 +22,12 @@ public static class ResourceOverrideExporter
             DeclaredCompleteResources = [.. definition.DeclaredCompleteResources]
         };
         var source = Path.GetFullPath(Path.Combine(projectRoot, "Assets"));
+        var builtin = Path.GetFullPath(Path.Combine(projectRoot, "Buildin"));
         var target = Path.GetFullPath(targetPath);
         if (!target.EndsWith(".pak", StringComparison.OrdinalIgnoreCase)) throw new ArgumentException("Resource patch output must end in .pak.", nameof(targetPath));
-        if (FileSystemPaths.IsSameOrChild(target, source)) throw new InvalidOperationException("Patch output cannot be inside author Assets.");
+        if (FileSystemPaths.IsSameOrChild(target, source) || FileSystemPaths.IsSameOrChild(target, builtin)) throw new InvalidOperationException("Patch output cannot be inside project resource roots.");
         FileSystemPaths.RequireNoLinks(source, "Resource snapshot source cannot traverse links.");
+        FileSystemPaths.RequireNoLinks(builtin, "Resource snapshot source cannot traverse links.");
         Directory.CreateDirectory(Path.GetDirectoryName(target)!);
         var stage = Path.Combine(Path.GetDirectoryName(target)!, ".override-" + Guid.NewGuid().ToString("N"));
         var temporary = target + ".tmp-" + Guid.NewGuid().ToString("N");
@@ -33,9 +35,10 @@ public static class ResourceOverrideExporter
         {
             Directory.CreateDirectory(stage);
             // Reject links and copy the complete author resource tree to a private compilation snapshot.
-            Copy(source, stage, ct);
+            if (Directory.Exists(source)) Copy(source, Path.Combine(stage, "Assets"), ct);
+            if (Directory.Exists(builtin)) Copy(builtin, Path.Combine(stage, "Buildin"), ct);
             snapshotCaptured?.Invoke();
-            using var provider = new LocalFileProvider(stage, types);
+            using var provider = new ProjectAssetProvider(stage, types);
             using var archive = await provider.OpenArchiveAsync("assets", ct);
             var files = archive.AssetIds.Select(id => archive.GetAsset(id)!).ToArray();
             var bytes = ResourceOverrideBuilder.Build(projectId, captured, files, types, ct);

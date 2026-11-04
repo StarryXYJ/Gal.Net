@@ -11,7 +11,7 @@ public enum VisualPlaybackMode { Timed, UntilStopped }
 [GenerateFieldSchema]
 public partial class RevealTransitionOptions : CrossFadeOptionsBase
 {
-    [Common, Field(10, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = "";
+    [Common, Field(10, AllowNull = true, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string? Program { get; set; }
     [Field(11, EditorId = ValueEditorIds.Choice), JsonConverter(typeof(StringEnumValueConverter<RevealMode>))] public RevealMode Mode { get; set; }
     [Field(12, Minimum = 0.001, Maximum = 1)] public float Softness { get; set; } = .05f;
     [Field(13)] public float Angle { get; set; }
@@ -23,7 +23,7 @@ public partial class RevealTransitionOptions : CrossFadeOptionsBase
 [GenerateFieldSchema]
 public partial class BlurTransitionOptions : CrossFadeOptionsBase
 {
-    [Common, Field(10, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string BlurProgram { get; set; } = "";
+    [Common, Field(10, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string BlurProgram { get; set; } = BuiltinVisualResources.Blur;
     [Field(11, Minimum = 0, Maximum = 64)] public float Radius { get; set; } = 24;
 }
 
@@ -63,7 +63,7 @@ public partial class ShakePresetOptions : VisualClipOptions
 
 public abstract class SpeedLinesPresetOptionsBase : VisualClipOptions
 {
-    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = "";
+    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = BuiltinVisualResources.SpeedLines;
     [Field(7, DefaultJson = "{}", EditorId = ValueEditorIds.Json)] public JsonElement Parameters { get; set; }
     [Field(8)] public float Z { get; set; } = 900;
     [Field(9, Minimum = -20, Maximum = 20)] public float Speed { get; set; } = 2;

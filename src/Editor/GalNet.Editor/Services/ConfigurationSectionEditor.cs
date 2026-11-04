@@ -69,8 +69,6 @@ public sealed class ConfigurationSectionEditor : IDisposable
             "defaultHeight" => "Settings.Project.DefaultHeight",
             "orientationPolicy" => "Settings.Project.OrientationPolicy",
             "defaultOrientation" => "Settings.Project.DefaultOrientation",
-            "defaultVisualPrograms" => "Settings.Project.DefaultVisualPrograms",
-            "defaultWeatherTextures" => "Settings.Project.DefaultWeatherTextures",
             "saveSlotCount" => "Settings.Project.SaveSlotCount",
             "audioBuses" => "Settings.Project.AudioBuses",
             "audioTracks" => "Settings.Project.AudioTracks",
@@ -78,12 +76,6 @@ public sealed class ConfigurationSectionEditor : IDisposable
         } : field.LabelKey ?? BuiltInFieldLabelKey(_section.Id, field.Id);
         if (_section.Id != "galnet.project")
             return label is null ? field : new(field.Id, field.Value, field.IsRequired, field.DefaultValue, field.Editor, label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
-        if (field.Id is "defaultVisualPrograms" or "defaultWeatherTextures")
-        {
-            var editor = field.Id == "defaultWeatherTextures" ? "entry.imageasset" : "entry.effectprogramasset";
-            var map = field.Value.WithStructure(ValueStructure.Map(new("value", new ValueDescriptor(typeof(string)), editor: new EditorHints(editor))));
-            return new(field.Id, map, field.IsRequired, field.DefaultValue, new("structure"), label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
-        }
         if (field.Id is not ("audioBuses" or "audioTracks"))
             return new(field.Id, field.Value, field.IsRequired, field.DefaultValue, field.Editor, label, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
         var type = field.Id == "audioBuses" ? typeof(AudioBusDefinition) : typeof(AudioTrackDefinition);

@@ -19,7 +19,7 @@ public sealed class WeatherPresetRenderingTests
         return root.FullName;
     }
 
-    private static string Asset(string id) => Directory.GetFiles(Path.Combine(Root(), "GameTestCase/Assets"), "*.meta", SearchOption.AllDirectories)
+    private static string Asset(string id) => new[] { "Assets", "Buildin" }.SelectMany(folder => Directory.GetFiles(Path.Combine(Root(), "GameTestCase", folder), "*.meta", SearchOption.AllDirectories))
         .Single(path =>
         {
             using var document = JsonDocument.Parse(File.ReadAllText(path));

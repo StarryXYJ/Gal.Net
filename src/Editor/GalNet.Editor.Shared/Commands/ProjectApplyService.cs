@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Entry;
 using GalNet.Editor.Abstraction.Changes;
@@ -79,8 +80,8 @@ public sealed class ProjectApplyService(string root, IEntryCatalog catalog, Auth
             foreach (var pair in plan.Copies) finalFiles[pair.Key] = pair.Value;
             CheckAssets(reader, finalFiles, targets);
             var types = BuiltinResourceTypes.CreateCatalog(); var codec = new AssetMetaCodec(types);
-            var descriptors = finalFiles.Where(pair => pair.Key.StartsWith("Assets/", StringComparison.Ordinal) && pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
-                .Where(pair => codec.Deserialize(File.ReadAllText(pair.Value), pair.Key[7..^5]).TypeId == "image-variants")
+            var descriptors = finalFiles.Where(pair => IsResource(pair.Key) && pair.Key.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+                .Where(pair => codec.Deserialize(File.ReadAllText(pair.Value), pair.Key[(pair.Key.IndexOf('/') + 1)..^5]).TypeId == "image-variants")
                 .Select(pair => pair.Key[..^5]).ToHashSet(ProjectFilePaths.Comparer);
             // Validation checks author JSON, sidecars, descriptor content and resource existence.
             // Existing media payloads are intentionally not copied or decoded, matching validate's skipped asset-payloads check.
@@ -129,32 +130,46 @@ public sealed class ProjectApplyService(string root, IEntryCatalog catalog, Auth
     {
         path = ProjectFilePaths.Normalize(path);
         if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) path = "Assets/" + path[7..];
+        if (path.StartsWith("Buildin/", StringComparison.OrdinalIgnoreCase)) path = "Buildin/" + path[8..];
         if (path is "Graph/graph.json" or "settings.json")
         { if (deleting) throw new ArgumentException($"Cannot delete project entry point '{path}'."); return path; }
         if (path == LocalizationJson.CatalogPath || path == LocalizationJson.MetadataPath) return path;
-        if (path.StartsWith("Assets/", StringComparison.Ordinal)) return path;
+        if (IsResource(path)) return path;
         return ProjectFilePaths.Editable(path);
     }
 
     private static void CheckAssets(ProjectRawReader reader, IReadOnlyDictionary<string, string> finalFiles, IEnumerable<string> targets)
     {
-        foreach (var path in targets.Where(path => path.StartsWith("Assets/", StringComparison.Ordinal)))
+        var protectedIds = BuiltinVisualResources.Programs.Values.Concat(BuiltinVisualResources.WeatherTextures.Values).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in targets.Where(IsResource))
         {
             var resource = path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) ? path[..^5] : path;
             if (finalFiles.ContainsKey(resource) != finalFiles.ContainsKey(resource + ".meta"))
                 throw new InvalidDataException($"Resource and metadata must exist or be deleted together: '{resource}'.");
+            var metaPath = resource + ".meta";
+            if (File.Exists(reader.Resolve(metaPath)))
+            {
+                using var original = JsonDocument.Parse(File.ReadAllBytes(reader.Resolve(metaPath)));
+                if (ProjectRawReader.MetadataIdentity(original.RootElement).Id is { } id && Guid.TryParse(id, out var parsed) && protectedIds.Contains(parsed.ToString("N")) && !finalFiles.ContainsKey(metaPath))
+                    throw new InvalidDataException($"Builtin resource cannot be deleted: '{resource}'.");
+            }
             if (!path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) || !finalFiles.TryGetValue(path, out var source) || !File.Exists(reader.Resolve(path))) continue;
             using var before = JsonDocument.Parse(File.ReadAllBytes(reader.Resolve(path)));
             using var after = JsonDocument.Parse(File.ReadAllBytes(source));
             if (ProjectRawReader.MetadataIdentity(before.RootElement).Id != ProjectRawReader.MetadataIdentity(after.RootElement).Id)
                 throw new InvalidDataException($"Replacing existing metadata must preserve its resource identity: '{path}'.");
+            if (ProjectRawReader.MetadataIdentity(before.RootElement).Id is { } oldId && Guid.TryParse(oldId, out var oldGuid) && protectedIds.Contains(oldGuid.ToString("N")) &&
+                ProjectRawReader.Text(before.RootElement, "type") != ProjectRawReader.Text(after.RootElement, "type"))
+                throw new InvalidDataException($"Builtin resource type cannot be changed: '{path}'.");
         }
     }
 
+    private static bool IsResource(string path) => path.StartsWith("Assets/", StringComparison.Ordinal) || path.StartsWith("Buildin/", StringComparison.Ordinal);
+
     private static void CopyEmptyAssetDirectories(ProjectRawReader reader, string candidate)
     {
-        if (!Directory.Exists(reader.Resolve("Assets"))) return;
-        var pending = new Stack<string>(); pending.Push("Assets");
+        var pending = new Stack<string>();
+        foreach (var root in new[] { "Assets", "Buildin" }) if (Directory.Exists(reader.Resolve(root))) pending.Push(root);
         while (pending.TryPop(out var path))
         {
             Directory.CreateDirectory(Path.Combine(candidate, path));

@@ -140,7 +140,7 @@ transition.glitch
 
 这些 entry 不是 Runtime primitive，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
 
-视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 显式资源参数传递。编辑器插入/类型切换时从项目 defaultVisualPrograms 用途绑定填入 GUID；编译器不查找隐藏默认 shader，不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击每个条目显式指定单个 handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../../manual/editor/default-visuals.md)。
+视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 资源参数传递。默认值使用项目 Buildin 资源的固定 ID，也可以在单条 Entry 中选择其他资源；不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击每个条目显式指定单个 handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../../manual/editor/default-visuals.md)。
 
 ## 内置 primitive ID
 

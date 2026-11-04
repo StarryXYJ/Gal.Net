@@ -43,7 +43,7 @@ public sealed class ProjectContentSession(IEditorDocumentService documents, IEdi
     public EditorFileDocument TrackResourceMetadataFile(string path, byte[] textBytes)
     {
         path = ProjectFilePaths.Normalize(path);
-        if (!path.StartsWith("Assets/", StringComparison.Ordinal) || !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw ProjectFilePaths.Error("protected", path);
+        if (!ProjectFilePaths.IsResource(path) || !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw ProjectFilePaths.Error("protected", path);
         using var json = JsonDocument.Parse(LocalizationJson.Decode(textBytes));
         if (json.RootElement.ValueKind != JsonValueKind.Object) throw new InvalidDataException("Resource metadata must be an object.");
         return TrackStructuredFile(path, textBytes);

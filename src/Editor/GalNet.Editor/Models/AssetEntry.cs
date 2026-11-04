@@ -6,6 +6,8 @@ namespace GalNet.Editor.Models;
 public sealed partial class AssetEntry : ObservableObject
 {
     public required string RelativePath { get; init; }
+    public string ResourceRoot { get; init; } = "Assets";
+    public string ProjectPath => ResourceRoot + "/" + RelativePath;
     public required string FullPath { get; init; }
     public required string Name { get; init; }
     public bool IsDirectory { get; init; }

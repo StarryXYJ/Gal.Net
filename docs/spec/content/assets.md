@@ -1,6 +1,6 @@
 # 资源文件管理
 
-每个项目资源位于 `Assets/`，由相邻的 `.meta` 描述稳定资源 ID（项目通常使用 GUID）、类型和类型专属数据。资源的作者引用、PAK 索引和运行时查询均以该 ID 为正式身份；路径只用于导入、编辑和诊断。
+项目资源位于 `Assets/` 和 `Buildin/`，由相邻的 `.meta` 描述稳定资源 ID（项目通常使用 GUID）、类型和类型专属数据。`Buildin/` 保存可编辑的项目内置资源；资源 ID 与逻辑路径在两根之间均须唯一。资源的作者引用、PAK 索引和运行时查询均以该 ID 为正式身份；路径只用于导入、编辑和诊断。
 
 ## Metadata 与类型
 
@@ -18,7 +18,7 @@
 
 - `id` 是非空、全项目唯一的稳定资源 ID；推荐使用 GUID，但当前 codec 不限制其字符串形态。
 - `type` 是资源类型 ID；组合根通过冻结的 `IResourceTypeCatalog` 将其映射到具体 `AssetMeta` DTO。内置作者资源类型为 `sprite`、`image-variants`、`audio`、`video`、`font`、`effect-program` 和 `data`；`graph`、`group` 用于编译生成的剧情资源。
-- `path` 相对 `Assets/`；provider 会以实际逻辑路径校正缺失或过时的值。
+- `path` 相对资源所属的 `Assets/` 或 `Buildin/` 根；provider 会以实际逻辑路径校正缺失或过时的值。
 - 可选字段缺失时使用 DTO 默认值；未知字段保存在 extension data，供 Editor 重写时保留。未知 `type`、无效 JSON、缺失 GUID 或缺失源文件是加载错误，不能静默跳过。
 - `displayNameKey` 和 `galleryUnlockId` 是任意资源都可携带的可选通用 metadata。名称文本位于现有 i18n 来源中；Gallery ID 留空表示不收录，填写时必须为全局唯一正整数，同时决定同分类内的排序。没有独立排序字段。Gallery 只收录该资源类型已在应用 `IGalleryTypeCatalog` 注册的项；未实现类型仍保留这些 metadata。
 
@@ -53,7 +53,7 @@ IAssetProvider / IArchive / IGameFile
 
 | 输入 | 内容 provider | 资源 provider |
 | --- | --- | --- |
-| 开发编译目录 | `ProjectGameContentProvider` 经资源 ID 加载剧情，读取 settings/I18n，并从 Assets metadata 编译 Gallery | `CompiledStoryAssetProvider(Graph/)` + `LocalFileProvider(Assets/)` |
+| 开发编译目录 | `ProjectGameContentProvider` 经资源 ID 加载剧情，读取 settings/I18n，并从项目资源 metadata 编译 Gallery | `CompiledStoryAssetProvider(Graph/)` + `ProjectAssetProvider(Assets/, Buildin/)` |
 | 已安装包目录 | `InstalledGameContentProvider` 读取 game.pak 内的内容、配置和 Gallery 文档，按资源 ID 加载唯一 Graph；内置文本来自 localization.pak。不支持旧 content v2 散文件目录 | 清单声明的完整基础/剧情 PAK，经 ResourceOverlayProvider 应用独立资源覆盖 |
 
 同一宿主在创建内容 provider、资源 provider、Preview 与导出器时必须传入同一对冻结 `IResourceTypeCatalog` / `IGalleryTypeCatalog`。不能在下游入口重新创建 built-in catalog，否则插件注册无法贯穿完整路径。
@@ -146,6 +146,6 @@ LibVLC 音频后端同样为每个 voice 持有独立文件租约，先销毁播
 
 ## 默认视觉资源
 
-默认契约项目初始化将 Editor.Shared 内嵌模板复制为 `Assets/Effects/Default/` 下的 8 个普通 effect-program 资源及 sidecar，每个项目生成自身 GUID。`galnet.project.defaultVisualPrograms` 保存创作用途绑定，不是运行时隐藏效果目录。`project visuals install` 通过现有作者文件事务显式补入缺失绑定及资源，保留已有绑定，拒绝覆盖被占用路径。自定义契约需声明相应配置字段及 effect.apply 能力才启用默认模板。
+默认契约项目初始化将内嵌模板复制到 `Buildin/Effects/Default/`：16 个 effect-program、5 个粒子纹理及相邻 sidecar 使用跨项目固定 ID。预设引用固定默认 ID，单条可覆盖。`project visuals install` 通过作者文件事务显式补入完整缺失资源，保留作者修改并拒绝占用或身份冲突。自定义契约需声明默认项目配置及 effect.apply 才启用默认模板。
 
 Shader 的可选保留 `layerZ` uniform 在 CPU/GPU 图层效果链每次绘制时取当前图层 Z；不可声明为作者参数。texture 参数由效果运行器通过 AssetManager 获得独立租约，按画布大小绑定，停止、替换、释放或准备失败时归还。预览和运行只读取项目资源；导出包含项目 shader 和纹理。使用方式及景深、停止边界见[默认视觉库](../../manual/editor/default-visuals.md)。
