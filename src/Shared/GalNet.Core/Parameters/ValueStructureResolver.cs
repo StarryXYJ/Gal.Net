@@ -116,6 +116,7 @@ public sealed class ValueStructureResolver : IDisposable
         }
         var value = field.Value.WithJsonOptions(options);
         var inherited = new FieldDescriptor(field.Id, value, field.IsRequired, field.DefaultValue, field.Editor, field.LabelKey, field.DescriptionKey, field.Semantic, field.ResourceTypeId);
+        if (field.ExcludeFromPreset) inherited = inherited.WithPresetExclusion();
         return field.MemberName is { } name ? inherited.WithMember(name, field.JsonPropertyName) : inherited;
     }
     public static Type? ElementType(Type type) => type.IsArray && type.GetArrayRank() == 1 ? type.GetElementType()

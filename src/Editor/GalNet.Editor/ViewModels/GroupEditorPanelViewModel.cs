@@ -35,6 +35,7 @@ public partial class GroupEditorPanelViewModel : ObservableObject, IUndoRedoTarg
     public EditorWorkspaceViewModel Workspace { get; }
     public GraphNode GroupNode => Workspace.Nodes.Single(node => node.Id == GroupId);
     public IUndoRedoHistory? UndoRedoHistory => Workspace.UndoRedoHistory;
+    public EntryPresetService? EntryPresets => _projects.Current?.Services.GetService(typeof(EntryPresetService)) as EntryPresetService;
 
     public string GroupId { get; }
     private readonly ObservableCollection<EntryEditorItemViewModel> _entries;

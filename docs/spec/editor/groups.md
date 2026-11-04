@@ -2,6 +2,14 @@
 
 Group 页面编辑项目会话中的作者条目，使用项目统一内容历史与 Save All。共享 DTO 表单、场景目标选择、Timeline 对象/事件轨道、关键帧与曲线使用同一作者数据和提交机制。共享控件基础见[Schema 字段表单](../presentation/game-view.md#schema-字段表单)，查询完整性见[场景目标](scene-targets.md)。
 
+## Entry 参数预设
+
+Group 条目行和 Inspector 使用同一预设面板，按当前 Entry 类型列出项目的命名参数快照。预设存于项目 `Presets/entries.json`，不进入发行内容；新增、改名及删除立即以项目文件事务发布并进入内容历史，不保存其他未保存的剧情修改。打开中的预设文本有未保存修改时，预设操作拒绝覆盖；历史撤销/重做同样检查文件变化。
+
+加号先提交有效作者输入，成功后立即保存快照并聚焦、全选默认名称。无边框名称输入 Enter 或失焦提交，Escape 恢复名称；删除在右键菜单。应用时替换当前条目的参数，保留类型、条件、Entry 身份与声明排除的字段及场景输出身份；内部 Timeline 的输出与引用作为一组重映射。资源、场景及文本引用保留原值并使用现有检查，不自动修复；已应用条目不随预设变化。
+
+Entry DTO 字段可标记 `[ExcludeFromPreset]`；字段生成器将其传递到 `FieldDescriptor.ExcludeFromPreset`，手写 schema 可使用 `WithPresetExclusion()`。该规则当前应用于 Entry 顶层字段；场景嵌套输出身份另由场景语义处理。
+
 ## 条目字段提交
 
 类型、条件和参数编辑通过项目级意图修改作者数据，再通知投影刷新；Workspace 不再监听 Entry PropertyChanged 补记历史。生成表单直接读取作者 JSON 并提交字段 patch；文本、资源与表达式专属控件按同一契约转换输入，提交后刷新。Parameters 字符串字典只是显示投影，不能通过修改返回字典绕过提交。

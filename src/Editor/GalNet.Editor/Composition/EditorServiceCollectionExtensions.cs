@@ -65,6 +65,7 @@ public static class EditorServiceCollectionExtensions
         services.AddScoped<GraphAuthoringService>();
         services.AddScoped<GroupEntryAuthoringService>();
         services.AddScoped<EntryFieldAuthoringService>();
+        services.AddScoped<EntryPresetService>();
         services.AddScoped<EntrySelectionContext>();
         services.AddScoped<EntryEditSession>();
         services.AddScoped<AuthorNavigationService>();

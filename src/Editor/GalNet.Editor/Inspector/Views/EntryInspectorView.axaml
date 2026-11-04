@@ -11,6 +11,7 @@
  <Grid RowDefinitions="*,Auto,Auto">
  <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Disabled">
   <StackPanel Margin="10" Spacing="8">
+   <controls:EntryPresetButton Content="{loc:Localize Entry.Presets}" Page="{Binding Page}" Entry="{Binding Entry}" HorizontalAlignment="Right"/>
    <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding HasMultipleSelection}"><TextBlock Text="{loc:Localize Uiux.Entry.Selected}"/><TextBlock Text="{Binding SelectionCount}"/><TextBlock Text="{loc:Localize Uiux.Entry.ActiveOnly}"/></StackPanel>
    <forms:FieldEditorRow ShowActions="False">
     <forms:FieldEditorRow.Label><TextBlock Text="{loc:Localize Uiux.Entry.Condition}" TextWrapping="Wrap"/></forms:FieldEditorRow.Label>
