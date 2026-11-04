@@ -12,6 +12,9 @@
              Background="{DynamicResource SemiColorBackground0}">
     <UserControl.Styles>
         <StyleInclude Source="/Controls/AuthorFormStyles.axaml" />
+        <Style Selector="TabControl.settings-navigation > TabItem /template/ Border#PART_LayoutRoot">
+            <Setter Property="CornerRadius" Value="0" />
+        </Style>
         <Style Selector="Border.structured-array-card">
             <Setter Property="Padding" Value="12,8" />
             <Setter Property="Background" Value="{DynamicResource SemiColorBackground1}" />
@@ -30,15 +33,16 @@
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
         </Style>
     </UserControl.Styles>
-    <Grid RowDefinitions="Auto,*,Auto" Margin="12">
+    <Grid>
+    <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorFill0}" IsHitTestVisible="False" />
+    <Grid RowDefinitions="Auto,*,Auto">
         <TextBlock Name="ProjectSettingsTitle" Grid.Row="0" Text="{loc:Localize Settings.Project.Title}"
                    FontSize="{DynamicResource Editor.Font.Heading}" FontWeight="Bold"
                    Foreground="{DynamicResource SemiColorText0}"
-                   Margin="0,0,0,12" />
+                   Margin="192,12,12,12" />
 
         <Grid Grid.Row="1">
-        <Border HorizontalAlignment="Left" Width="180" Background="{DynamicResource SemiColorFill0}" CornerRadius="6" IsHitTestVisible="False" />
-        <TabControl TabStripPlacement="Left" Background="Transparent">
+        <TabControl Classes="settings-navigation" TabStripPlacement="Left" Background="Transparent" Margin="0,0,12,0">
           <TabItem MinWidth="180">
           <TabItem.Header>
               <StackPanel Orientation="Horizontal" Spacing="10">
@@ -96,10 +100,11 @@
         </TabControl>
         </Grid>
 
-        <Grid Grid.Row="2" ColumnDefinitions="*" Margin="0,12,0,0">
+        <Grid Grid.Row="2" ColumnDefinitions="*" Margin="192,12,12,12">
             <TextBlock Grid.Column="0" Text="{Binding IsDirtyText}"
                        Foreground="{DynamicResource SemiColorText2}"
                        VerticalAlignment="Center" />
         </Grid>
+    </Grid>
     </Grid>
 </UserControl>
