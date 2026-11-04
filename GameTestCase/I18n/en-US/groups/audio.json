@@ -1,4 +1,4 @@
 {
-  "group.audio.entry.demo-cue-filter-animation.content": "Next: listen as the low-pass cutoff changes over three seconds.",
+  "group.audio.entry.demo-cue-filter-animation.content": "Advance and listen: over four seconds, the music becomes muffled, holds briefly, then clears again.",
   "group.audio.entry.demo-cue-duck-on.content": "Next: voice playback will duck the music and then release it."
 }

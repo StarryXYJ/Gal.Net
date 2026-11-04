@@ -49,7 +49,7 @@
   "group.presentation-library.entry.audio-distortion-note.content": "试听：音乐总线上的 distortion。",
   "group.presentation-library.entry.audio-bitcrusher-note.content": "试听：音乐总线上的 bitcrusher。",
   "group.presentation-library.entry.audio-compressor-note.content": "试听：音乐总线上的 compressor。",
-  "group.presentation-library.entry.audio-fade-note.content": "低通截止频率通过时间线在三秒内渐变。",
+  "group.presentation-library.entry.audio-fade-note.content": "刚才是低通截止频率的时间线动画；音乐变闷后恢复了清晰。",
   "group.presentation-library.entry.duck-note.content": "实际语音播放会压低音乐总线，结束后恢复。",
   "group.presentation-library.entry.complete.content": "演出库扩展示例结束。",
   "group.presentation-library.entry.clip-mask.content": "羽化裁切只作用于一个人物图层；后面的遮罩则绘制独立黑色覆盖。"

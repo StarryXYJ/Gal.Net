@@ -21,6 +21,7 @@ public sealed partial class BuiltinAudioModule : PrimitiveModule
     public void ApplyMix(AudioMixOptions options) => _runtime.ApplyMix(options);
     public void BeginCatchUp() => _runtime.BeginCatchUp();
     public void EndCatchUp() => _runtime.EndCatchUp();
+    public Task DrainAsync() => _runtime.DrainAsync();
 
     public BuiltinAudioModule(IAudioPlaybackHost? host = null, ISEffectCatalog? effects = null,
         AudioConfiguration? configuration = null) : this(new AudioRuntime(host, effects), configuration ?? AudioConfiguration.Empty) { }

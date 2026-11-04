@@ -64,6 +64,7 @@ public sealed class AudioRuntime : IDisposable, IAsyncDisposable
         }
         await _dispatcher.DrainAsync().ConfigureAwait(false);
     }
+    public Task DrainAsync() => _dispatcher.DrainAsync();
     public void Reset(GameState? expected = null)
     {
         lock (_gate) _state.Update(() =>

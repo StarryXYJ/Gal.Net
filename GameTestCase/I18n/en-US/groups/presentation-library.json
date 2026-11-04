@@ -49,7 +49,7 @@
   "group.presentation-library.entry.audio-distortion-note.content": "Listen: distortion on the music bus.",
   "group.presentation-library.entry.audio-bitcrusher-note.content": "Listen: bitcrusher on the music bus.",
   "group.presentation-library.entry.audio-compressor-note.content": "Listen: compressor on the music bus.",
-  "group.presentation-library.entry.audio-fade-note.content": "The low-pass frequency changed over three seconds on the timeline clock.",
+  "group.presentation-library.entry.audio-fade-note.content": "The timeline animated the low-pass cutoff, muffling the music before restoring clarity.",
   "group.presentation-library.entry.duck-note.content": "Actual voice playback lowers the music bus, then releases it.",
   "group.presentation-library.entry.complete.content": "Presentation library complete.",
   "group.presentation-library.entry.clip-mask.content": "A feathered clip affects only one portrait. The following masks draw independent black overlays."

@@ -30,6 +30,33 @@ namespace GalNet.IntegrationTests;
 public sealed class PlayerInteractionTests
 {
     [Test]
+    public Task CompletedGameStopsBeforeReturningToTitle() => SampleUiTests.RunAsync(async () =>
+    {
+        var session = new CompletingSession();
+        await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(), services =>
+        {
+            SampleCustomization.ConfigureServices(services);
+            services.AddSingleton<IGameSessionService>(session);
+        });
+        var navigation = host.Services.GetRequiredService<IGameNavigationService>();
+        navigation.ResetTo<GamePageViewModel>(NavigationTransition.None);
+        host.Services.GetRequiredService<PlayerView>().CompleteStartup();
+        var window = new Window { Content = host.View };
+        window.Show();
+        try
+        {
+            session.SetPlaying(true);
+            session.SetPlaying(false);
+            await session.StopStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            Assert.That(navigation.CurrentViewModel, Is.TypeOf<GamePageViewModel>());
+            session.AllowStop.TrySetResult();
+            for (var attempt = 0; attempt < 100 && navigation.CurrentViewModel is not TitlePageViewModel; attempt++) await Task.Delay(10);
+            Assert.That(navigation.CurrentViewModel, Is.TypeOf<TitlePageViewModel>());
+        }
+        finally { session.AllowStop.TrySetResult(); window.Close(); }
+    });
+
+    [Test]
     public Task ReturnToTitleRequiresConfirmationAndCannotAuthorizeWindowExit() => SampleUiTests.RunAsync(async () =>
     {
         await using var host = await AvaloniaPlayerHost.CreateAsync(SampleCustomization.CreateHostOptions(),
@@ -237,6 +264,25 @@ public sealed class PlayerInteractionTests
         public Task StartNewGameAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task ContinueAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class CompletingSession : IGameSessionService
+    {
+        public string GameTitle => "Completion regression";
+        public string StatusMessage => "";
+        public bool IsReady => true;
+        public bool IsPlaying { get; private set; }
+        public bool CanContinue => false;
+        public ReadOnlyObservableCollection<GameSaveSlot> SaveSlots { get; } = new(new ObservableCollection<GameSaveSlot>());
+        public event PropertyChangedEventHandler? PropertyChanged;
+        public TaskCompletionSource StopStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource AllowStop { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public void SetPlaying(bool value) { IsPlaying = value; PropertyChanged?.Invoke(this, new(nameof(IsPlaying))); }
+        public async Task StopAsync(CancellationToken cancellationToken = default) { StopStarted.TrySetResult(); await AllowStop.Task; }
+        public Task StartNewGameAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task ContinueAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task SaveAsync(int slotIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task LoadAsync(int slotIndex, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }

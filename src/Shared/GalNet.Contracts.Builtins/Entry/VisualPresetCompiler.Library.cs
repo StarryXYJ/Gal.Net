@@ -99,8 +99,8 @@ internal static partial class VisualPresetCompiler
         var floating = options.Weather is WeatherKind.Dust or WeatherKind.Fireflies;
         var rain = options.Weather == WeatherKind.Rain;
         var speed = rain ? 1000f : options.Weather == WeatherKind.Snow ? 100f : 70f;
-        var minSize = options.Weather switch { WeatherKind.Rain => .044f, WeatherKind.Snow => .15f, WeatherKind.Petals => .45f, WeatherKind.Dust => .07f, _ => .12f };
-        var maxSize = options.Weather switch { WeatherKind.Rain => .11f, WeatherKind.Snow => .45f, WeatherKind.Petals => 1f, WeatherKind.Dust => .18f, _ => .35f };
+        var minSize = options.Weather switch { WeatherKind.Rain => .0572f, WeatherKind.Snow => .15f, WeatherKind.Petals => .45f, WeatherKind.Dust => .07f, _ => .12f };
+        var maxSize = options.Weather switch { WeatherKind.Rain => .143f, WeatherKind.Snow => .45f, WeatherKind.Petals => 1f, WeatherKind.Dust => .18f, _ => .35f };
         var minLife = floating ? 3f : options.Height / speed + 1;
         var maxLife = floating ? 6f : options.Height / speed + 2;
         var rate = Math.Min(options.Rate, options.MaxParticles / (maxLife + .1f));
