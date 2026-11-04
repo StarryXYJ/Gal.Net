@@ -12,7 +12,7 @@
   <StreamGeometry x:Key="DebugDisconnectIcon">M5 2L22 19L20 21L3 4Z M7 6V2H9V6Z M15 2H17V7H20V9H18V12L16 10V9H15L13 7H15Z M6 10L8 12C8 14 10 16 12 16L14 18H13V22H11V18C8 17 6 15 6 12Z</StreamGeometry>
   <StreamGeometry x:Key="DebugApplyIcon">M3 12L5 10L10 15L19 5L21 7L10 19Z</StreamGeometry>
   <StreamGeometry x:Key="DebugResetIcon">M5 5L2 2V10H10L7 7C10 4 15 5 17 8C20 12 17 18 12 18C9 18 7 17 6 15H3C4 19 8 21 12 21C19 21 23 13 19 7C16 2 9 1 5 5Z</StreamGeometry>
-  <StreamGeometry x:Key="DebugBrowseIcon">M2 5H10L12 7H22V10H7L3 19H2Z M8 12H23L19 20H4Z</StreamGeometry>
+  <StreamGeometry x:Key="DebugSettingsIcon">M12 2L14 4L17 3L18 6L21 7L20 10L22 12L20 14L21 17L18 18L17 21L14 20L12 22L10 20L7 21L6 18L3 17L4 14L2 12L4 10L3 7L6 6L7 3L10 4Z M12 8A4 4 0 1 0 12 16A4 4 0 1 0 12 8</StreamGeometry>
   <StreamGeometry x:Key="DebugStartGameIcon">M6 3L21 12L6 21Z</StreamGeometry>
   <StreamGeometry x:Key="DebugWaitForApplicationIcon">M7 2H9V7H15V2H17V7H20V9H18V12C18 15 16 17 13 18V22H11V18C8 17 6 15 6 12V9H4V7H7Z M8 9V12C8 14 10 16 12 16C14 16 16 14 16 12V9Z</StreamGeometry>
   <StreamGeometry x:Key="DebugStopGameIcon">M5 5H19V19H5Z</StreamGeometry>
@@ -43,7 +43,7 @@
   <Style Selector="ListBox.debugVariables ListBoxItem"><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Padding" Value="2,0"/></Style>
   <Style Selector="Border.debugDivider"><Setter Property="Width" Value="1"/><Setter Property="Height" Value="18"/><Setter Property="Margin" Value="5,0"/><Setter Property="Background" Value="{DynamicResource SemiColorBorder}"/><Setter Property="VerticalAlignment" Value="Center"/></Style>
  </UserControl.Styles>
- <Grid RowDefinitions="Auto,Auto,*,Auto">
+ <Grid RowDefinitions="Auto,*,Auto">
   <Border BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,0,0,1" Padding="6,4">
    <WrapPanel Name="DebugToolbar">
     <StackPanel Orientation="Horizontal" Spacing="2">
@@ -65,22 +65,11 @@
      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding CancelCommand}" IsEnabled="{Binding HasRun}"  ToolTip.Tip="{loc:Localize Debug.Cancel}" AutomationProperties.Name="{loc:Localize Debug.Cancel}"><PathIcon Data="{StaticResource DebugCancelIcon}"/></Button>
      <Border Classes="debugDivider"/>
      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding DisconnectCommand}" IsEnabled="{Binding !Busy}"  ToolTip.Tip="{loc:Localize Debug.Disconnect}" AutomationProperties.Name="{loc:Localize Debug.Disconnect}"><PathIcon Data="{StaticResource DebugDisconnectIcon}"/></Button>
+     <Button Name="OpenLaunchSettings" Theme="{StaticResource DebugIconButton}" Command="{Binding OpenLaunchSettingsCommand}" ToolTip.Tip="{loc:Localize Debug.Configuration}" AutomationProperties.Name="{loc:Localize Debug.Configuration}"><PathIcon Data="{StaticResource DebugSettingsIcon}"/></Button>
     </StackPanel>
    </WrapPanel>
   </Border>
-  <Expander Grid.Row="1" Header="{loc:Localize Debug.Configuration}" Margin="8,4" HorizontalAlignment="Stretch">
-   <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="8" Margin="0,4,0,8">
-    <StackPanel Spacing="4"><TextBlock Text="{loc:Localize Debug.Executable}" FontSize="{DynamicResource Editor.Font.Detail}"/>
-     <Grid ColumnDefinitions="*,Auto" ColumnSpacing="4"><TextBox Text="{Binding Executable}" GotFocus="OnApplicationFocus" LostFocus="OnApplicationLostFocus" MinWidth="0" ToolTip.Tip="{Binding Executable}"/>
-      <Button Theme="{StaticResource DebugIconButton}" Command="{Binding BrowseCommand}"  Grid.Column="1" ToolTip.Tip="{loc:Localize Debug.Executable}" AutomationProperties.Name="{loc:Localize Debug.Executable}"><PathIcon Data="{StaticResource DebugBrowseIcon}"/></Button>
-     </Grid>
-    </StackPanel>
-    <StackPanel Grid.Row="1" Spacing="4"><TextBlock Text="{loc:Localize Debug.Arguments}" FontSize="{DynamicResource Editor.Font.Detail}"/><TextBox Text="{Binding Arguments}" AcceptsReturn="True" MinHeight="56" MaxHeight="120" FontFamily="Consolas"/></StackPanel>
-    <StackPanel Grid.Row="2" Spacing="4"><TextBlock Text="{loc:Localize Debug.WorkingDirectory}" FontSize="{DynamicResource Editor.Font.Detail}"/><TextBox Text="{Binding WorkingDirectory}" MinWidth="0"/></StackPanel>
-    <Button Grid.Row="3" Content="{loc:Localize Debug.SaveConfiguration}" Command="{Binding SaveConfigurationCommand}" HorizontalAlignment="Left"/>
-   </Grid>
-  </Expander>
-  <TabControl Grid.Row="2" Name="DebugTabs" Margin="6,0">
+  <TabControl Grid.Row="1" Name="DebugTabs" Margin="6,0">
    <TabItem Header="{loc:Localize Debug.PlayerVariables}"><Grid>
   <ListBox Classes="debugVariables" ItemsSource="{Binding PlayerVariables}" ItemTemplate="{StaticResource DebugVariableTemplate}"/>
   <TextBlock Classes="emptyHint" Text="{loc:Localize Debug.NoVariables}" IsVisible="{Binding !PlayerVariables.Count}"/>
@@ -94,7 +83,7 @@
     <TextBlock Classes="emptyHint" Text="{loc:Localize Debug.NoChoices}" IsVisible="{Binding !Choices.Count}"/>
    </Grid></TabItem>
   </TabControl>
-  <Border Grid.Row="3" Name="DebugStatusBar" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,1,0,0" Padding="10,7">
+  <Border Grid.Row="2" Name="DebugStatusBar" BorderBrush="{DynamicResource SemiColorBorder}" BorderThickness="0,1,0,0" Padding="10,7">
    <StackPanel Spacing="6">
     <Border Name="DebugErrorDetails" IsVisible="{Binding HasError}" BorderBrush="{DynamicResource SystemControlErrorTextForegroundBrush}" BorderThickness="2,0,0,0" Padding="8,2">
      <ScrollViewer MaxHeight="100" HorizontalScrollBarVisibility="Disabled"><SelectableTextBlock Text="{Binding Error}" TextWrapping="Wrap" FontSize="{DynamicResource Editor.Font.Detail}" Foreground="{DynamicResource SystemControlErrorTextForegroundBrush}"/></ScrollViewer>

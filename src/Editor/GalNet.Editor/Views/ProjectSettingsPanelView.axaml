@@ -77,7 +77,7 @@
             </StackPanel>
         </ScrollViewer>
           </TabItem>
-          <TabItem MinWidth="180">
+          <TabItem Name="LaunchSettingsTab" MinWidth="180">
           <TabItem.Header><StackPanel Orientation="Horizontal" Spacing="10"><PathIcon Width="16" Height="16" Data="M6 3L21 12L6 21Z"/><TextBlock Text="{loc:Localize Debug.Configuration}"/></StackPanel></TabItem.Header>
               <ScrollViewer>
                 <StackPanel Margin="12" Spacing="6">

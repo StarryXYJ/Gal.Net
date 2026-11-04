@@ -6,6 +6,7 @@ namespace GalNet.Editor.Views;
 
 public partial class ProjectSettingsWindow : UrsaWindow
 {
+    public void SelectLaunchSettings() => SettingsPanel.SelectLaunchSettings();
     private bool _approved;
     public ProjectSettingsWindow()
     {
