@@ -144,7 +144,12 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         foreach (var part in value.Split('/', StringSplitOptions.RemoveEmptyEntries)) { path = path.Length == 0 ? part : path + "/" + part; Breadcrumbs.Add(new(part, path)); }
         OnPropertyChanged(nameof(CanGoUp));
     }
-    private void ShowError(Exception error) { _error = error; ErrorText = EditorText.Error(error).Render(_localization); }
+    private void ShowError(Exception error)
+    {
+        _error = error;
+        ErrorText = EditorText.Error(error).Render(_localization);
+        Serilog.Log.Error(error, "Project files operation failed: {ErrorMessage}", ErrorText);
+    }
     public void Navigate(string path, bool record = true)
     {
         try
