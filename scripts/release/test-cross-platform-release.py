@@ -21,7 +21,7 @@ class ReleaseMatrixTests(unittest.TestCase):
         self.assertEqual([row[1] for row in rows], ["a_1_amd64.deb", "b_2_amd64.deb"])
 
     def setUp(self):
-        self.work = release.REPO / "out" / (".release-matrix-" + uuid.uuid4().hex)
+        self.work = release.REPO / "output" / (".release-matrix-" + uuid.uuid4().hex)
         self.root, self.inputs = self.work / "release", self.work / "inputs"
         self.version, self.commit = "1.2.3-preview.1", "fixture-commit"
         self.root.mkdir(parents=True)
@@ -30,7 +30,7 @@ class ReleaseMatrixTests(unittest.TestCase):
                       "packageValidation": {"passed": True}, "files": []})
         self.names = release.expected_assets(self.version)
         for rid in ("win-x64", "linux-x64", "android-arm64"):
-            for deployment in (("MonoAOT",) if rid == "android-arm64" else ("SelfContained", "FrameworkDependent")):
+            for deployment in (("MonoAOT",) if rid == "android-arm64" else ("SelfContained",)):
                 bundle = self.inputs / (rid + "-" + deployment)
                 assets = bundle / "assets"
                 assets.mkdir(parents=True)
@@ -47,20 +47,20 @@ class ReleaseMatrixTests(unittest.TestCase):
                               "files": release.inventory(assets)})
 
     def tearDown(self):
-        self.assertEqual(self.work.parent, release.REPO / "out")
+        self.assertEqual(self.work.parent, release.REPO / "output")
         shutil.rmtree(self.work)
 
     def seal(self):
         release.seal(self.root, self.inputs, self.version, self.commit, "v" + self.version)
 
     def test_complete_matrix_is_sealed_with_every_hash(self):
-        self.assertEqual(len(self.names), 19)
+        self.assertEqual(len(self.names), 5)
         self.seal()
         index = release.read(self.root / "release-index.json")
         self.assertEqual(index["schemaVersion"], 2)
         self.assertEqual({path.name for path in (self.root / "assets").iterdir()}, self.names)
         release.verify_files(self.root, index["files"])
-        self.assertEqual(len((self.root / "SHA256SUMS").read_text().splitlines()), 19)
+        self.assertEqual(len((self.root / "SHA256SUMS").read_text().splitlines()), 5)
 
     def test_missing_platform_fails_before_sealing(self):
         (self.inputs / "android-arm64-MonoAOT/bundle.json").unlink()

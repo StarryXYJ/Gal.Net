@@ -143,7 +143,8 @@ public sealed class FieldSchemaGenerator : IIncrementalGenerator
                 .Append(", resourceTypeId: ").Append(Named(field.Attribute, "ResourceTypeId", "null"))
                 .Append(").WithMember(").Append(Quote(field.Member.Name)).Append(", ")
                 .Append(field.Member.GetAttributes().FirstOrDefault(attribute => attribute.AttributeClass?.ToDisplayString() == "System.Text.Json.Serialization.JsonPropertyNameAttribute")
-                    ?.ConstructorArguments[0].ToCSharpString() ?? "null").AppendLine("),");
+                    ?.ConstructorArguments[0].ToCSharpString() ?? "null").Append(")")
+                .Append(field.Member.GetAttributes().Any(attribute => attribute.AttributeClass?.ToDisplayString() == "GalNet.Core.Parameters.ExcludeFromPresetAttribute") ? ".WithPresetExclusion()" : "").AppendLine(",");
         }
         code.AppendLine("});\n}");
         code.AppendLine("object? global::GalNet.Core.Parameters.IFieldDto.ReadField(string id) => id switch {");

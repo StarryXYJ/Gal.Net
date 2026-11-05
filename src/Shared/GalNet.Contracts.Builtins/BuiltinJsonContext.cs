@@ -61,7 +61,6 @@ namespace GalNet.Contracts.Builtins;
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.MaskPresetOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.FlashPresetOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.IdlePresetOptions))]
-[JsonSerializable(typeof(global::GalNet.Contracts.Builtins.WeatherPresetOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.MoodPresetOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.HeartbeatPresetOptions))]
 [JsonSerializable(typeof(global::GalNet.Contracts.Builtins.ParallaxTargetDefinition[]))]

@@ -11,5 +11,5 @@
               WindowStartupLocation="CenterOwner"
               TransparencyLevelHint="AcrylicBlur"
               Background="Transparent">
-    <views:ProjectSettingsPanelView />
+    <views:ProjectSettingsPanelView Name="SettingsPanel" />
 </u:UrsaWindow>

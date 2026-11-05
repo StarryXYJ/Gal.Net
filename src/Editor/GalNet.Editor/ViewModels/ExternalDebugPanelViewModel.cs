@@ -24,6 +24,7 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
+using GalNet.Editor.Services.Interfaces;
 using GalNet.Editor.Shared.Services;
 using GalNet.Runtime.Engine;
 using Microsoft.Extensions.DependencyInjection;
@@ -270,8 +271,14 @@ public partial class ExternalDebugPanelViewModel : ObservableObject
             }
         }
     }
-    public Task OfferDefaultApplicationAsync() => _projects.Current?.Services.GetService<IEditorSettingsService>() is { } settings
-        ? DefaultApplicationPrompt.OfferAsync(settings, L, Executable) : Task.CompletedTask;
+    [RelayCommand]
+    private void OpenLaunchSettings()
+    {
+        if (_projects.Current?.Services.GetService<IEditorWindowFactory>() is not { } windows) return;
+        var window = windows.CreateProjectSettingsWindow();
+        window.SelectLaunchSettings();
+        window.Show();
+    }
 
     [RelayCommand]
     private async Task BrowseAsync()

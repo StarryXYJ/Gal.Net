@@ -4,6 +4,8 @@ using GalNet.Editor.Abstraction.Services;
 using GalNet.Editor.History;
 using GalNet.Editor.Models.Graph;
 using GalNet.Editor.Services;
+using GalNet.Editor.Services.Interfaces;
+using GalNet.Core.Assets;
 using GalNet.Editor.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,7 +28,7 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
                 var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
                 var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.SpeedLinesPreset).Single();
-                var initial = project.Configuration.ReadDefaultOptions().DefaultVisualPrograms["speedLines"];
+                var initial = BuiltinVisualResources.Programs["speedLines"];
                 Assert.That(entry.Source.Parameters["program"].GetString(), Is.EqualTo(initial));
                 Assert.That(entry.Source.Parameters["playbackHandleId"].GetString(), Is.Not.Empty);
                 var text = workspace.InsertEntriesInto(group, 1, 1, BuiltinEntryIds.Text).Single();
@@ -44,7 +46,20 @@ public sealed partial class ProjectWorkspaceLifecycleTests
                 project = await projects.OpenAsync(path);
                 var reopened = project.Services.GetRequiredService<EditorGroupProjectionStore>().Get(groupId).Entries.Single(item => item.StableId == id);
                 Assert.That(reopened.Source.Parameters["program"].GetString(), Is.EqualTo(initial));
-                Assert.That(File.Exists(Path.Combine(path, "Assets/Effects/Default/SpeedLines.sksl")), Is.True);
+                Assert.That(File.Exists(Path.Combine(path, "Buildin/Effects/Default/SpeedLines.sksl")), Is.True);
+                var asset = project.Services.GetRequiredService<IAssetCatalogService>().GetProjectEntry("Buildin/Effects/Default/SpeedLines.sksl");
+                Assert.That(asset, Is.Not.Null);
+                Assert.That(asset!.Id, Is.EqualTo(initial));
+                Assert.That(asset.ProjectPath, Is.EqualTo("Buildin/Effects/Default/SpeedLines.sksl"));
+                var authorPath = Path.Combine(path, "Assets/Buildin/Effects/Default/SpeedLines.sksl");
+                Directory.CreateDirectory(Path.GetDirectoryName(authorPath)!);
+                await File.WriteAllTextAsync(authorPath, "author");
+                await File.WriteAllTextAsync(authorPath + ".meta", "{\"id\":\"11111111111111111111111111111111\",\"type\":\"effect-program\"}");
+                Assert.That(project.Services.GetRequiredService<IAssetCatalogService>().GetEntry("Buildin/Effects/Default/SpeedLines.sksl")!.Id, Is.EqualTo("11111111111111111111111111111111"));
+                Assert.That(project.Services.GetRequiredService<IAssetCatalogService>().GetProjectEntry("Buildin/Effects/Default/SpeedLines.sksl")!.Id, Is.EqualTo(initial));
+                var manager = project.Services.GetRequiredService<IAssetManager>();
+                Assert.That((await manager.GetFileAsync(initial))?.Id, Is.EqualTo(initial));
+                Assert.That(project.Services.GetRequiredService<ProjectFilesIndex>().Read("Buildin/Effects/Default").Any(item => item.Path.EndsWith("SpeedLines.sksl", StringComparison.Ordinal)), Is.True);
             }
             finally { if (projects.Current is not null) await projects.CloseAsync(); }
             return true;

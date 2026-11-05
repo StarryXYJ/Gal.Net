@@ -126,7 +126,6 @@ preset.impact
 preset.mask
 preset.flash
 preset.idle
-preset.weather
 preset.mood
 preset.heartbeat
 preset.parallax
@@ -140,7 +139,7 @@ transition.glitch
 
 这些 entry 不是 Runtime primitive，也不绕过 target profile：展开后的每一个 primitive 都必须在所选 profile 中存在。
 
-视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 显式资源参数传递。编辑器插入/类型切换时从项目 defaultVisualPrograms 用途绑定填入 GUID；编译器不查找隐藏默认 shader，不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击每个条目显式指定单个 handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../../manual/editor/default-visuals.md)。
+视觉预设均编译为 `timeline.play`，shader 由 Entry 的 program / blurProgram 资源参数传递。默认值使用项目 Buildin 资源的固定 ID，也可以在单条 Entry 中选择其他资源；不新增各 shader 专用 primitive。project/group validate、单组编译和 build/export 在项目资源边界校验所需 shader stage、参数种类、可动画性与数值范围。震动/冲击每个条目显式指定单个 handleId，参与场景引用索引、复制重映射和时间线终态分析。参数及停止边界见[默认视觉库手册](../../manual/editor/default-visuals.md)。
 
 ## 内置 primitive ID
 
@@ -218,7 +217,7 @@ GenerateFieldSchema + Field 属性生成中立 FieldDescriptor 列表及 IFieldD
 
 Timeline 使用 TimelineOptions.Timeline 对应的 timeline 根参数（JsonElement），内容为 TimelineDefinition；播放接口为 PlayTimelineAsync。旧 animation.play ID 和 plan 根参数没有别名。动画轨道、键与事件分别使用 TimelineTrackDefinition、TimelineKeyframeDefinition、TimelineEventDefinition，纯采样入口为 TimelineSampler。
 
-Timeline 事件的 `execution` 默认为 `EachIteration`，按帧逐轮执行；`Once` 仅允许帧 0，属于整次播放的初始化；`OnCompletion` 仅允许结束帧的 layer.hide/effect.stop/particle.stop/audio.stop/audio.seffect.stop，属于整次播放的收尾，不随循环触发。恢复不重复已提交的首帧初始化。震屏/集中线预设支持 `playbackMode=Timed/UntilStopped`；持续模式编译为非阻塞、不可点击跳过的 Loop，集中线的创建和移除分别使用 Once/OnCompletion。idle/weather/heartbeat 同样支持持续模式，其余预设保持单次。
+Timeline 事件的 `execution` 默认为 `EachIteration`，按帧逐轮执行；`Once` 仅允许帧 0，属于整次播放的初始化；`OnCompletion` 仅允许结束帧的 layer.hide/effect.stop/particle.stop/audio.stop/audio.seffect.stop，属于整次播放的收尾，不随循环触发。恢复不重复已提交的首帧初始化。震屏/集中线预设支持 `playbackMode=Timed/UntilStopped`；持续模式编译为非阻塞、不可点击跳过的 Loop，集中线的创建和移除分别使用 Once/OnCompletion。idle/heartbeat 同样支持持续模式，其余预设保持单次。
 
 音频效果条目目标为 `scope`（track/bus）与必填 `targetId`；播放/轨道控制仍使用 `trackId`。效果参数和新 PCM 后端见 [音频混音](../../manual/editor/audio.md)。
 
@@ -237,8 +236,8 @@ Timeline 增加 audioTracks，并允许六种音频事件：audio.play、audio.s
 
 audio.duck 保存 AudioDuckingState（builtin.audio.ducking v1），后端按实际活跃源声音产生临时压低包络。包络与 DSP 尾音不入档。新增默认 SEffect：delay、pan、eq、distortion、bitcrusher、compressor；范围和语义见音频手册。
 
-新增 preset.mask/flash/idle/weather/mood/heartbeat/parallax/emphasis、dialogue.emphasis 与 transition.flash/zoom/pixelate/glitch。它们复用既有编译机制；对白强调展开为非阻塞 Timeline、可选 audio.play、dialogue.text。所有参与图层由作者显式指定。默认资源、参数、身份及停止规则见[默认视觉库手册](../../manual/editor/default-visuals.md)。
+新增 preset.mask/flash/idle/mood/heartbeat/parallax/emphasis、dialogue.emphasis 与 transition.flash/zoom/pixelate/glitch。它们复用既有编译机制；对白强调展开为非阻塞 Timeline、可选 audio.play、dialogue.text。所有参与图层由作者显式指定。默认资源、参数、身份及停止规则见[默认视觉库手册](../../manual/editor/default-visuals.md)。
 
 `preset.mask` 的遮罩轨道使用零切线 CubicHermite 插值；Blink 的闭合、保持与睁开段速度平滑衔接。默认 ShapeMask 的 Eyelid 在开口扩大后于 progress 0.65–1 连续淡出剩余遮挡，闭合端连续收束羽化，边缘预留两个纹理像素；progress=1 不再通过阈值突切实现全开。
 
-粒子 `initial.alignToVelocity` 默认 false；true 时以当前速度方向对齐纹理纵轴，再叠加原旋转/角速度/生命周期旋转。径向速度同样参与朝向。连续发射达到 maxParticles 时丢弃该帧多余配额，只保留小数累积，不积压未来爆发；天气预设会按预算与最大寿命限制持续速率。场景宿主每帧必须更新所有帧对象，再聚合是否需要下一帧，不得用带副作用的 Any/All 短路更新。
+粒子 `initial.alignToVelocity` 默认 false；true 时以当前速度方向对齐纹理纵轴，再叠加原旋转/角速度/生命周期旋转。径向速度同样参与朝向。连续发射达到 maxParticles 时丢弃该帧多余配额，只保留小数累积，不积压未来爆发。天气效果是普通粒子的作者参数预设，实际速率直接使用条目参数。场景宿主每帧必须更新所有帧对象，再聚合是否需要下一帧，不得用带副作用的 Any/All 短路更新。

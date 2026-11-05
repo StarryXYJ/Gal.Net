@@ -1,19 +1,19 @@
 # 默认视觉资源与演出预设
 
-新建默认契约项目时，编辑器将 16 个 SkSL 模板和 5 个天气粒子纹理复制到 `Assets/Effects/Default/`，为每个项目生成资源 GUID。预览、运行和导出读取项目资产；升级编辑器不覆盖已有 shader。
+新建默认契约项目时，编辑器将 16 个 SkSL 模板和 5 个天气粒子纹理复制到 `Buildin/Effects/Default/`，并将五个粒子预设写入 `Buildin/Presets/entries.json`。它们在所有项目中使用相同的固定身份，可以查看和编辑；编辑器禁止删除、移动或改名这些资源文件及其父目录。预览、运行和导出读取项目中的视觉资源，升级编辑器不覆盖作者修改；预设文件只用于创作，不进入发行包。
 
-`galnet.project.defaultVisualPrograms` 保存默认 shader 用途绑定；`defaultWeatherTextures` 保存 Rain、Snow、Petals、Dust、Fireflies 的纹理绑定。编辑器插入预设或切换类型时填入实际 GUID；修改用途绑定不会追改已有 Entry。项目设置中的两组绑定可通过资源选择器分别选择效果程序和图片纹理；CLI / 外部作者需要显式填写资源引用。
+视觉预设使用相应内置资源的固定 ID；每条 Entry 仍可单独选择其他资源。项目设置不再维护统一的默认用途绑定。若在编辑器外删除内置文件、sidecar 或改变其固定身份，校验和构建会报错。
 
-## 旧项目补入
+## 显式安装
 
-先重建、部署与当前引擎匹配的项目契约（声明 effect.apply 和 defaultVisualPrograms），再使用 CLI：
+契约声明默认项目配置和 `effect.apply` 时，可以使用 CLI 显式安装缺失的完整资源对：
 
 ```text
 project visuals install <project> --dry-run
 project visuals install <project>
 ```
 
-只补缺失用途，保留已有绑定和作者修改。缺失绑定对应的默认资产路径被占用时，整次操作拒绝覆盖；可以手动将用途绑定到已有资源。发布复用作者文件事务与 settings 原哈希检查；dry-run 不改项目，重复安装没有变化。不提供自动升级/覆盖已有 shader 的入口。
+安装保留已有资源的作者修改；文件和 sidecar 不完整、路径被占用或身份不匹配时拒绝操作。dry-run 不改项目，重复安装没有变化。旧项目不自动迁移。
 
 ## 通用效果
 
@@ -147,14 +147,19 @@ ShapeMask 的中心、宽高相对画布归一化，feather/cornerRadius 相对�
 | preset.mask | program、instanceId、motion、parameters、overlay、z；motion=Blink/Open/Close/LetterboxIn/LetterboxOut/Show/Hide；Blink 的 holdRatio 控制闭眼停留比例 |
 | preset.flash | color、strength、count、overlay、z；闪光与多次闪电 |
 | preset.idle | handleId、motion=Breathe/Sway、scaleAmount、rotationDegrees、distance、playbackMode |
-| preset.weather | texture、weather=Rain/Snow/Petals/Dust/Fireflies、rate、maxParticles、width/height、wind、seed、z、playbackMode |
 | preset.mood | program、instanceId、mood、strength、targetHandleId（空为场景）、exit；进入保留自身效果，exit=true 渐退并清理 |
 | preset.heartbeat | program（Vignette）、可选 handleId、strength、playbackMode、可选 sound/trackId；双脉冲暗角与相对缩放 |
 | preset.parallax | targets=[{handleId,transform,factor}]、distanceX/Y、scale、anchorX/Y；作者显式指定每层基准 |
 | preset.emphasis | program（ColorGrade）、instanceId、handleIds、activeHandleId、dimExposure、clear |
 | dialogue.emphasis | 强调参数加 speaker/content、可选 voice/trackId；强调动画非阻塞并与既有对白/语音组合 |
 
-所有视觉 clip 沿用 playbackHandleId、frameRate、durationFrames、blocking、skippable、batchId。持续 idle/weather/heartbeat 用 `animation.stop` 停止，复用指定时长与 UntilStopped 规则。停止时只收回各自资源/相对偏移。天气发射区域使用左上角原点的像素坐标。雨、雪、花瓣从画面上方 16 像素的全宽发射带落入；尘埃和萤火虫在 width×height 范围浮动。停止天气 Timeline 使用 `particle.stop.clear=false`，仅停止旧轮发射；已有粒子自然淡出并在排空后释放，不阻塞下一轮开始。要让新旧天气短暂共存，使用不同的 playbackHandleId；同 ID 仍表示替换。手动需要立即清除时可使用 `particle.stop.clear=true`。雨滴默认细长半透明，并叠加 250 px/s 的水平风速形成斜雨；`wind` 可进一步调整。发射带向上风侧扩展，保持下游覆盖。雨丝朝向跟随速度，花瓣颜色为桃红至粉红。为避免数量上限导致成批断档，天气实际发射速率取 `min(rate, maxParticles/(最大寿命+0.1))`；需要更高密度时相应提高 maxParticles。GameTestCase 在斜雨之后加入径向雨：用普通粒子 circle/radialVelocity 和 `initial.alignToVelocity=true` 从中心向外发射。天气纹理是可编辑项目资源，不表示高级粒子碰撞或真实发光。新雨滴模板为 4×64 的透明渐隐线条；模板升级不会覆盖既有项目纹理，既有项目要得到相同外观需替换 Rain 绑定的纹理，保留其资源 GUID。
+所有视觉 clip 沿用 playbackHandleId、frameRate、durationFrames、blocking、skippable、batchId。持续 idle/heartbeat 用 `animation.stop` 停止。停止时只收回各自资源/相对偏移。
+
+雨、雪、花瓣、尘埃和萤火虫是 `particle.play` 的内置参数预设。打开粒子条目的预设面板应用后，可以直接编辑贴图、发射区域、速率和运动等普通参数；参数不会跟随预设后续修改，也没有天气专用运行逻辑。停止使用 `particle.stop`：`clear=false` 停止发射并自然排空，`clear=true` 立即清除。需要定时停止时用 Timeline 编排。
+
+旧的 `preset.weather` 已移除；已有作者项目需要将它替换为普通粒子播放及停止/Timeline 编排，系统不自动迁移。
+
+默认雨、雪和花瓣从画面上方发射，尘埃和萤火虫在画面范围内浮动；雨滴朝向跟随速度，花瓣为粉色。默认速率和范围是预先计算的普通值，修改尺寸、速度或粒子上限不会触发隐藏联动。GameTestCase 还用普通粒子的 radialVelocity 展示径向雨。天气贴图和内置预设文件均为可编辑项目内置资源。
 
 遮罩默认只在场景内按 z 排序。`overlay=true` 的遮罩颜色层在默认 PlayerSurface 的透明覆盖面合成，覆盖场景、对白和文本卡；系统退出/返回确认始终更高。Close/LetterboxIn/Show 保留遮罩，Open/LetterboxOut/Hide/Blink 完成后清理；跨条目开关同一遮罩须使用相同 instanceId。
 

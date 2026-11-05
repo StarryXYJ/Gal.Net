@@ -18,6 +18,10 @@
     <EmbeddedResource Include="Localization/*.json" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Benchmark)' == 'true'">
+    <ProjectReference Include="../../../Shared/GalNet.Diagnostics/GalNet.Diagnostics.csproj" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(GalNetUsePackages)' == 'true'">
     <PackageReference Include="GalNet.Avalonia" />
     <PackageReference Include="GalNet.Avalonia.Debugging" Condition="'$(EnableGameDebugging)' == 'true'" />

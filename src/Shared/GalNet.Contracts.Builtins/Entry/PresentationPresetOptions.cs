@@ -13,14 +13,13 @@ public partial class ParallaxTargetDefinition
 }
 
 public enum MaskMotion { Blink, Open, Close, LetterboxIn, LetterboxOut, Show, Hide }
-public enum WeatherKind { Rain, Snow, Petals, Dust, Fireflies }
 public enum MoodKind { Memory, Dream, Tension, Injury }
 public enum IdleMotion { Breathe, Sway }
 
 [GenerateFieldSchema]
 public partial class MaskPresetOptions : VisualClipOptions
 {
-    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = "";
+    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = BuiltinVisualResources.ShapeMask;
     [Common, Field(7)] public string InstanceId { get; set; } = "mask";
     [Common, Field(8), JsonConverter(typeof(StringEnumValueConverter<MaskMotion>))] public MaskMotion Motion { get; set; }
     [Field(9)] public bool Overlay { get; set; }
@@ -51,24 +50,9 @@ public partial class IdlePresetOptions : VisualClipOptions
 }
 
 [GenerateFieldSchema]
-public partial class WeatherPresetOptions : VisualClipOptions
-{
-    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string Texture { get; set; } = "";
-    [Common, Field(7), JsonConverter(typeof(StringEnumValueConverter<WeatherKind>))] public WeatherKind Weather { get; set; }
-    [Field(8, Minimum = 0, Maximum = 1000)] public float Rate { get; set; } = 40;
-    [Field(9, Minimum = 1, Maximum = 2000)] public int MaxParticles { get; set; } = 300;
-    [Field(10, Minimum = 1, Maximum = 10000)] public float Width { get; set; } = 1920;
-    [Field(11, Minimum = 1, Maximum = 10000)] public float Height { get; set; } = 1080;
-    [Field(12)] public float Wind { get; set; }
-    [Field(13)] public float Z { get; set; } = 100;
-    [Field(14)] public int Seed { get; set; } = 20261102;
-    [Field(15), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; } = VisualPlaybackMode.UntilStopped;
-}
-
-[GenerateFieldSchema]
 public partial class MoodPresetOptions : VisualClipOptions
 {
-    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = "";
+    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = BuiltinVisualResources.Mood;
     [Common, Field(7), JsonConverter(typeof(StringEnumValueConverter<MoodKind>))] public MoodKind Mood { get; set; }
     [Field(8)] public string InstanceId { get; set; } = "mood";
     [Field(9, Minimum = 0, Maximum = 1)] public float Strength { get; set; } = .7f;
@@ -79,7 +63,7 @@ public partial class MoodPresetOptions : VisualClipOptions
 [GenerateFieldSchema]
 public partial class HeartbeatPresetOptions : VisualClipOptions
 {
-    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = "";
+    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = BuiltinVisualResources.Vignette;
     [Field(7)] public string HandleId { get; set; } = "";
     [Field(8, Minimum = 0, Maximum = 1)] public float Strength { get; set; } = .65f;
     [Field(9), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; } = VisualPlaybackMode.UntilStopped;
@@ -102,7 +86,7 @@ public partial class ParallaxPresetOptions : VisualClipOptions
 [GenerateFieldSchema]
 public partial class EmphasisPresetOptions : VisualClipOptions
 {
-    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = "";
+    [Common, Field(6, Required = true, AllowNull = false, EditorId = "entry.effectprogramasset", ResourceTypeId = "effect-program")] public string Program { get; set; } = BuiltinVisualResources.ColorGrade;
     [Field(7)] public string InstanceId { get; set; } = "speaker-emphasis";
     [Common, Field(8, DefaultJson = "[]", EditorId = ValueEditorIds.Json, StructureType = typeof(string[]))] public JsonElement HandleIds { get; set; }
     [Common, Field(9)] public string ActiveHandleId { get; set; } = "";

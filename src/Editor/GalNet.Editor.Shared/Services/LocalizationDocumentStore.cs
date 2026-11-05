@@ -27,7 +27,7 @@ public sealed partial class LocalizationDocumentStore(IProjectContentSession con
     public LocalizationFileSnapshot CaptureResourceMetadata(string path)
     {
         path = ProjectFilePaths.Normalize(path);
-        if (!path.StartsWith("Assets/", StringComparison.Ordinal) || !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw ProjectFilePaths.Error("protected", path);
+        if (!ProjectFilePaths.IsResource(path) || !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) throw ProjectFilePaths.Error("protected", path);
         return CaptureFileCore(path, true);
     }
     private LocalizationFileSnapshot CaptureFileCore(string path, bool resource)

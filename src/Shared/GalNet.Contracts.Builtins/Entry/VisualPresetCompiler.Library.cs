@@ -93,39 +93,6 @@ internal static partial class VisualPresetCompiler
         return Finish(context, clip, options.BatchId);
     }
 
-    public static IReadOnlyList<PrimitiveEntry> Weather(EntryCompileContext context, WeatherPresetOptions options)
-    {
-        var clip = Clip(options); Sustain(clip, options.PlaybackMode); Require(options.Texture, "texture");
-        var floating = options.Weather is WeatherKind.Dust or WeatherKind.Fireflies;
-        var rain = options.Weather == WeatherKind.Rain;
-        var speed = rain ? 1000f : options.Weather == WeatherKind.Snow ? 100f : 70f;
-        var minSize = options.Weather switch { WeatherKind.Rain => .044f, WeatherKind.Snow => .15f, WeatherKind.Petals => .45f, WeatherKind.Dust => .07f, _ => .12f };
-        var maxSize = options.Weather switch { WeatherKind.Rain => .11f, WeatherKind.Snow => .45f, WeatherKind.Petals => 1f, WeatherKind.Dust => .18f, _ => .35f };
-        var minLife = floating ? 3f : options.Height / speed + 1;
-        var maxLife = floating ? 6f : options.Height / speed + 2;
-        var rate = Math.Min(options.Rate, options.MaxParticles / (maxLife + .1f));
-        var wind = options.Wind + (rain ? 250 : 0);
-        var drift = floating ? 0 : wind * (options.Height + 32) / (speed * .8f);
-        var fadeIn = Math.Min(.08f, .12f / minLife);
-        var initial = new { lifetime = new { min = minLife, max = maxLife },
-            velocityX = new { min = wind - 15, max = wind + 15 }, velocityY = new { min = floating ? -15 : speed * .8f, max = floating ? 15 : speed * 1.2f },
-            alignToVelocity = rain, size = new { min = minSize, max = maxSize }, rotationDegrees = new { min = rain ? 0 : -180, max = rain ? 0 : 180 },
-            angularVelocityDegrees = new { min = options.Weather == WeatherKind.Petals ? -90 : 0, max = options.Weather == WeatherKind.Petals ? 90 : 0 },
-            color = new {
-                min = rain ? "#7FA9C730" : options.Weather == WeatherKind.Petals ? "#ED4786CC" : options.Weather == WeatherKind.Fireflies ? "#FFF0A088" : "#FFFFFFFF",
-                max = rain ? "#9FC6DF78" : options.Weather == WeatherKind.Petals ? "#FFB1D1F2" : options.Weather == WeatherKind.Fireflies ? "#FFF7C0FF" : "#FFFFFFFF" } };
-        var emitter = Id(clip, "weather");
-        clip.Events.Add(Event(0, BuiltinEntryIds.PlayParticleEmitter, new { instanceId = emitter, z = options.Z, parameters = new {
-            particleTexture = options.Texture, rate, maxParticles = options.MaxParticles, seed = options.Seed, initial,
-            shape = new { type = "box", x = options.Width / 2 - drift / 2, y = floating ? options.Height / 2 : -16, width = options.Width + Math.Abs(drift), height = floating ? options.Height : 1 },
-            motion = new { noise = rain ? 0 : floating ? 15 : 20, drag = floating ? .15 : 0 },
-            lifetime = new { opacity = new[] { new { time = 0f, value = 0f }, new { time = fadeIn, value = 1f }, new { time = .8f, value = 1f }, new { time = 1f, value = 0f } } }
-        } }));
-        clip.Events.Add(Event(clip.DurationFrames, BuiltinEntryIds.StopParticleEmitter, new { instanceId = emitter, clear = false }));
-        if (options.PlaybackMode == VisualPlaybackMode.UntilStopped) OwnEvents(clip);
-        return Finish(context, clip, options.BatchId);
-    }
-
     public static IReadOnlyList<PrimitiveEntry> Mood(EntryCompileContext context, MoodPresetOptions options)
     {
         var clip = Clip(options); var id = Require(options.InstanceId, "instanceId");
@@ -225,7 +192,7 @@ internal static partial class VisualPresetCompiler
         {
             var handle = incoming ? options.NewHandleId! : options.OldHandleId!; var effect = Id(clip, incoming ? "incoming" : "outgoing");
             var property = kind == "pixelate" ? "blockSize" : "strength"; var neutral = kind == "pixelate" ? 1 : 0; var peak = kind == "pixelate" ? Math.Clamp(options.Strength * 48, 1, 256) : Math.Min(1, options.Strength);
-            clip.Events.Add(Apply(0, effect, handle, Require(options.Program, "program"), new Dictionary<string, float> { [property] = incoming ? peak : neutral }));
+            clip.Events.Add(Apply(0, effect, handle, Require(options.Program ?? BuiltinVisualResources.Programs.GetValueOrDefault(kind), "program"), new Dictionary<string, float> { [property] = incoming ? peak : neutral }));
             clip.Tracks.Add(Track(effect, property, frames, incoming ? peak : neutral, incoming ? neutral : peak));
             if (kind == "glitch") clip.Tracks.Add(Track(effect, "time", frames, 0, (float)frames / clip.FrameRate));
             clip.Events.Add(Stop(frames, effect));

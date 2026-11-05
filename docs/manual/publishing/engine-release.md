@@ -26,9 +26,9 @@ pwsh -NoProfile -File scripts/release/Release.ps1 -Target NuGet -Version 0.1.0-d
 pwsh -File scripts/release/Release.ps1 -Target NuGet -Tag v1.2.3
 ```
 
-Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，同一 tag 串行，已公开版本直接跳过。checkout 固定为 tag commit，并校验精确 tag 与 master 归属。NuGet 消费者校验、Windows/Linux 桌面发布、Android Mono AOT 发布并行执行；每个桌面主机顺序构建自包含与 FrameworkDependent 两种部署，复用原生音频构建和 Linux 私有媒体闭包。发行不重复跑完整 CI 测试，也不再调用旧 Windows Sample 的应用打包链路。
+Release workflow 监听 master 与版本 tag push；发现候选后调用 `release-build.yml`，同一 tag 串行，已公开版本直接跳过。checkout 固定为 tag commit，并校验精确 tag 与 master 归属。NuGet 消费者校验、Windows/Linux 桌面发布、Android Mono AOT 发布并行执行；桌面发布自包含版本，Linux 包含私有媒体闭包。发行不重复跑完整 CI 测试，也不再调用旧 Windows Sample 的应用打包链路。
 
-公开应用矩阵为：Windows/Linux Editor 各两种部署；Windows/Linux CrossPlatform Sample 的 Developer、Player、Bound 三种模式各两种部署；Android 仅 Bound ARM64 Mono AOT APK。另有每个桌面 RID 一份 Sample 契约 ZIP，共 19 个应用/契约附件。跨平台桌面包当前使用普通 IL 自包含/框架依赖发布，不以旧文件名宣称 R2R。Windows 使用 ZIP，Linux 使用保留权限的 tar.gz。NuGet 仍独立构建并通过外部消费者校验。
+公开应用矩阵为：Windows/Linux 各一份自包含 Editor 和绑定 GameTestCase 的 Sample Demo；Android 一份 Bound ARM64 Mono AOT APK，共五个应用附件。Player 是导出 Demo 的中间产物，不单独发布；Developer、框架依赖版本和独立契约 ZIP 不再作为 Release 附件。桌面包使用普通 IL，不以旧文件名宣称 R2R。Windows 使用 ZIP，Linux 使用保留权限的 tar.gz。NuGet 仍独立构建并通过外部消费者校验；需要纯 Sample 运行包来组合自己的游戏时，可按[游戏分发](game-distribution.md)从源码构建。
 
 `cross-platform-release.py` 校验原始载荷、内容/宿主契约身份与归档内容；最终按来源 commit、版本、完整平台/部署矩阵和文件哈希封存 schemaVersion 2 索引，附件缺失或混入其他版本时拒绝发布。publish 下载同一候选的全部平台产物后封存并上传，不重新编译；ZIP/tar.gz/APK/nupkg artifact 不再重复压缩。`workflow_dispatch` 也完成完整矩阵封存，但只上传候选 artifact，不公开发布。
 
@@ -38,7 +38,7 @@ Release workflow 监听 master 与版本 tag push；发现候选后调用 `relea
 pwsh -File scripts/release/Push.ps1 -Index out/release/1.2.3/release-index.json
 ```
 
-Push 先检查索引、全部文件哈希、版本和消费者验收状态；GitHub 目标在创建 draft 前检查 schemaVersion 2 的 19 个跨平台附件名称与数量。旧本地 Windows schemaVersion 1 索引仍使用七 ZIP 门禁。随后创建 GitHub draft，按依赖顺序上传 NuGet、上传附件，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
+Push 先检查索引、全部文件哈希、版本和消费者验收状态；GitHub 目标在创建 draft 前检查 schemaVersion 2 的五个跨平台附件名称与数量。旧本地 Windows schemaVersion 1 索引仍使用七 ZIP 门禁。随后创建 GitHub draft，按依赖顺序上传 NuGet、上传附件，再公开 draft，preview 标记 prerelease。每个成功步骤记录在 `push-state.json`，失败时使用原文件和原 journal 恢复；不跳过未知重复版本，不覆盖公开包。NuGet/GitHub 之间没有事务，上传中断可能留下部分公开 NuGet 包。上传脚本本身不会创建或推送 tag。
 
 ### 可复用的玩家编译模式和游戏绑定
 

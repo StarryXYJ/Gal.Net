@@ -23,22 +23,44 @@ public static class DefaultVisualInstaller
         string? scratch = null;
         try
         {
-            if (!catalog.TryGet(BuiltinEntryIds.ApplyEffect, out _) || !configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id && section.Fields.Any(field => field.Id == "defaultVisualPrograms")))
-                throw new InvalidDataException("This project contract does not declare default visual bindings and effect.apply. Rebuild/deploy its updated contract first.");
+            if (!catalog.TryGet(BuiltinEntryIds.ApplyEffect, out _) || !configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id))
+                throw new InvalidDataException("This project contract does not declare the default project section and effect.apply.");
             var reader = new ProjectRawReader(root);
             var originalSettings = await File.ReadAllBytesAsync(reader.Resolve("settings.json"), cancellationToken);
             var configuration = JsonSerializer.Deserialize<ProjectConfiguration>(originalSettings, JsonOptions) ?? throw new InvalidDataException("Invalid project settings.");
             configurations.Validate(configuration);
             var plan = DefaultVisualTemplate.Prepare(configuration);
-            var report = new DefaultVisualInstallReport(dryRun, plan.Files.Keys.Order(StringComparer.Ordinal).ToArray(), plan.Configuration.ReadDefaultOptions().DefaultVisualPrograms);
-            foreach (var path in plan.Files.Keys)
-                if (File.Exists(reader.Resolve(path)) || Directory.Exists(reader.Resolve(path)))
-                    throw new IOException($"Default visual path is occupied; preserve it and configure its binding explicitly: '{path}'.");
-            if (plan.Files.Count == 0) return new(operation, true, report, []);
+            var additions = new Dictionary<string, byte[]>(StringComparer.Ordinal);
+            foreach (var (path, bytes) in plan.Files.Where(item => !item.Key.EndsWith(".meta", StringComparison.Ordinal)))
+            {
+                var resource = reader.Resolve(path);
+                var metadata = reader.Resolve(path + ".meta");
+                var resourceExists = File.Exists(resource);
+                var metadataExists = File.Exists(metadata);
+                if (Directory.Exists(resource) || Directory.Exists(metadata) || resourceExists != metadataExists)
+                    throw new IOException($"Default visual path is occupied or incomplete: '{path}'.");
+                if (!resourceExists)
+                {
+                    additions.Add(path, bytes);
+                    additions.Add(path + ".meta", plan.Files[path + ".meta"]);
+                    continue;
+                }
+                using var expected = JsonDocument.Parse(plan.Files[path + ".meta"]);
+                using var actual = JsonDocument.Parse(await File.ReadAllBytesAsync(metadata, cancellationToken));
+                if (actual.RootElement.ValueKind != JsonValueKind.Object ||
+                    !actual.RootElement.TryGetProperty("id", out var actualId) || actualId.ValueKind != JsonValueKind.String ||
+                    !Guid.TryParse(actualId.GetString(), out var actualGuid) ||
+                    actualGuid != Guid.Parse(expected.RootElement.GetProperty("id").GetString()!) ||
+                    !actual.RootElement.TryGetProperty("type", out var actualType) || actualType.ValueKind != JsonValueKind.String ||
+                    actualType.GetString() != expected.RootElement.GetProperty("type").GetString())
+                    throw new InvalidDataException($"Default visual identity or type differs: '{path}'.");
+            }
+            var report = new DefaultVisualInstallReport(dryRun, additions.Keys.Order(StringComparer.Ordinal).ToArray(), BuiltinVisualResources.Programs);
+            if (additions.Count == 0) return new(operation, true, report, []);
             scratch = Path.Combine(Path.GetTempPath(), "GalNet-visual-install-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(scratch);
             var writes = new List<ProjectApplyWrite>();
-            var payloads = plan.Files.Concat(new[] { new KeyValuePair<string, byte[]>("settings.json", JsonSerializer.SerializeToUtf8Bytes(plan.Configuration, JsonOptions)) });
+            var payloads = additions;
             foreach (var (path, bytes) in payloads)
             {
                 var source = writes.Count.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".data";

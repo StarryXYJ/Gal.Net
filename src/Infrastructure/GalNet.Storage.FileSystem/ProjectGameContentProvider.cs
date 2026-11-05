@@ -27,8 +27,7 @@ public sealed class ProjectGameContentProvider : IGameContentProvider
         cancellationToken.ThrowIfCancellationRequested();
         using var storyAssets = new AssetManager([new CompiledStoryAssetProvider(_directory)]);
         var graph = await GameGraphContentLoader.LoadResourcesAsync(storyAssets, StoryResourceIds.Graph, cancellationToken);
-        var assetsDirectory = Path.Combine(_directory, "Assets");
-        using var assets = new LocalFileProvider(assetsDirectory, _resourceTypes, optional: true);
+        using var assets = new ProjectAssetProvider(_directory, _resourceTypes);
         using var archive = assets.OpenArchive("assets");
         using var storyArchive = new CompiledStoryAssetProvider(_directory).OpenArchive("story");
         var gallery = new GalleryCatalogCompiler(_resourceTypes, _galleryTypes)

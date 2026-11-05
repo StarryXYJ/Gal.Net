@@ -1,4 +1,4 @@
 {
-  "group.audio.entry.demo-cue-filter-animation.content": "接下来聆听低通截止频率在三秒内的变化。",
+  "group.audio.entry.demo-cue-filter-animation.content": "推进后请听背景音乐：高频会在四秒内逐渐变闷、短暂停留，再恢复清晰。",
   "group.audio.entry.demo-cue-duck-on.content": "接下来播放语音，音乐会自动压低并恢复。"
 }

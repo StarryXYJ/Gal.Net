@@ -98,7 +98,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
     private void SyncAsset()
     {
         _inspectedId = Workspace.SelectedAsset?.Id;
-        _inspectedPath = Workspace.SelectedAsset?.RelativePath;
+        _inspectedPath = Workspace.SelectedAsset?.ProjectPath;
         SetAsset(Workspace.SelectedAsset);
     }
 
@@ -107,20 +107,20 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         if (_disposed || _projects.Current?.RootPath != _projectRoot || _inspectedPath is null) return;
         try
         {
-            var current = _assets.GetEntry(_inspectedPath);
+            var current = _assets.GetProjectEntry(_inspectedPath);
             if (_inspectedId is not null && !string.Equals(current?.Id, _inspectedId, StringComparison.OrdinalIgnoreCase))
             {
                 current = null;
-                var pending = new Stack<string>(); pending.Push("");
+                var pending = new Stack<string>(); pending.Push("Assets"); pending.Push("Buildin");
                 while (pending.TryPop(out var directory) && current is null)
-                    foreach (var item in _assets.GetDirectory(directory))
+                    foreach (var item in _assets.GetProjectDirectory(directory))
                     {
                         if ((System.IO.File.GetAttributes(item.FullPath) & System.IO.FileAttributes.ReparsePoint) != 0) continue;
-                        if (item.IsDirectory) pending.Push(item.RelativePath);
+                        if (item.IsDirectory) pending.Push(item.ProjectPath);
                         else if (string.Equals(item.Id, _inspectedId, StringComparison.OrdinalIgnoreCase)) { current = item; break; }
                     }
             }
-            if (current is not null) _inspectedPath = current.RelativePath;
+            if (current is not null) _inspectedPath = current.ProjectPath;
             SetAsset(current);
         }
         catch (Exception error) { Serilog.Log.Warning(error, "Could not refresh inspected asset identity"); }
@@ -128,7 +128,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
 
     private void SetAsset(AssetEntry? asset)
     {
-        var variantsPath = asset?.Type == "image-variants" ? "Assets/" + asset.RelativePath : null;
+        var variantsPath = asset?.Type == "image-variants" ? asset.ProjectPath : null;
         if (Variants?.Buffer.Path != variantsPath)
         {
             Variants?.Dispose(); Variants = null;
@@ -139,7 +139,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         {
             ResourceMetadata = null;
             if (asset is { IsDirectory: false, HasValidMeta: true } && _metadataAuthoring is not null)
-                ResourceMetadata = _metadataAuthoring.Open("Assets/" + asset.RelativePath, false);
+                ResourceMetadata = _metadataAuthoring.Open(asset.ProjectPath, false);
         }
         InspectedAsset = asset;
         Load();
@@ -172,7 +172,7 @@ public sealed partial class AssetInspectorControlViewModel : ObservableObject, I
         {
             try
             {
-                await _metadataAuthoring.SetImportOptionsAsync("Assets/" + asset.RelativePath, AssetFilter, AssetCompression);
+                await _metadataAuthoring.SetImportOptionsAsync(asset.ProjectPath, AssetFilter, AssetCompression);
                 await _assets.RefreshAsync();
             }
             catch (Exception error) { if (ResourceMetadata is { } metadata) metadata.Error = error.Message; }

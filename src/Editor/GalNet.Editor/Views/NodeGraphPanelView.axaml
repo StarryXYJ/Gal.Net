@@ -14,7 +14,7 @@
         <TextBox Name="GraphSearch" Width="180" PlaceholderText="{loc:Localize Uiux.Graph.Search}" TextChanged="OnGraphSearchChanged" Margin="0,0,6,0"/>
         <Button Content="{loc:Localize Uiux.Graph.FitAll}" Click="OnFrameAll" Margin="0,0,6,0"/>
         <Button Content="{loc:Localize Uiux.Graph.FitSelection}" Click="OnFrameSelection" Margin="0,0,6,0"/>
-        <Slider Name="GraphZoom" Width="100" Minimum="0.02" Maximum="3" Value="1" ValueChanged="OnGraphZoomChanged"/>
+        <Slider Name="GraphZoom" Width="100" Minimum="0.02" Maximum="3" Value="1" VerticalAlignment="Center" ValueChanged="OnGraphZoomChanged"/>
         <TextBlock Name="GraphZoomLabel" Margin="6,0" VerticalAlignment="Center"/>
         <ToggleButton Name="GraphMapToggle" Content="{loc:Localize Uiux.Graph.Map}"/>
       </WrapPanel>

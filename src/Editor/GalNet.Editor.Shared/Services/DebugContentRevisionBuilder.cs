@@ -68,7 +68,7 @@ public static class DebugContentRevisionBuilder
 
     private static IEnumerable<string> EnumerateSessionFiles(string root)
     {
-        foreach (var folder in new[] { "Assets", "I18n" })
+        foreach (var folder in new[] { "Assets", "Buildin", "I18n" })
         {
             var directory = Path.Combine(root, folder);
             if (Directory.Exists(directory))

@@ -19,8 +19,8 @@ internal static class DiskEntryParameterMetadata
         var paths = new Dictionary<Guid, string?>();
         try
         {
-            if (!Directory.Exists(reader.Resolve("Assets"))) return new(Programs: programs);
-            foreach (var path in reader.Files("Assets", diagnostics).Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+            foreach (var path in new[] { "Assets", "Buildin" }.Where(folder => Directory.Exists(reader.Resolve(folder)))
+                .SelectMany(folder => reader.Files(folder, diagnostics)).Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
             {
                 // Do not run the renderer or deserialize arbitrary resource objects.
                 if (new FileInfo(reader.Resolve(path)).Length > MaximumSourceBytes) continue;

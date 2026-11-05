@@ -20,6 +20,19 @@
     <Style Selector="^:focus-visible /template/ Border#ButtonSurface"><Setter Property="BorderBrush" Value="{DynamicResource SemiColorPrimary}"/></Style>
     <Style Selector="^:disabled"><Setter Property="Opacity" Value="0.35"/></Style>
   </ControlTheme>
+  <ControlTheme x:Key="EditorDockCloseButton" TargetType="Button" BasedOn="{StaticResource EditorIconButton}">
+    <Setter Property="Padding" Value="5"/>
+    <Setter Property="CornerRadius" Value="99"/>
+    <Setter Property="Foreground" Value="{DynamicResource SemiColorText0}"/>
+    <Setter Property="ContentTemplate">
+      <DataTemplate>
+        <PathIcon Width="8" Height="8" Data="{Binding}" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+      </DataTemplate>
+    </Setter>
+    <Style Selector="^:not(:disabled):pointerover">
+      <Setter Property="Foreground" Value="{DynamicResource SemiColorPrimary}"/>
+    </Style>
+  </ControlTheme>
   <ControlTheme x:Key="EditorIconToggleButton" TargetType="ToggleButton" BasedOn="{StaticResource EditorIconButton}">
     <Style Selector="^:checked /template/ Border#ButtonSurface">
       <Setter Property="Background" Value="{DynamicResource SemiColorPrimaryLight}"/>

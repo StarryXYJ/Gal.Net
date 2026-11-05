@@ -26,11 +26,6 @@ public sealed class DefaultProjectOptions
     public List<GalNet.Contracts.Builtins.Audio.AudioBusDefinition> AudioBuses { get; set; } = [];
     public List<GalNet.Contracts.Builtins.Audio.AudioTrackDefinition> AudioTracks { get; set; } = [];
 
-    /// <summary>Authoring defaults only. Saved entries retain their explicit program resource IDs.</summary>
-    public Dictionary<string, string> DefaultVisualPrograms { get; set; } = new(StringComparer.Ordinal);
-
-    public Dictionary<string, string> DefaultWeatherTextures { get; set; } = new(StringComparer.Ordinal);
-
     public int DefaultWidth { get; set; } = 1920;
 
     public int DefaultHeight { get; set; } = 1080;

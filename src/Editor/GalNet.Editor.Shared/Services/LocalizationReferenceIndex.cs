@@ -149,7 +149,7 @@ public sealed class LocalizationReferenceIndex
     private void ReadSource(LocalizationSource source)
     {
         var path = source.Path.Replace('\\', '/');
-        if (path.StartsWith("Assets/", StringComparison.Ordinal) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
+        if (ProjectFilePaths.IsResource(path) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))
         {
             try
             {

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using GalNet.Contracts.Builtins.Assets;
+using GalNet.Contracts.Builtins;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
 using GalNet.Core.Configuration;
@@ -75,6 +76,9 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             }
             if (scope == "project")
             {
+                var requiresBuiltins = !structureOnly && catalog is not null && catalog.TryGet(BuiltinEntryIds.ApplyEffect, out _) &&
+                    configurations?.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id) == true;
+                ValidateBuiltinFiles(diagnostics, requiresBuiltins);
                 try
                 {
                     var configuration = DirectProjectPersistence.LoadSettings(_reader.Root);
@@ -114,6 +118,27 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
         return new(scope + ".validate", !diagnostics.Any(item => item.Severity == "error"),
             new ProjectValidationReport(scope, structureOnly, semantic, files.Distinct().Order(StringComparer.Ordinal).ToArray(), checks, skipped,
                 semantic != "unavailable" && !diagnostics.Any(item => item.Code is "file.read" or "directory.read" or "file.linkSkipped" or "json.invalid" or "json.objectRequired" or "graph.shapeInvalid" or "localization.incomplete" or "localization.invalid"), contractSha256), diagnostics);
+    }
+
+    internal void ValidateBuiltinFiles(IList<ToolDiagnostic> diagnostics, bool required)
+    {
+        const string directory = "Buildin/Effects/Default";
+        if (!required && !Directory.Exists(_reader.Resolve(directory))) return;
+        var programs = GalNet.Editor.Shared.Visuals.DefaultVisualTemplate.ProgramNames
+            .Select(item => (Path: $"{directory}/{item.Value}.sksl", Id: BuiltinVisualResources.Programs[item.Key], Type: "effect-program"));
+        var textures = BuiltinVisualResources.WeatherTextures
+            .Select(item => (Path: $"{directory}/{item.Key}Particle.png", Id: item.Value, Type: "sprite"));
+        var presets = new[] { (Path: GalNet.Editor.Shared.Visuals.DefaultParticlePresets.Path, Id: GalNet.Editor.Shared.Visuals.DefaultParticlePresets.AssetId, Type: "data") };
+        foreach (var item in programs.Concat(textures).Concat(presets))
+        {
+            var metadataPath = item.Path + ".meta";
+            if (!File.Exists(_reader.Resolve(item.Path)) || !File.Exists(_reader.Resolve(metadataPath)))
+            { Error(diagnostics, "asset.builtinMissing", "Builtin resource or metadata is missing.", item.Path, ""); continue; }
+            var meta = _reader.Read(metadataPath, diagnostics);
+            if (meta is null) continue;
+            if (!Guid.TryParse(ProjectRawReader.MetadataIdentity(meta.Value).Id, out var id) || id != Guid.Parse(item.Id) || ProjectRawReader.Text(meta.Value, "type") != item.Type)
+                Error(diagnostics, "asset.builtinIdentity", "Builtin resource ID or type does not match its fixed identity.", metadataPath, "");
+        }
     }
 
     /// <summary>Checks a selected source and returns a DTO only after its raw structure is accepted.</summary>

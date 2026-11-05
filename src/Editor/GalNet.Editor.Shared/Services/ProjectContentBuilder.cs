@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Security.Cryptography;
 using GalNet.Assets;
+using GalNet.Contracts.Builtins;
 using GalNet.Contracts.Builtins.Assets;
 using GalNet.Core.Assets;
 using GalNet.Core.Compilation;
@@ -57,8 +58,15 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         ValidateOutputPath(sourceRoot, targetRoot);
         cancellationToken.ThrowIfCancellationRequested();
         if (configurations is not null) configurations.Validate(DirectProjectPersistence.LoadSettings(sourceRoot));
-        var validation = new ProjectValidationService(sourceRoot).Validate("graph");
+        var validator = new ProjectValidationService(sourceRoot);
+        var validation = validator.Validate("graph");
         var diagnostics = validation.Diagnostics.ToList();
+        var hasDefaultSection = configurations is not null
+            ? configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id)
+            : File.Exists(Path.Combine(sourceRoot, "Contracts", ProjectSchemaContext.AssemblyFileName)) &&
+              DirectProjectPersistence.LoadSettings(sourceRoot).Sections.ContainsKey(DefaultProjectConfiguration.Section.Id);
+        var requiresBuiltins = hasDefaultSection && _entryCatalog.TryGet(BuiltinEntryIds.ApplyEffect, out _);
+        validator.ValidateBuiltinFiles(diagnostics, requiresBuiltins);
         diagnostics.AddRange(LocalizationValidation.ValidateDisk(sourceRoot, _entryCatalog));
         _ = new ProjectRawReader(sourceRoot).Files(null, diagnostics);
         if (!validation.Success || diagnostics.Any(item => item.Code == "file.linkSkipped" || item.Severity == "error"))
@@ -129,6 +137,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
 
         CopyOptionalFile(sourceRoot, stageRoot, "settings.json");
         CopyOptionalDirectory(sourceRoot, stageRoot, "Assets", cancellationToken);
+        CopyOptionalDirectory(sourceRoot, stageRoot, "Buildin", cancellationToken);
         CopyOptionalDirectory(sourceRoot, stageRoot, "I18n", cancellationToken);
 
         var targetGraphRoot = Path.Combine(stageRoot, "Graph");
@@ -235,7 +244,7 @@ public sealed class ProjectContentBuilder(IEntryCatalog entryCatalog, IResourceT
         if (IsSameOrChild(sourceRoot, targetRoot))
             throw new InvalidDataException("Build output must not be the project directory or one of its ancestors.");
 
-        foreach (var protectedDirectory in new[] { "Graph", "Assets", "I18n", ".galnet", "Temp", "Contracts", ".git" })
+        foreach (var protectedDirectory in new[] { "Graph", "Assets", "Buildin", "I18n", ".galnet", "Temp", "Contracts", ".git" })
             if (IsSameOrChild(targetRoot, Path.Combine(sourceRoot, protectedDirectory)))
                 throw new InvalidDataException($"Build output must not be inside project '{protectedDirectory}/'.");
         FileSystemPaths.RequireNoLinks(targetRoot, "Build/export output must not traverse filesystem links.");

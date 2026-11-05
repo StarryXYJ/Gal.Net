@@ -162,6 +162,7 @@ internal sealed class AvaloniaGameRun : IGameRun, IParameterizedGameRun
         await cleanup.RunAsync(() => new(_onUiAsync(() => _gameplay.AnnounceAudio(""))));
         await cleanup.RunAsync(() => new(_settingsUpdate));
         await cleanup.RunAsync(() => new(_run.StopAsync()));
+        await cleanup.RunAsync(() => new(_presentation.AudioModule.DrainAsync()));
         var binding = _runBinding;
         _runBinding = null;
         await cleanup.RunAsync(() => ResourceCleanup.DisposeAsync(binding));

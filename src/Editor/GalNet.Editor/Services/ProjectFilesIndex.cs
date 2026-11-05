@@ -20,10 +20,10 @@ public sealed class ProjectFilesIndex(IProjectService projects, IAssetCatalogSer
         {
             if (!Visible(full)) continue;
             var path = reader.Relative(full);
-            if (path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) continue;
+            if ((path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) || path.StartsWith("Buildin/", StringComparison.OrdinalIgnoreCase)) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) continue;
             var reason = "";
             try { ProjectFilePaths.Editable(path); } catch (Exception error) { reason = EditorText.Error(error).Render(localization); }
-            var asset = path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) ? assets.GetEntry(path[7..]) : null;
+            var asset = ProjectFilePaths.IsResource(path) ? assets.GetProjectEntry(path) : null;
             yield return new() { Path = path, FullPath = full, IsDirectory = Directory.Exists(full), WriteTimeUtc = File.GetLastWriteTimeUtc(full), Type = Directory.Exists(full) ? "folder" : asset?.Type ?? Path.GetExtension(path).TrimStart('.'), ProtectionReason = reason };
         }
     }

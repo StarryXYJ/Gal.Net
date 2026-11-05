@@ -14,11 +14,13 @@ internal sealed class VisualPresetResourceValidator(string root)
     public void Validate(string type, IReadOnlyDictionary<string, JsonElement> parameters)
     {
         if (VisualPresetBindings.Binding(type, parameters) is not { } binding) return;
-        if (!parameters.TryGetValue(binding.Field, out var program) || program.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(program.GetString()))
+        var hasProgram = parameters.TryGetValue(binding.Field, out var program) && program.ValueKind != JsonValueKind.Null;
+        var programId = hasProgram && program.ValueKind == JsonValueKind.String ? program.GetString() : !hasProgram ? BuiltinVisualResources.Programs.GetValueOrDefault(binding.Purpose) : null;
+        if (string.IsNullOrWhiteSpace(programId))
             throw new InvalidDataException($"Preset requires an explicit '{binding.Field}' resource ID.");
-        var asset = Asset(program.GetString()!);
+        var asset = Asset(programId);
         if (asset.Type != "effect-program") throw new InvalidDataException("Preset shader must reference an effect-program asset.");
-        var parsed = ShaderEffectMetadataParser.Parse(new(program.GetString()!), File.ReadAllText(_reader.Resolve(asset.Path)));
+        var parsed = ShaderEffectMetadataParser.Parse(new(programId), File.ReadAllText(_reader.Resolve(asset.Path)));
         if (!parsed.Success) throw new InvalidDataException(string.Join("; ", parsed.Diagnostics));
         var descriptor = parsed.Descriptor!;
         var stage = type == BuiltinEntryIds.HeartbeatPreset || type == BuiltinEntryIds.MoodPreset && (!parameters.TryGetValue("targetHandleId", out var target) || string.IsNullOrWhiteSpace(target.GetString())) ? EffectStage.ScenePost : EffectStage.Layer;
@@ -91,7 +93,8 @@ internal sealed class VisualPresetResourceValidator(string root)
         {
             _assets = new(StringComparer.OrdinalIgnoreCase);
             var diagnostics = new List<GalNet.Editor.Abstraction.Commands.ToolDiagnostic>();
-            foreach (var file in _reader.Files("Assets", diagnostics).Where(file => file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
+            foreach (var file in new[] { "Assets", "Buildin" }.Where(root => Directory.Exists(_reader.Resolve(root)))
+                .SelectMany(root => _reader.Files(root, diagnostics)).Where(file => file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)))
             {
                 var meta = _reader.Read(file, diagnostics);
                 if (meta is null) continue;

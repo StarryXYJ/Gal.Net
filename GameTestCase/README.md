@@ -54,7 +54,7 @@ project launch settings. Editor builds to `Output/Debug` and uses a separate
 `.galnet/debug-profile`; see [external debugging](../docs/manual/editor/preview-and-debugging.md).
 The Sample launch scripts below continue to build and run the same author files.
 
-The editable default shaders live in `Assets/Effects/Default/`; see
+The editable default shaders live in `Buildin/Effects/Default/`; see
 [the visual authoring manual](../docs/manual/editor/default-visuals.md). The eyelid
 example opens over two seconds, enlarges its aperture and fades remaining corner
 coverage smoothly. Its scene-only and UI-inclusive variants are adjacent.
@@ -215,7 +215,7 @@ intro 在 gain 效果启用后新增暂停 BGM 的对白检查点。运行到提
 
 自动回归 `ModularSaveRestoreTests` 直接编译该实际作者文件中的图层/音频条目，通过 FileSaveService 写入全新槽位，再由 Engine 和注册式恢复会话读回；后端使用可观察的测试 host。实际 LibVLC 声音效果仍需按上面的原生媒体方式人工检查。
 
-Audio uses project section v2 (`audioBuses` / `busId`). The intro combines real track low/high-pass filters with bus `seffect.reverb`; effect entries use `scope` / `targetId`. The default Windows x64 host uses miniaudio; videos remain on LibVLC.
+Audio uses project section v2 (`audioBuses` / `busId`). The intro combines real track low/high-pass filters with bus `seffect.reverb`; effect entries use `scope` / `targetId`. The later audio timeline plays the looping BGM alone while a low-pass filter sweeps down, holds, and returns over four seconds. Listen before advancing to compare the muffled and restored sound. The default Windows x64 host uses miniaudio; videos remain on LibVLC.
 
 ## Gallery and resource-name coverage
 

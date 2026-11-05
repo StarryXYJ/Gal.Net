@@ -88,7 +88,7 @@ public sealed class LocalizationEditOperation
         }
     }
 
-    private static bool IsResource(string path) => path.StartsWith("Assets/", StringComparison.Ordinal) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase);
+    private static bool IsResource(string path) => ProjectFilePaths.IsResource(path) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase);
     private void ApplyGroups(bool forward)
     {
         foreach (var patch in _groups)

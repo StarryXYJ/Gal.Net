@@ -35,11 +35,11 @@ public sealed class ResourceMetadataAuthoringService(LocalizationDocumentStore s
     public IReadOnlyList<ResourceCoverOption> Covers()
     {
         var assets = projects.Current!.Services.GetRequiredService<IAssetCatalogService>();
-        var result = new List<ResourceCoverOption> { new(null, "—") }; var pending = new Stack<string>(); pending.Push("");
-        while (pending.TryPop(out var folder)) foreach (var asset in assets.GetDirectory(folder))
+        var result = new List<ResourceCoverOption> { new(null, "—") }; var pending = new Stack<string>(); pending.Push("Assets"); pending.Push("Buildin");
+        while (pending.TryPop(out var folder)) foreach (var asset in assets.GetProjectDirectory(folder))
         {
-            if (asset.IsDirectory) { if ((File.GetAttributes(asset.FullPath) & FileAttributes.ReparsePoint) == 0) pending.Push(asset.RelativePath); }
-            else if (asset.IsImage && asset.Id is not null) result.Add(new(asset.Id, asset.RelativePath));
+            if (asset.IsDirectory) { if ((File.GetAttributes(asset.FullPath) & FileAttributes.ReparsePoint) == 0) pending.Push(asset.ProjectPath); }
+            else if (asset.IsImage && asset.Id is not null) result.Add(new(asset.Id, asset.ProjectPath));
         }
         return result.OrderBy(option => option.Id is null ? 0 : 1).ThenBy(option => option.Label, StringComparer.OrdinalIgnoreCase).ToArray();
     }
@@ -58,7 +58,7 @@ public sealed class ResourceMetadataAuthoringService(LocalizationDocumentStore s
         {
             file = store.CaptureResourceMetadata(owner + ".meta");
             if (!file.Exists) throw new InvalidOperationException(text["Resource.MetadataMissing"]);
-            var meta = new AssetMetaCodec(types).Deserialize(LocalizationJson.Decode(file.Data), owner[7..]);
+            var meta = new AssetMetaCodec(types).Deserialize(LocalizationJson.Decode(file.Data), ProjectFilePaths.ResourceRelative(owner));
             resourceId = meta.Id; using var json = JsonDocument.Parse(LocalizationJson.Decode(file.Data)); metadata = json.RootElement.Clone();
         }
         var key = metadata.ValueKind == JsonValueKind.Object && metadata.TryGetProperty("displayNameKey", out var name) ? name.GetString() : null;
@@ -119,7 +119,7 @@ public sealed class ResourceMetadataAuthoringService(LocalizationDocumentStore s
             await content.CommitFileDraftsAsync(file.Id);
             file = store.CaptureResourceMetadata(owner + ".meta");
             var root = JsonNode.Parse(LocalizationJson.Decode(file.Data))!.AsObject();
-            var meta = new AssetMetaCodec(types).Deserialize(LocalizationJson.Decode(file.Data), owner[7..]);
+            var meta = new AssetMetaCodec(types).Deserialize(LocalizationJson.Decode(file.Data), ProjectFilePaths.ResourceRelative(owner));
             if (meta is GalNet.Contracts.Builtins.Assets.SpriteAssetMeta) root["filter"] = filter;
             root["compress"] = compression;
             await authoring.ApplyAsync(store.PrepareResource([new(file, LocalizationJson.WriteLike(file.Data, root))], []), owner, "History.ResourceMetadata");
@@ -131,8 +131,8 @@ public sealed class ResourceMetadataAuthoringService(LocalizationDocumentStore s
         var working = content.CaptureWorking();
         if (working.Graph.Nodes.Any(node => node.Type == "Group" && !(expected.Group && node.Id == expected.Owner) && node.Metadata?.GalleryUnlockId == id)) throw new InvalidDataException(text.Format("Resource.DuplicateGalleryId", id));
         var reader = new ProjectRawReader(projects.Current!.RootPath);
-        var managed = working.Files.Values.Where(file => file.Path.StartsWith("Assets/", StringComparison.Ordinal) && file.Path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)).GroupBy(file => file.Path, ProjectFilePaths.Comparer).ToDictionary(group => group.Key, group => group.FirstOrDefault(file => file.Exists) ?? group.First(), ProjectFilePaths.Comparer);
-        var paths = Directory.Exists(reader.Resolve("Assets")) ? reader.Files("Assets", []).Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) : [];
+        var managed = working.Files.Values.Where(file => ProjectFilePaths.IsResource(file.Path) && file.Path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)).GroupBy(file => file.Path, ProjectFilePaths.Comparer).ToDictionary(group => group.Key, group => group.FirstOrDefault(file => file.Exists) ?? group.First(), ProjectFilePaths.Comparer);
+        var paths = new[] { "Assets", "Buildin" }.Where(root => Directory.Exists(reader.Resolve(root))).SelectMany(root => reader.Files(root, [])).Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase));
         foreach (var path in paths.Concat(managed.Keys).Distinct(ProjectFilePaths.Comparer))
         {
             if (!expected.Group && ProjectFilePaths.Comparer.Equals(path, expected.Owner + ".meta")) continue;

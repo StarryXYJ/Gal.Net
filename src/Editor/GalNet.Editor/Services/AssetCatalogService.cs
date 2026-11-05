@@ -50,6 +50,21 @@ public sealed class AssetCatalogService : IAssetCatalogService
         return Directory.Exists(full) ? CreateDirectory(full) : File.Exists(full) ? CreateFile(full) : null;
     }
 
+    public AssetEntry? GetProjectEntry(string projectPath)
+    {
+        var full = ResolveProjectPath(projectPath);
+        return Directory.Exists(full) ? CreateDirectory(full) : File.Exists(full) ? CreateFile(full) : null;
+    }
+    public IReadOnlyList<AssetEntry> GetProjectDirectory(string projectPath)
+    {
+        var directory = ResolveProjectPath(projectPath);
+        if (!Directory.Exists(directory)) return [];
+        var entries = new List<AssetEntry>();
+        foreach (var path in Directory.EnumerateDirectories(directory)) entries.Add(CreateDirectory(path));
+        foreach (var path in Directory.EnumerateFiles(directory).Where(path => !path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))) entries.Add(CreateFile(path));
+        return entries.OrderByDescending(item => item.IsDirectory).ThenBy(item => item.Name, StringComparer.OrdinalIgnoreCase).ToList();
+    }
+
     public bool DirectoryExists(string relativeDirectory)
     {
         try { return Directory.Exists(Resolve(relativeDirectory)); }
@@ -76,7 +91,7 @@ public sealed class AssetCatalogService : IAssetCatalogService
     private void StartWatching()
     {
         _watcher?.Dispose(); _watcher = null;
-        var root = RootOrNull();
+        var root = _projects.Current?.RootPath;
         if (root is null || !Directory.Exists(root)) { Changed?.Invoke(); return; }
         _watcher = new FileSystemWatcher(root) { IncludeSubdirectories = true, NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size, EnableRaisingEvents = true };
         _watcher.Changed += OnFileSystemChanged;
@@ -88,6 +103,10 @@ public sealed class AssetCatalogService : IAssetCatalogService
 
     private void OnFileSystemChanged(object? sender, FileSystemEventArgs args)
     {
+        var project = _projects.Current;
+        if (project is null) return;
+        var relative = Path.GetRelativePath(project.RootPath, args.FullPath).Replace('\\', '/');
+        if (relative is not ("Assets" or "Buildin") && !Shared.Services.ProjectFilePaths.IsResource(relative)) return;
         _watchDebounce?.Cancel(); _watchDebounce?.Dispose();
         var cts = _watchDebounce = new CancellationTokenSource();
         _ = Task.Run(async () =>
@@ -105,11 +124,11 @@ public sealed class AssetCatalogService : IAssetCatalogService
         return Task.FromResult<string?>(null);
     }
 
-    private AssetEntry CreateDirectory(string fullPath) => new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), IsDirectory = true };
+    private AssetEntry CreateDirectory(string fullPath) => new() { FullPath = fullPath, RelativePath = Relative(fullPath), ResourceRoot = ResourceRoot(fullPath), Name = Path.GetFileName(fullPath), IsDirectory = true };
     private AssetEntry CreateFile(string fullPath)
     {
         var meta = ReadMeta(fullPath);
-        return new() { FullPath = fullPath, RelativePath = Relative(fullPath), Name = Path.GetFileName(fullPath), Type = meta?.TypeId ?? InferType(fullPath), Id = meta?.Id, Filter = (meta as SpriteAssetMeta)?.Filter, Compress = meta?.Compress, HasValidMeta = meta is not null };
+        return new() { FullPath = fullPath, RelativePath = Relative(fullPath), ResourceRoot = ResourceRoot(fullPath), Name = Path.GetFileName(fullPath), Type = meta?.TypeId ?? InferType(fullPath), Id = meta?.Id, Filter = (meta as SpriteAssetMeta)?.Filter, Compress = meta?.Compress, HasValidMeta = meta is not null };
     }
     private AssetMeta? ReadMeta(string file)
     {
@@ -117,25 +136,40 @@ public sealed class AssetCatalogService : IAssetCatalogService
         {
             var metaPath = file + ".meta";
             var content = _projects.Current?.Services.GetService(typeof(IProjectContentSession)) as IProjectContentSession;
-            var relative = "Assets/" + Relative(file) + ".meta";
+            var logicalPath = Relative(file);
+            var relative = ResourceRoot(file) + "/" + logicalPath + ".meta";
             var managed = content?.FileDocuments.Values.Where(document => document.ManagedContent &&
                 Shared.Services.ProjectFilePaths.Comparer.Equals(document.Path, relative)).ToArray();
             if (managed is { Length: > 0 })
             {
                 var live = managed.SingleOrDefault(document => document.Exists);
-                return live is null ? null : _metaCodec.Deserialize(Shared.Services.LocalizationJson.Decode(live.Data), Relative(file));
+                return live is null ? null : _metaCodec.Deserialize(Shared.Services.LocalizationJson.Decode(live.Data), logicalPath);
             }
-            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath), Relative(file)) : null;
+            return File.Exists(metaPath) ? _metaCodec.Deserialize(File.ReadAllText(metaPath), logicalPath) : null;
         }
         catch { return null; }
     }
     private string? RootOrNull() => _projects.Current?.AssetsPath;
     private string Resolve(string relative)
     {
-        var root = RootOrNull() ?? throw new InvalidOperationException("No project open."); var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
+        var root = RootOrNull() ?? throw new InvalidOperationException("No project open.");
+        var full = Path.GetFullPath(Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar)));
         if (!full.StartsWith(Path.GetFullPath(root) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && !string.Equals(full, Path.GetFullPath(root), StringComparison.OrdinalIgnoreCase)) throw new UnauthorizedAccessException("Asset path escapes Assets."); return full;
     }
-    private string Relative(string full) => Path.GetRelativePath(RootOrNull()!, full).Replace('\\', '/');
+    private string ResolveProjectPath(string path)
+    {
+        path = path.Replace('\\', '/').TrimEnd('/');
+        if (path is not ("Assets" or "Buildin") && !Shared.Services.ProjectFilePaths.IsResource(path))
+            throw new UnauthorizedAccessException("Expected a project resource path.");
+        return new Shared.Services.ProjectRawReader(_projects.Current!.RootPath).Resolve(path);
+    }
+    private string ResourceRoot(string full)
+    {
+        var builtin = Path.GetFullPath(Path.Combine(_projects.Current!.RootPath, "Buildin"));
+        var path = Path.GetFullPath(full);
+        return path.Equals(builtin, StringComparison.OrdinalIgnoreCase) || path.StartsWith(builtin + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) ? "Buildin" : "Assets";
+    }
+    private string Relative(string full) => Path.GetRelativePath(Path.Combine(_projects.Current!.RootPath, ResourceRoot(full)), full).Replace('\\', '/');
     private string InferType(string path) => _resourceTypes.TryGetByExtension(Path.GetExtension(path), out var registration) ? registration.TypeId : "data";
     public void Dispose()
     {

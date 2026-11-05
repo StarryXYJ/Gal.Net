@@ -32,7 +32,7 @@ public static class SceneAuthoringSemantics
         Add(BuiltinEntryIds.StopEffect, [], [Reference("instanceId", SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.Animate, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)], [Reference("handleId", SceneTargetKind.Layer, SceneTargetKind.Particle, SceneTargetKind.Effect)]);
         Add(BuiltinEntryIds.StopAnimation, [], [Reference("playbackHandleId", SceneTargetKind.Playback)]);
-        foreach (var type in new[] { BuiltinEntryIds.MaskPreset, BuiltinEntryIds.FlashPreset, BuiltinEntryIds.IdlePreset, BuiltinEntryIds.WeatherPreset, BuiltinEntryIds.MoodPreset, BuiltinEntryIds.HeartbeatPreset, BuiltinEntryIds.ParallaxPreset, BuiltinEntryIds.EmphasisPreset, BuiltinEntryIds.EmphasisText })
+        foreach (var type in new[] { BuiltinEntryIds.MaskPreset, BuiltinEntryIds.FlashPreset, BuiltinEntryIds.IdlePreset, BuiltinEntryIds.MoodPreset, BuiltinEntryIds.HeartbeatPreset, BuiltinEntryIds.ParallaxPreset, BuiltinEntryIds.EmphasisPreset, BuiltinEntryIds.EmphasisText })
             Add(type, [Output("playbackHandleId", "playback", SceneTargetKind.Playback)],
                 type is BuiltinEntryIds.IdlePreset or BuiltinEntryIds.HeartbeatPreset ? [Reference("handleId", SceneTargetKind.Layer)] :
                 type is BuiltinEntryIds.EmphasisPreset or BuiltinEntryIds.EmphasisText ? [Reference("activeHandleId", SceneTargetKind.Layer), Reference("", SceneTargetKind.Layer) with { Container = "handleIds" }] :

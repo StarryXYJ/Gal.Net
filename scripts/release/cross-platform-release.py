@@ -102,9 +102,8 @@ def asset_name(product, version, rid, deployment):
 def expected_assets(version):
     return {asset_name(product, version, rid, deployment)
             for rid in ("win-x64", "linux-x64")
-            for deployment in ("SelfContained", "FrameworkDependent")
-            for product in ("Editor", "CrossPlatform-Sample-GameTestCase", "CrossPlatform-Sample-Player", "CrossPlatform-Sample-Developer")} | {
-                f"GalNet-CrossPlatform-Sample-Contracts-{version}-{rid}.zip" for rid in ("win-x64", "linux-x64")} | {
+            for deployment in ("SelfContained",)
+            for product in ("Editor", "CrossPlatform-Sample-GameTestCase")} | {
                 f"GalNet-CrossPlatform-Sample-GameTestCase-{version}-android-arm64.apk"}
 
 
@@ -244,8 +243,8 @@ def seal(root, inputs, version, commit, tag):
     bundles = [read(path) for path in sorted(inputs.glob("*/bundle.json"))]
     keys = {(bundle["target"], bundle["deployment"]) for bundle in bundles}
     expected = {(rid, deployment) for rid in ("win-x64", "linux-x64")
-                for deployment in ("SelfContained", "FrameworkDependent")} | {("android-arm64", "MonoAOT")}
-    if len(bundles) != 5 or keys != expected:
+                for deployment in ("SelfContained",)} | {("android-arm64", "MonoAOT")}
+    if len(bundles) != 3 or keys != expected:
         raise ValueError("Incomplete platform/deployment matrix.")
     for path in sorted(inputs.glob("*/bundle.json")):
         bundle = read(path)
@@ -259,7 +258,7 @@ def seal(root, inputs, version, commit, tag):
     if {path.name for path in assets.iterdir()} != expected_assets(version):
         raise ValueError("Unexpected cross-platform release asset set.")
     index.update(schemaVersion=2, runtime="cross-platform", platforms=sorted(keys), files=inventory(root),
-                 sampleModes=["Developer", "Player", "Bound"], sampleFlavor=None)
+                 sampleModes=["Bound"], sampleFlavor=None)
     index["files"] = [item for item in index["files"] if item["path"] not in ("release-index.json", "SHA256SUMS")]
     write(root / "release-index.json", index)
     (root / "SHA256SUMS").write_text("".join(f"{item['sha256']}  {item['path']}\n" for item in index["files"]), encoding="ascii")

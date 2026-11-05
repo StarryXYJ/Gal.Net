@@ -57,7 +57,7 @@
                             CornerRadius="6">
                         <StackPanel>
                         <!-- Match the field editors' 130-DIP label column plus 8-DIP spacing. -->
-                        <Grid ColumnDefinitions="24,98,Auto,*,Auto,32"
+                        <Grid ColumnDefinitions="24,98,Auto,*,Auto,Auto,32"
                               ColumnSpacing="8">
                             <Border Padding="6,0"
                                     VerticalAlignment="Center"
@@ -101,7 +101,8 @@
                                               IsVisible="{Binding #ParametersToggle.IsChecked, Converter={x:Static converters:BoolConverters.Not}}" />
                                 </Grid>
                             </ToggleButton>
-                            <Button Grid.Column="5"
+                            <controls:EntryPresetButton Grid.Column="5" Content="{loc:Localize Entry.Presets}" Page="{Binding #Root.DataContext}" Entry="{Binding}" />
+                            <Button Grid.Column="6"
                                     Classes="entryDelete"
                                     Theme="{DynamicResource EditorIconButton}"
                                     ToolTip.Tip="{loc:Localize Entry.Remove}"

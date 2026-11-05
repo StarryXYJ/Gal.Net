@@ -44,30 +44,25 @@ public static class DefaultVisualTemplate
     public static DefaultVisualTemplatePlan Prepare(ProjectConfiguration configuration)
     {
         var result = configuration.Clone();
-        var options = result.ReadDefaultOptions();
         var files = new Dictionary<string, byte[]>(StringComparer.Ordinal);
         foreach (var (purpose, name) in Programs)
         {
-            // An explicit author binding, including an empty selection, is never overwritten.
-            if (options.DefaultVisualPrograms.ContainsKey(purpose)) continue;
-            var id = Guid.NewGuid().ToString("N");
+            var id = BuiltinVisualResources.Programs[purpose];
             var path = $"Effects/Default/{name}.sksl";
-            files.Add("Assets/" + path, Encoding.UTF8.GetBytes(ReadShader(name)));
-            files.Add("Assets/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "effect-program", path }));
-            options.DefaultVisualPrograms.Add(purpose, id);
+            files.Add("Buildin/" + path, Encoding.UTF8.GetBytes(ReadShader(name)));
+            files.Add("Buildin/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "effect-program", path }));
         }
         foreach (var (purpose, name) in new Dictionary<string, string> { ["Rain"] = "Rain", ["Snow"] = "Soft", ["Petals"] = "Petal", ["Dust"] = "Soft", ["Fireflies"] = "Soft" })
         {
-            if (options.DefaultWeatherTextures.ContainsKey(purpose)) continue;
-            var id = Guid.NewGuid().ToString("N"); var path = "Effects/Default/" + purpose + "Particle.png";
+            var id = BuiltinVisualResources.WeatherTextures[purpose]; var path = "Effects/Default/" + purpose + "Particle.png";
             using var stream = typeof(DefaultVisualTemplate).Assembly.GetManifestResourceStream("GalNet.Visuals.Particles." + name + ".png")
                 ?? throw new InvalidOperationException("Missing weather texture.");
             using var memory = new MemoryStream(); stream.CopyTo(memory);
-            files.Add("Assets/" + path, memory.ToArray());
-            files.Add("Assets/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "sprite", path }));
-            options.DefaultWeatherTextures.Add(purpose, id);
+            files.Add("Buildin/" + path, memory.ToArray());
+            files.Add("Buildin/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "sprite", path }));
         }
-        result.Set(DefaultProjectConfiguration.Section, options);
+        files.Add(DefaultParticlePresets.Path, DefaultParticlePresets.Create());
+        files.Add(DefaultParticlePresets.Path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id = DefaultParticlePresets.AssetId, type = "data", path = "Presets/entries.json" }));
         return new(result, files);
     }
 }

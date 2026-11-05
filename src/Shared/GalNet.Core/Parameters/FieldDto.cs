@@ -14,6 +14,10 @@ public sealed class FieldSchemaJsonContextAttribute(Type contextType) : Attribut
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class CommonAttribute : Attribute;
 
+/// <summary>Keep this field on the target entry when applying an authoring preset.</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
+public sealed class ExcludeFromPresetAttribute : Attribute;
+
 /// <summary>The member stores a game text key; authoring tools edit its localized value.</summary>
 [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field)]
 public sealed class LocalizedTextAttribute : Attribute;

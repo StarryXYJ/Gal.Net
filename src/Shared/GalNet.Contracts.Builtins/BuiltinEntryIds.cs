@@ -10,7 +10,6 @@ public static class BuiltinEntryIds
     public const string MaskPreset = "preset.mask";
 public const string FlashPreset = "preset.flash";
 public const string IdlePreset = "preset.idle";
-public const string WeatherPreset = "preset.weather";
 public const string MoodPreset = "preset.mood";
 public const string HeartbeatPreset = "preset.heartbeat";
 public const string ParallaxPreset = "preset.parallax";

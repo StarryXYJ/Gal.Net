@@ -6,11 +6,33 @@ using GalNet.Core.Entry;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Runtime;
+using GalNet.Runtime.Engine;
+using GalNet.Core.Graph;
 
 namespace GeneralTest.Runtime;
 
 public sealed class PresentationAudioTimelineTests
 {
+    [Test]
+    public async Task StoppingGameStopsStoryAudio()
+    {
+        var host = new Host { DelayStop = true };
+        var audio = new BuiltinAudioModule(host, configuration: Configuration);
+        await using var view = new GameRegistration().AddBuiltins(audioModule: audio).BuildView();
+        var graph = new Graph { RootNodeId = "main", Nodes = { new Group { Id = "main", Entries = [
+            new PrimitiveEntry("audio.play", JsonSerializer.SerializeToElement(new { trackId = "music", asset = "sound", loopCount = 0 }))
+        ] } } };
+        await using var engine = new GameEngine(graph, new GameRuntime(null, "main"), view);
+        await engine.AdvanceAsync();
+        Assert.That(host.Requests.Any(x => x.Action == AudioBackendAction.Start), Is.True);
+        var count = host.Requests.Count;
+        await engine.StopAsync();
+        Assert.That(host.Requests.Skip(count).Any(x => x.Action == AudioBackendAction.Stop), Is.True);
+        var drain = audio.DrainAsync();
+        Assert.That(drain.IsCompleted, Is.False);
+        host.AllowStop.TrySetResult();
+        await drain.WaitAsync(TimeSpan.FromSeconds(5));
+    }
     private static readonly AudioConfiguration Configuration = new([new() { Id = "music", BusId = "music", PreserveDuringCatchUp = true }], [new() { Id = "music" }]);
     private static TimelineDefinition Definition() => new()
     {
@@ -86,10 +108,13 @@ public sealed class PresentationAudioTimelineTests
     private sealed class Host : IAudioPlaybackHost
     {
         public List<AudioBackendRequest> Requests { get; } = [];
+        public bool DelayStop { get; init; }
+        public TaskCompletionSource AllowStop { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public AudioBackendCapabilities Capabilities => new(true, true, true, true);
         public ISEffectCatalog SEffects => SEffectCatalog.Builtins;
         public event Action<AudioBackendEvent>? EventReceived { add { } remove { } }
-        public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default) { Requests.Add(request); return Task.CompletedTask; }
+        public Task ApplyAsync(AudioBackendRequest request, CancellationToken cancellationToken = default)
+        { Requests.Add(request); return DelayStop && request.Action == AudioBackendAction.Stop ? AllowStop.Task : Task.CompletedTask; }
         public void Dispose() { }
     }
 }

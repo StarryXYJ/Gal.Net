@@ -45,8 +45,7 @@ public sealed class GameInstallation
     public IReadOnlyList<IAssetProvider> CreateAssetProviders(IResourceTypeCatalog resourceTypes)
     {
         ArgumentNullException.ThrowIfNull(resourceTypes);
-        var assetsDirectory = Path.Combine(RootDirectory, "Assets");
-        if (!IsPackaged) return [new CompiledStoryAssetProvider(RootDirectory), new LocalFileProvider(assetsDirectory, resourceTypes, optional: true)];
+        if (!IsPackaged) return [new CompiledStoryAssetProvider(RootDirectory), new ProjectAssetProvider(RootDirectory, resourceTypes)];
 
         return Packages(resourceTypes).CreateProviders();
     }

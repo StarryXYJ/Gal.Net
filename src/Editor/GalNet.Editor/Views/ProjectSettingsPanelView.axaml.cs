@@ -9,6 +9,7 @@ namespace GalNet.Editor.Views;
 
 public partial class ProjectSettingsPanelView : UserControl
 {
+    public void SelectLaunchSettings() => LaunchSettingsTab.IsSelected = true;
     private ProjectSettingsPanelViewModel? _observed;
     public ProjectSettingsPanelView()
     {

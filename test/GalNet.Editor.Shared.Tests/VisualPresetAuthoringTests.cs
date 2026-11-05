@@ -35,13 +35,12 @@ public sealed class VisualPresetAuthoringTests
     [Test]
     public void Default_fill_is_a_saved_explicit_reference_and_does_not_replace_author_selection()
     {
-        var configuration = new DefaultProjectOptions { DefaultVisualPrograms = new() { ["speedLines"] = "initial", ["maskReveal"] = "mask-program" } }.ToConfiguration();
+        var configuration = new DefaultProjectOptions().ToConfiguration();
         var parameters = VisualPresetBindings.Fill(BuiltinEntryIds.SpeedLinesPreset, new(), configuration);
-        Assert.That(parameters["program"].GetString(), Is.EqualTo("initial"));
-        configuration.Set(DefaultProjectConfiguration.Section, new DefaultProjectOptions { DefaultVisualPrograms = new() { ["speedLines"] = "changed" } });
-        Assert.That(parameters["program"].GetString(), Is.EqualTo("initial"));
-        Assert.That(VisualPresetBindings.Fill(BuiltinEntryIds.SpeedLinesPreset, parameters, configuration)["program"].GetString(), Is.EqualTo("initial"));
-        Assert.That(VisualPresetBindings.Fill(BuiltinEntryIds.BlurTransition, new(), configuration), Is.Empty);
+        Assert.That(parameters["program"].GetString(), Is.EqualTo(BuiltinVisualResources.Programs["speedLines"]));
+        parameters["program"] = JsonSerializer.SerializeToElement("custom");
+        Assert.That(VisualPresetBindings.Fill(BuiltinEntryIds.SpeedLinesPreset, parameters, configuration)["program"].GetString(), Is.EqualTo("custom"));
+        Assert.That(VisualPresetBindings.Fill(BuiltinEntryIds.BlurTransition, new(), configuration)["blurProgram"].GetString(), Is.EqualTo(BuiltinVisualResources.Programs["blur"]));
     }
 
     [Test]
@@ -103,7 +102,7 @@ public sealed class VisualPresetAuthoringTests
             {
                 var path = Path.Combine(root, file); Directory.CreateDirectory(Path.GetDirectoryName(path)!); File.WriteAllBytes(path, bytes);
             }
-            var program = plan.Configuration.ReadDefaultOptions().DefaultVisualPrograms["speedLines"];
+            var program = BuiltinVisualResources.Programs["speedLines"];
             var document = new GroupDocument { Entries = [new() { Id = "lines", Type = BuiltinEntryIds.SpeedLinesPreset, Parameters = Parameters(new { playbackHandleId = "lines-play", program }) }] };
             var groupFile = Path.Combine(root, "sample.rawgalgroup");
             File.WriteAllText(groupFile, JsonSerializer.Serialize(document));
@@ -112,12 +111,12 @@ public sealed class VisualPresetAuthoringTests
             Assert.That(new ProjectValidationService(root).ValidateGroup("sample.rawgalgroup", diagnostics, catalog), Is.Not.Null, JsonSerializer.Serialize(diagnostics));
             var compiled = GalgroupCompiler.Compile(document, catalog).Document.Entries.Single();
             Assert.That(compiled.Arguments.GetRawText(), Does.Contain(program));
-            File.WriteAllText(Path.Combine(root, "Assets/Effects/Default/SpeedLines.sksl"), DefaultVisualTemplate.ReadShader("Vignette"));
+            File.WriteAllText(Path.Combine(root, "Buildin/Effects/Default/SpeedLines.sksl"), DefaultVisualTemplate.ReadShader("Vignette"));
             diagnostics.Clear();
             Assert.That(new ProjectValidationService(root).ValidateGroup("sample.rawgalgroup", diagnostics, catalog), Is.Null);
             Assert.That(diagnostics.Single().Code, Is.EqualTo("visual.programInvalid"));
             Assert.That(diagnostics.Single().Message, Does.Contain("time"));
-            File.Delete(Path.Combine(root, "Assets/Effects/Default/SpeedLines.sksl"));
+            File.Delete(Path.Combine(root, "Buildin/Effects/Default/SpeedLines.sksl"));
             diagnostics.Clear();
             Assert.That(new ProjectValidationService(root).ValidateGroup("sample.rawgalgroup", diagnostics, catalog), Is.Null);
             Assert.That(diagnostics.Single().Message, Does.Contain("missing"));

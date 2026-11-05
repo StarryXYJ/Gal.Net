@@ -505,7 +505,7 @@
         "id": "seffect.lowPass",
         "instanceId": "library-filter",
         "parameters": {
-          "cutoffHz": 20000
+          "cutoffHz": 12000
         },
         "scope": "bus",
         "targetId": "bgm"
@@ -528,30 +528,11 @@
         "timeline": {
           "playbackHandleId": "library-audio-fade",
           "frameRate": 60,
-          "durationFrames": 180,
+          "durationFrames": 240,
           "blocking": true,
           "skippable": true,
           "tracks": [],
-          "events": [
-            {
-              "frame": 90,
-              "type": "audio.play",
-              "parameters": {
-                "trackId": "sfx",
-                "asset": "a1000000000000000000000000000010",
-                "placement": "replace",
-                "gain": 0.3
-              }
-            },
-            {
-              "frame": 180,
-              "type": "audio.stop",
-              "parameters": {
-                "trackId": "sfx",
-                "fadeOut": 0.2
-              }
-            }
-          ],
+          "events": [],
           "audioTracks": [
             {
               "scope": "Bus",
@@ -561,11 +542,23 @@
               "keys": [
                 {
                   "frame": 0,
-                  "value": 20000
+                  "value": 12000
+                },
+                {
+                  "frame": 60,
+                  "value": 2500
+                },
+                {
+                  "frame": 120,
+                  "value": 400
                 },
                 {
                   "frame": 180,
-                  "value": 500
+                  "value": 400
+                },
+                {
+                  "frame": 240,
+                  "value": 12000
                 }
               ]
             }

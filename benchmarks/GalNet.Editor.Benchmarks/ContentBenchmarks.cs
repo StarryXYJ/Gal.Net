@@ -16,7 +16,7 @@ namespace GalNet.Editor.Benchmarks;
 public class ContentBenchmarks : IDisposable
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web) { WriteIndented = true };
-    private static readonly string ScratchRoot = Path.Combine(Path.GetTempPath(), "GalNet.EditorBenchmarks");
+    private static readonly string ScratchRoot = FindScratchRoot();
     private readonly string _root = Path.Combine(ScratchRoot, Guid.NewGuid().ToString("N"));
     private readonly JsonElement _original = JsonSerializer.SerializeToElement(1f);
     private readonly JsonElement _changed = JsonSerializer.SerializeToElement(2f);
@@ -31,6 +31,14 @@ public class ContentBenchmarks : IDisposable
     private byte[] _lastText = [];
     private int _revision;
     private Task _scheduledRecovery = Task.CompletedTask;
+
+    private static string FindScratchRoot()
+    {
+        var root = new DirectoryInfo(AppContext.BaseDirectory);
+        while (root is not null && !File.Exists(Path.Combine(root.FullName, "GalNet.slnx"))) root = root.Parent;
+        return root is null ? throw new InvalidOperationException("Repository root was not found.")
+            : Path.Combine(root.FullName, "output", "editor-benchmark-fixtures");
+    }
 
     [IterationSetup(Target = nameof(RecoverySchedule))]
     public void PrepareRecoverySchedule() => _documents.CurrentDocument.Name = (++_revision).ToString(System.Globalization.CultureInfo.InvariantCulture);

@@ -69,7 +69,7 @@ internal static partial class VisualPresetCompiler
                 throw new InvalidDataException("Reveal center requires two normalized coordinates.");
             parameters = new { progress = 0, softness = options.Softness, mode = options.Mode.ToString(), angle = options.Angle, count = options.Count, center = options.Center };
         }
-        timeline.Events.Add(Apply(0, id, options.NewHandleId!, options.Program, parameters));
+        timeline.Events.Add(Apply(0, id, options.NewHandleId!, options.Program ?? (options.Mode == RevealMode.Mask ? BuiltinVisualResources.MaskReveal : BuiltinVisualResources.Reveal), parameters));
         timeline.Tracks.Add(Track(id, "progress", timeline.DurationFrames, 0, 1));
         timeline.Events.Add(Stop(timeline.DurationFrames, id));
         timeline.Events.Add(CrossFadeTransition.HideLayer(options.OldHandleId!, timeline.DurationFrames));

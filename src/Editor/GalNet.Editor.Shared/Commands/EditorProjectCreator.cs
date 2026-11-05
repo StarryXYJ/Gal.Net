@@ -39,10 +39,9 @@ public static class EditorProjectCreator
         var entryId = Guid.NewGuid().ToString("N");
         var groupId = Guid.NewGuid().ToString("N");
         var configuration = (settings ?? DefaultSettings()).Clone();
-        // A custom contract opts in by declaring this authoring field and effect capability.
+        // A custom contract opts in by declaring the default project section and effect capability.
         var includeVisuals = contract is not null && contract.Catalog.TryGet(BuiltinEntryIds.ApplyEffect, out _) &&
-            contract.Configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id &&
-                section.Fields.Any(field => field.Id == "defaultVisualPrograms"));
+            contract.Configurations.Sections.Any(section => section.Id == DefaultProjectConfiguration.Section.Id);
         var visuals = includeVisuals ? DefaultVisualTemplate.Prepare(configuration) : null;
         configuration = visuals?.Configuration ?? configuration;
         var files = new[] { "Graph/graph.json", $"Graph/groups/{groupId}.rawgalgroup", "settings.json", ".galnet/editor-state.json" }

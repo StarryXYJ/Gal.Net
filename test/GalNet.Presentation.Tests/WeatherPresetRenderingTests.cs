@@ -19,7 +19,7 @@ public sealed class WeatherPresetRenderingTests
         return root.FullName;
     }
 
-    private static string Asset(string id) => Directory.GetFiles(Path.Combine(Root(), "GameTestCase/Assets"), "*.meta", SearchOption.AllDirectories)
+    private static string Asset(string id) => new[] { "Assets", "Buildin" }.SelectMany(folder => Directory.GetFiles(Path.Combine(Root(), "GameTestCase", folder), "*.meta", SearchOption.AllDirectories))
         .Single(path =>
         {
             using var document = JsonDocument.Parse(File.ReadAllText(path));
@@ -109,6 +109,10 @@ public sealed class WeatherPresetRenderingTests
     public void Rain_streaks_follow_their_velocity_and_radial_rain_uses_outward_motion()
     {
         var rain = Definition("Rain"); var radial = Definition("RadialRain");
+        Assert.That(rain.InitialModule.Size.Min, Is.EqualTo(.0572f).Within(.000001f));
+        Assert.That(rain.InitialModule.Size.Max, Is.EqualTo(.143f).Within(.000001f));
+        Assert.That(radial.InitialModule.Size.Min, Is.EqualTo(.0858f).Within(.000001f));
+        Assert.That(radial.InitialModule.Size.Max, Is.EqualTo(.2288f).Within(.000001f));
         Assert.That(rain.InitialModule.AlignToVelocity, Is.True);
         Assert.That(rain.InitialModule.VelocityX.Min, Is.GreaterThan(0));
         Assert.That(radial.InitialModule.AlignToVelocity, Is.True);

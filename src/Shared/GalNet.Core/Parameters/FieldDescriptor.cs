@@ -46,8 +46,13 @@ public sealed class FieldDescriptor
     public string? ResourceTypeId { get; }
     public string? MemberName { get; private init; }
     public string? JsonPropertyName { get; private init; }
+    public bool ExcludeFromPreset { get; private init; }
 
     public FieldDescriptor WithMember(string memberName, string? jsonPropertyName = null) =>
         new(Id, Value, IsRequired, DefaultValue, Editor, LabelKey, DescriptionKey, Semantic, ResourceTypeId)
-        { MemberName = memberName, JsonPropertyName = jsonPropertyName };
+        { MemberName = memberName, JsonPropertyName = jsonPropertyName, ExcludeFromPreset = ExcludeFromPreset };
+
+    public FieldDescriptor WithPresetExclusion() =>
+        new(Id, Value, IsRequired, DefaultValue, Editor, LabelKey, DescriptionKey, Semantic, ResourceTypeId)
+        { MemberName = MemberName, JsonPropertyName = JsonPropertyName, ExcludeFromPreset = true };
 }

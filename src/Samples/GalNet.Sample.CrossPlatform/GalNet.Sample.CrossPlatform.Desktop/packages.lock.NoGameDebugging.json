@@ -292,6 +292,9 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.diagnostics": {
+        "type": "Project"
+      },
       "galnet.gamehost": {
         "type": "Project",
         "dependencies": {
@@ -375,6 +378,7 @@
           "CommunityToolkit.Mvvm": "[8.4.1, )",
           "GalNet.Avalonia.GameHost": "[1.0.0, )",
           "GalNet.Avalonia.Themes": "[1.0.0, )",
+          "GalNet.Diagnostics": "[1.0.0, )",
           "GalNet.Project.Contracts": "[1.0.0, )",
           "Irihi.Ursa.Themes.Semi": "[2.1.0, )",
           "Semi.Avalonia": "[12.0.1, )",

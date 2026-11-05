@@ -271,7 +271,6 @@ public sealed partial class SceneTargetAnalysis
             case BuiltinEntryIds.MaskPreset:
             case BuiltinEntryIds.FlashPreset:
             case BuiltinEntryIds.IdlePreset:
-            case BuiltinEntryIds.WeatherPreset:
             case BuiltinEntryIds.MoodPreset:
             case BuiltinEntryIds.HeartbeatPreset:
             case BuiltinEntryIds.ParallaxPreset:

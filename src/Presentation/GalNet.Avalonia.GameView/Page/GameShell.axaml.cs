@@ -152,12 +152,18 @@ public partial class GameShell : UserControl, IDisposable
 
         if (!_hadActiveRun || _returningToTitle) return;
         _hadActiveRun = false;
-        Dispatcher.UIThread.Post(() =>
+        Dispatcher.UIThread.Post(async () =>
         {
             // Do not rewrite history if a new run has already started or the host navigated
             // away while the old run was stopping.
-            if (!_session.IsPlaying && GetGameplay(_viewModel.CurrentViewModel) is not null)
-                _showTitle();
+            if (_session.IsPlaying || GetGameplay(_viewModel.CurrentViewModel) is null) return;
+            try
+            {
+                await _session.StopAsync();
+                if (!_session.IsPlaying && GetGameplay(_viewModel.CurrentViewModel) is not null)
+                    _showTitle();
+            }
+            catch (Exception error) { Log.Logger.Error(error, "Unable to stop completed game"); }
         });
     }
 

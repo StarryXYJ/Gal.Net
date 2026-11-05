@@ -133,28 +133,20 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libegl1 libgles2
           python scripts/release/prepare-linux-media.py --work-directory out/media-work --output-directory out/media
-      - name: Publish and package both deployments of all three player modes
+      - name: Publish and package Editor and bound sample demo
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_RID: ${{ matrix.rid }}
         run: |
-          foreach ($deployment in @('SelfContained', 'FrameworkDependent')) {
-            $raw = "out/raw/$deployment"
-            $arguments = @('--target', $env:RELEASE_RID, '--version', $env:RELEASE_VERSION,
-              '--output', $raw, '--deployment', $deployment, '--package-apphosts', '--bind-game',
-              '--flavors', 'Developer', 'Player', 'Bound')
-            if ($deployment -eq 'FrameworkDependent') {
-              $nativeName = if ($IsWindows) { 'galnet_miniaudio.dll' } else { 'libgalnet_miniaudio.so' }
-              $arguments += @('--native-audio', "out/raw/SelfContained/native/install/$nativeName")
-            }
-            python scripts/ci/publish-applications.py @arguments
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            $packageArguments = @('desktop', '--raw', $raw, '--output', "out/bundles/$env:RELEASE_RID-$deployment")
-            if (!$IsWindows) { $packageArguments += @('--media', 'out/media') }
-            python scripts/release/cross-platform-release.py @packageArguments
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
+          $raw = 'out/raw/SelfContained'
+          python scripts/ci/publish-applications.py --target $env:RELEASE_RID --version $env:RELEASE_VERSION `
+            --output $raw --deployment SelfContained --package-apphosts --bind-game --flavors Player Bound
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $packageArguments = @('desktop', '--raw', $raw, '--output', "out/bundles/$env:RELEASE_RID-SelfContained", '--demo-only')
+          if (!$IsWindows) { $packageArguments += @('--media', 'out/media') }
+          python scripts/release/cross-platform-release.py @packageArguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: release-platform-${{ inputs.version }}-${{ matrix.rid }}

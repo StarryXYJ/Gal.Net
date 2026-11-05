@@ -30,7 +30,7 @@ GameShell 的返回标题和应用输入动作由组合入口提供回调；Game
 
 存档页组合 `SaveSlotCollection`，内置对象订阅槽位更新并释放预览，项目 VM 决定保存后返回及读档流程。SaveSlotCard 的激活按钮在预览图片下层；图片设置 IsHitTestVisible=false，保证应用按钮样式不会遮挡预览，图片区域点击仍能激活槽位，名称和高亮位于上层。Gallery 页面组合 `GalleryThumbnailCollection`、`GalleryImageState`、`GalleryAudioState`、`GalleryVideoState` 与 `GalleryScenePlayback`，内置对象负责预览、轮询、取消与资源释放，不选择具体应用页面。缩略图请求捕获本次取消源与行快照，旧请求不能回写替换后的列表。场景重播等待 pending startup 结束后才释放；已由启动取消路径释放的 run 不再留在 pending slot 中，避免重复释放。
 
-Sample 使用配色库的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，目标平台实际显示仍需验收。Editor 自身字体不在本次范围。
+Sample 使用配色库的 `GameTypography.UiFontFamily`，经 `GalNet.Theme.FontFamily` 资源应用于玩家根，跟随宿主默认字体。各平台显式中文回退统一优先 Noto Sans CJK SC / Noto Sans SC / Source Han Sans SC / Source Han Sans CN，不指定微软雅黑或苹方；未命中时仍由系统匹配。Sample 的 AppBuilder 配合 `WithInterFont()` 使用 `CreateFontManagerOptions("fonts:Inter#Inter")`，以自带 Inter 作为默认字体，并统一所有应用 Window 的字体；显式日志等宽字体保留。Android 宿主在首次玩家布局前预先解析普通和粗体中文回退字形，避免已验证设备上普通中文显示为横条。Inter 不含中文字形，目前未打包中文字体文件；中文需要已安装的 CJK 字体或宿主自行部署，不同设备仍需验证。Editor 自身字体不在本次范围。
 
 需要返回行为的页面继承 `BackNavigablePageViewModel`，获得共享 `BackCommand`、受保护的 `Navigation` 和可重写的 `OnBack()`；默认通过导航历史返回。设置、存读档、鉴赏及其详情、关于页已接入；视频详情的 `OnBack()` 先停止播放。标题、加载和剧情页不默认开启返回。页面 XAML 继续绑定 `BackCommand`，无需绑定键盘事件。
 

@@ -1,4 +1,4 @@
-<Styles xmlns="https://github.com/avaloniaui" xmlns:primitives="using:Avalonia.Controls.Primitives" xmlns:themes="using:GalNet.Editor.Themes" xmlns:timeline="using:GalNet.Game.Controls.Timeline" xmlns:forms="using:GalNet.Game.Controls.Forms">
+<Styles xmlns="https://github.com/avaloniaui" xmlns:primitives="using:Avalonia.Controls.Primitives" xmlns:themes="using:GalNet.Editor.Themes" xmlns:timeline="using:GalNet.Game.Controls.Timeline" xmlns:forms="using:GalNet.Game.Controls.Forms" xmlns:dock="using:Dock.Avalonia.Controls">
   <!-- Native themes also contain palette defaults. Bind author controls explicitly to the
        Editor palette so custom variants keep readable text and consistent neutral surfaces. -->
   <Style Selector=":is(primitives|TemplatedControl)">
@@ -40,6 +40,9 @@
   </Style>
   <Style Selector="Button#PART_MinimizeButton, Button#PART_MaximizeButton, Button#PART_CloseButton, Button#PART_FullScreenButton, Button#PART_PopoverFullScreenButton, Button#PART_PopoverCloseButton">
     <Setter Property="themes:EditorButton.IsIcon" Value="True"/>
+  </Style>
+  <Style Selector="dock|DocumentControl">
+    <Setter Property="CloseButtonTheme" Value="{DynamicResource EditorDockCloseButton}"/>
   </Style>
   <Style Selector="Button:not(.editor-icon)">
     <Setter Property="Background" Value="{DynamicResource SemiColorFill0}"/>

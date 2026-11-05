@@ -83,14 +83,14 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         try
         {
             var directory = SelectedEntry is { IsDirectory: true } selected ? selected.Path : CurrentDirectory;
-            if (directory != "Assets" && !directory.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException(_localization["Variants.ChooseFolder"]);
+            if (directory is not ("Assets" or "Buildin") && !ProjectFilePaths.IsResource(directory)) throw new InvalidDataException(_localization["Variants.ChooseFolder"]);
             var path = directory + "/variants.variants";
             var number = 1;
             while (File.Exists(new ProjectRawReader(ProjectRoot).Resolve(path))) path = directory + "/variants" + number++ + ".variants";
             var types = (IResourceTypeCatalog)_projects.Current!.Services.GetService(typeof(IResourceTypeCatalog))!;
             var json = ImageVariantsAuthoring.Create(ProjectRoot, path, types);
             if (!await ExecuteAsync(new(ProjectFileAction.CreateFile, [], path, Content: Encoding.UTF8.GetBytes(json)))) return;
-            _workspace.SelectedAsset = _assets.GetEntry(path[7..]);
+            _workspace.SelectedAsset = _assets.GetProjectEntry(path);
         }
         catch (Exception error) { ShowError(error); }
     }
@@ -122,7 +122,9 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
     private void OnSelection(object? sender, NotifyCollectionChangedEventArgs args)
     {
         OnPropertyChanged(nameof(SelectedEntry)); OnPropertyChanged(nameof(CanRename)); OnPropertyChanged(nameof(CanChangeSelection)); OnPropertyChanged(nameof(SelectionInformation));
-        if (SelectedEntry is { IsDirectory: false } item && item.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) && _assets.GetEntry(item.Path[7..]) is { } asset) _workspace.FocusAsset(asset);
+        if (SelectedEntry is { IsDirectory: false } item &&
+            (item.Path.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase) || item.Path.StartsWith("Buildin/", StringComparison.OrdinalIgnoreCase)) &&
+            _assets.GetProjectEntry(item.Path) is { } asset) _workspace.FocusAsset(asset);
         else _workspace.SelectedAsset = null;
     }
     partial void OnSelectedDirectoryChanged(ProjectDirectoryNode? value) { if (!_rebuilding && value is not null) Navigate(value.Path); }
@@ -144,7 +146,12 @@ public sealed partial class AssetPanelViewModel : ObservableObject, IDisposable
         foreach (var part in value.Split('/', StringSplitOptions.RemoveEmptyEntries)) { path = path.Length == 0 ? part : path + "/" + part; Breadcrumbs.Add(new(part, path)); }
         OnPropertyChanged(nameof(CanGoUp));
     }
-    private void ShowError(Exception error) { _error = error; ErrorText = EditorText.Error(error).Render(_localization); }
+    private void ShowError(Exception error)
+    {
+        _error = error;
+        ErrorText = EditorText.Error(error).Render(_localization);
+        Serilog.Log.Error(error, "Project files operation failed: {ErrorMessage}", ErrorText);
+    }
     public void Navigate(string path, bool record = true)
     {
         try

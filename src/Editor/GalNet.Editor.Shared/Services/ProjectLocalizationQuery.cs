@@ -37,7 +37,8 @@ public sealed class ProjectLocalizationQuery(IProjectContentSession content, IEd
         try { if (Directory.Exists(reader.Resolve("I18n"))) paths = reader.Files("I18n", diagnostics); }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or InvalidDataException)
         { issues.Add(new("source.enumeration", "I18n", "", error.Message)); }
-        if (Directory.Exists(reader.Resolve("Assets"))) paths = paths.Concat(reader.Files("Assets", diagnostics).Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))).ToArray();
+        foreach (var root in new[] { "Assets", "Buildin" })
+            if (Directory.Exists(reader.Resolve(root))) paths = paths.Concat(reader.Files(root, diagnostics).Where(path => path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase))).ToArray();
         foreach (var path in paths.Where(IsSource))
         {
             if (managed.ContainsKey(path)) continue;
@@ -74,7 +75,7 @@ public sealed class ProjectLocalizationQuery(IProjectContentSession content, IEd
         return _index;
     }
 
-    private static bool IsSource(string path) => (path.StartsWith("Assets/", StringComparison.Ordinal) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) || path.StartsWith("I18n/", StringComparison.Ordinal) &&
+    private static bool IsSource(string path) => (ProjectFilePaths.IsResource(path) && path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)) || path.StartsWith("I18n/", StringComparison.Ordinal) &&
         !path.StartsWith("I18n/External/", StringComparison.OrdinalIgnoreCase) && path.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
     private void Clear()
     {

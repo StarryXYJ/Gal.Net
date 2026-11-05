@@ -8,6 +8,26 @@ namespace GeneralTest.Schema;
 public sealed class FieldSchemaGeneratorTests
 {
     [Test]
+    public void PresetExclusionIsGeneratedAsFieldMetadata()
+    {
+        const string source = """
+            using GalNet.Core.Parameters;
+            [GenerateFieldSchema] public partial class Options {
+                [Field(0), ExcludeFromPreset] public string? Instance {get;set;}
+                [Field(1)] public string? Label {get;set;}
+            }
+            """;
+        var driver = CSharpGeneratorDriver.Create(new FieldSchemaGenerator().AsSourceGenerator())
+            .RunGeneratorsAndUpdateCompilation(Compile(source), out var output, out var diagnostics);
+        Assert.That(diagnostics, Is.Empty);
+        Assert.That(output.GetDiagnostics().Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error), Is.Empty);
+        var code = string.Join("\n", driver.GetRunResult().GeneratedTrees.Select(tree => tree.ToString()));
+        Assert.That(code.Split(".WithPresetExclusion()").Length - 1, Is.EqualTo(1));
+        var field = new FieldDescriptor("instance", new(typeof(string))).WithPresetExclusion().WithMember("Instance");
+        Assert.That(field.ExcludeFromPreset, Is.True);
+    }
+
+    [Test]
     public void AConsumerCompiledAgainstTheOldDescriptorApiLoadsAgainstCurrentCore()
     {
         var platform = ((string)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")!).Split(Path.PathSeparator)

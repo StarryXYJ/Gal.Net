@@ -46,6 +46,12 @@ public sealed class DistributionComposeTests
         File.WriteAllText(Path.Combine(Source, "Graph/graph.json"), """{"version":2,"name":"Compose","rootNodeId":"main","nodes":[{"id":"main","name":"Main","type":"Group","file":"groups/main.rawgalgroup"}],"edges":[],"playerVariables":[],"saveVariables":[]}""");
         File.WriteAllText(Path.Combine(Source, "Graph/groups/main.rawgalgroup"), """{"version":2,"kind":"Raw","entries":[]}""");
         File.WriteAllText(Path.Combine(Source, "settings.json"), """{"version":1,"sections":{}}""");
+        foreach (var (path, bytes) in GalNet.Editor.Shared.Visuals.DefaultVisualTemplate.Prepare(new()).Files)
+        {
+            var target = Path.Combine(Source, path);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.WriteAllBytes(target, bytes);
+        }
         File.Copy(Environment.ProcessPath!, Path.Combine(Runtime, "Player.exe"));
         File.WriteAllText(Path.Combine(Runtime, ApplicationPackageLayout.FileName), JsonSerializer.Serialize(new ApplicationPackageLayout
         {

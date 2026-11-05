@@ -1,4 +1,5 @@
 using DynamicLocalization.Core;
+using System.IO.Compression;
 using GalNet.Assets;
 using GalNet.Assets.Provider;
 using GalNet.Assets.Variants;
@@ -12,6 +13,7 @@ using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Shared.Visuals;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
@@ -21,6 +23,30 @@ namespace GeneralTest.Runtime;
 
 public class GameTestCaseTests
 {
+    [Test]
+    public async Task BuiltinResourcesSurviveGalpakExportAndExtraction()
+    {
+        var repository = FindRepositoryDirectory();
+        var root = Path.Combine(repository, "output", "builtin-galpak-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var types = BuiltinResourceTypes.CreateCatalog();
+            var gallery = BuiltinGalleryTypes.CreateCatalog(types);
+            var package = await GamePackageExporter.ExportAsync("visuals", "Visuals", Path.Combine(repository, "GameTestCase"), root,
+                types, gallery, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()), DefaultProjectConfiguration.Schema);
+            Assert.That(package.Success, Is.True, package.Error);
+            var extracted = Path.Combine(root, "extracted");
+            ZipFile.ExtractToDirectory(package.PackagePath!, extracted);
+            var installation = await GameInstallation.OpenAsync(Path.Combine(extracted, "pak"));
+            _ = await installation.CreateContentProvider(types, gallery).LoadAsync();
+            using var assets = new AssetManager([new PakFileProvider(Path.Combine(extracted, "pak/Assets/Paks/000-base.pak"), "assets", types)]);
+            Assert.That((await assets.GetFileAsync(BuiltinVisualResources.Programs["speedLines"]))?.TypeId, Is.EqualTo("effect-program"));
+            Assert.That((await assets.GetFileAsync(BuiltinVisualResources.WeatherTextures["Rain"]))?.TypeId, Is.EqualTo("sprite"));
+            Assert.That(await assets.GetFileAsync(DefaultParticlePresets.AssetId), Is.Null, "Authoring preset data must not enter the published package.");
+        }
+        finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
+    }
+
     [Test]
     public async Task Default_visual_programs_and_mask_image_survive_export_into_the_resource_package()
     {
@@ -34,15 +60,14 @@ public class GameTestCaseTests
             Assert.That(exported.Success, Is.True, exported.Error);
             var content = await new InstalledGameContentProvider(output, types, BuiltinGalleryTypes.CreateCatalog(types)).LoadAsync();
             using var assets = new AssetManager([new PakFileProvider(Path.Combine(output, "Assets/Paks/000-base.pak"), "assets", types)]);
-            var programs = content.Configuration.ReadDefaultOptions().DefaultVisualPrograms;
-            Assert.That(programs, Has.Count.EqualTo(16));
-            foreach (var id in programs.Values)
+            foreach (var id in new[] { BuiltinVisualResources.Programs["speedLines"], BuiltinVisualResources.Programs["shapeMask"], BuiltinVisualResources.Programs["mood"] })
             {
                 var file = await assets.GetFileAsync(id);
                 Assert.That(file, Is.Not.Null);
                 Assert.That(file!.TypeId, Is.EqualTo("effect-program"));
             }
             Assert.That((await assets.GetFileAsync("a1000000000000000000000000000003"))?.TypeId, Is.EqualTo("sprite"));
+            Assert.That((await assets.GetFileAsync(BuiltinVisualResources.WeatherTextures["Rain"]))?.TypeId, Is.EqualTo("sprite"));
         }
         finally { if (Directory.Exists(output)) Directory.Delete(output, true); }
     }

@@ -28,11 +28,11 @@ Apply 或失焦提交输入，Cancel input 只取消当前输入；文本控件�
 
 | 路径 | 当前规则 |
 | --- | --- |
-| `Assets/**` | 原始文件与相邻 `.meta` 整体操作，禁止单独操作 sidecar；移动保留 ID，复制/导入分配新 ID |
+| `Assets/**`、`Buildin/**` | 原始文件与相邻 `.meta` 整体操作，禁止单独操作 sidecar；移动保留 ID，复制/导入分配新 ID。固定内置资源可编辑和复制，但禁止删除、移动、改名及通过父目录执行这些操作 |
 | `Graph/**` | 仅在 Graph 内移动；受管理 Group 的 source path 同步修改，Group/Entry 身份不变；关联源删除需显式选择同时删除节点及关联边 |
 | `I18n/<culture>/**`、`I18n/External/<culture>/**` | 同一文化子目录内操作，跨文化/内外源移动被拒绝；文化根和 catalog 受保护 |
 | 其他项目内文件 | 原样保留字节与目录信息；不分析未知格式的内部语义 |
-| `settings.json`、`Graph/graph.json`、`Assets`、`Graph`、`I18n` 根 | 固定入口，通过专属领域编辑，禁止普通文件改名/移动/删除 |
+| `settings.json`、`Graph/graph.json`、`Assets`、`Buildin`、`Graph`、`I18n` 根 | 固定入口，通过专属领域编辑，禁止普通文件改名/移动/删除 |
 | `Contracts/`、`Output/`、`Temp/`、`.galnet/`、版本控制及 IDE 内部根目录 | 禁止普通文件修改 |
 
 预检拒绝根路径逃逸、链接/重解析点、非法名称、自目录移动、目标占用、跨类别移动和批次目标冲突。选中父目录和它的子项时折叠成一次目录操作；Windows 支持仅修改大小写并恢复实际文件名拼写。空目录也参与撤销。
