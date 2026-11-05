@@ -60,10 +60,12 @@ public sealed class EntryPresetButton : Button
             list.Children.Clear();
             foreach (var preset in presets.List(entryType))
             {
-                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), ColumnSpacing = 8 };
+                var row = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 8 };
                 var name = new TextBox { Name = "EntryPresetName", Text = preset.Name, Background = Brushes.Transparent, BorderThickness = new Thickness(0), Padding = new Thickness(3), MinWidth = 120, MaxLength = 120, VerticalContentAlignment = VerticalAlignment.Center };
                 var apply = new Button { Name = "ApplyEntryPreset", Content = Text("Entry.PresetApply", "Apply") };
-                Grid.SetColumn(apply, 1); row.Children.Add(name); row.Children.Add(apply);
+                Grid.SetColumn(apply, 2); row.Children.Add(name);
+                if (preset.IsBuiltin) { var label = new TextBlock { Text = Text("Entry.PresetBuiltin", "Built-in"), VerticalAlignment = VerticalAlignment.Center, Opacity = .7 }; Grid.SetColumn(label, 1); row.Children.Add(label); }
+                row.Children.Add(apply);
                 Task pendingRename = Task.CompletedTask;
                 var renameFailed = false;
                 ContextMenu CreateMenu()
@@ -74,7 +76,7 @@ public sealed class EntryPresetButton : Button
                     remove.Click += async (_, _) => { await pendingRename; await Run(async () => { await presets.DeleteAsync(preset.Id); Refresh(); }); };
                     return menu;
                 }
-                row.ContextMenu = CreateMenu(); name.ContextMenu = CreateMenu();
+                if (!preset.IsBuiltin) { row.ContextMenu = CreateMenu(); name.ContextMenu = CreateMenu(); }
                 apply.Click += async (_, _) => { await pendingRename; if (!renameFailed) await Run(async () => { await presets.ApplyAsync(page.GroupId, entry.Source, preset.Id); flyout.Hide(); }); };
                 async Task CommitName()
                 {

@@ -30,7 +30,9 @@ public sealed class BuiltinVisualResourcesTests
             var document = persistence.Load();
             foreach (var request in new[] {
                 new ProjectFileRequest(ProjectFileAction.Delete, ["Buildin/Effects/Default/Bloom.sksl"]),
-                new ProjectFileRequest(ProjectFileAction.Move, ["Buildin/Effects/Default"], "Assets") })
+                new ProjectFileRequest(ProjectFileAction.Move, ["Buildin/Effects/Default"], "Assets"),
+                new ProjectFileRequest(ProjectFileAction.Delete, [DefaultParticlePresets.Path]),
+                new ProjectFileRequest(ProjectFileAction.Move, ["Buildin/Presets"], "Assets") })
             {
                 using var operation = new ProjectFileOperation(root, request, catalog);
                 Assert.ThrowsAsync<EditorOperationException>(() => operation.ApplyAsync(true, prepare => persistence.PublishStructureAsync(document, prepare)));
@@ -80,13 +82,29 @@ public sealed class BuiltinVisualResourcesTests
     }
 
     [Test]
-    public void CompilerUsesModeSpecificBuiltinTextureWhenAuthorOmitsIt()
+    public void WeatherIsExpressedAsFiveOrdinaryParticlePresets()
     {
-        var raw = JsonSerializer.SerializeToElement(new { playbackHandleId = "snow", weather = "Snow" });
-        var group = new GroupDocument { Entries = [new() { Id = "weather", Type = BuiltinEntryIds.WeatherPreset,
-            Parameters = raw.EnumerateObject().ToDictionary(item => item.Name, item => item.Value.Clone()) }] };
-        var compiled = GalgroupCompiler.Compile(group, new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules())).Document.Entries.Single();
-        var texture = compiled.Arguments.GetProperty("timeline").GetProperty("events")[0].GetProperty("parameters").GetProperty("parameters").GetProperty("particleTexture").GetString();
-        Assert.That(texture, Is.EqualTo(BuiltinVisualResources.WeatherTextures["Snow"]));
+        using var json = JsonDocument.Parse(DefaultParticlePresets.Create());
+        var presets = json.RootElement.GetProperty("presets").EnumerateArray().ToArray();
+        Assert.That(presets, Has.Length.EqualTo(5));
+        var kinds = new[] { "Rain", "Snow", "Petals", "Dust", "Fireflies" };
+        for (var index = 0; index < presets.Length; index++)
+        {
+            var preset = presets[index];
+            Assert.That(preset.GetProperty("type").GetString(), Is.EqualTo(BuiltinEntryIds.PlayParticleEmitter));
+            var particle = preset.GetProperty("parameters").GetProperty("parameters");
+            var definition = GalNet.Contracts.Builtins.Scene.ParticleEmitterDefinition.FromJson(particle.GetRawText());
+            Assert.That(definition.ParticleTexture, Is.EqualTo(BuiltinVisualResources.WeatherTextures[kinds[index]]));
+            Assert.That(definition.InitialModule.Lifetime.Min, Is.GreaterThan(0));
+            Assert.That(definition.EmissionRate * definition.InitialModule.Lifetime.Max, Is.LessThan(definition.MaxParticles));
+            Assert.That(definition.Shape!.Y, Is.EqualTo(index >= 3 ? 540 : -16));
+            Assert.That(definition.Shape.Height, Is.EqualTo(index >= 3 ? 1080 : 1));
+            Assert.That(definition.Shape.X - definition.Shape.Width / 2, Is.LessThanOrEqualTo(0));
+            Assert.That(definition.Shape.X + definition.Shape.Width / 2, Is.GreaterThanOrEqualTo(1920));
+            Assert.That(definition.LifetimeModule.Opacity![1].Time * definition.InitialModule.Lifetime.Max, Is.LessThan(.25f));
+            if (index == 0) { Assert.That(definition.InitialModule.Size.Max, Is.EqualTo(.143f)); Assert.That(definition.InitialModule.Color.Max, Is.EqualTo("#9FC6DF78")); }
+            if (index == 2) Assert.That(definition.InitialModule.Color, Is.EqualTo(new GalNet.Contracts.Builtins.Scene.ParticleColorRange("#ED4786CC", "#FFB1D1F2")));
+        }
+        Assert.That(new TargetProfileEntryCatalog(BuiltinSchemas.CreateAllModules()).TryGet("preset.weather", out _), Is.False);
     }
 }

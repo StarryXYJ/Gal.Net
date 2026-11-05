@@ -227,7 +227,7 @@ public sealed partial class ProjectFileOperation : IDisposable
             {
                 var metadataFiles = tree.Files.Where(file => file.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)).ToList();
                 if (File.Exists(full) && File.Exists(full + ".meta")) metadataFiles.Add(full + ".meta");
-                var protectedIds = BuiltinVisualResources.Programs.Values.Concat(BuiltinVisualResources.WeatherTextures.Values).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var protectedIds = BuiltinVisualResources.Programs.Values.Concat(BuiltinVisualResources.WeatherTextures.Values).Append(GalNet.Editor.Shared.Visuals.DefaultParticlePresets.AssetId).ToHashSet(StringComparer.OrdinalIgnoreCase);
                 foreach (var metadata in metadataFiles)
                 {
                     using var json = JsonDocument.Parse(File.ReadAllBytes(metadata));

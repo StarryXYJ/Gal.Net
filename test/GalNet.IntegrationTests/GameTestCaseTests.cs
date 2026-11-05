@@ -13,6 +13,7 @@ using GalNet.Core.Execution;
 using GalNet.Core.Graph;
 using GalNet.Editor.Shared.Commands;
 using GalNet.Editor.Shared.Services;
+using GalNet.Editor.Shared.Visuals;
 using GalNet.Presentation.Abstractions.View;
 using GalNet.Primitives.Builtins;
 using GalNet.Runtime.Engine;
@@ -41,6 +42,7 @@ public class GameTestCaseTests
             using var assets = new AssetManager([new PakFileProvider(Path.Combine(extracted, "pak/Assets/Paks/000-base.pak"), "assets", types)]);
             Assert.That((await assets.GetFileAsync(BuiltinVisualResources.Programs["speedLines"]))?.TypeId, Is.EqualTo("effect-program"));
             Assert.That((await assets.GetFileAsync(BuiltinVisualResources.WeatherTextures["Rain"]))?.TypeId, Is.EqualTo("sprite"));
+            Assert.That(await assets.GetFileAsync(DefaultParticlePresets.AssetId), Is.Null, "Authoring preset data must not enter the published package.");
         }
         finally { if (Directory.Exists(root)) Directory.Delete(root, true); }
     }

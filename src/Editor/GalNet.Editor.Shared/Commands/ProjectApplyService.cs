@@ -140,7 +140,7 @@ public sealed class ProjectApplyService(string root, IEntryCatalog catalog, Auth
 
     private static void CheckAssets(ProjectRawReader reader, IReadOnlyDictionary<string, string> finalFiles, IEnumerable<string> targets)
     {
-        var protectedIds = BuiltinVisualResources.Programs.Values.Concat(BuiltinVisualResources.WeatherTextures.Values).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var protectedIds = BuiltinVisualResources.Programs.Values.Concat(BuiltinVisualResources.WeatherTextures.Values).Append(GalNet.Editor.Shared.Visuals.DefaultParticlePresets.AssetId).ToHashSet(StringComparer.OrdinalIgnoreCase);
         foreach (var path in targets.Where(IsResource))
         {
             var resource = path.EndsWith(".meta", StringComparison.OrdinalIgnoreCase) ? path[..^5] : path;

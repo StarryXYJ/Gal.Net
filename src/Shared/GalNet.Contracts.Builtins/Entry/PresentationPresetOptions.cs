@@ -13,7 +13,6 @@ public partial class ParallaxTargetDefinition
 }
 
 public enum MaskMotion { Blink, Open, Close, LetterboxIn, LetterboxOut, Show, Hide }
-public enum WeatherKind { Rain, Snow, Petals, Dust, Fireflies }
 public enum MoodKind { Memory, Dream, Tension, Injury }
 public enum IdleMotion { Breathe, Sway }
 
@@ -48,21 +47,6 @@ public partial class IdlePresetOptions : VisualClipOptions
     [Field(9, Minimum = 0, Maximum = 30)] public float RotationDegrees { get; set; } = 1;
     [Field(10, Minimum = 0, Maximum = 100)] public float Distance { get; set; } = 3;
     [Field(11), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; } = VisualPlaybackMode.UntilStopped;
-}
-
-[GenerateFieldSchema]
-public partial class WeatherPresetOptions : VisualClipOptions
-{
-    [Common, Field(6, AllowNull = true, EditorId = "entry.imageasset", ResourceTypeId = "sprite")] public string? Texture { get; set; }
-    [Common, Field(7), JsonConverter(typeof(StringEnumValueConverter<WeatherKind>))] public WeatherKind Weather { get; set; }
-    [Field(8, Minimum = 0, Maximum = 1000)] public float Rate { get; set; } = 40;
-    [Field(9, Minimum = 1, Maximum = 2000)] public int MaxParticles { get; set; } = 300;
-    [Field(10, Minimum = 1, Maximum = 10000)] public float Width { get; set; } = 1920;
-    [Field(11, Minimum = 1, Maximum = 10000)] public float Height { get; set; } = 1080;
-    [Field(12)] public float Wind { get; set; }
-    [Field(13)] public float Z { get; set; } = 100;
-    [Field(14)] public int Seed { get; set; } = 20261102;
-    [Field(15), JsonConverter(typeof(StringEnumValueConverter<VisualPlaybackMode>))] public VisualPlaybackMode PlaybackMode { get; set; } = VisualPlaybackMode.UntilStopped;
 }
 
 [GenerateFieldSchema]

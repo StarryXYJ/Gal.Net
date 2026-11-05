@@ -146,6 +146,6 @@ LibVLC 音频后端同样为每个 voice 持有独立文件租约，先销毁播
 
 ## 默认视觉资源
 
-默认契约项目初始化将内嵌模板复制到 `Buildin/Effects/Default/`：16 个 effect-program、5 个粒子纹理及相邻 sidecar 使用跨项目固定 ID。预设引用固定默认 ID，单条可覆盖。`project visuals install` 通过作者文件事务显式补入完整缺失资源，保留作者修改并拒绝占用或身份冲突。自定义契约需声明默认项目配置及 effect.apply 才启用默认模板。
+默认契约项目初始化将内嵌模板复制到 `Buildin/Effects/Default/`：16 个 effect-program、5 个粒子纹理及相邻 sidecar 使用跨项目固定 ID。`Buildin/Presets/entries.json` 以固定身份保存五种普通粒子的创作预设，该作者数据不进入发行包。预设引用固定默认 ID，单条可覆盖。`project visuals install` 通过作者文件事务显式补入完整缺失资源，保留作者修改并拒绝占用或身份冲突。自定义契约需声明默认项目配置及 effect.apply 才启用默认模板。
 
 Shader 的可选保留 `layerZ` uniform 在 CPU/GPU 图层效果链每次绘制时取当前图层 Z；不可声明为作者参数。texture 参数由效果运行器通过 AssetManager 获得独立租约，按画布大小绑定，停止、替换、释放或准备失败时归还。预览和运行只读取项目资源；导出包含项目 shader 和纹理。使用方式及景深、停止边界见[默认视觉库](../../manual/editor/default-visuals.md)。

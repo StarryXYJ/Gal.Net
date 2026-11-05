@@ -153,7 +153,8 @@ public sealed class VisualPresetTests
     [Test]
     public void Missing_shader_target_and_reserved_handle_collisions_are_rejected()
     {
-        Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.SpeedLinesPreset, new { playbackHandleId = "p" }));
+        var defaultLines = Compile(BuiltinEntryIds.SpeedLinesPreset, new { playbackHandleId = "p" });
+        Assert.That(defaultLines.Events.Single(item => item.Type == "effect.apply").Parameters["program"].GetString(), Is.EqualTo(BuiltinVisualResources.SpeedLines));
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "p", handleId = "" }));
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ShakePreset, new { playbackHandleId = "p", targets = new[] { new { handleId = "hero" } } }));
         Assert.Throws<InvalidDataException>(() => Compile(BuiltinEntryIds.ImpactPreset, new { playbackHandleId = "p", program = "shader", handleId = "p/visual/lines" }));

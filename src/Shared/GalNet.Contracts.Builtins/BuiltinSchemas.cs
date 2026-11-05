@@ -63,7 +63,6 @@ public static class BuiltinSchemas
                 DefaultCompositeEntryBase.ForDto<MaskPresetOptions>(BuiltinEntryIds.MaskPreset, VisualPresetCompiler.Mask, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<FlashPresetOptions>(BuiltinEntryIds.FlashPreset, VisualPresetCompiler.Flash, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<IdlePresetOptions>(BuiltinEntryIds.IdlePreset, VisualPresetCompiler.Idle, category: "Preset"),
-        DefaultCompositeEntryBase.ForDto<WeatherPresetOptions>(BuiltinEntryIds.WeatherPreset, VisualPresetCompiler.Weather, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<MoodPresetOptions>(BuiltinEntryIds.MoodPreset, VisualPresetCompiler.Mood, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<HeartbeatPresetOptions>(BuiltinEntryIds.HeartbeatPreset, VisualPresetCompiler.Heartbeat, category: "Preset"),
         DefaultCompositeEntryBase.ForDto<ParallaxPresetOptions>(BuiltinEntryIds.ParallaxPreset, VisualPresetCompiler.Parallax, category: "Preset"),

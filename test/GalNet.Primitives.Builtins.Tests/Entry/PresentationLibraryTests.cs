@@ -30,33 +30,6 @@ public sealed class PresentationLibraryTests
         Assert.That(timeline.Events.Any(e => e.Type == "layer.hide"), Is.EqualTo(motion is "Blink" or "Open" or "LetterboxOut"));
     }
 
-    [TestCase("Rain")] [TestCase("Snow")] [TestCase("Petals")] [TestCase("Dust")] [TestCase("Fireflies")]
-    public void Weather_owns_one_emitter_until_stopped_and_has_a_valid_particle_definition(string weather)
-    {
-        var timeline = VisualPresetTests.Compile("preset.weather", new { playbackHandleId = "weather", texture = "texture", weather });
-        Assert.That(timeline.Blocking, Is.False); Assert.That(timeline.LoopMode, Is.EqualTo(AnimationLoopMode.Loop));
-        Assert.That(timeline.Events.First().Execution, Is.EqualTo(TimelineEventExecution.Once));
-        Assert.That(timeline.Events.Last().Execution, Is.EqualTo(TimelineEventExecution.OnCompletion));
-        var definition = ParticleEmitterDefinition.FromJson(timeline.Events.First().Parameters["parameters"].GetRawText());
-        Assert.That(definition.InitialModule.Lifetime.Min, Is.GreaterThan(0));
-        Assert.That(definition.EmissionRate * definition.InitialModule.Lifetime.Max, Is.LessThan(definition.MaxParticles));
-        var floating = weather is "Dust" or "Fireflies";
-        Assert.That(definition.Shape!.Y, Is.EqualTo(floating ? 540 : -16));
-        Assert.That(definition.Shape.Height, Is.EqualTo(floating ? 1080 : 1));
-        Assert.That(definition.Shape.X - definition.Shape.Width / 2, Is.LessThanOrEqualTo(0));
-        Assert.That(definition.Shape.X + definition.Shape.Width / 2, Is.GreaterThanOrEqualTo(1920));
-        Assert.That(timeline.Events.Last().Parameters["clear"].GetBoolean(), Is.False);
-        var fadeIn = definition.LifetimeModule.Opacity![1].Time;
-        Assert.That(fadeIn * definition.InitialModule.Lifetime.Max, Is.LessThan(.25f));
-        if (weather == "Rain")
-        {
-            Assert.That(definition.InitialModule.Size.Max * 28, Is.LessThanOrEqualTo(3.2));
-            Assert.That(definition.InitialModule.Color.Max, Is.EqualTo("#9FC6DF78"));
-        }
-        if (weather == "Petals")
-            Assert.That(definition.InitialModule.Color, Is.EqualTo(new ParticleColorRange("#ED4786CC", "#FFB1D1F2")));
-    }
-
     [TestCase("transition.flash")] [TestCase("transition.zoom")] [TestCase("transition.pixelate")] [TestCase("transition.glitch")]
     public void Transitions_end_with_original_incoming_transform_and_remove_outgoing_and_temporary_effects(string type)
     {

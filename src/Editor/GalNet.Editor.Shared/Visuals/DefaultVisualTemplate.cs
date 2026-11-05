@@ -61,6 +61,8 @@ public static class DefaultVisualTemplate
             files.Add("Buildin/" + path, memory.ToArray());
             files.Add("Buildin/" + path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id, type = "sprite", path }));
         }
+        files.Add(DefaultParticlePresets.Path, DefaultParticlePresets.Create());
+        files.Add(DefaultParticlePresets.Path + ".meta", JsonSerializer.SerializeToUtf8Bytes(new { id = DefaultParticlePresets.AssetId, type = "data", path = "Presets/entries.json" }));
         return new(result, files);
     }
 }

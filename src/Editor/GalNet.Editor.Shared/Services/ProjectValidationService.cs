@@ -128,7 +128,8 @@ public sealed class ProjectValidationService(string projectDirectory, string gra
             .Select(item => (Path: $"{directory}/{item.Value}.sksl", Id: BuiltinVisualResources.Programs[item.Key], Type: "effect-program"));
         var textures = BuiltinVisualResources.WeatherTextures
             .Select(item => (Path: $"{directory}/{item.Key}Particle.png", Id: item.Value, Type: "sprite"));
-        foreach (var item in programs.Concat(textures))
+        var presets = new[] { (Path: GalNet.Editor.Shared.Visuals.DefaultParticlePresets.Path, Id: GalNet.Editor.Shared.Visuals.DefaultParticlePresets.AssetId, Type: "data") };
+        foreach (var item in programs.Concat(textures).Concat(presets))
         {
             var metadataPath = item.Path + ".meta";
             if (!File.Exists(_reader.Resolve(item.Path)) || !File.Exists(_reader.Resolve(metadataPath)))

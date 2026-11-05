@@ -24,6 +24,41 @@ namespace GeneralTest.Editor;
 public sealed partial class ProjectWorkspaceLifecycleTests
 {
     [Test]
+    public async Task BuiltinWeatherPresetsApplyToParticlesAndPreserveInstanceIdentity()
+    {
+        var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);
+        await ui.Dispatch<bool>(async () =>
+        {
+            using var services = Services();
+            var projects = services.GetRequiredService<IProjectService>();
+            var path = Path.Combine(_root, "BuiltinWeatherPresets");
+            var project = await projects.CreateAsync(path, "Builtin presets", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
+            try
+            {
+                var workspace = project.Services.GetRequiredService<EditorWorkspaceViewModel>();
+                var group = workspace.Nodes.Single(node => node.NodeKind == GraphNodeKind.LinearGroup);
+                var entry = workspace.InsertEntriesInto(group, 0, 1, BuiltinEntryIds.PlayParticleEmitter).Single();
+                var originalId = entry.Source.Parameters["instanceId"].GetString();
+                var presets = project.Services.GetRequiredService<EntryPresetService>();
+                var builtins = presets.List(entry.Type);
+                Assert.That(builtins, Has.Count.EqualTo(5));
+                Assert.That(builtins.All(item => item.IsBuiltin), Is.True);
+                await presets.ApplyAsync(group.Id, entry.Source, builtins[0].Id);
+                Assert.That(entry.Source.Parameters["instanceId"].GetString(), Is.EqualTo(originalId));
+                Assert.That(entry.Source.Parameters["parameters"].GetProperty("particleTexture").GetString(), Is.EqualTo(BuiltinVisualResources.WeatherTextures["Rain"]));
+                Assert.ThrowsAsync<InvalidOperationException>(async () => await presets.DeleteAsync(builtins[0].Id));
+                await presets.RenameAsync(builtins[0].Id, "New rain");
+                Assert.That(presets.List(entry.Type)[0].Name, Is.EqualTo("New rain"));
+                Assert.That(File.Exists(Path.Combine(path, "Buildin/Presets/entries.json")), Is.True);
+                File.Delete(Path.Combine(path, "Buildin/Presets/entries.json"));
+                Assert.Throws<InvalidDataException>(() => presets.List(entry.Type));
+            }
+            finally { if (projects.Current is not null) await projects.CloseAsync(); }
+            return true;
+        }, CancellationToken.None);
+    }
+
+    [Test]
     public async Task EntryPresetHistoryRefusesExternalChanges()
     {
         var ui = HeadlessUnitTestSession.GetOrStartForAssembly(typeof(EditorFormTestApplication).Assembly);

@@ -78,14 +78,79 @@
     },
     {
       "id": "weather-Rain",
-      "type": "preset.weather",
+      "type": "particle.play",
       "condition": "",
       "parameters": {
-        "durationFrames": 180,
-        "playbackHandleId": "library-weather-Rain",
-        "rate": 100,
-        "texture": "3179deaa20435822a149403dd67e075a",
-        "weather": "Rain"
+        "z": 100,
+        "parameters": {
+          "particleTexture": "3179deaa20435822a149403dd67e075a",
+          "rate": 94.33962264150944,
+          "maxParticles": 300,
+          "seed": 20261102,
+          "initial": {
+            "lifetime": {
+              "max": 3.08,
+              "min": 2.08
+            },
+            "velocityX": {
+              "max": 265,
+              "min": 235
+            },
+            "velocityY": {
+              "max": 1200.0,
+              "min": 800.0
+            },
+            "alignToVelocity": true,
+            "size": {
+              "max": 0.143,
+              "min": 0.0572
+            },
+            "rotationDegrees": {
+              "max": 0,
+              "min": 0
+            },
+            "angularVelocityDegrees": {
+              "max": 0,
+              "min": 0
+            },
+            "color": {
+              "max": "#9FC6DF78",
+              "min": "#7FA9C730"
+            }
+          },
+          "shape": {
+            "x": 786.25,
+            "y": -16,
+            "type": "box",
+            "height": 1,
+            "width": 2267.5
+          },
+          "motion": {
+            "drag": 0,
+            "noise": 0
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.05769230769230769,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        },
+        "instanceId": "library-weather-Rain"
       }
     },
     {
@@ -99,11 +164,11 @@
     },
     {
       "id": "weather-Rain-stop",
-      "type": "animation.stop",
+      "type": "particle.stop",
       "condition": "",
       "parameters": {
-        "mode": "CompleteImmediately",
-        "playbackHandleId": "library-weather-Rain"
+        "instanceId": "library-weather-Rain",
+        "clear": false
       }
     },
     {
@@ -194,13 +259,79 @@
     },
     {
       "id": "weather-Snow",
-      "type": "preset.weather",
+      "type": "particle.play",
       "condition": "",
       "parameters": {
-        "durationFrames": 180,
-        "playbackHandleId": "library-weather-Snow",
-        "texture": "e5a8fef331295f738a5eb40f9b5e1148",
-        "weather": "Snow"
+        "z": 100,
+        "parameters": {
+          "particleTexture": "e5a8fef331295f738a5eb40f9b5e1148",
+          "rate": 23.25581395348837,
+          "maxParticles": 300,
+          "seed": 20261102,
+          "initial": {
+            "lifetime": {
+              "max": 12.8,
+              "min": 11.8
+            },
+            "velocityX": {
+              "max": 15,
+              "min": -15
+            },
+            "velocityY": {
+              "max": 120.0,
+              "min": 80.0
+            },
+            "alignToVelocity": false,
+            "size": {
+              "max": 0.45,
+              "min": 0.15
+            },
+            "rotationDegrees": {
+              "max": 180,
+              "min": -180
+            },
+            "angularVelocityDegrees": {
+              "max": 0,
+              "min": 0
+            },
+            "color": {
+              "max": "#FFFFFFFF",
+              "min": "#FFFFFFFF"
+            }
+          },
+          "shape": {
+            "x": 960.0,
+            "y": -16,
+            "type": "box",
+            "height": 1,
+            "width": 1920.0
+          },
+          "motion": {
+            "drag": 0,
+            "noise": 20
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.010169491525423728,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        },
+        "instanceId": "library-weather-Snow"
       }
     },
     {
@@ -214,22 +345,88 @@
     },
     {
       "id": "weather-Snow-stop",
-      "type": "animation.stop",
+      "type": "particle.stop",
       "condition": "",
       "parameters": {
-        "mode": "CompleteImmediately",
-        "playbackHandleId": "library-weather-Snow"
+        "instanceId": "library-weather-Snow",
+        "clear": false
       }
     },
     {
       "id": "weather-Petals",
-      "type": "preset.weather",
+      "type": "particle.play",
       "condition": "",
       "parameters": {
-        "durationFrames": 180,
-        "playbackHandleId": "library-weather-Petals",
-        "texture": "b52e4108949456c8b613c47eec2e4530",
-        "weather": "Petals"
+        "z": 100,
+        "parameters": {
+          "particleTexture": "b52e4108949456c8b613c47eec2e4530",
+          "rate": 17.11491442542787,
+          "maxParticles": 300,
+          "seed": 20261102,
+          "initial": {
+            "lifetime": {
+              "max": 17.42857142857143,
+              "min": 16.42857142857143
+            },
+            "velocityX": {
+              "max": 15,
+              "min": -15
+            },
+            "velocityY": {
+              "max": 84.0,
+              "min": 56.0
+            },
+            "alignToVelocity": false,
+            "size": {
+              "max": 1,
+              "min": 0.45
+            },
+            "rotationDegrees": {
+              "max": 180,
+              "min": -180
+            },
+            "angularVelocityDegrees": {
+              "max": 90,
+              "min": -90
+            },
+            "color": {
+              "max": "#FFB1D1F2",
+              "min": "#ED4786CC"
+            }
+          },
+          "shape": {
+            "x": 960.0,
+            "y": -16,
+            "type": "box",
+            "height": 1,
+            "width": 1920.0
+          },
+          "motion": {
+            "drag": 0,
+            "noise": 20
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.007304347826086955,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        },
+        "instanceId": "library-weather-Petals"
       }
     },
     {
@@ -243,22 +440,88 @@
     },
     {
       "id": "weather-Petals-stop",
-      "type": "animation.stop",
+      "type": "particle.stop",
       "condition": "",
       "parameters": {
-        "mode": "CompleteImmediately",
-        "playbackHandleId": "library-weather-Petals"
+        "instanceId": "library-weather-Petals",
+        "clear": false
       }
     },
     {
       "id": "weather-Dust",
-      "type": "preset.weather",
+      "type": "particle.play",
       "condition": "",
       "parameters": {
-        "durationFrames": 180,
-        "playbackHandleId": "library-weather-Dust",
-        "texture": "cd5d35bb40de5941b965d32bd90d08e9",
-        "weather": "Dust"
+        "z": 100,
+        "parameters": {
+          "particleTexture": "cd5d35bb40de5941b965d32bd90d08e9",
+          "rate": 40.0,
+          "maxParticles": 300,
+          "seed": 20261102,
+          "initial": {
+            "lifetime": {
+              "max": 6,
+              "min": 3
+            },
+            "velocityX": {
+              "max": 15,
+              "min": -15
+            },
+            "velocityY": {
+              "max": 15,
+              "min": -15
+            },
+            "alignToVelocity": false,
+            "size": {
+              "max": 0.18,
+              "min": 0.07
+            },
+            "rotationDegrees": {
+              "max": 180,
+              "min": -180
+            },
+            "angularVelocityDegrees": {
+              "max": 0,
+              "min": 0
+            },
+            "color": {
+              "max": "#FFFFFFFF",
+              "min": "#FFFFFFFF"
+            }
+          },
+          "shape": {
+            "x": 960,
+            "y": 540,
+            "type": "box",
+            "height": 1080,
+            "width": 1920
+          },
+          "motion": {
+            "drag": 0.15,
+            "noise": 15
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.04,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        },
+        "instanceId": "library-weather-Dust"
       }
     },
     {
@@ -272,22 +535,88 @@
     },
     {
       "id": "weather-Dust-stop",
-      "type": "animation.stop",
+      "type": "particle.stop",
       "condition": "",
       "parameters": {
-        "mode": "CompleteImmediately",
-        "playbackHandleId": "library-weather-Dust"
+        "instanceId": "library-weather-Dust",
+        "clear": false
       }
     },
     {
       "id": "weather-Fireflies",
-      "type": "preset.weather",
+      "type": "particle.play",
       "condition": "",
       "parameters": {
-        "durationFrames": 180,
-        "playbackHandleId": "library-weather-Fireflies",
-        "texture": "12d80a90e835574988aec865500726c4",
-        "weather": "Fireflies"
+        "z": 100,
+        "parameters": {
+          "particleTexture": "12d80a90e835574988aec865500726c4",
+          "rate": 40.0,
+          "maxParticles": 300,
+          "seed": 20261102,
+          "initial": {
+            "lifetime": {
+              "max": 6,
+              "min": 3
+            },
+            "velocityX": {
+              "max": 15,
+              "min": -15
+            },
+            "velocityY": {
+              "max": 15,
+              "min": -15
+            },
+            "alignToVelocity": false,
+            "size": {
+              "max": 0.35,
+              "min": 0.12
+            },
+            "rotationDegrees": {
+              "max": 180,
+              "min": -180
+            },
+            "angularVelocityDegrees": {
+              "max": 0,
+              "min": 0
+            },
+            "color": {
+              "max": "#FFF7C0FF",
+              "min": "#FFF0A088"
+            }
+          },
+          "shape": {
+            "x": 960,
+            "y": 540,
+            "type": "box",
+            "height": 1080,
+            "width": 1920
+          },
+          "motion": {
+            "drag": 0.15,
+            "noise": 15
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.04,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        },
+        "instanceId": "library-weather-Fireflies"
       }
     },
     {
@@ -301,11 +630,11 @@
     },
     {
       "id": "weather-Fireflies-stop",
-      "type": "animation.stop",
+      "type": "particle.stop",
       "condition": "",
       "parameters": {
-        "mode": "CompleteImmediately",
-        "playbackHandleId": "library-weather-Fireflies"
+        "instanceId": "library-weather-Fireflies",
+        "clear": false
       }
     }
   ]

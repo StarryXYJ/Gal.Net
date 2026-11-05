@@ -119,7 +119,8 @@ public static class GamePackageExporter
         {
             using var provider = new ProjectAssetProvider(privateStage, types);
             using var archive = await provider.OpenArchiveAsync("assets", token);
-            var assets = archive.AssetIds.Select(id => archive.GetAsset(id)!).ToArray();
+            var presetId = Guid.Parse(GalNet.Editor.Shared.Visuals.DefaultParticlePresets.AssetId);
+            var assets = archive.AssetIds.Where(id => !Guid.TryParse(id, out var parsed) || parsed != presetId).Select(id => archive.GetAsset(id)!).ToArray();
             var story = StoryResourceCompiler.Compile(privateStage, catalog, token, assets);
             var gallery = new GalleryCatalogCompiler(types, galleryTypes).Compile(assets.Concat(story).Select(file => file.Metadata));
             var available = assets.Concat(story).ToArray();

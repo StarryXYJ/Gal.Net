@@ -23,11 +23,6 @@ public static class VisualPresetBindings
     /// <summary>Called only when creating/changing entry type. Never rewrites loaded or existing entries.</summary>
     public static Dictionary<string, JsonElement> Fill(string type, Dictionary<string, JsonElement> parameters, ProjectConfiguration? configuration)
     {
-        if (type == BuiltinEntryIds.WeatherPreset && (!parameters.TryGetValue("texture", out var texture) || string.IsNullOrWhiteSpace(texture.GetString())))
-        {
-            var weather = parameters.TryGetValue("weather", out var mode) ? mode.GetString() ?? "Rain" : "Rain";
-            if (BuiltinVisualResources.WeatherTextures.TryGetValue(weather, out var id)) parameters["texture"] = JsonSerializer.SerializeToElement(id);
-        }
         if (Binding(type, parameters) is not { } binding) return parameters;
         if (parameters.TryGetValue(binding.Field, out var supplied) && supplied.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(supplied.GetString())) return parameters;
         if (BuiltinVisualResources.Programs.TryGetValue(binding.Purpose, out var program))
