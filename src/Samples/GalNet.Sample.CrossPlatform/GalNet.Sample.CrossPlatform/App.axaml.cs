@@ -211,8 +211,14 @@ public partial class App : Application, IAsyncDisposable
             // Shutdown must be able to cancel onboarding while initialization awaits user input.
             var ready = await initialization;
             if (_stopping || generation != _generation) return;
+#if BENCHMARK
+            GalNet.Diagnostics.CpuProfiler.Shared.Mark("Sample.InitializationComplete");
+#endif
             if (ready) await opening.Completion;
             else await opening.DisposeAsync();
+#if BENCHMARK
+            GalNet.Diagnostics.CpuProfiler.Shared.Mark("Sample.OpeningComplete");
+#endif
             if (_stopping || generation != _generation) return;
             if (ready) _player?.Settings.SetGamepadEnabled(true);
 #if GALNET_GAME_DEBUG
