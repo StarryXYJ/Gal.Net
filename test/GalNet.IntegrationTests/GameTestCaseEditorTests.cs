@@ -23,7 +23,7 @@ public sealed class GameTestCaseEditorTests
         {
             Directory.CreateDirectory(root);
             File.Copy(Path.Combine(source, "settings.json"), Path.Combine(root, "settings.json"));
-            foreach (var folder in new[] { "Graph", "Assets", "I18n" })
+            foreach (var folder in new[] { "Graph", "Assets", "Buildin", "I18n", "Presets" })
                 foreach (var file in Directory.EnumerateFiles(Path.Combine(source, folder), "*", SearchOption.AllDirectories))
                 {
                     var target = Path.Combine(root, Path.GetRelativePath(source, file));

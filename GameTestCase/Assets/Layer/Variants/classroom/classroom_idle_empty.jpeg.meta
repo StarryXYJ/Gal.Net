@@ -1,7 +1,7 @@
 {
   "id": "a1000000000000000000000000000001",
   "type": "sprite",
-  "path": "Variants/classroom/classroom_idle_empty.jpeg",
+  "path": "Layer/Variants/classroom/classroom_idle_empty.jpeg",
   "filter": "bilinear",
   "compress": "none",
   "galleryUnlockId": 100,

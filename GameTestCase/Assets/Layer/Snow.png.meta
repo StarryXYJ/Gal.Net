@@ -1,0 +1,7 @@
+{
+  "id": "a1000000000000000000000000000006",
+  "type": "sprite",
+  "path": "Layer/Snow.png",
+  "filter": "bilinear",
+  "compress": "none"
+}

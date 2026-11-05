@@ -26,6 +26,6 @@
   </ItemGroup>
   <ItemGroup><ProjectReference Include="../../src/Shared/GalNet.GameHost/GalNet.GameHost.csproj" /></ItemGroup>
   <ItemGroup Condition="'$(EnableGameDebugging)' != 'true'">
-    <Compile Remove="ExternalSampleDebugTests.cs;SampleDebugLogStoreTests.cs;SampleDebugSnapshotFactoryTests.cs" />
+    <Compile Remove="ExternalSampleDebugTests.cs;SampleDebugLogStoreTests.cs;SampleDebugSnapshotFactoryTests.cs;DebugContentRevisionServiceTests.cs" />
   </ItemGroup>
 </Project>

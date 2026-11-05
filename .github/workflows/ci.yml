@@ -37,7 +37,7 @@ jobs:
       - name: Build packages and verify generated game
         shell: pwsh
         run: |
-          $version = '0.0.0-ci'
+          $version = '0.0.0-dev.1'
           ./scripts/release/Pack-NuGet.ps1 -Version $version -OutputDirectory output/template-feed -WorkDirectory output/template-engine-pack
           python scripts/samples/build-dotnet-template.py --version $version --work-directory output/template-stage --output-directory output/template-package
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

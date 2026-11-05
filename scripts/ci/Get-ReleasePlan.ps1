@@ -52,3 +52,5 @@ Write-ActionOutput 'matrix' $json $GitHubOutput
 Write-ActionOutput 'has-releases' ($candidates.Count -gt 0).ToString().ToLowerInvariant() $GitHubOutput
 Write-Host "Release candidates: $($candidates.Count)."
 [pscustomobject]$plan
+# A non-ancestor result is an expected Git exit code, not a failed script.
+$global:LASTEXITCODE = 0

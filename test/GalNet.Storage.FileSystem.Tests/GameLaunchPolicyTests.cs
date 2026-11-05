@@ -28,12 +28,12 @@ public sealed class GameLaunchPolicyTests
             var policy = new GameLaunchPolicy(mode, "custom-game");
             Assert.That(policy.AllowsExternalContent, Is.False);
             Assert.That(policy.AllowsDebugging, Is.EqualTo(debugging));
-            foreach (var build in new[] { "first-build", "updated-build" })
+            foreach (var build in new[] { 'a', 'b' })
             {
-                File.WriteAllText(Path.Combine(root, "content.json"), $$"""{"projectId":"custom-game","buildId":"{{build}}"}""");
+                InstalledGameFixture.Write(root, "custom-game", build);
                 Assert.DoesNotThrow(() => policy.ValidateContent(root));
             }
-            File.WriteAllText(Path.Combine(root, "content.json"), """{"projectId":"another-game"}""");
+            InstalledGameFixture.Write(root, "another-game");
             Assert.Throws<InvalidDataException>(() => policy.ValidateContent(root));
             Assert.Throws<InvalidDataException>(() => policy.ValidateContent(null));
             Assert.Throws<InvalidDataException>(() => new GameLaunchPolicy("Bound").ValidateContent(root));

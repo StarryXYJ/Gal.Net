@@ -21,7 +21,7 @@ public sealed class GameProfilePathsTests
         foreach (var location in new[] { "old-content", "new-content" })
         {
             var content = Directory.CreateDirectory(Path.Combine(_root, location)).FullName;
-            File.WriteAllText(Path.Combine(content, "content.json"), """{"projectId":"same-project"}""");
+            InstalledGameFixture.Write(content, "same-project");
             var expectedKey = Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes("project:same-project")));
             Assert.That(GameProfilePaths.GetProfileDirectory(content, profiles), Is.EqualTo(Path.Combine(profiles, expectedKey)));
         }
