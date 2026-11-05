@@ -4,6 +4,16 @@
 
 需要 Windows、.NET 10 SDK 和 PowerShell 7。脚本先以 Benchmark=true 构建，再启动独立进程；构建不计入 Startup.Total。默认 Release、1 次预热、5 次测量。输出包含 Chrome Trace JSON、stdout/stderr、逐阶段 CSV、中位数/P95 摘要和运行环境/源码元数据。
 
+每次运行的 metadata.json 还记录 `SampledPeakWorkingSetBytes`：父进程约每 50 ms 采样一次子进程工作集的最大值，包含启动到退出期间，不是操作系统记录的精确峰值，也不是托管分配量；短暂峰值可能漏采。它可用于相同采样方式下的粗略比较。
+
+发布体积可独立检查已有文件或目录，不会构建或修改发布物：
+
+```powershell
+pwsh -File scripts/performance/measure-package-size.ps1 -Path <发布目录或APK> -OutputFile output/package-size.json
+```
+
+目录总量是文件长度之和；APK、AAB、ZIP 额外列出每项的压缩和解压大小，压缩条目之和不含容器头等开销。比较时应固定发布配置、架构及游戏内容；不同版本的内容大小可能不同。
+
 ```powershell
 pwsh -File scripts/performance/benchmark-startup.ps1 -Target Editor -Iterations 10
 pwsh -File scripts/performance/benchmark-startup.ps1 -Target Editor -Configuration Debug -Iterations 10
@@ -13,7 +23,7 @@ Sample 的游戏内容需要预先构建，Profile 应是已完成语言选择�
 
 `-Warmup 0` 可以保留第一次运行，但不等于操作系统冷缓存测试。脚本不清理系统缓存。相同配置、内容、profile 初始状态和机器负载下比较结果；5 次测量的 P95 只是 nearest-rank 样本分位数，样本少时通常就是最大值。外部进程探测得到的窗口时间和 Startup.Total 定义不同，不能直接比较。
 
-`-OutputDirectory` 指定结果目录；默认 `out/benchmarks/<target>-<timestamp>`。`-TimeoutSeconds` 默认 60。`-SkipBuild` 仅用于已经使用相同配置和 Benchmark=true 构建的输出，普通程序不会导出 trace。脚本串行运行，仅对自己创建的超时进程执行 Kill，不会结束已有 Editor 或游戏。超时、非零退出、缺失 Ready、事件溢出均中止并保留已生成数据。构建耗时仅代表本次实际构建（可能增量），不等同于 clean build 基线。
+`-OutputDirectory` 指定结果目录；默认 `output/benchmarks/<target>-<timestamp>`。`-TimeoutSeconds` 默认 60。`-SkipBuild` 仅用于已经使用相同配置和 Benchmark=true 构建的输出，普通程序不会导出 trace。脚本串行运行，仅对自己创建的超时进程执行 Kill，不会结束已有 Editor 或游戏。超时、非零退出、缺失 Ready、事件溢出均中止并保留已生成数据。构建耗时仅代表本次实际构建（可能增量），不等同于 clean build 基线。
 
 自备埋点 Sample 构建时需显式开启 `EnableLaunchArguments=true`，用于传入隔离的内容目录和 profile，不需要开启游戏调试。手动构建/发布用于 `-SkipBuild` 或采样分析的 Sample 时，也须传入 `-p:EnableLaunchArguments=true`；默认玩家构建只加载应用同级 `pak/`。
 

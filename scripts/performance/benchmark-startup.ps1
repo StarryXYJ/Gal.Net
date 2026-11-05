@@ -20,7 +20,7 @@ $assemblyName = if ($Target -eq 'Editor') { 'GalNet.Editor' } else { 'GalNet.Sam
 $group = if ($Target -eq 'Editor') { 'Editor' } else { 'Samples' }
 $projectDirectory = if ($Target -eq 'Editor') { Join-Path $repositoryRoot "src/$group/$assemblyName" } else { Join-Path $repositoryRoot "src/Samples/GalNet.Sample.CrossPlatform/$assemblyName" }
 if (-not $OutputDirectory) {
-    $OutputDirectory = Join-Path $repositoryRoot ('out/benchmarks/' + $Target + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
+    $OutputDirectory = Join-Path $repositoryRoot ('output/benchmarks/' + $Target + '-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 }
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 $null = New-Item -ItemType Directory -Path $OutputDirectory -Force
@@ -73,7 +73,15 @@ for ($index = 0; $index -lt ($Warmup + $Iterations); $index++) {
         $started = $true
         $stdout = $process.StandardOutput.ReadToEndAsync()
         $stderr = $process.StandardError.ReadToEndAsync()
-        $timedOut = -not $process.WaitForExit($TimeoutSeconds * 1000)
+        $peakWorkingSetBytes = 0L
+        $timedOut = $false
+        while (-not $process.WaitForExit(50)) {
+            try {
+                $process.Refresh()
+                $peakWorkingSetBytes = [Math]::Max($peakWorkingSetBytes, $process.WorkingSet64)
+            } catch [System.InvalidOperationException] { }
+            if ($runWatch.Elapsed.TotalSeconds -ge $TimeoutSeconds) { $timedOut = $true; break }
+        }
         if ($timedOut) {
             $process.Kill($true)
             $process.WaitForExit()
@@ -95,7 +103,7 @@ for ($index = 0; $index -lt ($Warmup + $Iterations); $index++) {
     if (-not @($trace.traceEvents | Where-Object name -eq 'Startup.Ready').Count) { throw "Startup did not reach ready: $runName" }
     $durations = @($trace.traceEvents | Where-Object ph -eq 'X')
     if (@($durations | Where-Object name -eq 'Startup.Total').Count -ne 1) { throw "Invalid startup total: $runName" }
-    $runs.Add([pscustomobject]@{ Run = $runName; Warmup = ($kind -eq 'warmup'); ProcessLifetimeMs = $runWatch.Elapsed.TotalMilliseconds; Events = $durations })
+    $runs.Add([pscustomobject]@{ Run = $runName; Warmup = ($kind -eq 'warmup'); ProcessLifetimeMs = $runWatch.Elapsed.TotalMilliseconds; SampledPeakWorkingSetBytes = $peakWorkingSetBytes; Events = $durations })
     $total = ($durations | Where-Object name -eq 'Startup.Total').dur / 1000
     Write-Host ('{0}: Startup.Total = {1:F2} ms' -f $runName, $total)
 }
@@ -126,7 +134,7 @@ $metadata = [ordered]@{
     Dotnet = (& dotnet --version); GameDirectory = $GameDirectory; Profile = $Profile
     Executable = $executable
     AssemblySha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path (Split-Path $executable) "$assemblyName.dll")).Hash
-    Runs = @($runs | Select-Object Run, Warmup, ProcessLifetimeMs)
+    Runs = @($runs | Select-Object Run, Warmup, ProcessLifetimeMs, SampledPeakWorkingSetBytes)
 }
 $metadata | ConvertTo-Json -Depth 5 | Set-Content (Join-Path $OutputDirectory 'metadata.json')
 $summary | Format-Table Stage, Samples, MedianMs, P95Ms -AutoSize
