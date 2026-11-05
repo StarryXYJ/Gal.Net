@@ -127,6 +127,7 @@ public class ProjectDependencyTests
                 "GalNet.Runtime",
                 "GalNet.Sample.CrossPlatform.Desktop",
                 "GalNet.Sample.CrossPlatform",
+                "GalNet.Sample.Headless",
                 "GalNet.Storage.FileSystem"
             ]
         };

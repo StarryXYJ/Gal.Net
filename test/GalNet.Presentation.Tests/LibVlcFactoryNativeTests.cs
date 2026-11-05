@@ -30,7 +30,7 @@ public sealed class LibVlcFactoryNativeTests
             Assert.That(factory.NativeVersion, Does.StartWith("3."));
             Assert.That(Environment.GetEnvironmentVariable("VLC_PLUGIN_PATH"), Is.EqualTo(factory.Options.PluginDirectory));
 
-            using var gallery = new GalleryMediaService(new Session(Path.Combine(assets, "niko.mp4")), factory);
+            using var gallery = new GalleryMediaService(new Session(Path.Combine(assets, "Video", "niko.mp4")), factory);
             var item = new GalleryItemData(new GalleryItem { Id = 1, TypeId = "video", ResourceId = "video" }, true);
             using var thumbnail = await gallery.LoadVideoThumbnailAsync(item);
             Assert.That(thumbnail, Is.Not.Null, gallery.LastError);
@@ -50,7 +50,7 @@ public sealed class LibVlcFactoryNativeTests
                 Assert.That(frame.Texture?.SkBitmap?.Width, Is.GreaterThan(0), "Gallery must decode through shared pixel output without a native child window.");
             gallery.StopVideo();
             Assert.That(gallery.VideoLayer.FrameSource, Is.Null);
-            using var media = new Media(runtime.Instance!, Path.Combine(assets, "niko.mp4"), FromType.FromPath);
+            using var media = new Media(runtime.Instance!, Path.Combine(assets, "Video", "niko.mp4"), FromType.FromPath);
             await media.Parse(MediaParseOptions.ParseLocal).WaitAsync(TimeSpan.FromSeconds(5));
             Assert.That(media.Duration, Is.GreaterThan(0), "Disposing the independent session must not dispose the runtime session.");
 

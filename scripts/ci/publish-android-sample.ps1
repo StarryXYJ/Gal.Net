@@ -73,7 +73,7 @@ function New-GameTestCaseExportSource([string]$ContractSource) {
     $source = Join-Path $repoRoot 'GameTestCase'
     $staging = Join-Path $OutputDirectory 'game-source/GameTestCase'
     New-Item -ItemType Directory -Path $staging | Out-Null
-    foreach ($name in @('Assets', 'Graph', 'I18n', 'settings.json')) {
+    foreach ($name in @('Assets', 'Buildin', 'Graph', 'I18n', 'Presets', 'settings.json')) {
         $item = Join-Path $source $name
         if (!(Test-Path -LiteralPath $item)) { continue }
         Copy-Item -LiteralPath $item -Destination (Join-Path $staging $name) -Recurse -Force

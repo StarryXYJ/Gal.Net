@@ -23,7 +23,7 @@ public sealed class VideoNativeSmokeTests
         var nativePath = Environment.GetEnvironmentVariable("GALNET_VIDEO_LIBVLC") ?? throw new InvalidOperationException("Set GALNET_VIDEO_LIBVLC.");
         var factory = CreateFactory(nativePath);
         using var probeVlc = factory.Create();
-        using var probe = new LibVLCSharp.Shared.Media(probeVlc, Path.Combine(assetsRoot, "niko.mp4"), LibVLCSharp.Shared.FromType.FromPath);
+        using var probe = new LibVLCSharp.Shared.Media(probeVlc, Path.Combine(assetsRoot, "Video", "niko.mp4"), LibVLCSharp.Shared.FromType.FromPath);
         await probe.Parse(LibVLCSharp.Shared.MediaParseOptions.ParseLocal).WaitAsync(TimeSpan.FromSeconds(5));
         var duration = probe.Duration / 1000d;
         Assert.That(duration, Is.GreaterThan(0));

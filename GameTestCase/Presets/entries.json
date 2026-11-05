@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "presets": [
+    {
+      "id": "c2000000000000000000000000000001",
+      "name": "径向雨",
+      "type": "particle.play",
+      "parameters": {
+        "parameters": {
+          "particleTexture": "3179deaa20435822a149403dd67e075a",
+          "rate": 140,
+          "maxParticles": 400,
+          "seed": 20261102,
+          "shape": {
+            "type": "circle",
+            "x": 960,
+            "y": 540,
+            "radius": 64
+          },
+          "initial": {
+            "lifetime": {
+              "min": 1.2,
+              "max": 1.6
+            },
+            "velocityX": {
+              "min": 0,
+              "max": 0
+            },
+            "velocityY": {
+              "min": 0,
+              "max": 0
+            },
+            "size": {
+              "min": 0.0858,
+              "max": 0.2288
+            },
+            "alignToVelocity": true,
+            "color": {
+              "min": "#7FA9C730",
+              "max": "#9FC6DF78"
+            }
+          },
+          "motion": {
+            "radialVelocity": 1000,
+            "noise": 0
+          },
+          "lifetime": {
+            "opacity": [
+              {
+                "time": 0,
+                "value": 0
+              },
+              {
+                "time": 0.08,
+                "value": 1
+              },
+              {
+                "time": 0.8,
+                "value": 1
+              },
+              {
+                "time": 1,
+                "value": 0
+              }
+            ]
+          }
+        },
+        "z": 100
+      }
+    }
+  ]
+}

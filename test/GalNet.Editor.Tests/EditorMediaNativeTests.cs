@@ -23,11 +23,11 @@ public sealed partial class ProjectWorkspaceLifecycleTests
             var project = await projects.CreateAsync(Path.Combine(_root, "Media"), "Media", new(), Path.Combine(AppContext.BaseDirectory, "DefaultContracts"));
             try
             {
-                File.Copy(Path.Combine(assets, "bgm.mp3"), Path.Combine(project.RootPath, "Assets/bgm.mp3"));
-                File.Copy(Path.Combine(assets, "bgm.mp3.meta"), Path.Combine(project.RootPath, "Assets/bgm.mp3.meta"));
+                File.Copy(Path.Combine(assets, "Audio", "bgm.mp3"), Path.Combine(project.RootPath, "Assets/Audio/bgm.mp3"));
+                File.Copy(Path.Combine(assets, "Audio", "bgm.mp3.meta"), Path.Combine(project.RootPath, "Assets/Audio/bgm.mp3.meta"));
                 var catalog = project.Services.GetRequiredService<IAssetCatalogService>();
                 await catalog.RefreshAsync();
-                project.Services.GetRequiredService<EditorWorkspaceViewModel>().SelectedAsset = catalog.GetEntry("bgm.mp3");
+                project.Services.GetRequiredService<EditorWorkspaceViewModel>().SelectedAsset = catalog.GetEntry("Audio/bgm.mp3");
                 using var inspector = project.Services.GetRequiredService<AssetInspectorControlViewModel>();
                 inspector.ToggleAudioPreviewCommand.Execute(null);
                 var deadline = DateTime.UtcNow.AddSeconds(5);

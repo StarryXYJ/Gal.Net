@@ -54,6 +54,13 @@ project launch settings. Editor builds to `Output/Debug` and uses a separate
 `.galnet/debug-profile`; see [external debugging](../docs/manual/editor/preview-and-debugging.md).
 The Sample launch scripts below continue to build and run the same author files.
 
+Assets follow the standard project folders: `Assets/Layer/`, `Assets/Audio/`,
+and `Assets/Video/`. Project-specific shaders remain under `Assets/Effects/`.
+The five built-in particle presets live in `Buildin/Presets/entries.json`;
+`Presets/entries.json` contains the editable radial-rain example. Apply a preset
+to a matching Entry in the Editor. Presets are authoring data, not game content.
+The weather chapter uses the current built-in settings and a separate radial example.
+
 The editable default shaders live in `Buildin/Effects/Default/`; see
 [the visual authoring manual](../docs/manual/editor/default-visuals.md). The eyelid
 example opens over two seconds, enlarges its aperture and fades remaining corner
@@ -123,12 +130,12 @@ The default intro now pauses at these checkpoints, in both English and Chinese:
 | `variants-reset` | hide and show the portrait again | `xy_idle` (default selection) |
 | `intro-line-2` | select `expression=wink` during the existing jitter loop | `xy_wink`, same moving layer |
 
-`Assets/Variants/xy.variants` points to `xy/`: the first filename segment is `pose`,
+`Assets/Layer/Variants/xy.variants` points to `xy/`: the first filename segment is `pose`,
 the second is `expression`. The five renamed `xy_*.png` files retain their pixels;
 `solo.png` is a copy of `xy_wink.png` used to demonstrate a shorter filename and retained selection.
 This is a matching fixture, not an additional illustration.
 
-`Assets/Variants/classroom.variants` points to `classroom/`, with `scene`, `mode`, and
+`Assets/Layer/Variants/classroom.variants` points to `classroom/`, with `scene`, `mode`, and
 `focus` dimensions. The two original classroom JPEGs are now named
 `classroom_idle_empty.jpeg` and `classroom_speech_teacher.jpeg`. Their resource IDs
 and the classroom Gallery item remain unchanged, so existing route references work.
@@ -221,6 +228,6 @@ Audio uses project section v2 (`audioBuses` / `busId`). The intro combines real 
 
 The sample contains exactly two items in each built-in Gallery: images 100/101, music 200/201, videos 300/301, and scenes 400/401. The intro unlocks these eight items. Resource names are authored in Chinese and English in `I18n/<culture>/resources.json`; the long image title exercises ellipsis and tooltips.
 
-Scene Groups `gallery-classroom` and `gallery-evening` have their own backgrounds and two dialogue lines. They are intentionally independent of the main flow and include a local unlock operation to exercise replay isolation. Their optional covers reference existing image resources. `Assets/Gallery/niko-preview.mp4` is a three-second remux of the existing sample video, used to verify switching video items without duplicating the full file.
+Scene Groups `gallery-classroom` and `gallery-evening` have their own backgrounds and two dialogue lines. They are intentionally independent of the main flow and include a local unlock operation to exercise replay isolation. Their optional covers reference existing image resources. `Assets/Video/Gallery/niko-preview.mp4` is a three-second remux of the existing sample video, used to verify switching video items without duplicating the full file.
 
 This revision uses common `displayNameKey` / `galleryUnlockId` metadata and the audio `announceName` switch. Refresh the Sample contract DLLs and rebuild the project; the previous Gallery annotation and Entry display-name formats are not maintained.

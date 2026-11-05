@@ -217,7 +217,7 @@ def main():
                 if package is None:
                     source = output / "game-source/GameTestCase"
                     source.mkdir(parents=True)
-                    for name in ("Assets", "Graph", "I18n", "settings.json"):
+                    for name in ("Assets", "Buildin", "Graph", "I18n", "Presets", "settings.json"):
                         item = repo / "GameTestCase" / name
                         if item.is_dir():
                             shutil.copytree(item, source / name)
