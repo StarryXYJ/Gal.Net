@@ -16,6 +16,9 @@ sealed class Program
     [STAThread]
     public static int Main(string[] args)
     {
+#if BENCHMARK
+        GalNet.Diagnostics.StartupBenchmark.Start();
+#endif
         try
         {
             var content = ApplicationPackageLayout.GetContentDirectory(ApplicationPackageLayout.FindApplicationRoot(AppContext.BaseDirectory));
@@ -51,9 +54,18 @@ sealed class Program
             var paths = new PlayerLaunchPaths(content, profile ?? SampleCustomization.GetProfileDirectory(content));
             App.PrepareLaunchAsync = _ => Task.FromResult(paths);
             App.DesktopWindowPlacementPath = Path.Combine(paths.ProfileDirectory, "window-placement.json");
-            return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+            var exitCode = BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+#if BENCHMARK
+            if (GalNet.Diagnostics.StartupBenchmark.Failed) return 1;
+#endif
+            return exitCode;
         }
-        catch (Exception error) { Console.Error.WriteLine(error); return 1; }
+        catch (Exception error) {
+#if BENCHMARK
+            GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
+            Console.Error.WriteLine(error); return 1;
+        }
     }
 
     // Avalonia configuration, don't remove; also used by visual designer.

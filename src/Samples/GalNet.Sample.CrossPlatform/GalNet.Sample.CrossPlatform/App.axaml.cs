@@ -194,8 +194,17 @@ public partial class App : Application, IAsyncDisposable
                 opening = ShowOpening(bootstrapText);
                 // Give the lightweight opening its first frame before platform installation/composition begins.
                 await Dispatcher.UIThread.InvokeAsync(() => { }, DispatcherPriority.Background, _lifetime.Token);
+#if BENCHMARK
+                GalNet.Diagnostics.CpuProfiler.Shared.Mark("Sample.OpeningDispatched");
+#endif
                 var paths = await PrepareEnvironmentAsync(bootstrapText, opening);
+#if BENCHMARK
+                GalNet.Diagnostics.CpuProfiler.Shared.Mark("Sample.EnvironmentPrepared");
+#endif
                 var player = await CreatePlayerAsync(paths, opening, bootstrapText);
+#if BENCHMARK
+                GalNet.Diagnostics.CpuProfiler.Shared.Mark("Sample.PlayerCreated");
+#endif
                 initialization = player.InitializeAsync(paths.ContentDirectory, paths.ProfileDirectory);
             }
             finally { _composition.Release(); }
@@ -213,10 +222,20 @@ public partial class App : Application, IAsyncDisposable
                 await _player.Services.GetRequiredService<AvaloniaExternalDebugSession>().ConnectAsync(invitation, _lifetime.Token);
 #endif
             await ApplyPlatformStateAsync();
+#if BENCHMARK
+            if (GalNet.Diagnostics.StartupBenchmark.Complete(ready))
+            {
+                await ShutdownAsync();
+                _window?.Close();
+            }
+#endif
         }
         catch (OperationCanceledException) when (_stopping || generation != _generation) { }
         catch (OperationCanceledException)
         {
+#if BENCHMARK
+            GalNet.Diagnostics.StartupBenchmark.Complete(false);
+#endif
             if (opening is not null) await opening.DisposeAsync();
             await ShutdownAsync();
             if (_window is not null) _window.Close();
@@ -224,6 +243,10 @@ public partial class App : Application, IAsyncDisposable
         }
         catch (Exception error)
         {
+#if BENCHMARK
+            var benchmarkExit = GalNet.Diagnostics.StartupBenchmark.Complete(false);
+            if (benchmarkExit) { await ShutdownAsync(); _window?.Close(); return; }
+#endif
             if (opening is not null)
             {
                 try { await opening.DisposeAsync(); }

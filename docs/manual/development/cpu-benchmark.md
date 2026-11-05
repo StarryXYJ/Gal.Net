@@ -1,6 +1,6 @@
 # 测量 CPU 启动
 
-> Editor 启动采样继续可用。CrossPlatform 尚未接入启动埋点；Sample 采样仅接受 `-SkipBuild -Executable <已埋点程序>`，旧 Sample 数据保留为历史参考。
+> Editor 和 CrossPlatform Desktop Sample 支持启动采样。Sample 的 Ready 包含开场序列结束和玩家初始化，不代表 GPU 首帧或开始剧情的时间；旧 Sample 数据仅作历史参考。
 
 需要 Windows、.NET 10 SDK 和 PowerShell 7。脚本先以 Benchmark=true 构建，再启动独立进程；构建不计入 Startup.Total。默认 Release、1 次预热、5 次测量。输出包含 Chrome Trace JSON、stdout/stderr、逐阶段 CSV、中位数/P95 摘要和运行环境/源码元数据。
 
@@ -17,6 +17,7 @@ pwsh -File scripts/performance/measure-package-size.ps1 -Path <发布目录或AP
 ```powershell
 pwsh -File scripts/performance/benchmark-startup.ps1 -Target Editor -Iterations 10
 pwsh -File scripts/performance/benchmark-startup.ps1 -Target Editor -Configuration Debug -Iterations 10
+pwsh -File scripts/performance/benchmark-startup.ps1 -Target Sample -GameDirectory <已构建内容目录> -Profile <测试档案目录> -Iterations 10
 ```
 
 Sample 的游戏内容需要预先构建，Profile 应是已完成语言选择的测试档案（可复制已有 profile 到临时目录），避免弹窗等待。每次 Sample 启动仍会执行正常启动逻辑，包括更新该档案的启动次数。脚本不会替你构建游戏内容或修改语言选择逻辑。不要将个人正式档案用于 benchmark。

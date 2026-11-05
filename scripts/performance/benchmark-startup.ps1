@@ -15,7 +15,6 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-if ($Target -eq 'Sample' -and (!$Executable -or !$SkipBuild)) { throw 'CrossPlatform startup instrumentation is not configured. Sample requires -SkipBuild and an explicitly instrumented -Executable.' }
 $assemblyName = if ($Target -eq 'Editor') { 'GalNet.Editor' } else { 'GalNet.Sample.CrossPlatform.Desktop' }
 $group = if ($Target -eq 'Editor') { 'Editor' } else { 'Samples' }
 $projectDirectory = if ($Target -eq 'Editor') { Join-Path $repositoryRoot "src/$group/$assemblyName" } else { Join-Path $repositoryRoot "src/Samples/GalNet.Sample.CrossPlatform/$assemblyName" }
