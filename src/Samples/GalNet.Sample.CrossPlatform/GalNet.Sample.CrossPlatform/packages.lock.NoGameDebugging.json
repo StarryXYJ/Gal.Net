@@ -280,6 +280,9 @@
       "galnet.core": {
         "type": "Project"
       },
+      "galnet.diagnostics": {
+        "type": "Project"
+      },
       "galnet.gamehost": {
         "type": "Project",
         "dependencies": {

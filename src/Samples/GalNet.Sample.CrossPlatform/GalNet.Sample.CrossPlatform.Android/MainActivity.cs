@@ -30,6 +30,7 @@ public partial class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioF
     {
         App.ProjectOrientationHandler = ApplyProjectOrientationAsync;
         base.OnCreate(savedInstanceState);
+        InitializeChineseFontFallback();
         _current = new(this);
         _audio = (AudioManager?)GetSystemService(AudioService);
         if (Player is { } player) player.ExitRequested = () => MoveTaskToBack(true);
@@ -38,6 +39,19 @@ public partial class MainActivity : AvaloniaMainActivity, AudioManager.IOnAudioF
         if (OperatingSystem.IsAndroidVersionAtLeast(33)) RegisterReceiver(_noisy, filter, ReceiverFlags.NotExported);
         else RegisterReceiver(_noisy, filter);
         Observe(() => App.ApplyProjectOrientationAsync(App.CurrentOrientationPolicy, App.CurrentDefaultOrientation, CancellationToken.None));
+    }
+
+    private static void InitializeChineseFontFallback()
+    {
+        // Resolve these before the first player layout: on a tested Android device,
+        // normal CJK text otherwise rendered as missing-glyph bars.
+        foreach (var weight in new[] { global::Avalonia.Media.FontWeight.Normal, global::Avalonia.Media.FontWeight.Bold })
+        {
+            if (global::Avalonia.Media.FontManager.Current.TryMatchCharacter('游', global::Avalonia.Media.FontStyle.Normal, weight,
+                global::Avalonia.Media.FontStretch.Normal, global::Avalonia.Media.FontFamily.Default,
+                System.Globalization.CultureInfo.GetCultureInfo("zh-CN"), out var face))
+                _ = face.GlyphTypeface.CharacterToGlyphMap.GetGlyph('游');
+        }
     }
 
     private static async Task ApplyProjectOrientationAsync(ProjectOrientationPolicy policy,
